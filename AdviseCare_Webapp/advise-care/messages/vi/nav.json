@@ -1,0 +1,34 @@
+{
+  "sectionAdvisor": "Nghiệp vụ học vụ",
+  "sectionSteward": "Bảo vệ dữ liệu",
+  "sectionStudent": "Hồ sơ của tôi",
+  "advisor": {
+    "caseload": "Danh sách phụ trách",
+    "cases": "Hồ sơ tư vấn",
+    "consentRequests": "Yêu cầu mở phạm vi",
+    "corrections": "Đính chính",
+    "referrals": "Chuyển tuyến",
+    "emergencyAccess": "Truy cập khẩn cấp"
+  },
+  "steward": {
+    "purposes": "Mục đích xử lý",
+    "policies": "Chính sách truy cập",
+    "accessRecords": "Nhật ký truy cập & xử lý",
+    "erasure": "Hàng đợi xóa dữ liệu",
+    "emergencyReviews": "Duyệt truy cập khẩn cấp"
+  },
+  "student": {
+    "profile": "Hồ sơ của tôi",
+    "consent": "Sự đồng ý",
+    "accessHistory": "Lịch sử truy cập",
+    "corrections": "Đính chính",
+    "export": "Xuất dữ liệu",
+    "events": "Sự kiện"
+  },
+  "advisorFooterTitle": "Demo Advisor 01",
+  "advisorFooterCaption": "Cố vấn học tập • Trực tuyến",
+  "stewardFooterTitle": "Demo Steward 01",
+  "stewardFooterCaption": "Cán bộ bảo vệ dữ liệu • Trực tuyến",
+  "studentFooterTitle": "Quyền tự quyết dữ liệu sinh viên",
+  "studentFooterCaption": "Niêm phong quyền riêng tư"
+}

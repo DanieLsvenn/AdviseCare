@@ -1,0 +1,34 @@
+{
+  "sectionAdvisor": "Academic Operations",
+  "sectionSteward": "Data Protection",
+  "sectionStudent": "My Record",
+  "advisor": {
+    "caseload": "Caseload",
+    "cases": "Cases",
+    "consentRequests": "Consent requests",
+    "corrections": "Corrections",
+    "referrals": "Referrals",
+    "emergencyAccess": "Emergency access"
+  },
+  "steward": {
+    "purposes": "Consent purposes",
+    "policies": "Access policies",
+    "accessRecords": "Access & processing records",
+    "erasure": "Erasure queue",
+    "emergencyReviews": "Emergency access review"
+  },
+  "student": {
+    "profile": "My profile",
+    "consent": "Consent",
+    "accessHistory": "Access history",
+    "corrections": "Corrections",
+    "export": "Export my data",
+    "events": "Events"
+  },
+  "advisorFooterTitle": "Demo Advisor 01",
+  "advisorFooterCaption": "Academic Advisor • Online",
+  "stewardFooterTitle": "Demo Steward 01",
+  "stewardFooterCaption": "Data Protection Steward • Online",
+  "studentFooterTitle": "Student Data Agency",
+  "studentFooterCaption": "Strict Privacy Sealed"
+}
