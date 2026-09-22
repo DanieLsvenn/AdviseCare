@@ -12,7 +12,9 @@ import {
 import { Link } from "@/i18n/navigation";
 
 /** C01 — University sign-in. */
-export default async function SignInPage({ params }: PageProps<"/[locale]/sign-in">) {
+export default async function SignInPage({
+  params,
+}: PageProps<"/[locale]/sign-in">) {
   const { locale } = await params;
   setRequestLocale(locale);
 
@@ -37,6 +39,12 @@ export default async function SignInPage({ params }: PageProps<"/[locale]/sign-i
       icon: "policy",
       title: t("roleSteward"),
       caption: t("roleStewardCaption"),
+    },
+    {
+      href: "/head",
+      icon: "account_balance",
+      title: t("roleHead"),
+      caption: t("roleHeadCaption"),
     },
   ] as const;
 

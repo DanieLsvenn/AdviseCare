@@ -7,8 +7,16 @@ export { DataTable, Th, Td, Tr } from "./table";
 export { ImmutableRecord } from "./immutable-record";
 export { Notice } from "./notice";
 export { Avatar } from "./avatar";
-export { Field, TextInput, TextArea, Select, SearchInput, Checkbox } from "./field";
+export {
+  Field,
+  TextInput,
+  TextArea,
+  Select,
+  SearchInput,
+  Checkbox,
+} from "./field";
 export { PageHeader, MetaPill, Eyebrow } from "./page-header";
+export { RoutePath } from "./route-path";
 export { SourceStatusBar, ProvenanceList } from "./source-status";
 export { AuditFooter } from "./audit-footer";
 export { CitationList } from "./citation-list";

@@ -6,7 +6,6 @@ import {
   AuditFooter,
   Avatar,
   ButtonLink,
-  Eyebrow,
   Icon,
   KeyValue,
   KeyValueGrid,
@@ -59,8 +58,16 @@ export default async function StudentProfilePage({
           {t("backToCaseload")}
         </Link>
         <div className="flex flex-wrap items-center gap-space-sm">
-          <StatusChip tone="sealed" icon="schedule" label="7 Sep 2026, 14:15 ICT" />
-          <StatusChip tone="ontrack" icon="check_circle" label={t("currentRecord")} />
+          <StatusChip
+            tone="sealed"
+            icon="schedule"
+            label="7 Sep 2026, 14:15 ICT"
+          />
+          <StatusChip
+            tone="ontrack"
+            icon="check_circle"
+            label={t("currentRecord")}
+          />
           <StatusChip
             tone="sealed"
             icon="verified_user"
@@ -71,11 +78,11 @@ export default async function StudentProfilePage({
 
       <Panel>
         <PanelBody className="space-y-space-base">
-          <Eyebrow
-            items={["AdviseCare", t("breadcrumbCaseload"), `DEMO-001 (${student.FullName})`]}
-          />
           <div className="flex flex-wrap items-start gap-space-base">
-            <Avatar initials={student.Initials} className="size-14 text-headline-sm" />
+            <Avatar
+              initials={student.Initials}
+              className="size-14 text-headline-sm"
+            />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-space-sm">
                 <h1 className="font-display-sm text-display-sm text-on-surface">
@@ -92,12 +99,18 @@ export default async function StudentProfilePage({
                 {student.ProgrammeName} · Year {student.YearOfStudy}, Fall 2026
               </p>
               <KeyValueGrid columns={3} className="mt-space-base">
-                <KeyValue label={t("assignedAdvisor")} value="Demo Advisor 01 (Computing)" />
+                <KeyValue
+                  label={t("assignedAdvisor")}
+                  value="Demo Advisor 01 (Computing)"
+                />
                 <KeyValue
                   label={t("institutionalStatus")}
                   value={
                     <span className="flex items-center gap-1.5">
-                      <Icon name="warning" className="text-[16px] text-status-attention-text" />
+                      <Icon
+                        name="warning"
+                        className="text-[16px] text-status-attention-text"
+                      />
                       Registered / pre-withdrawal review
                     </span>
                   }
@@ -107,7 +120,11 @@ export default async function StudentProfilePage({
             </div>
             <div className="flex flex-col gap-space-sm">
               {activeCase ? (
-                <ButtonLink href={`/advisor/cases/${activeCase.CaseId}`} icon="folder_open" size="sm">
+                <ButtonLink
+                  href={`/advisor/cases/${activeCase.CaseId}`}
+                  icon="folder_open"
+                  size="sm"
+                >
                   {t("openCase")} ({activeCase.CaseNumber})
                 </ButtonLink>
               ) : null}
@@ -152,18 +169,28 @@ export default async function StudentProfilePage({
                 <PanelBody>
                   <KeyValueGrid columns={1}>
                     <KeyValue label={t("opened")} value={activeCase.OpenedAt} />
-                    <KeyValue label={t("stage")} value={activeCase.CurrentState} />
+                    <KeyValue
+                      label={t("stage")}
+                      value={activeCase.CurrentState}
+                    />
                     <KeyValue
                       label={t("urgency")}
                       value={
                         <StatusChip
-                          tone={activeCase.Priority === "URGENT" ? "urgent" : "attention"}
+                          tone={
+                            activeCase.Priority === "URGENT"
+                              ? "urgent"
+                              : "attention"
+                          }
                           icon="flag"
                           label={activeCase.Priority}
                         />
                       }
                     />
-                    <KeyValue label={t("assignedLead")} value={activeCase.AdvisorName} />
+                    <KeyValue
+                      label={t("assignedLead")}
+                      value={activeCase.AdvisorName}
+                    />
                   </KeyValueGrid>
                   <ButtonLink
                     href={`/advisor/cases/${activeCase.CaseId}`}
@@ -197,7 +224,13 @@ export default async function StudentProfilePage({
               icon="history_edu"
               title={t("ledgerTitle")}
               subtitle={t("ledgerSubtitle")}
-              actions={<StatusChip tone="sealed" icon="lock" label={t("appendOnlyChip")} />}
+              actions={
+                <StatusChip
+                  tone="sealed"
+                  icon="lock"
+                  label={t("appendOnlyChip")}
+                />
+              }
             />
             <PanelBody className="space-y-space-md">
               {ledgerBlocks.map((block) => (
@@ -206,7 +239,10 @@ export default async function StudentProfilePage({
                   className="border-l-[3px] border-l-outline-variant border-y border-r border-outline-variant/40 px-space-base py-space-md"
                 >
                   <div className="flex flex-wrap items-center gap-space-sm">
-                    <Icon name={block.icon} className="text-[18px] text-on-surface-variant" />
+                    <Icon
+                      name={block.icon}
+                      className="text-[18px] text-on-surface-variant"
+                    />
                     <p className="font-label-md text-label-md font-semibold text-on-surface">
                       {block.typeLabel}
                     </p>
@@ -233,7 +269,12 @@ export default async function StudentProfilePage({
               ))}
             </PanelBody>
             <div className="flex flex-wrap items-center justify-between gap-space-sm border-t border-outline-variant/30 px-space-lg py-space-md">
-              <ButtonLink href="/advisor/caseload" variant="tertiary" size="sm" icon="arrow_back">
+              <ButtonLink
+                href="/advisor/caseload"
+                variant="tertiary"
+                size="sm"
+                icon="arrow_back"
+              >
                 {t("backToCaseload")}
               </ButtonLink>
               <div className="flex flex-wrap gap-space-sm">

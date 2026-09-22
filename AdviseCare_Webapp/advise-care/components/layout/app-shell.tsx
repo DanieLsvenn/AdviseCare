@@ -4,6 +4,7 @@ import { Brand } from "./brand";
 import { SidebarNav, type NavItem } from "./sidebar-nav";
 import { TopBar } from "./top-bar";
 import { Icon } from "@/components/ui/icon";
+import { RoutePath } from "@/components/ui/route-path";
 
 /**
  * Bố cục 3 vùng theo Design Rule §8:
@@ -107,6 +108,7 @@ export function AppShell({
         />
         <main className="flex-1 px-gutter-mobile py-space-lg lg:px-gutter-desktop">
           <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-space-lg">
+            <RoutePath />
             {children}
           </div>
         </main>

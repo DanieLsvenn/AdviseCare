@@ -25,6 +25,12 @@
     "export": "Export my data",
     "events": "Events"
   },
+  "head": {
+    "overview": "Cohort overview",
+    "workload": "Advisor workload",
+    "assignments": "Assignment changes",
+    "reports": "Term reports"
+  },
   "advisorFooterTitle": "Demo Advisor 01",
   "advisorFooterCaption": "Academic Advisor • Online",
   "stewardFooterTitle": "Demo Steward 01",

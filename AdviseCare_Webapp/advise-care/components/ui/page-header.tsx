@@ -12,7 +12,7 @@ export function Eyebrow({
   return (
     <p
       className={cn(
-        "flex flex-wrap items-center gap-space-sm font-caption text-caption uppercase tracking-[0.08em] text-on-surface-variant",
+        "flex flex-wrap items-center gap-space-sm font-caption text-caption text-on-surface-variant",
         className,
       )}
     >
@@ -27,7 +27,6 @@ export function Eyebrow({
 }
 
 export function PageHeader({
-  eyebrow,
   title,
   badge,
   description,
@@ -44,11 +43,17 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <header className={cn("flex flex-wrap items-start justify-between gap-space-lg", className)}>
+    <header
+      className={cn(
+        "flex flex-wrap items-start justify-between gap-space-lg",
+        className,
+      )}
+    >
       <div className="min-w-0 flex-1">
-        {eyebrow ? <Eyebrow items={eyebrow} className="mb-space-sm" /> : null}
         <div className="flex flex-wrap items-center gap-space-md">
-          <h1 className="font-display-sm text-display-sm text-on-surface">{title}</h1>
+          <h1 className="font-display-sm text-display-sm text-on-surface">
+            {title}
+          </h1>
           {badge}
         </div>
         {description ? (

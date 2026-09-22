@@ -25,6 +25,12 @@
     "export": "Xuất dữ liệu",
     "events": "Sự kiện"
   },
+  "head": {
+    "overview": "Tổng quan khóa học",
+    "workload": "Tải cố vấn",
+    "assignments": "Thay đổi phân công",
+    "reports": "Báo cáo học kỳ"
+  },
   "advisorFooterTitle": "Demo Advisor 01",
   "advisorFooterCaption": "Cố vấn học tập • Trực tuyến",
   "stewardFooterTitle": "Demo Steward 01",
