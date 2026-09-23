@@ -1,6 +1,7 @@
 {
   "sectionAdvisor": "Academic Operations",
   "sectionSteward": "Data Protection",
+  "sectionAdministration": "System Administration",
   "sectionStudent": "My Record",
   "advisor": {
     "caseload": "Caseload",
@@ -35,6 +36,17 @@
   "advisorFooterCaption": "Academic Advisor • Online",
   "stewardFooterTitle": "Demo Steward 01",
   "stewardFooterCaption": "Data Protection Steward • Online",
+  "administratorFooterTitle": "System Administrator",
+  "administratorFooterCaption": "Institutional Root Trust • Online",
+  "administrator": {
+    "accounts": "Accounts & roles",
+    "faculties": "Faculties & assignments",
+    "sources": "Data sources",
+    "reference": "Reference data",
+    "health": "System health",
+    "restore": "Restore & integrity",
+    "indicators": "Indicator configuration"
+  },
   "studentFooterTitle": "Student Data Agency",
   "studentFooterCaption": "Strict Privacy Sealed"
 }

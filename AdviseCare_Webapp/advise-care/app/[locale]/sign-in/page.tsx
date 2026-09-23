@@ -41,6 +41,18 @@ export default async function SignInPage({
       caption: t("roleStewardCaption"),
     },
     {
+      href: "/admin/m01",
+      icon: "admin_panel_settings",
+      title: "System Administrator",
+      caption: "Institutional root trust • M01–M07 administration console",
+    },
+    {
+      href: "/welfare/referrals",
+      icon: "health_and_safety",
+      title: "Student Welfare Officer",
+      caption: "Demo Welfare Officer 01 • Confidential casework console",
+    },
+    {
       href: "/head",
       icon: "account_balance",
       title: t("roleHead"),

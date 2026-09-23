@@ -1,6 +1,18 @@
 {
   "sectionAdvisor": "Nghiệp vụ học vụ",
   "sectionSteward": "Bảo vệ dữ liệu",
+  "sectionAdministration": "Quản trị hệ thống",
+  "administratorFooterTitle": "Quản trị viên hệ thống",
+  "administratorFooterCaption": "Tin cậy gốc cấp trường • Trực tuyến",
+  "administrator": {
+    "accounts": "Tài khoản và vai trò",
+    "faculties": "Khoa và phân công",
+    "sources": "Nguồn dữ liệu",
+    "reference": "Dữ liệu tham chiếu",
+    "health": "Tình trạng hệ thống",
+    "restore": "Khôi phục và toàn vẹn",
+    "indicators": "Cấu hình chỉ số"
+  },
   "sectionStudent": "Hồ sơ của tôi",
   "advisor": {
     "caseload": "Danh sách phụ trách",

@@ -37,6 +37,27 @@ export const stewardAccount: Account = {
   FacultyName: "Institution-wide",
   Initials: "DS",
 };
+export const administratorAccount: Account = {
+  AccountId: 103,
+  FullName: "System Administrator",
+  Email: "sysadmin@demo.edu.vn",
+  PreferredLanguage: "en",
+  RoleCode: "SYSTEM_ADMIN",
+  RoleLabel: "System Administrator",
+  FacultyName: "Institution-wide",
+  Initials: "SA",
+};
+
+export const welfareOfficerAccount: Account = {
+  AccountId: 104,
+  FullName: "Demo Welfare Officer 01",
+  Email: "welfare01@demo.edu.vn",
+  PreferredLanguage: "en",
+  RoleCode: "WELFARE_OFFICER",
+  RoleLabel: "Student Welfare Officer",
+  FacultyName: "Student Wellbeing Services",
+  Initials: "WO",
+};
 
 export const studentAccount: Account = {
   AccountId: 201,
