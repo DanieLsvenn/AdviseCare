@@ -1,0 +1,17 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+PubTmp/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+*.pubxml.user
+
+# Local secrets / overrides
+appsettings.Development.json
+appsettings.*.local.json

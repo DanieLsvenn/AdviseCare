@@ -1,0 +1,222 @@
+﻿{
+   "CodeGenerationMode": 4,
+   "ContextClassName": "AdviseCareContext",
+   "ContextNamespace": null,
+   "FilterSchemas": false,
+   "IncludeConnectionString": true,
+   "MinimumProductVersion": "2.6.1093",
+   "ModelNamespace": null,
+   "OutputContextPath": null,
+   "OutputPath": "Models",
+   "PreserveCasingWithRegex": true,
+   "ProjectRootNamespace": "AdviseCare.Domain",
+   "Schemas": null,
+   "SelectedHandlebarsLanguage": 2,
+   "SelectedToBeGenerated": 0,
+   "T4TemplatePath": null,
+   "Tables": [
+      {
+         "Name": "[dbo].[ACADEMICTERMS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ACCESSLOGS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ACCESSPOLICIES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ACCOUNT_ROLE]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ACCOUNT_SUBJECT]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ACCOUNTS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ACTIVITYLOGS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ADVISORASSIGNMENTS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ASSIGNMENTCHANGEREQUESTS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ATTRIBUTEKEYS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[BACKUPS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[CASENOTES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[CASES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[CASESTAGEHISTORIES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[CONSENTHISTORIES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[CONSENTPURPOSES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[CONSENTREQUESTS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[CONSENTS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[CORRECTIONREQUESTS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[DATAATTRIBUTES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[DATASOURCES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[EMERGENCYACCESSREQUESTS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ERASUREREQUESTS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ESCALATIONS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[EXTERNALREFERRALS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[EXTERNALSERVICES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[FACULTIES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[INDICATORS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[INGESTIONJOBS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[INGESTIONSCHEDULES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[INTERVENTIONS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[NOTIFICATIONPREFERENCES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[NOTIFICATIONS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[PROGRAMMES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[PURPOSE_ATTRIBUTE]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[REFERRALS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[REPORTS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[RESTOREOPERATIONS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ROLES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[SESSIONS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[STUDENTINDICATORS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[SUBJECTS]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[SUPPORTCATEGORIES]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[SUPPORTGRANTS]",
+         "ObjectType": 0
+      }
+   ],
+   "UiHint": null,
+   "UncountableWords": null,
+   "UseAsyncStoredProcedureCalls": true,
+   "UseBoolPropertiesWithoutDefaultSql": false,
+   "UseDatabaseNames": false,
+   "UseDatabaseNamesForRoutines": true,
+   "UseDateOnlyTimeOnly": true,
+   "UseDbContextSplitting": false,
+   "UseDecimalDataAnnotationForSprocResult": true,
+   "UseFluentApiOnly": true,
+   "UseHandleBars": false,
+   "UseHierarchyId": false,
+   "UseInflector": true,
+   "UseInternalAccessModifiersForSprocsAndFunctions": false,
+   "UseLegacyPluralizer": false,
+   "UseManyToManyEntity": false,
+   "UseNoDefaultConstructor": false,
+   "UseNoNavigations": false,
+   "UseNoObjectFilter": false,
+   "UseNodaTime": false,
+   "UseNullableReferences": false,
+   "UsePrefixNavigationNaming": false,
+   "UseSchemaFolders": false,
+   "UseSchemaNamespaces": false,
+   "UseSpatial": false,
+   "UseT4": false,
+   "UseT4Split": false
+}
