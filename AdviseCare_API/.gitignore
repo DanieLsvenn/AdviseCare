@@ -15,3 +15,5 @@ PubTmp/
 # Local secrets / overrides
 appsettings.Development.json
 appsettings.*.local.json
+
+AdviseCare.API/appsettings.json
