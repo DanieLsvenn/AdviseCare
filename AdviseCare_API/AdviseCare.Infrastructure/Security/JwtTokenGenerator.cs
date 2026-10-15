@@ -1,4 +1,5 @@
 using AdviseCare.Application.Interfaces.Security;
+using AdviseCare.Domain.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -17,13 +18,14 @@ namespace AdviseCare.Infrastructure.Security
             _config = config;
         }
 
-        public string GenerateToken(Guid accountId, string email, string fullName, IEnumerable<string> roles)
+        public string GenerateToken(Account account, Guid sessionId, IEnumerable<string> roles)
         {
             var claims = new List<Claim>
             {
-                new(ClaimTypes.Sid, accountId.ToString()),
-                new(ClaimTypes.Email, email),
-                new(ClaimTypes.Name, fullName)
+                new(ClaimTypes.Sid, account.AccountId.ToString()),
+                new("sessionId", sessionId.ToString()),
+                new(ClaimTypes.Email, account.Email),
+                new(ClaimTypes.Name, account.FullName)
             };
             foreach (var role in roles)
             {

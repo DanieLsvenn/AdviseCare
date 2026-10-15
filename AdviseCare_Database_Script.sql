@@ -4,6 +4,7 @@
    1. Creates database AdviseCareDB if it does not exist
    2. Drops every AdviseCare table that exists, child tables first
    3. Creates all 44 tables in dependency order (parents first)
+   4. Seeds the 7 roles and one test account per role (password 123456)
    WARNING: re-running this script deletes all data in these tables.
    Conventions: uuid -> UNIQUEIDENTIFIER (NEWSEQUENTIALID), date -> DATETIME2(3) in UTC,
    enum -> NVARCHAR(30) + CHECK constraint, bool -> BIT, FK delete rule = NO ACTION.
@@ -782,4 +783,41 @@ CREATE UNIQUE INDEX [UX_ACADEMICTERMS_isCurrent] ON [dbo].[ACADEMICTERMS]([isCur
 CREATE UNIQUE INDEX [UX_ATTRIBUTEKEYS_student_attribute_active] ON [dbo].[ATTRIBUTEKEYS]([studentId], [dataAttributeId]) WHERE [status] = N'active';
 -- fast lookup of the next row for point-in-time reconstruction
 CREATE INDEX [IX_STUDENTINDICATORS_student_indicator_time] ON [dbo].[STUDENTINDICATORS]([studentId], [indicatorId], [transactionFrom], [validFrom]);
+GO
+
+/* ---------- 4. Seed data: roles + one test account per role ---------- */
+-- All 7 accounts use password 123456 (BCrypt hash, same format as BCrypt.Net-Next HashPassword).
+-- For local development only: delete or change these accounts before any real deployment.
+INSERT INTO [dbo].[ROLES] ([roleName]) VALUES
+    (N'System Administrator'),
+    (N'Data Protection Steward'),
+    (N'Academic Advisor'),
+    (N'Wellbeing Advisor'),
+    (N'Student Welfare Officer'),
+    (N'Student'),
+    (N'Programme Head');
+GO
+
+INSERT INTO [dbo].[ACCOUNTS] ([email], [fullName], [userName], [passwordHash], [status]) VALUES
+    (N'admin@gmail.com', N'System Administrator', N'admin', N'$2a$11$1liYqIr7kcDxTzoTN59b6us3o6m6EMaya6FZ9tjsDN3g0231ERA7m', N'active'),
+    (N'steward@gmail.com', N'Data Protection Steward', N'steward', N'$2a$11$lTeQom.w4NNhqDBbm.GcteEf7ZxdV6ZLH5Y2Zx0lxAdc/abs8DAjG', N'active'),
+    (N'academicadvisor@gmail.com', N'Academic Advisor', N'academicadvisor', N'$2a$11$.M/cKreFct0akjeuyMIGj.eyuHnZ9D8C5anorpNHe0m2pU9LLdwnO', N'active'),
+    (N'wellbeingadvisor@gmail.com', N'Wellbeing Advisor', N'wellbeingadvisor', N'$2a$11$1wgRiVlejGNcTh6I9RWE4O2L6wIVFs0Hy3ClgJULcTRTmHpxvCeKW', N'active'),
+    (N'welfareofficer@gmail.com', N'Student Welfare Officer', N'welfareofficer', N'$2a$11$QPB3eTzt1Wz/1cc9QVRxBeEASLzFmLvGFEt5hmf8GMs78PZUVabBW', N'active'),
+    (N'student@gmail.com', N'Student', N'student', N'$2a$11$1qow.v9rCZj8gaUToiAd8.VTPgfzBFEzWw6SK6vHa.kWx9LPPmzw.', N'active'),
+    (N'programmehead@gmail.com', N'Programme Head', N'programmehead', N'$2a$11$L.qbXWklG.R4RMzNMa25c.v.LHdbMdE244vgFogVXfFQCBxcvMSRu', N'active');
+GO
+
+INSERT INTO [dbo].[ACCOUNT_ROLE] ([accountId], [roleId])
+SELECT a.[accountId], r.[roleId]
+FROM [dbo].[ACCOUNTS] a
+JOIN [dbo].[ROLES] r ON r.[roleName] = CASE a.[userName]
+    WHEN N'admin' THEN N'System Administrator'
+    WHEN N'steward' THEN N'Data Protection Steward'
+    WHEN N'academicadvisor' THEN N'Academic Advisor'
+    WHEN N'wellbeingadvisor' THEN N'Wellbeing Advisor'
+    WHEN N'welfareofficer' THEN N'Student Welfare Officer'
+    WHEN N'student' THEN N'Student'
+    WHEN N'programmehead' THEN N'Programme Head'
+END;
 GO

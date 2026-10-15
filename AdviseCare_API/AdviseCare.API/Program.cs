@@ -1,21 +1,24 @@
 using AdviseCare.Application.Exceptions;
 using AdviseCare.Application.Interfaces.Repository;
 using AdviseCare.Application.Interfaces.Security;
+using AdviseCare.Application.Interfaces.Services;
+using AdviseCare.Application.Services;
 using AdviseCare.Domain.Models;
 using AdviseCare.Infrastructure.Repository;
 using AdviseCare.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // --- Database (SQL Server) ---
-// Enums are stored as NVARCHAR + CHECK in AdviseCareDB, so no native enum mapping is needed here.
-// Map enum properties with .HasConversion<string>() in the scaffolded AdviseCareContext.
+// Enums are stored as NVARCHAR + CHECK in AdviseCareDB and stay as string in code, so no enum mapping is needed here.
 var connectionString = builder.Configuration.GetConnectionString("DBDefault") ?? throw new InvalidOperationException("Connection string 'DBDefault' was not found.");
 builder.Services.AddDbContext<AdviseCareContext>(options => options.UseSqlServer(connectionString));
 
@@ -30,7 +33,7 @@ builder.Services.AddCors(opt =>
 });
 
 // --- Application services ---
-// builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.
@@ -105,6 +108,7 @@ app.UseExceptionHandler(errorApp =>
         {
             NotFoundException => StatusCodes.Status404NotFound,
             ValidationException => StatusCodes.Status400BadRequest,
+            UnauthorizedException => StatusCodes.Status401Unauthorized,
             ConflictException => StatusCodes.Status409Conflict,
             ForbiddenException => StatusCodes.Status403Forbidden,
             _ => StatusCodes.Status500InternalServerError
@@ -123,37 +127,56 @@ app.UseCors("CorsPolicy");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 
-// --- Account status gate (re-checks status on every request so a Ban/Deactivate
-// takes effect immediately, instead of waiting for the JWT to expire on its own) ---
-// TODO: enable after ACCOUNTS is scaffolded (needs Account + its status enum,
-// and "using System.Security.Claims;" at the top).
-//app.Use(async (context, next) =>
-//{
-//    if (context.User.Identity?.IsAuthenticated == true)
-//    {
-//        var accountIdClaim = context.User.FindFirstValue(ClaimTypes.Sid);
-//        if (Guid.TryParse(accountIdClaim, out var accountId))
-//        {
-//            var accountRepository = context.RequestServices.GetRequiredService<IGenericRepository<Account>>();
-//            var account = await accountRepository.GetByIdAsync(accountId);
-//
-//            if (account == null || account.Status != AccountStatus.Active)
-//            {
-//                context.Response.ContentType = "application/json";
-//                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-//                await context.Response.WriteAsJsonAsync(new
-//                {
-//                    message = account == null
-//                        ? "Account not found."
-//                        : $"Account is not active. Current status: {account.Status}."
-//                });
-//                return;
-//            }
-//        }
-//    }
-//
-//    await next();
-//});
+// --- Account status + session gate ---
+// Re-checks on every authenticated request, so a Ban/Deactivate or a Logout takes effect immediately
+// instead of waiting for the JWT to expire on its own. Skipped for [AllowAnonymous] endpoints (e.g. login),
+// so a stale token left in the browser can never block signing in again.
+app.Use(async (context, next) =>
+{
+    var isAnonymousEndpoint = context.GetEndpoint()?.Metadata.GetMetadata<IAllowAnonymous>() != null;
+    if (context.User.Identity?.IsAuthenticated == true && !isAnonymousEndpoint)
+    {
+        var accountIdClaim = context.User.FindFirstValue(ClaimTypes.Sid);
+        var sessionIdClaim = context.User.FindFirstValue("sessionId");
+        if (Guid.TryParse(accountIdClaim, out var accountId) && Guid.TryParse(sessionIdClaim, out var sessionId))
+        {
+            var accountRepository = context.RequestServices.GetRequiredService<IGenericRepository<Account>>();
+            var sessionRepository = context.RequestServices.GetRequiredService<IGenericRepository<Session>>();
+            var account = await accountRepository.GetByIdAsync(accountId);
+            var session = await sessionRepository.GetByIdAsync(sessionId);
+
+            if (account == null || account.Status != "active")
+            {
+                context.Response.ContentType = "application/json";
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    message = account == null
+                        ? "Account not found."
+                        : $"Account is not active. Current status: {account.Status}."
+                });
+                return;
+            }
+
+            if (session == null || session.AccountId != accountId || !session.IsActive)
+            {
+                context.Response.ContentType = "application/json";
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await context.Response.WriteAsJsonAsync(new { message = "Session has ended. Please log in again." });
+                return;
+            }
+        }
+        else
+        {
+            context.Response.ContentType = "application/json";
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await context.Response.WriteAsJsonAsync(new { message = "Invalid token." });
+            return;
+        }
+    }
+
+    await next();
+});
 
 app.UseAuthorization();
 app.MapControllers();

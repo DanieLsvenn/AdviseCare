@@ -5,4 +5,5 @@ namespace AdviseCare.Application.Exceptions
     public class ValidationException : AppException { public ValidationException(string m) : base(m) { } }
     public class ConflictException : AppException { public ConflictException(string m) : base(m) { } }
     public class ForbiddenException : AppException { public ForbiddenException(string m) : base(m) { } }
+    public class UnauthorizedException : AppException { public UnauthorizedException(string m) : base(m) { } }
 }
