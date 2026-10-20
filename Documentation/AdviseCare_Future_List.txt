@@ -48,6 +48,12 @@ FU7: In-app chat between advisor and student
 - Missing in the ERD: tables for conversations and messages
 - Note: possible stretch goal if the scope turns out too small
 
+FU8: Accounts without a Google account on file (activation code)
+- What it is: the admin creates an account without a Google-linked email. The system shows a one-time activation code, valid for a short time, which the admin gives to the student in person. The student enters the code, sets their own password straight away, and links a Google account later in Settings
+- Missing in the ERD: no new table, but ACCOUNTS.email must allow null (the unique index has to ignore nulls), and the code can reuse resetToken and resetTokenExpiresAt
+- Why future: the current version expects every student to have an email and a Google account, so this is only a fallback for students who cannot or will not share one
+- Open points: how notifications and "forgot password" work for an account with no email; the code is shown only on the admin screen, never sent by email
+
 ==========
 NOT FUTURE, BUT PENDING REVIEW
 (in the current ERD and requirements, to be re-checked when we go over the requirements again)

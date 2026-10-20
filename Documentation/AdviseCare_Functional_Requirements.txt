@@ -329,11 +329,11 @@ All authenticated users
 
 - Sign in with Google or password:
 
-Every account belongs to a personal Google account. After the first Google sign-in, the system asks the user to set a password, so they have two ways to sign in.
+Every account belongs to a personal Google account. After the first Google sign-in, the system offers to set a password. The user can skip it and set one later in Settings.
 
 + Link the personal Google account through the link in the account-linking email
 + Sign in with Google
-+ Set a password at the account-setup step after the first Google sign-in
++ Set a password at the account-setup step after the first Google sign-in (can be skipped)
 + Sign in with email/username and password
 + Reset a forgotten password by email
 + Log out
@@ -355,5 +355,5 @@ Every account belongs to a personal Google account. After the first Google sign-
 
 + View own recent activity log
 + Edit account settings (avatar, notification preferences)
-+ Change password
++ Change password, or set a first password if none exists (the old password is asked only when one already exists)
 + View active sessions and log out of other sessions

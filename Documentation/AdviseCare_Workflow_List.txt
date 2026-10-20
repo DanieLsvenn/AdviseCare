@@ -131,7 +131,7 @@ EX1: Account linking and first sign-in
 3. User signs in with the personal Google account
 3.1. System checks the Google email matches the account email
 3.2. System stores the Google id and sets linkStatus = linked
-4. Account setup step: since the password is still empty, the system asks the user to set a password right away
+4. Account setup step: the system offers to set a password right away, with a Skip button and the note "You can set a password in Settings"
 5. User sets the preferred language
 6. User lands on the home page of their role
 7. Later sign-ins: "Sign in with Google" or email/username + password
@@ -144,7 +144,8 @@ EX2: Sign in, forgot password and sessions
 4.1. User enters the email
 4.2. System emails a one-time reset link
 4.3. User sets a new password
-5. User views active sessions and logs out of other sessions
+5. User sets or changes the password in Settings (the old password is asked only if one already exists)
+6. User views active sessions and logs out of other sessions
 
 EX3: Advisor reaches out based on indicators
 1. Advisor views indicators of the students assigned to them (only consented data)
