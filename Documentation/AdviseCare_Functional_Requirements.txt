@@ -8,12 +8,13 @@ System Administrator
 
 Creating accounts for students and staff (one by one or in bulk from an import file), getting every account linked to its owner's personal Google account, and deciding which role each staff account plays.
 
-+ Create a single account (email, full name, username, faculty)
-+ Bulk import accounts from an Excel/CSV file or a Google Sheet (email, full name, username, faculty)
++ Create a single account (email, full name, username, faculty, roles)
++ Bulk import accounts from an Excel file (email, full name, username, faculty code, role); importing from a Google Sheet is future (see AdviseCare_Future_List.txt)
 + Send account-linking emails to newly created accounts
 + Track each account's link status (not linked / email sent / linked) and resend the linking email
-+ Activate/Deactivate or Ban/Unban an account
-+ Adjust roles for each staff account
++ Edit account details (email, full name, username, faculty); changing the email unlinks the Google account, so the linking email has to be sent again
++ Activate/Deactivate or Ban/Unban an account (not the admin's own account; deactivating or banning ends all of the account's sessions)
++ Adjust roles for each account (the last System Administrator role cannot be removed)
 + View the account dashboard, sorted/filtered by role, faculty, link status or account status
 
 - Manage faculties, subjects and advisor specialisations:
@@ -31,7 +32,7 @@ Setting up the basic calendar and the shared lookup lists the rest of the system
 
 + Create a term (name, start date, end date)
 + View term data
-+ Set term active (system auto deactivates other terms)
++ Set a term's status (upcoming/current/past); only one term can be current, so setting a new current term moves the old one to past
 + Create/edit/archive support categories (name, description, academic or wellbeing, governing consent purpose)
 
 - Import student indicator data:
@@ -289,7 +290,7 @@ The main entry point: the student asks for help, picks the kind of help, explain
 
 Programme Head
 
-There is one Programme Head for the whole app: the manager responsible for matching and oversight.
+Usually there is one Programme Head for the whole app: the manager responsible for matching and oversight. The system does not limit it to one, so more can be added later.
 
 - Match cases to advisors:
 
@@ -332,11 +333,11 @@ All authenticated users
 Every account belongs to a personal Google account. After the first Google sign-in, the system offers to set a password. The user can skip it and set one later in Settings.
 
 + Link the personal Google account through the link in the account-linking email
-+ Sign in with Google
++ Sign in with Google (only for accounts already linked; a Google account not linked to any account is refused)
 + Set a password at the account-setup step after the first Google sign-in (can be skipped)
 + Sign in with email/username and password
-+ Reset a forgotten password by email
-+ Log out
++ Reset a forgotten password by email (only for linked accounts; the reset logs out every session)
++ Log out (a session also ends on its own 1 month after sign-in)
 
 - Receive notifications:
 
@@ -344,6 +345,7 @@ Every account belongs to a personal Google account. After the first Google sign-
 + Mark a notification as read
 + Click through a notification to the relevant item
 + Set notification preferences (email vs in-app)
++ Clear (delete) old notifications
 
 - Switch interface language between Vietnamese and English:
 
@@ -354,6 +356,6 @@ Every account belongs to a personal Google account. After the first Google sign-
 - View own activity history and account settings:
 
 + View own recent activity log
-+ Edit account settings (avatar, notification preferences)
-+ Change password, or set a first password if none exists (the old password is asked only when one already exists)
++ Edit account settings (username, avatar upload, notification preferences)
++ Change password, or set a first password if none exists (the old password is asked only when one already exists; the other sessions are logged out)
 + View active sessions and log out of other sessions

@@ -72,7 +72,6 @@ CREATE TABLE [dbo].[FACULTIES] (
     [facultyId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_FACULTIES_facultyId] DEFAULT NEWSEQUENTIALID(),
     [facultyCode] NVARCHAR(255) NOT NULL,
     [facultyName] NVARCHAR(255) NOT NULL,
-    [isActive] BIT NOT NULL CONSTRAINT [DF_FACULTIES_isActive] DEFAULT 1,
     [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_FACULTIES_status] DEFAULT N'active',
     CONSTRAINT [PK_FACULTIES] PRIMARY KEY ([facultyId]),
     CONSTRAINT [UQ_FACULTIES_facultyCode] UNIQUE ([facultyCode]),
@@ -198,7 +197,6 @@ CREATE TABLE [dbo].[ACADEMICTERMS] (
     [endDate] DATETIME2(3) NOT NULL,
     [startDate] DATETIME2(3) NOT NULL,
     [termName] NVARCHAR(255) NOT NULL,
-    [isCurrent] BIT NOT NULL CONSTRAINT [DF_ACADEMICTERMS_isCurrent] DEFAULT 0,
     [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_ACADEMICTERMS_status] DEFAULT N'upcoming',
     CONSTRAINT [PK_ACADEMICTERMS] PRIMARY KEY ([termId]),
     CONSTRAINT [CK_ACADEMICTERMS_status] CHECK ([status] IN (N'upcoming', N'current', N'past'))
@@ -778,7 +776,7 @@ GO
 -- googleId must be unique once linked (NULL allowed many times)
 CREATE UNIQUE INDEX [UX_ACCOUNTS_googleId] ON [dbo].[ACCOUNTS]([googleId]) WHERE [googleId] IS NOT NULL;
 -- only one academic term can be the current one
-CREATE UNIQUE INDEX [UX_ACADEMICTERMS_isCurrent] ON [dbo].[ACADEMICTERMS]([isCurrent]) WHERE [isCurrent] = 1;
+CREATE UNIQUE INDEX [UX_ACADEMICTERMS_status_current] ON [dbo].[ACADEMICTERMS]([status]) WHERE [status] = N'current';
 -- one active key per student per attribute (a new key may be created after an erasure if the student shares again)
 CREATE UNIQUE INDEX [UX_ATTRIBUTEKEYS_student_attribute_active] ON [dbo].[ATTRIBUTEKEYS]([studentId], [dataAttributeId]) WHERE [status] = N'active';
 -- fast lookup of the next row for point-in-time reconstruction

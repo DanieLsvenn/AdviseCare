@@ -1,0 +1,121 @@
+ADVISECARE ACTIVITY TYPES
+
+Values stored in ACTIVITYLOGS.activityType (string, camelCase).
+- accountId is the account that did the action (for imports and admin actions, the admin).
+- activityDetail is a short English sentence with the specifics (names, emails, counts, ids), e.g. "Imported 120 accounts from students_fall2026.xlsx".
+- Logged: actions a user wants to see in "View own activity history" and that the admin needs for accountability.
+- Not logged here: reading/viewing data (student data access goes to ACCESSLOGS, owned by Member B), and failed sign-ins.
+- Format of each line: activityType - who does it - when it is written (owner member).
+- Items marked (now) are written by the current Member A code; the rest are drafts for the other members to use when they build their part.
+
+==========
+1. SIGN-IN AND OWN ACCOUNT (all users)
+==========
+
+accountLinked - any user - the Google account was linked through the account-linking email (A, now)
+signedIn - any user - signed in with Google or password; detail says which and the device (A, now)
+signedOut - any user - logged out of the current session (A, now)
+otherSessionsSignedOut - any user - logged out of all other sessions, or of one chosen session (A, now)
+passwordSet - any user - set a first password (none existed before) (A, now)
+passwordChanged - any user - changed an existing password in Settings (A, now)
+passwordReset - any user - set a new password through the "forgot password" email (A, now)
+profileUpdated - any user - changed own username or preferred language (A, now)
+avatarUpdated - any user - uploaded a new avatar (A, now)
+notificationPreferencesUpdated - any user - turned the email or in-app channel on/off (A, now)
+dataExported - Student - downloaded the JSON export of own record (C)
+
+==========
+2. ACCOUNT MANAGEMENT (System Administrator)
+==========
+
+accountCreated - Admin - created a single account (A, now)
+accountsImported - Admin - imported accounts from an Excel file (A, now)
+linkingEmailsSent - Admin - sent or resent account-linking emails (A, now)
+accountUpdated - Admin - edited an account's email, full name, username or faculty (A, now)
+accountRolesChanged - Admin - added or removed a role of an account (A, now)
+accountActivated - Admin - activated an account (A, now)
+accountDeactivated - Admin - deactivated an account (A, now)
+accountBanned - Admin - banned an account (A, now)
+accountUnbanned - Admin - unbanned an account (A, now)
+roleCreated - Admin - created a role (A, now)
+roleUpdated - Admin - renamed a role (A, now)
+
+==========
+3. MASTER DATA (System Administrator)
+==========
+
+facultyCreated - Admin - created a faculty (A, now)
+facultyUpdated - Admin - edited or archived a faculty (A, now)
+programmeCreated - Admin - created a programme (A, now)
+programmeUpdated - Admin - edited or archived a programme (A, now)
+termCreated - Admin - created an academic term (A, now)
+termUpdated - Admin - edited a term or changed its status (A, now)
+subjectCreated - Admin - created a subject (A, now)
+subjectUpdated - Admin - edited or archived a subject (A, now)
+advisorSubjectLinked - Admin - linked an academic advisor to a subject (A, now)
+advisorSubjectUnlinked - Admin - removed an advisor's link to a subject (A, now)
+supportCategoryCreated - Admin - created a support category (D)
+supportCategoryUpdated - Admin - edited or archived a support category (D)
+
+==========
+4. INDICATOR DATA IMPORT (System Administrator)
+==========
+
+indicatorsImported - Admin - imported indicator values from a file; detail has the file name and row count (C)
+indicatorImportFailed - Admin - an import was refused because of invalid rows; detail has the file name and invalid row count (C)
+
+==========
+5. CONSENT AND DATA PROTECTION
+==========
+
+indicatorCreated - Steward - created an indicator with its data attribute (B)
+indicatorUpdated - Steward - edited an indicator's description (B)
+indicatorArchived - Steward - archived an indicator/attribute (B)
+consentPurposeCreated - Steward - created a consent purpose (B)
+consentPurposeUpdated - Steward - edited, activated or deactivated a purpose, or changed its attributes (B)
+consentPurposeRetired - Steward - retired a purpose (B)
+accessPolicyCreated - Steward - created an access policy (B)
+accessPolicyRevoked - Steward - revoked an access policy (B)
+accessLogReviewed - Steward - reviewed a flagged access log entry (B)
+processingRecordExported - Steward - exported a processing record (B)
+erasureExecuted - Steward - executed an erasure request (B)
+emergencyAccessRequested - staff - requested emergency access (B, pending review)
+emergencyAccessDecided - Steward - approved or rejected emergency access (B, pending review)
+consentGranted - Student - granted consent for a purpose/attribute (B)
+consentNarrowed - Student - removed some attributes from a consent (B)
+consentWithdrawn - Student - withdrew a consent (B)
+consentRequested - advisor - asked a student for consent (B)
+consentRequestAnswered - Student - granted or denied a consent request (B)
+accessLogEntryFlagged - Student - flagged an entry in own access log (B)
+
+==========
+6. CASES AND MATCHING
+==========
+
+supportRequested - Student - created a support request (new case) (D)
+assignmentChangeRequested - Student/advisor - asked for a different advisor (D)
+caseOpened - advisor - opened a case for a student based on indicators (D)
+caseAssigned - Programme Head - matched a case to an advisor (D)
+caseReassigned - Programme Head - moved a case to another advisor (D)
+assignmentChangeDecided - Programme Head - approved or rejected an advisor change request (D)
+caseNoteFinalized - advisor - finalized a case note (D)
+caseStageChanged - advisor - moved a case to another stage (D)
+caseClosed - advisor - closed a case (D)
+caseReopened - advisor - reopened a case (D)
+referralSent - advisor - referred a case to another advisor or the welfare officer (D)
+referralAnswered - advisor/officer - accepted or returned a referral (D)
+reportExported - Programme Head - exported a case report (D)
+correctionRequested - Student - asked to correct an indicator value (C, pending review)
+correctionReviewed - advisor - approved or rejected a correction request (C, pending review)
+
+==========
+7. WELFARE (Student Welfare Officer)
+==========
+
+interventionLogged - Welfare Officer - logged an intervention (C)
+interventionUpdated - Welfare Officer - updated or closed an intervention (C)
+supportGrantRecorded - Welfare Officer - recorded a support grant (C)
+externalReferralCreated - Welfare Officer - referred a student to an external service (C)
+externalReferralUpdated - Welfare Officer - recorded a follow-up or outcome of an external referral (C)
+escalationRaised - Welfare Officer - escalated a case to the Programme Head (C)
+escalationResponded - Programme Head - responded to or closed an escalation (C)

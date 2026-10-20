@@ -33,22 +33,28 @@ FU5: Advising effectiveness analysis
 - Already in the ERD: no extra table needed; it would use CASES, CASESTAGEHISTORIES, REFERRALS and INTERVENTIONS
 - Why future: the mentor stated this software matches and tracks; judging effectiveness is not its responsibility
 
+FU6: Importing accounts from a Google Sheet
+- What it is: the admin pastes a Google Sheet link instead of uploading an Excel file; the rows go through the same all-or-nothing validation as the Excel import
+- Already in the ERD: no extra table needed; it creates the same ACCOUNTS and ACCOUNT_ROLE rows as the Excel import
+- Why future: kept simple for now, the admin can download the sheet as an Excel file and upload that
+- Ways to do it later: a sheet shared as "anyone with the link can view" read through its CSV export link (no API key), or a Google service account for private sheets
+
 ==========
 2. FUTURE, NOT IN THE ERD
-(would need new tables)
+(would need new tables or changes to existing ones)
 ==========
 
-FU6: In-app meeting scheduling
+FU7: In-app meeting scheduling
 - What it is: advisors publish available time slots, students book them, advisors can swap meetings with each other
 - Missing in the ERD: tables for advisor availability and meetings
 - Current version instead: advisor and student decide by themselves when and how to meet; the system only sends the advisor's contact information and the advisor records case notes
 
-FU7: In-app chat between advisor and student
+FU8: In-app chat between advisor and student
 - What it is: messaging inside the platform instead of external apps
 - Missing in the ERD: tables for conversations and messages
 - Note: possible stretch goal if the scope turns out too small
 
-FU8: Accounts without a Google account on file (activation code)
+FU9: Accounts without a Google account on file (activation code)
 - What it is: the admin creates an account without a Google-linked email. The system shows a one-time activation code, valid for a short time, which the admin gives to the student in person. The student enters the code, sets their own password straight away, and links a Google account later in Settings
 - Missing in the ERD: no new table, but ACCOUNTS.email must allow null (the unique index has to ignore nulls), and the code can reuse resetToken and resetTokenExpiresAt
 - Why future: the current version expects every student to have an email and a Google account, so this is only a fallback for students who cannot or will not share one

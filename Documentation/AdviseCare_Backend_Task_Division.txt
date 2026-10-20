@@ -4,12 +4,9 @@
 
 - Create the test project (xUnit) and add it to AdviseCare_API.sln
 - Set up Git Flow branches and agree on coding conventions
-- Run AdviseCare_Database_Script.sql locally; scaffold the EF Core entities and AdviseCareContext into AdviseCare.Domain/Models (replacing the placeholder AdviseCareContext.cs) once, commit them (nobody edits another member's entity without telling them)
 - Agree on the common API conventions: route naming, response format, paging, enum values sent as strings, UTC dates
-- Agree on and commit the 3 shared interfaces with stub implementations:
-  - ICurrentUser (accountId, roles) - stub: reads a fake user from a request header in Development. Real version: Member A
-  - INotificationService (send in-app + email notification) - stub: only writes a NOTIFICATIONS row, no email. Real version: Member A
-  - IAccessGuard (can this user see this attribute of this student for this purpose? + write ACCESSLOGS) - stub: always allows, still writes the log. Real version: Member B
+- No shared interfaces: classes are named after their entity (Account -> IAccountService/AccountService, AccountRequest, AccountResponse); each member tests with the shared seed data and their own example rows
+- Nobody edits another member's entity without telling them; after a schema change, re-scaffold or edit the entity and AdviseCareContext together
 - Write the shared seed script: roles, 1 account per role, 2 faculties, a few subjects, terms, data attributes + indicators, consent purposes, support categories, some students with indicator values and cases. Each member adds seed rows for their own tables when needed
 
 ==========
@@ -17,27 +14,28 @@ MEMBER A - IDENTITY, ACCOUNTS, MASTER DATA, NOTIFICATIONS
 Tables owned: ACCOUNTS, ROLES, ACCOUNT_ROLE, SESSIONS, ACTIVITYLOGS, NOTIFICATIONS, NOTIFICATIONPREFERENCES, FACULTIES, PROGRAMMES, ACADEMICTERMS, SUBJECTS, ACCOUNT_SUBJECT
 ==========
 
-A1. Authentication (real ICurrentUser)
-A1.1. Sign in with Google (personal account), match email, store googleId, set linkStatus = linked
-A1.2. Account-setup step: if passwordHash is null after the first Google sign-in, require setting a password
+A1. Authentication and sessions (AuthController; AccountService + SessionService)
+A1.1. Account linking: emailed one-time link + Google sign-in; token checked by its SHA-256 hash (7-day expiry), Google email must match, the Google account must not be used by another account; store googleId, linkStatus = linked, sign the user in
+A1.2. Sign in with Google: only accounts already linked (matched by googleId); any other Google account is refused
 A1.3. Sign in with email/username + password; refuse deactivated/banned accounts
-A1.4. JWT issuing with roles; replace the ICurrentUser stub
-A1.5. Forgot password / reset by email (resetToken + expiry)
-A1.6. Sessions: record device, list active sessions, log out, log out of other sessions
-A2. Account management (Admin)
-A2.1. Create a single account (email, fullName, userName, faculty, role)
-A2.2. Bulk import accounts from Excel/CSV upload and from a Google Sheet; validate all rows, all-or-nothing
-A2.3. Send / resend account-linking emails (one-time link), linkStatus notLinked -> emailSent
-A2.4. Account dashboard: list, sort, filter by role, faculty, link status, account status
-A2.5. Adjust roles; activate/deactivate, ban/unban (ends active sessions)
+A1.4. JWT with accountId, sessionId and roles; a session lasts 1 month
+A1.5. Forgot password / reset by email (Gmail SMTP): linked accounts only, token stored hashed (1-hour expiry), the reset logs out every session
+A1.6. Set or change password with one endpoint: the old password is asked only when one already exists; the other sessions are logged out. The password step after linking can be skipped
+A1.7. Sessions: record device, list own sessions, log out, log out of other sessions, automatic end after 1 month
+A2. Account management (Admin; AccountsController, RolesController)
+A2.1. Account CRUD: get all (paged), get by id, search/filter (role, faculty, link status, account status), create a single account (email, fullName, userName, faculty, roles), update details (changing the email unlinks the Google account)
+A2.2. Bulk import from an Excel file (email, fullName, userName, facultyCode, role); validate all rows, all-or-nothing (Google Sheet import is future, FU6)
+A2.3. Send / resend account-linking emails, linkStatus notLinked -> emailSent
+A2.4. Roles CRUD and account roles (ACCOUNT_ROLE); the last System Administrator role cannot be removed
+A2.5. Activate/deactivate, ban/unban (never on the admin's own account; ends all active sessions)
 A3. Master data (Admin)
-A3.1. Faculties, programmes (kept simple), academic terms with "set current term"
-A3.2. Subjects under a faculty; link academic advisors to subjects (ACCOUNT_SUBJECT)
-A4. Notifications (real INotificationService)
-A4.1. In-app notification inbox: list, mark read, click-through URL
-A4.2. Email sending through the chosen email service (to be decided when backend starts)
-A4.3. Notification preferences (email / in-app)
-A5. Own account: activity history (ACTIVITYLOGS), account settings, change password, preferred language
+A3.1. Faculties, programmes and academic terms CRUD; only one term can be current, setting a new current term moves the old one to past
+A3.2. Subjects under a faculty CRUD; link academic advisors to subjects (ACCOUNT_SUBJECT)
+A4. Notifications (in-app; NotificationService)
+A4.1. Notification CRUD; own inbox: list, mark read, mark all read, delete, clear old (read) notifications
+A4.2. NotifyAsync for other features: writes the in-app notification and, if the account's email preference is on, also sends it by email
+A4.3. Notification preferences (email / in-app); a missing row means the channel is on
+A5. Own account: profile (username, preferred language), avatar upload (Supabase Storage), activity history (ACTIVITYLOGS, types listed in AdviseCare_Activity_Types.txt)
 
 ==========
 MEMBER B - CONSENT AND DATA PROTECTION
@@ -48,7 +46,7 @@ B1. Steward configuration
 B1.1. Indicators and their data attribute (created together, 1:1); archive
 B1.2. Consent purposes: create, attach/remove attributes, activate/deactivate, retire
 B1.3. Access policies: role + purpose + required consent state; revoke; test a policy against a sample student
-B2. Access guard (real IAccessGuard)
+B2. Access guard
 B2.1. Decide access from role + purpose + consent state (+ approved emergency access)
 B2.2. Return "exists, not shared" instead of the value when access is refused
 B2.3. Write every access to ACCESSLOGS
@@ -78,7 +76,7 @@ C1.3. Insert new STUDENTINDICATORS rows only (dataSourceId null, provenanceNote 
 C1.4. Flag expected-but-missing indicators (isMissing)
 C1.5. Import history through ACTIVITYLOGS
 C2. Student profile and history
-C2.1. Student profile API: indicators with sources and missing-data notices, every value passed through IAccessGuard
+C2.1. Student profile API: indicators with sources and missing-data notices, every value passed through Member B's access guard
 C2.2. Point-in-time view ("way back machine"): current row = latest row up to the chosen date; compare two dates
 C2.3. Student's own profile view
 C2.4. Student JSON export (own record + own access log), generated on the fly
@@ -104,7 +102,7 @@ D2.3. Student's own cases, stages and history
 D3. Matching (Programme Head)
 D3.1. Queue of unassigned cases
 D3.2. Suggested advisors: by type, subject specialisation, faculty, workload (familiar advisor-student pair first is optional)
-D3.3. Assign a case: set advisorId, create/keep ADVISORASSIGNMENTS row, notify student with the advisor's contact information (INotificationService)
+D3.3. Assign a case: set advisorId, create/keep ADVISORASSIGNMENTS row, notify student with the advisor's contact information (NotificationService.NotifyAsync, Member A)
 D3.4. Reassign directly
 D4. Advisor case workflow (Academic and Wellbeing Advisors)
 D4.1. Assigned case list: sort, filter, unread count

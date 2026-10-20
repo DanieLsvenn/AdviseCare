@@ -9,7 +9,7 @@ fullName - string - display name shown across advisor caseloads, case notes, and
 googleId - string - id of the personal Google account linked to this account, used by "Sign in with Google"; null until linked
 authProvider - string - which method the user last signed in with (google/password), so login flow and security checks branch correctly
 passwordHash - string - hashed password (never plaintext); null until the user sets one, either at the account-setup step right after the first Google sign-in (skippable) or later in Settings; while it is null, change-password asks for no old password
-resetToken - string - one-time token carried by the account-linking email and by "forgot password" emails
+resetToken - string - SHA-256 hash of the one-time token carried by the account-linking email (valid 7 days) and by "forgot password" emails (valid 1 hour, linked accounts only); the token itself only exists in the email link, so a leaked database exposes no live links
 resetTokenExpiresAt - date - expiry so a leaked/old reset link can't be reused indefinitely
 userName - string - the handle used to log in and referenced in audit/activity trails
 createdAt - date - when the account was provisioned, needed for account-creation history and auditing
@@ -66,9 +66,9 @@ roleName - string - human-readable role label shown in admin screens and access 
 sessionId (PK) - uuid - unique identifier for one login session
 accountId (FK) - uuid - which account this session belongs to
 deviceInfo - string - identifies the device/browser, so a user can recognize and "log out of other sessions"
-loginAt - date - when the session started
+loginAt - date - when the session started; the session ends on its own 1 month after this
 logoutAt - date - when the session ended (or was force-ended)
-isActive - bool - whether this session is still live, so "other sessions" can be listed and killed
+isActive - bool - whether this session is still live (false after logout, after 1 month, after a password change/reset, or when the account is deactivated/banned), so "other sessions" can be listed and killed
 
 4 SESSIONS - 1 ACCOUNTS: many to one (accountId)
 
@@ -107,7 +107,6 @@ REFERENCE / MASTER DATA
 facultyId (PK) - uuid - unique identifier for a faculty/department
 facultyCode - string - short code used in tables/reports where full names would be too long
 facultyName - string - full display name of the faculty
-isActive - bool - whether the faculty currently accepts new assignments
 status - enum - lifecycle state (active/archived) so a discontinued faculty can be retired without deleting its history
 
 8 FACULTIES - 1 ACCOUNTS: one to many (facultyId)
@@ -128,8 +127,7 @@ termId (PK) - uuid - unique identifier for an academic term, used to scope time-
 endDate - date - when the term ends, used for date-range validation and reporting boundaries
 startDate - date - when the term starts, same reason
 termName - string - human-readable label (e.g. "Fall 2026") shown throughout the UI
-isCurrent - bool - flags the single "active" term that new records default into
-status - enum - lifecycle state (upcoming/current/past), drives what's selectable when logging new data
+status - enum - lifecycle state (upcoming/current/past), drives what's selectable when logging new data; only one term can be current, and new records default into it
 
 10 ACADEMICTERMS - 17 STUDENTINDICATORS: one to many (termId)
 10 ACADEMICTERMS - 42 REPORTS: one to many (termId)
@@ -413,7 +411,7 @@ status - enum - lifecycle state of the referral (sent/followed-up/closed)
 escalationId (PK) - uuid - unique identifier for one escalation from a welfare officer to the Programme Head, when a case goes beyond the officer's authority
 caseId (FK) - uuid - which case is being escalated
 escalatedBy (FK) - uuid - who raised the escalation
-escalatedTo (FK) - uuid - the Programme Head (single app-wide manager) receiving the escalation
+escalatedTo (FK) - uuid - the Programme Head receiving the escalation
 reason - string - why escalation was needed
 response - string - the Programme Head's recorded response
 escalatedAt - date - when the escalation was raised
@@ -603,4 +601,4 @@ NOTES (current version)
 - Bitemporal / history data is create-read-delete only, never updated through the API: STUDENTINDICATORS, CASESTAGEHISTORIES, CONSENTHISTORIES, ACCESSLOGS (except its review fields isFlagged/status), and CASENOTES once finalized.
 - Point-in-time reconstruction ("way back machine") is computed only when an advisor asks for a past date; nothing is precomputed.
 - Removed in this version: EVENTCATEGORIES, EVENTS, EVENT_REGISTRATION.
-- Single Programme Head for the whole app (the manager). PROGRAMMES is kept but not used by other tables for now.
+- Usually one Programme Head for the whole app (the manager), but the system allows more. PROGRAMMES is kept but not used by other tables for now.

@@ -123,9 +123,9 @@ public partial class AdviseCareContext : DbContext
 
             entity.ToTable("ACADEMICTERMS");
 
-            entity.HasIndex(e => e.IsCurrent, "UX_ACADEMICTERMS_isCurrent")
+            entity.HasIndex(e => e.Status, "UX_ACADEMICTERMS_status_current")
                 .IsUnique()
-                .HasFilter("([isCurrent]=(1))");
+                .HasFilter("([status]=N'current')");
 
             entity.Property(e => e.TermId)
                 .HasDefaultValueSql("(newsequentialid())")
@@ -133,7 +133,6 @@ public partial class AdviseCareContext : DbContext
             entity.Property(e => e.EndDate)
                 .HasPrecision(3)
                 .HasColumnName("endDate");
-            entity.Property(e => e.IsCurrent).HasColumnName("isCurrent");
             entity.Property(e => e.StartDate)
                 .HasPrecision(3)
                 .HasColumnName("startDate");
@@ -1115,9 +1114,6 @@ public partial class AdviseCareContext : DbContext
                 .IsRequired()
                 .HasMaxLength(255)
                 .HasColumnName("facultyName");
-            entity.Property(e => e.IsActive)
-                .HasDefaultValue(true)
-                .HasColumnName("isActive");
             entity.Property(e => e.Status)
                 .IsRequired()
                 .HasMaxLength(30)

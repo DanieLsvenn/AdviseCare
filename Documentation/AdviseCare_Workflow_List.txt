@@ -1,6 +1,6 @@
 ADVISECARE WORKFLOWS (current version)
 
-Actors: System Administrator (Admin), Data Protection Steward (Steward), Academic Advisor, Wellbeing Advisor, Student Welfare Officer (Welfare Officer), Student, Programme Head (one for the whole app, the manager)
+Actors: System Administrator (Admin), Data Protection Steward (Steward), Academic Advisor, Wellbeing Advisor, Student Welfare Officer (Welfare Officer), Student, Programme Head (usually one for the whole app, the manager; the system allows more)
 External: Google (personal account sign-in), Email service, External Support Services
 
 ==========
@@ -12,22 +12,22 @@ WF1: Admin creates accounts
 2. Out of scope: the school collects students' information itself (e.g. through a Google Form). We assume the Admin already has the list of students/staff and their personal Gmail addresses
 3. Admin chooses how to create accounts
 3.1. Bulk import
-3.1.1. Admin uploads an Excel/CSV file or provides a Google Sheet containing email, fullName, userName and faculty
-3.1.2. System validates every row (required fields, email format, duplicate email/username, faculty exists)
+3.1.1. Admin uploads an Excel file containing email, fullName, userName, facultyCode and role (importing from a Google Sheet is future, see FU6)
+3.1.2. System validates every row (required fields, email format, duplicate email/username in the file or in the system, faculty code exists, role exists)
 3.1.3. If any row is invalid, nothing is created and the system shows the invalid rows (all-or-nothing)
-3.1.4. If all rows are valid, the system creates the accounts (no password yet, linkStatus = notLinked, role Student by default)
+3.1.4. If all rows are valid, the system creates the accounts (no password yet, linkStatus = notLinked, role taken from the file)
 3.2. Single account
 3.2.1. Used for special cases (late or off-term enrolment, students who missed the school's survey, staff accounts)
 3.2.2. Admin fills in email, fullName, userName, faculty and role
 3.2.3. System creates the account (no password yet, linkStatus = notLinked)
 4. System prompts the Admin to send account-linking emails to the newly created accounts
 4.1. Admin confirms
-4.2. System emails each account a one-time linking link (resetToken, with expiry) and sets linkStatus = emailSent
-5. (User side, see EX1) the user opens the link, signs in with the personal Google account, the account becomes linked and the user sets a password
+4.2. System emails each account a one-time linking link (only a hash of the token is stored in resetToken, valid for 7 days) and sets linkStatus = emailSent
+5. (User side, see EX1) the user opens the link, signs in with the personal Google account, the account becomes linked and the user sets a password or skips it
 6. Admin views the account dashboard
 6.1. Sort/filter accounts by role, faculty, link status or account status
 6.2. Resend the linking email to accounts still in emailSent
-6.3. Open an account to edit roles, deactivate or ban it (see EX12)
+6.3. Open an account to edit its details or roles, deactivate or ban it (see EX12)
 
 WF2: Student requests support and gets advised
 1. Student signs in
@@ -130,21 +130,22 @@ EX1: Account linking and first sign-in
 2.1. If the link has expired, the user is told to ask the Admin to resend it
 3. User signs in with the personal Google account
 3.1. System checks the Google email matches the account email
-3.2. System stores the Google id and sets linkStatus = linked
+3.2. System checks no other account is already linked to this Google account
+3.3. System stores the Google id, sets linkStatus = linked, clears the token and signs the user in
 4. Account setup step: the system offers to set a password right away, with a Skip button and the note "You can set a password in Settings"
 5. User sets the preferred language
 6. User lands on the home page of their role
-7. Later sign-ins: "Sign in with Google" or email/username + password
+7. Later sign-ins: "Sign in with Google" or email/username + password ("Sign in with Google" refuses any Google account that is not linked to an account)
 
 EX2: Sign in, forgot password and sessions
 1. User signs in with Google or with password
 2. System checks the account status (deactivated or banned accounts are refused)
-3. System opens a session and records the device
+3. System opens a session and records the device; a session ends on its own 1 month after sign-in
 4. Forgot password
-4.1. User enters the email
+4.1. User enters the email (only linked accounts get a reset link, valid for 1 hour; the reply is the same either way)
 4.2. System emails a one-time reset link
-4.3. User sets a new password
-5. User sets or changes the password in Settings (the old password is asked only if one already exists)
+4.3. User sets a new password; every session of the account is logged out
+5. User sets or changes the password in Settings (the old password is asked only if one already exists); the other sessions are logged out
 6. User views active sessions and logs out of other sessions
 
 EX3: Advisor reaches out based on indicators
@@ -206,16 +207,17 @@ EX10: Emergency access (pending review)
 3. Access ends automatically when the time limit passes; every access is logged
 
 EX11: Master data setup
-1. Admin manages academic terms (create, set active term)
+1. Admin manages academic terms (create, edit, set status; only one term can be current)
 2. Admin manages faculties and subjects (subjects belong to a faculty)
 3. Admin links academic advisors to the subjects they specialise in
 4. Admin manages support categories (name, academic/wellbeing, governing consent purpose)
 
 EX12: Account management
 1. Admin opens an account from the dashboard
-2. Admin adjusts roles
-3. Admin deactivates/activates or bans/unbans the account
-4. Deactivating or banning ends all active sessions of the account
+2. Admin edits the account details (email, full name, username, faculty); changing the email unlinks the Google account and the linking email has to be sent again
+3. Admin adjusts roles (the last System Administrator role cannot be removed)
+4. Admin deactivates/activates or bans/unbans the account (not their own account)
+5. Deactivating or banning ends all active sessions of the account
 
 EX13: Point-in-time reconstruction ("way back machine")
 1. Advisor opens a student and clicks "View as of date"
@@ -235,10 +237,10 @@ EX15: Correction request (pending review)
 4. Student is notified
 
 EX16: Notifications, language and settings
-1. User views notifications, marks them read and clicks through to the item
+1. User views notifications, marks them read, clicks through to the item and clears old ones
 2. User sets notification preferences (email/in-app)
 3. User switches language (Vietnamese/English); the choice is remembered
-4. User views own activity history and edits account settings
+4. User views own activity history and edits account settings (username, avatar)
 
 ==========
 FUTURE (not in the current version, details in AdviseCare_Future_List.txt)
@@ -249,5 +251,7 @@ FU2: Stored report history (reports are generated and downloaded on the fly for 
 FU3: Backup and restore with integrity check
 FU4: Automated/AI case matching to replace the Programme Head's manual matching
 FU5: Evaluating the effectiveness of advising over a period
-FU6: Meeting scheduling inside the app (advisor time slots, students book, advisors swap)
-FU7: In-app chat between advisor and student (possible stretch goal if the scope turns out small)
+FU6: Importing accounts from a Google Sheet (Excel import only for now)
+FU7: Meeting scheduling inside the app (advisor time slots, students book, advisors swap)
+FU8: In-app chat between advisor and student (possible stretch goal if the scope turns out small)
+FU9: Accounts without a Google account on file, created with a one-time activation code
