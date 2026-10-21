@@ -13,6 +13,8 @@ public partial class Dataattribute
 
     public string AttributeName { get; set; }
 
+    public string Status { get; set; }
+
     public virtual ICollection<Attributekey> Attributekeys { get; set; } = new List<Attributekey>();
 
     public virtual ICollection<Consentrequest> Consentrequests { get; set; } = new List<Consentrequest>();

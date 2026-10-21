@@ -17,6 +17,8 @@ public partial class Indicator
 
     public string DataType { get; set; }
 
+    public string Status { get; set; }
+
     public virtual Dataattribute DataAttribute { get; set; }
 
     public virtual Datasource Datasource { get; set; }

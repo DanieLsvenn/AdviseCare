@@ -872,6 +872,11 @@ public partial class AdviseCareContext : DbContext
                 .IsRequired()
                 .HasMaxLength(255)
                 .HasColumnName("attributeName");
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(30)
+                .HasDefaultValue("active")
+                .HasColumnName("status");
         });
 
         modelBuilder.Entity<Datasource>(entity =>
@@ -1147,6 +1152,11 @@ public partial class AdviseCareContext : DbContext
                 .IsRequired()
                 .HasMaxLength(255)
                 .HasColumnName("indicatorName");
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(30)
+                .HasDefaultValue("active")
+                .HasColumnName("status");
 
             entity.HasOne(d => d.DataAttribute).WithOne(p => p.Indicator)
                 .HasForeignKey<Indicator>(d => d.DataAttributeId)

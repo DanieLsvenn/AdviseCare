@@ -210,8 +210,10 @@ CREATE TABLE [dbo].[DATAATTRIBUTES] (
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_DATAATTRIBUTES_dataAttributeId] DEFAULT NEWSEQUENTIALID(),
     [attributeDescription] NVARCHAR(MAX) NULL,
     [attributeName] NVARCHAR(255) NOT NULL,
+    [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_DATAATTRIBUTES_status] DEFAULT N'active',
     CONSTRAINT [PK_DATAATTRIBUTES] PRIMARY KEY ([dataAttributeId]),
-    CONSTRAINT [UQ_DATAATTRIBUTES_attributeName] UNIQUE ([attributeName])
+    CONSTRAINT [UQ_DATAATTRIBUTES_attributeName] UNIQUE ([attributeName]),
+    CONSTRAINT [CK_DATAATTRIBUTES_status] CHECK ([status] IN (N'active', N'archived'))
 );
 GO
 
@@ -222,11 +224,13 @@ CREATE TABLE [dbo].[INDICATORS] (
     [description] NVARCHAR(MAX) NULL,
     [indicatorName] NVARCHAR(255) NOT NULL,
     [dataType] NVARCHAR(30) NOT NULL CONSTRAINT [DF_INDICATORS_dataType] DEFAULT N'numeric',
+    [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_INDICATORS_status] DEFAULT N'active',
     CONSTRAINT [PK_INDICATORS] PRIMARY KEY ([indicatorId]),
     CONSTRAINT [FK_INDICATORS_dataAttributeId] FOREIGN KEY ([dataAttributeId]) REFERENCES [dbo].[DATAATTRIBUTES]([dataAttributeId]),
     CONSTRAINT [UQ_INDICATORS_dataAttributeId] UNIQUE ([dataAttributeId]),
     CONSTRAINT [UQ_INDICATORS_indicatorName] UNIQUE ([indicatorName]),
-    CONSTRAINT [CK_INDICATORS_dataType] CHECK ([dataType] IN (N'numeric', N'categorical', N'boolean'))
+    CONSTRAINT [CK_INDICATORS_dataType] CHECK ([dataType] IN (N'numeric', N'categorical', N'boolean')),
+    CONSTRAINT [CK_INDICATORS_status] CHECK ([status] IN (N'active', N'archived'))
 );
 GO
 

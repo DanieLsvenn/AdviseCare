@@ -34,6 +34,7 @@ builder.Services.AddCors(opt =>
 
 // --- Application services ---
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IIndicatorService, IndicatorService>();
 
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.
