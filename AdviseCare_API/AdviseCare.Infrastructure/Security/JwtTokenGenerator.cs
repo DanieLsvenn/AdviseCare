@@ -1,4 +1,5 @@
 using AdviseCare.Application.Interfaces.Security;
+using AdviseCare.Application.Services;
 using AdviseCare.Domain.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -37,11 +38,12 @@ namespace AdviseCare.Infrastructure.Security
 
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+            // The JWT lives as long as its session (1 month); logout ends the session earlier
             var token = new JwtSecurityToken(
                 issuer: _config["Jwt:Issuer"],
                 audience: _config["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddDays(1),
+                expires: DateTime.UtcNow.AddDays(SessionService.LifetimeDays),
                 signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler()

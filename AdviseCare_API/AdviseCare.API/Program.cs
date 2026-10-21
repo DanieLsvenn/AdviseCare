@@ -1,11 +1,18 @@
 using AdviseCare.Application.Exceptions;
+using AdviseCare.Application.Interfaces.Email;
+using AdviseCare.Application.Interfaces.Excel;
 using AdviseCare.Application.Interfaces.Repository;
 using AdviseCare.Application.Interfaces.Security;
 using AdviseCare.Application.Interfaces.Services;
+using AdviseCare.Application.Interfaces.Storage;
 using AdviseCare.Application.Services;
 using AdviseCare.Domain.Models;
+using AdviseCare.Infrastructure.Configuration;
+using AdviseCare.Infrastructure.Email;
+using AdviseCare.Infrastructure.Excel;
 using AdviseCare.Infrastructure.Repository;
 using AdviseCare.Infrastructure.Security;
+using AdviseCare.Infrastructure.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
@@ -33,8 +40,17 @@ builder.Services.AddCors(opt =>
 });
 
 // --- Application services ---
-builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IIndicatorService, IndicatorService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
+builder.Services.AddScoped<IFacultyService, FacultyService>();
+builder.Services.AddScoped<IProgrammeService, ProgrammeService>();
+builder.Services.AddScoped<IAcademicTermService, AcademicTermService>();
+builder.Services.AddScoped<ISubjectService, SubjectService>();
 
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.
@@ -44,6 +60,13 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+
+// --- Email (Gmail SMTP), storage (Supabase) and Excel import ---
+builder.Services.Configure<GmailSettings>(builder.Configuration.GetSection("Gmail"));
+builder.Services.Configure<SupabaseSettings>(builder.Configuration.GetSection("Supabase"));
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddHttpClient<IStorageService, SupabaseStorageService>();
+builder.Services.AddScoped<IExcelReader, ExcelReader>();
 
 // -- HttpContextAccessor ---
 builder.Services.AddHttpContextAccessor();
@@ -129,9 +152,9 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 
 // --- Account status + session gate ---
-// Re-checks on every authenticated request, so a Ban/Deactivate or a Logout takes effect immediately
-// instead of waiting for the JWT to expire on its own. Skipped for [AllowAnonymous] endpoints (e.g. login),
-// so a stale token left in the browser can never block signing in again.
+// Re-checks on every authenticated request, so a Ban/Deactivate, a Logout or a password change takes effect
+// immediately instead of waiting for the JWT to expire on its own, and ends sessions older than 1 month.
+// Skipped for [AllowAnonymous] endpoints (e.g. login), so a stale token left in the browser can never block signing in again.
 app.Use(async (context, next) =>
 {
     var isAnonymousEndpoint = context.GetEndpoint()?.Metadata.GetMetadata<IAllowAnonymous>() != null;
@@ -157,6 +180,14 @@ app.Use(async (context, next) =>
                         : $"Account is not active. Current status: {account.Status}."
                 });
                 return;
+            }
+
+            // A session ends on its own 1 month after sign-in
+            if (session != null && session.IsActive && session.LoginAt.AddDays(SessionService.LifetimeDays) <= DateTime.UtcNow)
+            {
+                session.IsActive = false;
+                session.LogoutAt = session.LoginAt.AddDays(SessionService.LifetimeDays);
+                await sessionRepository.UpdateAsync(session);
             }
 
             if (session == null || session.AccountId != accountId || !session.IsActive)

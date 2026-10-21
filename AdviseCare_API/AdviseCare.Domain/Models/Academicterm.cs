@@ -15,8 +15,6 @@ public partial class Academicterm
 
     public string TermName { get; set; }
 
-    public bool IsCurrent { get; set; }
-
     public string Status { get; set; }
 
     public virtual ICollection<Report> Reports { get; set; } = new List<Report>();

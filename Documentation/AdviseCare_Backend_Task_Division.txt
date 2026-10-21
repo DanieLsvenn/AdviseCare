@@ -1,0 +1,114 @@
+==========
+0. SHARED KICKOFF (everyone together, before splitting)
+==========
+
+- Create the test project (xUnit) and add it to AdviseCare_API.sln
+- Set up Git Flow branches and agree on coding conventions
+- Agree on the common API conventions: route naming, response format, paging, enum values sent as strings, UTC dates
+- No shared interfaces: classes are named after their entity (Account -> IAccountService/AccountService, AccountRequest, AccountResponse); each member tests with the shared seed data and their own example rows
+- Nobody edits another member's entity without telling them; after a schema change, re-scaffold or edit the entity and AdviseCareContext together
+- Write the shared seed script: roles, 1 account per role, 2 faculties, a few subjects, terms, data attributes + indicators, consent purposes, support categories, some students with indicator values and cases. Each member adds seed rows for their own tables when needed
+
+==========
+MEMBER A - IDENTITY, ACCOUNTS, MASTER DATA, NOTIFICATIONS
+Tables owned: ACCOUNTS, ROLES, ACCOUNT_ROLE, SESSIONS, ACTIVITYLOGS, NOTIFICATIONS, NOTIFICATIONPREFERENCES, FACULTIES, PROGRAMMES, ACADEMICTERMS, SUBJECTS, ACCOUNT_SUBJECT
+==========
+
+A1. Authentication and sessions (AuthController; AccountService + SessionService)
+A1.1. Account linking: emailed one-time link + Google sign-in; token checked by its SHA-256 hash (7-day expiry), Google email must match, the Google account must not be used by another account; store googleId, linkStatus = linked, sign the user in
+A1.2. Sign in with Google: only accounts already linked (matched by googleId); any other Google account is refused
+A1.3. Sign in with email/username + password; refuse deactivated/banned accounts
+A1.4. JWT with accountId, sessionId and roles; a session lasts 1 month
+A1.5. Forgot password / reset by email (Gmail SMTP): linked accounts only, token stored hashed (1-hour expiry), the reset logs out every session
+A1.6. Set or change password with one endpoint: the old password is asked only when one already exists; the other sessions are logged out. The password step after linking can be skipped
+A1.7. Sessions: record device, list own sessions, log out, log out of other sessions, automatic end after 1 month
+A2. Account management (Admin; AccountsController, RolesController)
+A2.1. Account CRUD: get all (paged), get by id, search/filter (role, faculty, link status, account status), create a single account (email, fullName, userName, faculty, roles), update details (changing the email unlinks the Google account)
+A2.2. Bulk import from an Excel file (email, fullName, userName, facultyCode, role); validate all rows, all-or-nothing (Google Sheet import is future, FU6)
+A2.3. Send / resend account-linking emails, linkStatus notLinked -> emailSent
+A2.4. Roles CRUD and account roles (ACCOUNT_ROLE); the last System Administrator role cannot be removed
+A2.5. Activate/deactivate, ban/unban (never on the admin's own account; ends all active sessions)
+A3. Master data (Admin)
+A3.1. Faculties, programmes and academic terms CRUD; only one term can be current, setting a new current term moves the old one to past
+A3.2. Subjects under a faculty CRUD; link academic advisors to subjects (ACCOUNT_SUBJECT)
+A4. Notifications (in-app; NotificationService)
+A4.1. Notification CRUD; own inbox: list, mark read, mark all read, delete, clear old (read) notifications
+A4.2. NotifyAsync for other features: writes the in-app notification and, if the account's email preference is on, also sends it by email
+A4.3. Notification preferences (email / in-app); a missing row means the channel is on
+A5. Own account: profile (username, preferred language), avatar upload (Supabase Storage), activity history (ACTIVITYLOGS, types listed in AdviseCare_Activity_Types.txt)
+
+==========
+MEMBER B - CONSENT AND DATA PROTECTION
+Tables owned: DATAATTRIBUTES, INDICATORS, CONSENTPURPOSES, PURPOSE_ATTRIBUTE, ACCESSPOLICIES, CONSENTS, CONSENTHISTORIES, CONSENTREQUESTS, ACCESSLOGS, EMERGENCYACCESSREQUESTS, ERASUREREQUESTS, ATTRIBUTEKEYS
+==========
+
+B1. Steward configuration
+B1.1. Indicators and their data attribute (created together, 1:1); archive
+B1.2. Consent purposes: create, attach/remove attributes, activate/deactivate, retire
+B1.3. Access policies: role + purpose + required consent state; revoke; test a policy against a sample student
+B2. Access guard
+B2.1. Decide access from role + purpose + consent state (+ approved emergency access)
+B2.2. Return "exists, not shared" instead of the value when access is refused
+B2.3. Write every access to ACCESSLOGS
+B3. Student consent
+B3.1. List purposes and their attributes; grant, narrow, withdraw; consent history rows
+B3.2. Consent requests from advisors: create, respond (grant/deny), withdraw pending
+B3.3. Consent expiry check
+B4. Encryption and erasure
+B4.1. Envelope encryption: one key per student per attribute (ATTRIBUTEKEYS), master key from configuration; encrypt/decrypt helper used when indicator values are written/read
+B4.2. Withdrawal queues an erasure request; Steward verifies and executes it (destroy key), audit trail kept
+B5. Access log and processing records
+B5.1. Search/filter access log; flag entries; Steward review (cleared / confirmed issue)
+B5.2. Student's own access log
+B5.3. Export processing record for one student or a date range
+B6. Emergency access (pending review): request, approve with time limit, reject, auto-expire
+
+==========
+MEMBER C - STUDENT DATA, PROFILE AND WELFARE
+Tables owned: STUDENTINDICATORS, CORRECTIONREQUESTS, INTERVENTIONS, SUPPORTGRANTS, EXTERNALSERVICES, EXTERNALREFERRALS, ESCALATIONS
+(DATASOURCES, INGESTIONSCHEDULES, INGESTIONJOBS are future: no work now)
+==========
+
+C1. Indicator data import (Admin)
+C1.1. Upload Excel/CSV or read a Google Sheet; map columns to indicators
+C1.2. Validate the whole file, all-or-nothing; return the list of invalid rows
+C1.3. Insert new STUDENTINDICATORS rows only (dataSourceId null, provenanceNote = file name + import date); never update
+C1.4. Flag expected-but-missing indicators (isMissing)
+C1.5. Import history through ACTIVITYLOGS
+C2. Student profile and history
+C2.1. Student profile API: indicators with sources and missing-data notices, every value passed through Member B's access guard
+C2.2. Point-in-time view ("way back machine"): current row = latest row up to the chosen date; compare two dates
+C2.3. Student's own profile view
+C2.4. Student JSON export (own record + own access log), generated on the fly
+C2.5. Correction requests (pending review): submit, advisor review, approved = new "correction" row, withdraw
+C3. Welfare (Student Welfare Officer)
+C3.1. Interventions: log, update until closed, outcome, history per student
+C3.2. Support grants under an intervention
+C3.3. External services list; external referrals with follow-up due date, outcome, overdue flag (background check)
+C3.4. Escalations: officer raises, Programme Head responds, status tracking
+C3.5. Anonymised welfare statistics (pending review)
+Note: welfare works on existing CASES rows (from the seed data), so it does not wait for Member D's case APIs
+
+==========
+MEMBER D - SUPPORT REQUESTS, CASES, MATCHING AND REPORTS
+Tables owned: SUPPORTCATEGORIES, CASES, CASENOTES, CASESTAGEHISTORIES, REFERRALS, ADVISORASSIGNMENTS, ASSIGNMENTCHANGEREQUESTS
+==========
+
+D1. Support categories (Admin): create/edit/archive, academic/wellbeing, governing consent purpose
+D2. Support requests (Student)
+D2.1. Create a case: support type, category, subject (academic), reason
+D2.2. List the attributes the student may share (from the category's purpose) and record the chosen ones as consents (calls Member B's consent table directly through the DbContext, or B's service once ready)
+D2.3. Student's own cases, stages and history
+D3. Matching (Programme Head)
+D3.1. Queue of unassigned cases
+D3.2. Suggested advisors: by type, subject specialisation, faculty, workload (familiar advisor-student pair first is optional)
+D3.3. Assign a case: set advisorId, create/keep ADVISORASSIGNMENTS row, notify student with the advisor's contact information (NotificationService.NotifyAsync, Member A)
+D3.4. Reassign directly
+D4. Advisor case workflow (Academic and Wellbeing Advisors)
+D4.1. Assigned case list: sort, filter, unread count
+D4.2. Advisor opens a case for a student based on indicators
+D4.3. Case notes: draft, edit, finalize (no edits after finalize)
+D4.4. Stage changes with reason (CASESTAGEHISTORIES insert-only); close, reopen
+D4.5. Referrals: to another advisor (same/other type) or to the Welfare Officer; accept / return
+D5. Assignment change requests: request with proposed advisor, Programme Head approves/rejects (revoke old, create new assignment)
+D6. Reports (Programme Head): cases in a time range with filters, caseload volume and closure time per advisor, export Excel/CSV/PDF generated on the fly

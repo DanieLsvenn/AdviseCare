@@ -1,0 +1,71 @@
+ADVISECARE FUTURE LIST (features not in the current version)
+
+Same numbering as the FUTURE section of AdviseCare_Workflow_List.txt.
+
+==========
+1. FUTURE, ALREADY IN THE ERD
+(the tables or data already exist in AdviseCare_ERD_Tables.txt, but no feature is built on them in the current version)
+==========
+
+FU1: Scheduled data ingestion / live integration with FAP, FLM, LMS
+- What it is: connect to a real data source (database, API) and pull indicator data automatically on a schedule, instead of the admin uploading Excel/CSV/Google Sheet files
+- Already in the ERD: DATASOURCES (one data source per indicator), INGESTIONSCHEDULES, INGESTIONJOBS, and STUDENTINDICATORS.dataSourceId (null for file imports in the current version)
+- Rules already decided: one upcoming job per schedule, minimum frequency daily, start time works like an alarm, on failure warn/skip/retry, every job is all-or-nothing
+- Why future: the school offers no data source or API for FAP, FLM or LMS
+
+FU2: Stored report history
+- What it is: keep every generated report/export so it can be downloaded again later
+- Already in the ERD: REPORTS
+- Current version instead: case reports and the student JSON export are generated and downloaded on the fly, not stored
+
+FU3: Backup and restore with integrity check
+- What it is: pick a backup point, restore it, and verify nothing is missing or duplicated
+- Already in the ERD: BACKUPS, RESTOREOPERATIONS
+- Why future: database backups are handled by the hosting for now
+
+FU4: Automated / AI case matching
+- What it is: the system suggests or picks the advisor for a new case, replacing the Programme Head's manual matching
+- Already in the ERD: no extra table needed; it would use CASES, ADVISORASSIGNMENTS, ACCOUNT_SUBJECT and SUBJECTS
+- Includes: prioritising a familiar advisor-student pair (quality-of-life add-on, can also be added to manual matching earlier if time allows)
+
+FU5: Advising effectiveness analysis
+- What it is: analyse case data over a period (a month, a term) to help the school judge whether advising works
+- Already in the ERD: no extra table needed; it would use CASES, CASESTAGEHISTORIES, REFERRALS and INTERVENTIONS
+- Why future: the mentor stated this software matches and tracks; judging effectiveness is not its responsibility
+
+FU6: Importing accounts from a Google Sheet
+- What it is: the admin pastes a Google Sheet link instead of uploading an Excel file; the rows go through the same all-or-nothing validation as the Excel import
+- Already in the ERD: no extra table needed; it creates the same ACCOUNTS and ACCOUNT_ROLE rows as the Excel import
+- Why future: kept simple for now, the admin can download the sheet as an Excel file and upload that
+- Ways to do it later: a sheet shared as "anyone with the link can view" read through its CSV export link (no API key), or a Google service account for private sheets
+
+==========
+2. FUTURE, NOT IN THE ERD
+(would need new tables or changes to existing ones)
+==========
+
+FU7: In-app meeting scheduling
+- What it is: advisors publish available time slots, students book them, advisors can swap meetings with each other
+- Missing in the ERD: tables for advisor availability and meetings
+- Current version instead: advisor and student decide by themselves when and how to meet; the system only sends the advisor's contact information and the advisor records case notes
+
+FU8: In-app chat between advisor and student
+- What it is: messaging inside the platform instead of external apps
+- Missing in the ERD: tables for conversations and messages
+- Note: possible stretch goal if the scope turns out too small
+
+FU9: Accounts without a Google account on file (activation code)
+- What it is: the admin creates an account without a Google-linked email. The system shows a one-time activation code, valid for a short time, which the admin gives to the student in person. The student enters the code, sets their own password straight away, and links a Google account later in Settings
+- Missing in the ERD: no new table, but ACCOUNTS.email must allow null (the unique index has to ignore nulls), and the code can reuse resetToken and resetTokenExpiresAt
+- Why future: the current version expects every student to have an email and a Google account, so this is only a fallback for students who cannot or will not share one
+- Open points: how notifications and "forgot password" work for an account with no email; the code is shown only on the admin screen, never sent by email
+
+==========
+NOT FUTURE, BUT PENDING REVIEW
+(in the current ERD and requirements, to be re-checked when we go over the requirements again)
+==========
+
+- Emergency access (EMERGENCYACCESSREQUESTS)
+- Correction requests (CORRECTIONREQUESTS)
+- Anonymised welfare statistics
+- Anonymised cohort indicators
