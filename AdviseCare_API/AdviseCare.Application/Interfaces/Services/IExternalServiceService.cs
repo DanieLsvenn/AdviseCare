@@ -9,5 +9,7 @@ namespace AdviseCare.Application.Interfaces.Services
         Task<IEnumerable<GetAllExternalServiceWithPaginationResponse>> GetAllWithPaginationAsync(int page, int pageSize);
         Task<GetExternalServiceByIdResponse> GetByIdAsync(Guid externalServiceId);
         Task<List<SearchExternalServiceResponse>> SearchAsync(SearchExternalServiceRequest request);
+        Task<CreateExternalServiceResponse> CreateAsync(CreateExternalServiceRequest request);
+        Task<UpdateExternalServiceResponse> UpdateAsync(Guid externalServiceId, UpdateExternalServiceRequest request);
     }
 }

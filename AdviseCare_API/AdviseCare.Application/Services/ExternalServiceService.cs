@@ -69,6 +69,60 @@ namespace AdviseCare.Application.Services
             }).ToList();
         }
 
+        public async Task<CreateExternalServiceResponse> CreateAsync(CreateExternalServiceRequest request)
+        {
+            var serviceName = request.ServiceName.Trim();
+            if (string.IsNullOrWhiteSpace(serviceName))
+                throw new ValidationException("Service name is required.");
+
+            var service = new Externalservice
+            {
+                ExternalServiceId = Guid.NewGuid(),
+                ServiceName = serviceName,
+                ServiceType = NormalizeOptionalValue(request.ServiceType),
+                ContactInfo = NormalizeOptionalValue(request.ContactInfo),
+                IsActive = true
+            };
+
+            await _externalServiceRepository.CreateAsync(service);
+
+            return new CreateExternalServiceResponse
+            {
+                ExternalServiceId = service.ExternalServiceId,
+                ContactInfo = service.ContactInfo ?? string.Empty,
+                ServiceName = service.ServiceName,
+                ServiceType = service.ServiceType ?? string.Empty,
+                IsActive = service.IsActive
+            };
+        }
+
+        public async Task<UpdateExternalServiceResponse> UpdateAsync(Guid externalServiceId, UpdateExternalServiceRequest request)
+        {
+            var service = await _externalServiceRepository.GetByIdAsync(externalServiceId)
+                ?? throw new NotFoundException("External service not found.");
+
+            var serviceName = request.ServiceName.Trim();
+            if (string.IsNullOrWhiteSpace(serviceName))
+                throw new ValidationException("Service name is required.");
+            if (!request.IsActive.HasValue)
+                throw new ValidationException("Active state is required.");
+
+            service.ServiceName = serviceName;
+            service.ServiceType = NormalizeOptionalValue(request.ServiceType);
+            service.ContactInfo = NormalizeOptionalValue(request.ContactInfo);
+            service.IsActive = request.IsActive.Value;
+            await _externalServiceRepository.UpdateAsync(service);
+
+            return new UpdateExternalServiceResponse
+            {
+                ExternalServiceId = service.ExternalServiceId,
+                ContactInfo = service.ContactInfo ?? string.Empty,
+                ServiceName = service.ServiceName,
+                ServiceType = service.ServiceType ?? string.Empty,
+                IsActive = service.IsActive
+            };
+        }
+
         private static GetAllExternalServiceResponse ToGetAllResponse(Externalservice service) => new()
         {
             ExternalServiceId = service.ExternalServiceId,
@@ -77,5 +131,8 @@ namespace AdviseCare.Application.Services
             ServiceType = service.ServiceType ?? string.Empty,
             IsActive = service.IsActive
         };
+
+        private static string? NormalizeOptionalValue(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

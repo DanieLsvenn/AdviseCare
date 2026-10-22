@@ -20,4 +20,12 @@ namespace AdviseCare.Application.Contracts.Responses.ExternalService
     public class SearchExternalServiceResponse : GetAllExternalServiceResponse
     {
     }
+
+    public class CreateExternalServiceResponse : GetAllExternalServiceResponse
+    {
+    }
+
+    public class UpdateExternalServiceResponse : GetAllExternalServiceResponse
+    {
+    }
 }

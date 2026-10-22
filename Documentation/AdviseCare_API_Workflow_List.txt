@@ -79,7 +79,7 @@ MEMBER C IMPLEMENTATION CHECKPOINTS
 
 Each checkpoint is a separate change intended to be reviewed and pushed independently. Implement them in dependency order; stop for approval between checkpoints.
 - C-01 External service read API: list, get by id, and filter the catalogue (implemented).
-- C-02 External service catalogue writes: create/update; confirm whether Welfare Officers may add services or only Admins may manage the catalogue.
+- C-02 External service catalogue writes: create/update (System Administrator only; Welfare Officers have read access; implemented).
 - C-03 External referrals and follow-up, including overdue detection (uses existing CASES and EXTERNALSERVICES).
 - C-04 Welfare escalations (uses existing CASES).
 - C-05 Interventions and support grants (uses existing CASES).
@@ -409,16 +409,22 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    Expect: the selected service, or 404 if it does not exist
    GET /api/ExternalServices?page=1&pageSize=20 [IMPLEMENTED - Member C C-01]
    Expect: first page of services, ordered by service name
-4.1.1. Welfare Officer records the external referral with an expected follow-up date
-   POST /api/ExternalServices [PLANNED - Member C] (if the service is not in the list yet)
+4.1.1. If a service is not listed, the System Administrator adds it to the catalogue
+   POST /api/ExternalServices [IMPLEMENTED - Member C C-02]
+   Auth: {adminToken}
    Body:
    {
      "contactInfo": "Hotline 1900 1234, studentloan@examplebank.vn",
      "serviceName": "Example Bank Student Loan Desk",
-     "serviceType": "Bank",
-     "isActive": true
+     "serviceType": "Bank"
    }
+   Expect: 200, active service with a new externalServiceId; a Welfare Officer calling POST receives 403
    Save: externalServiceId -> {externalServiceId}
+   PUT /api/ExternalServices/{externalServiceId} [IMPLEMENTED - Member C C-02]
+   Auth: {adminToken}
+   Body: { "contactInfo": "Hotline 1900 1234", "serviceName": "Example Bank Student Loan Desk", "serviceType": "Bank", "isActive": true }
+   Expect: 200, updated service; a Welfare Officer calling PUT receives 403
+4.1.2. Welfare Officer records the external referral with an expected follow-up date
    POST /api/ExternalReferrals [PLANNED - Member C]
    Auth: {welfareOfficerToken}
    Body:

@@ -8,7 +8,7 @@ MEMBER C IMPLEMENTATION CHECKPOINTS
 
 Member C work is split into independently reviewable/pushable checkpoints. Proceed one checkpoint at a time and request approval before starting the next:
 - C-01 External service read API: list, get by id, and filter the catalogue (implemented).
-- C-02 External service catalogue writes: create/update; confirm whether Welfare Officers may add services or only Admins may manage the catalogue.
+- C-02 External service catalogue writes: create/update (System Administrator only; Welfare Officers have read access; implemented).
 - C-03 External referrals and follow-up, including overdue detection (uses existing CASES and EXTERNALSERVICES).
 - C-04 Welfare escalations (uses existing CASES).
 - C-05 Interventions and support grants (uses existing CASES).
@@ -90,9 +90,11 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
 3.2. Records any support grant issued
 3.3. Records the outcome
 4. If an outside service is needed (e.g. a money-lending service, a bank)
-4.1. Welfare Officer records the external referral with an expected follow-up date
-4.2. System flags it as overdue if the date passes without an outcome
-4.3. Welfare Officer logs the follow-up outcome
+4.1. Welfare Officer reads the external services catalogue; only active services are selected for new referrals
+4.2. System Administrator creates or updates catalogue entries (Welfare Officers cannot write to the catalogue)
+4.3. Welfare Officer records the external referral with an expected follow-up date
+4.4. System flags it as overdue if the date passes without an outcome
+4.5. Welfare Officer logs the follow-up outcome
 5. If the case goes beyond the Welfare Officer's authority, it is escalated (see EX5)
 6. Welfare Officer closes the intervention; the case goes back to the advisor for follow-up and closure
 
