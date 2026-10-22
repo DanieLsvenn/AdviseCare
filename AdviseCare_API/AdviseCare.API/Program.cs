@@ -6,6 +6,7 @@ using AdviseCare.Application.Interfaces.Security;
 using AdviseCare.Application.Interfaces.Services;
 using AdviseCare.Application.Interfaces.Storage;
 using AdviseCare.Application.Services;
+using AdviseCare.API.BackgroundServices;
 using AdviseCare.Domain.Models;
 using AdviseCare.Infrastructure.Configuration;
 using AdviseCare.Infrastructure.Email;
@@ -51,6 +52,7 @@ builder.Services.AddScoped<IProgrammeService, ProgrammeService>();
 builder.Services.AddScoped<IAcademicTermService, AcademicTermService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddScoped<IExternalServiceService, ExternalServiceService>();
+builder.Services.AddScoped<IExternalReferralService, ExternalReferralService>();
 
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.
@@ -79,7 +81,7 @@ builder.Services.AddLogging(loggingBuilder =>
 });
 
 // --- Background services ---
-// builder.Services.AddHostedService<...>();
+builder.Services.AddHostedService<ExternalReferralOverdueService>();
 
 // --- Controllers + Swagger ---
 builder.Services.AddControllers();

@@ -80,7 +80,7 @@ MEMBER C IMPLEMENTATION CHECKPOINTS
 Each checkpoint is a separate change intended to be reviewed and pushed independently. Implement them in dependency order; stop for approval between checkpoints.
 - C-01 External service read API: list, get by id, and filter the catalogue (implemented).
 - C-02 External service catalogue writes: create/update (System Administrator only; Welfare Officers have read access; implemented).
-- C-03 External referrals and follow-up, including overdue detection (uses existing CASES and EXTERNALSERVICES).
+- C-03 External referrals and follow-up, including overdue detection (uses existing CASES and EXTERNALSERVICES; implemented).
 - C-04 Welfare escalations (uses existing CASES).
 - C-05 Interventions and support grants (uses existing CASES).
 - C-06 Indicator import parsing and all-row validation; insert-only persistence and missing-indicator rules follow after mapping and Member B's encryption contract are agreed.
@@ -425,7 +425,7 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    Body: { "contactInfo": "Hotline 1900 1234", "serviceName": "Example Bank Student Loan Desk", "serviceType": "Bank", "isActive": true }
    Expect: 200, updated service; a Welfare Officer calling PUT receives 403
 4.1.2. Welfare Officer records the external referral with an expected follow-up date
-   POST /api/ExternalReferrals [PLANNED - Member C]
+   POST /api/ExternalReferrals [IMPLEMENTED - Member C C-03]
    Auth: {welfareOfficerToken}
    Body:
    {
@@ -433,16 +433,18 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
      "externalServiceId": "{externalServiceId}",
      "followUpDueAt": "2026-11-15T00:00:00Z"
    }
-   Expect: status = sent, isOverdue = false
+   Expect: status = sent, isOverdue = false, referredBy is the signed-in Welfare Officer; the service must be active and the case must exist
    Save: externalReferralId -> {externalReferralId}
 4.2. System flags it as overdue if the date passes without an outcome (background check)
-   Test: create a second referral with "followUpDueAt": "2026-10-01T00:00:00Z" (already past), wait for the background check (or restart the API), then
-   GET /api/ExternalReferrals/search?isOverdue=true [PLANNED - Member C]
-   Expect: that referral has isOverdue = true
+   Test: create a second referral with "followUpDueAt": "2026-10-01T00:00:00Z" (already past), then
+   GET /api/ExternalReferrals/search?isOverdue=true [IMPLEMENTED - Member C C-03]
+   Auth: {welfareOfficerToken}
+   Expect: that referral has isOverdue = true immediately in search results; the background service persists the flag on the database within 5 minutes
 4.3. Welfare Officer logs the follow-up outcome
-   PUT /api/ExternalReferrals/{externalReferralId}/follow-up [PLANNED - Member C]
+   PUT /api/ExternalReferrals/{externalReferralId}/follow-up [IMPLEMENTED - Member C C-03]
+   Auth: {welfareOfficerToken}
    Body: { "followUpOutcome": "Bank approved a student loan of 20,000,000 VND for the remaining tuition." }
-   Expect: status = followedUp, isOverdue = false
+   Expect: status = followedUp, isOverdue = false; a second follow-up update returns 409
 5. If the case goes beyond the Welfare Officer's authority -> see EX5
 6. Welfare Officer closes the intervention; the case goes back to the advisor
    PUT /api/Interventions/{interventionId}/close [PLANNED - Member C]
