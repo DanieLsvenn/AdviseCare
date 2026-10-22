@@ -11,7 +11,7 @@ Member C work is split into independently reviewable/pushable checkpoints. Proce
 - C-02 External service catalogue writes: create/update (System Administrator only; Welfare Officers have read access; implemented).
 - C-03 External referrals and follow-up, including overdue detection (uses existing CASES and EXTERNALSERVICES; implemented).
 - C-04 Welfare escalations (uses existing CASES; implemented).
-- C-05 Interventions and support grants (uses existing CASES).
+- C-05 Interventions and support grants (uses existing CASES; implemented).
 - C-06 Indicator import parsing and all-row validation; insert-only persistence and missing-indicator rules follow after mapping and Member B's encryption contract are agreed.
 - C-07 Student profile, point-in-time history, own-profile access, and JSON export (requires Member B's access guard and access-log contract).
 - C-08 Correction requests (scope remains pending review; confirm how a request identifies the source indicator row before implementation).
@@ -89,6 +89,7 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
 3.1. Logs each intervention (type, date, notes)
 3.2. Records any support grant issued
 3.3. Records the outcome
+3.4. Reviews intervention history for the student
 4. If an outside service is needed (e.g. a money-lending service, a bank)
 4.1. Welfare Officer reads the external services catalogue; only active services are selected for new referrals
 4.2. System Administrator creates or updates catalogue entries (Welfare Officers cannot write to the catalogue)
@@ -96,7 +97,7 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
 4.4. System flags it as overdue if the date passes without an outcome
 4.5. Welfare Officer logs the follow-up outcome
 5. If the case goes beyond the Welfare Officer's authority, it is escalated (see EX5)
-6. Welfare Officer closes the intervention; the case goes back to the advisor for follow-up and closure
+6. Welfare Officer closes the intervention; the case's assigned advisor is notified to continue follow-up and closure
 
 WF3: Steward sets up consent
 1. Steward signs in

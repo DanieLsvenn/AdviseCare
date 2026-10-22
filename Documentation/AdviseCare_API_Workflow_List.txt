@@ -82,7 +82,7 @@ Each checkpoint is a separate change intended to be reviewed and pushed independ
 - C-02 External service catalogue writes: create/update (System Administrator only; Welfare Officers have read access; implemented).
 - C-03 External referrals and follow-up, including overdue detection (uses existing CASES and EXTERNALSERVICES; implemented).
 - C-04 Welfare escalations (uses existing CASES; implemented).
-- C-05 Interventions and support grants (uses existing CASES).
+- C-05 Interventions and support grants (uses existing CASES; implemented).
 - C-06 Indicator import parsing and all-row validation; insert-only persistence and missing-indicator rules follow after mapping and Member B's encryption contract are agreed.
 - C-07 Student profile, point-in-time history, own-profile access, and JSON export (requires Member B's access guard and access-log contract).
 - C-08 Correction requests (scope remains pending review; confirm how a request identifies the source indicator row before implementation).
@@ -371,7 +371,7 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    Expect: status = returned; case back to the sender
 3. Welfare Officer works with the student
 3.1. Logs each intervention
-   POST /api/Interventions [PLANNED - Member C]
+   POST /api/Interventions [IMPLEMENTED - Member C C-05]
    Auth: {welfareOfficerToken}
    Body:
    {
@@ -381,12 +381,17 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
      "interventionType": "financialAid",
      "status": "inProgress"
    }
-   Expect: 200, isClosed = false, officerId = welfare officer
+   Expect: 200, isClosed = false, officerId is the signed-in Welfare Officer
    Save: interventionId -> {interventionId}
-   PUT /api/Interventions/{interventionId} [PLANNED - Member C]
+   PUT /api/Interventions/{interventionId} [IMPLEMENTED - Member C C-05]
+   Auth: {welfareOfficerToken}
    Body: { "interventionDate": "2026-10-23T02:00:00Z", "notes": "Application sent to the finance office on 2026-10-24.", "interventionType": "financialAid", "status": "inProgress" }
+   Expect: updated intervention; only its creating officer can update it, and completed interventions return 409
+   GET /api/Interventions/search?studentId={studentId} [IMPLEMENTED - Member C C-05]
+   Auth: {welfareOfficerToken}
+   Expect: that student's interventions, newest first; search also accepts caseId and an optional status
 3.2. Records any support grant issued
-   POST /api/SupportGrants [PLANNED - Member C]
+   POST /api/SupportGrants [IMPLEMENTED - Member C C-05]
    Auth: {welfareOfficerToken}
    Body:
    {
@@ -395,10 +400,14 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
      "grantType": "Tuition reduction",
      "issuedAt": "2026-10-28T03:00:00Z"
    }
-   Expect: status = issued
+   Expect: status = issued; grant can only be added to an open intervention owned by the signed-in Welfare Officer
    Save: supportGrantId -> {supportGrantId}
+   GET /api/SupportGrants/search?interventionId={interventionId} [IMPLEMENTED - Member C C-05]
+   Auth: {welfareOfficerToken}
+   Expect: grants recorded under that officer's intervention
 3.3. Records the outcome
-   PUT /api/Interventions/{interventionId}/outcome [PLANNED - Member C]
+   PUT /api/Interventions/{interventionId}/outcome [IMPLEMENTED - Member C C-05]
+   Auth: {welfareOfficerToken}
    Body: { "outcome": "Tuition reduction granted; student can stay enrolled this term." }
 4. If an outside service is needed
 4.1. Welfare Officer finds an active external service
@@ -447,10 +456,10 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    Expect: status = followedUp, isOverdue = false; a second follow-up update returns 409
 5. If the case goes beyond the Welfare Officer's authority -> see EX5
 6. Welfare Officer closes the intervention; the case goes back to the advisor
-   PUT /api/Interventions/{interventionId}/close [PLANNED - Member C]
+   PUT /api/Interventions/{interventionId}/close [IMPLEMENTED - Member C C-05]
    Auth: {welfareOfficerToken}
    Body: { "outcome": "Tuition reduced and bank loan approved. Handing back to the wellbeing advisor." }
-   Expect: isClosed = true, status = completed; the wellbeing advisor is notified
+   Expect: isClosed = true, status = completed; the case's assigned advisor is notified when assigned; further intervention edits return 409
    Then the wellbeing advisor continues with WF2 step 9 on {caseWellbeingId}
 
 WF3: Steward sets up consent
