@@ -53,6 +53,7 @@ builder.Services.AddScoped<IAcademicTermService, AcademicTermService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddScoped<IExternalServiceService, ExternalServiceService>();
 builder.Services.AddScoped<IExternalReferralService, ExternalReferralService>();
+builder.Services.AddScoped<IEscalationService, EscalationService>();
 
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.
