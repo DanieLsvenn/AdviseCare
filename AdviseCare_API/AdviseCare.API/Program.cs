@@ -40,7 +40,6 @@ builder.Services.AddCors(opt =>
 });
 
 // --- Application services ---
-builder.Services.AddScoped<IIndicatorService, IndicatorService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<ISessionService, SessionService>();
@@ -51,6 +50,16 @@ builder.Services.AddScoped<IFacultyService, FacultyService>();
 builder.Services.AddScoped<IProgrammeService, ProgrammeService>();
 builder.Services.AddScoped<IAcademicTermService, AcademicTermService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
+// Member B
+builder.Services.AddScoped<IIndicatorService, IndicatorService>();
+builder.Services.AddScoped<IConsentPurposeService, ConsentPurposeService>();
+builder.Services.AddScoped<IAccessPolicyService, AccessPolicyService>();
+builder.Services.AddScoped<IAccessGuardService, AccessGuardService>();
+builder.Services.AddScoped<IConsentService, ConsentService>();
+builder.Services.AddScoped<IConsentRequestService, ConsentRequestService>();
+builder.Services.AddScoped<IAccessLogService, AccessLogService>();
+builder.Services.AddScoped<IErasureRequestService, ErasureRequestService>();
+builder.Services.AddScoped<IEmergencyAccessRequestService, EmergencyAccessRequestService>();
 
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.
@@ -61,12 +70,13 @@ builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
-// --- Email (Gmail SMTP), storage (Supabase) and Excel import ---
+// --- Email (Gmail SMTP), storage (Supabase) and Excel import/export ---
 builder.Services.Configure<GmailSettings>(builder.Configuration.GetSection("Gmail"));
 builder.Services.Configure<SupabaseSettings>(builder.Configuration.GetSection("Supabase"));
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHttpClient<IStorageService, SupabaseStorageService>();
 builder.Services.AddScoped<IExcelReader, ExcelReader>();
+builder.Services.AddScoped<IExcelWriter, ExcelWriter>();
 
 // -- HttpContextAccessor ---
 builder.Services.AddHttpContextAccessor();

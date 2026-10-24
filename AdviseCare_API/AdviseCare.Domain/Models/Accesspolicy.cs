@@ -15,10 +15,6 @@ public partial class Accesspolicy
 
     public Guid RoleId { get; set; }
 
-    public string RequiredConsentStatus { get; set; }
-
-    public bool IsActive { get; set; }
-
     public string Status { get; set; }
 
     public virtual Consentpurpose ConsentPurpose { get; set; }

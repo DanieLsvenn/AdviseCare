@@ -138,6 +138,7 @@ dataAttributeId (FK) - uuid - the data attribute this indicator belongs to (one 
 description - string - explains what the indicator measures, shown to students when they choose what to share and to advisors reading the profile
 indicatorName - string - display label for the indicator
 dataType - enum - what shape the indicator's value takes (numeric/categorical/boolean), used to validate imported data
+status - enum - lifecycle state (active/archived), archived together with its data attribute; archiving is one-way, and the values already recorded stay
 
 11 INDICATORS - 13 DATAATTRIBUTES: one to one (dataAttributeId)
 11 INDICATORS - 14 DATASOURCES: one to one (indicatorId)
@@ -158,6 +159,7 @@ status - enum - lifecycle state (active/archived), so a retired subject disappea
 dataAttributeId (PK) - uuid - unique identifier for one shareable piece of student data that consent can be scoped to (e.g. "attendance record", "GPA"); defined by the Data Protection Steward together with its indicator
 attributeDescription - string - plain-language description of what the attribute contains, shown to students reviewing consent
 attributeName - string - short label for the attribute
+status - enum - lifecycle state (active/archived), kept in sync with its indicator; an archived attribute can no longer be attached to a purpose, granted or requested, but the consents already given on it are kept and still apply
 
 13 DATAATTRIBUTES - 32 CONSENTPURPOSES: many to many => 32 CONSENTPURPOSES - 33 PURPOSE_ATTRIBUTE - 13 DATAATTRIBUTES
 13 DATAATTRIBUTES - 11 INDICATORS: one to one (dataAttributeId)
@@ -176,8 +178,7 @@ connectionConfig - string - connection details, or the stored file reference for
 fieldMapping - string - how incoming source fields map onto system fields, set during source setup
 sourceName - string - display label for the source
 sourceType - enum - what kind of source it is (file upload for the current version; database/API kept for the future scheduled-ingestion feature)
-isActive - bool - whether the source is currently enabled for scheduled pulls
-status - enum - broader lifecycle/health state of the source, surfaced on the monitoring screen
+status - enum - lifecycle/health state of the source (active/paused/disconnected), surfaced on the monitoring screen; only an active source is pulled on schedule
 
 14 DATASOURCES - 1 ACCOUNTS: many to one (createdBy)
 14 DATASOURCES - 11 INDICATORS: one to one (indicatorId)
@@ -428,12 +429,13 @@ consentPurposeId (PK) - uuid - unique identifier for one consent purpose (the "w
 createdBy (FK) - uuid - which steward defined the purpose
 description - string - explains the purpose in plain language, shown to students when granting consent
 purposeName - string - display label for the purpose
-status - enum - active/retired, so a purpose can stop being offered without deleting historical consents tied to it
+status - enum - inactive/active/retired; a new purpose starts inactive and is activated once its attributes are attached; retiring is one-way, so a purpose can stop being offered without deleting historical consents tied to it
 
 32 CONSENTPURPOSES - 1 ACCOUNTS: many to one (createdBy)
 32 CONSENTPURPOSES - 13 DATAATTRIBUTES: many to many => 32 CONSENTPURPOSES - 33 PURPOSE_ATTRIBUTE - 13 DATAATTRIBUTES
 32 CONSENTPURPOSES - 19 SUPPORTCATEGORIES: one to many (consentPurposeId)
 32 CONSENTPURPOSES - 34 CONSENTS: one to many (consentPurposeId)
+32 CONSENTPURPOSES - 36 CONSENTREQUESTS: one to many (consentPurposeId)
 32 CONSENTPURPOSES - 37 ACCESSPOLICIES: one to many (consentPurposeId)
 32 CONSENTPURPOSES - 38 ACCESSLOGS: one to many (consentPurposeId)
 
@@ -444,13 +446,12 @@ dataAttributeId (FK) - uuid - which data attribute is covered by that purpose
 34. CONSENTS
 consentId (PK) - uuid - unique identifier for one student's consent grant covering a purpose/attribute combination
 consentPurposeId (FK) - uuid - which purpose this consent applies to
-dataAttributeId (FK) - uuid - which specific attribute this consent covers (supports narrowing to less than a whole purpose)
+dataAttributeId (FK) - uuid - which specific attribute this consent covers (one row per student, purpose and attribute, so a student can share only some of a purpose's attributes)
 studentId (FK) - uuid - which student granted the consent
 expiresAt - date - when the consent automatically lapses, if set
 grantedAt - date - when the consent was first given
-narrowedAt - date - when the student last narrowed its scope, null if never narrowed
 withdrawnAt - date - when the student withdrew it, null if still active
-status - enum - granted/narrowed/withdrawn, the current effective state consulted by access policy checks
+status - enum - granted/withdrawn, the current effective state consulted by the access guard; a granted consent past expiresAt counts as not granted
 
 34 CONSENTS - 32 CONSENTPURPOSES: many to one (consentPurposeId)
 34 CONSENTS - 13 DATAATTRIBUTES: many to one (dataAttributeId)
@@ -463,8 +464,8 @@ consentHistoryId (PK) - uuid - unique identifier for one change event on a conse
 changedBy (FK) - uuid - who made the change (usually the student themself)
 consentId (FK) - uuid - which consent record changed
 changedAt - date - when the change occurred
-newStatus - enum - the state the consent moved to
-previousStatus - enum - the state the consent moved from
+newStatus - enum - the state the consent moved to (granted/withdrawn)
+previousStatus - enum - the state the consent moved from (granted/withdrawn), null for the first grant
 
 35 CONSENTHISTORIES - 1 ACCOUNTS: many to one (changedBy)
 35 CONSENTHISTORIES - 34 CONSENTS: many to one (consentId)
@@ -472,6 +473,7 @@ previousStatus - enum - the state the consent moved from
 36. CONSENTREQUESTS
 consentRequestId (PK) - uuid - unique identifier for one advisor request for additional consent scope
 advisorId (FK) - uuid - which advisor made the request
+consentPurposeId (FK) - uuid - the purpose the attribute is requested under; when the student grants the request, the consent is created under this purpose (it must cover the attribute, and one of the advisor's roles needs an active access policy for it)
 dataAttributeId (FK) - uuid - which attribute the advisor is requesting access to
 studentId (FK) - uuid - which student is being asked
 purposeStated - string - the stated reason for the request, shown to the student
@@ -481,15 +483,14 @@ status - enum - pending/granted/denied/withdrawn, drives both the advisor's trac
 
 36 CONSENTREQUESTS - 1 ACCOUNTS: many to one (advisorId), many to one (studentId)
 36 CONSENTREQUESTS - 13 DATAATTRIBUTES: many to one (dataAttributeId)
+36 CONSENTREQUESTS - 32 CONSENTPURPOSES: many to one (consentPurposeId)
 
 37. ACCESSPOLICIES
-accessPolicyId (PK) - uuid - unique identifier for one access policy binding role, purpose, and required consent state
+accessPolicyId (PK) - uuid - unique identifier for one access policy binding a role to a purpose (the student's consent on that purpose must be granted)
 consentPurposeId (FK) - uuid - which purpose this policy governs access for
 createdBy (FK) - uuid - which steward configured the policy
 roleId (FK) - uuid - which role this policy applies to
-requiredConsentStatus - enum - what consent state must be present for the role to be granted access under this purpose
-isActive - bool - whether the policy is currently enforced
-status - enum - broader lifecycle state (e.g. draft/active/revoked)
+status - enum - draft/active/revoked; only an active policy is enforced, policies are revoked rather than edited or deleted, and a role has at most one draft/active policy per purpose
 
 37 ACCESSPOLICIES - 32 CONSENTPURPOSES: many to one (consentPurposeId)
 37 ACCESSPOLICIES - 1 ACCOUNTS: many to one (createdBy)
@@ -511,7 +512,7 @@ status - enum - review state of a flagged entry (e.g. unreviewed/cleared/confirm
 39. EMERGENCYACCESSREQUESTS
 emergencyAccessRequestId (PK) - uuid - unique identifier for one out-of-scope emergency access request
 requestedBy (FK) - uuid - who requested emergency access
-stewardId (FK) - uuid - which steward is deciding the request
+stewardId (FK) - uuid - the steward who decided the request; stewards share one pool of requests and the first one to approve or reject is recorded here, null while pending
 studentId (FK) - uuid - whose record the emergency access would cover
 justification - string - the stated reason for needing emergency access, reviewed by the steward
 requestedAt - date - when the request was made
@@ -596,9 +597,15 @@ NOTES (current version)
 - FUTURE, not in this ERD (would need new tables):
   + In-app meeting scheduling: advisor time slots, student booking, advisors swapping meetings
   + In-app chat between advisor and student (possible stretch goal)
+  + Admin configuration panel (not officially registered in docs): a SYSTEMSETTINGS key/value table (settingKey, settingValue, updatedBy, updatedAt) holding the settings listed in AdviseCare_Functional_Requirements.txt; until then the values are fixed in code/appsettings.json
 - Imports and ingestion jobs are all-or-nothing: one invalid row fails the whole import and nothing is written.
 - STUDENTINDICATORS has no transactionTo/validTo: each row's end time is the transactionFrom/validFrom of the next row for the same student and indicator.
 - Bitemporal / history data is create-read-delete only, never updated through the API: STUDENTINDICATORS, CASESTAGEHISTORIES, CONSENTHISTORIES, ACCESSLOGS (except its review fields isFlagged/status), and CASENOTES once finalized.
 - Point-in-time reconstruction ("way back machine") is computed only when an advisor asks for a past date; nothing is precomputed.
-- Removed in this version: EVENTCATEGORIES, EVENTS, EVENT_REGISTRATION.
+- Removed in this version: EVENTCATEGORIES, EVENTS, EVENT_REGISTRATION. Removed columns: CONSENTS.narrowedAt and the "narrowed" consent state (a student shares or withdraws per attribute instead), ACCESSPOLICIES.requiredConsentStatus (only "granted" was left) and ACCESSPOLICIES.isActive / DATASOURCES.isActive (the status enum of the same table already says it).
+- Archiving INDICATORS / DATAATTRIBUTES is one-way and done as a pair: an archived attribute can no longer be attached to a purpose, granted or requested, but existing values and consents are kept and still apply.
+- Access guard ("if you consent, we serve"): staff may read a student's attribute only when the student has a granted, unexpired consent on it under a purpose that is active, still covers the attribute (PURPOSE_ATTRIBUTE) and has an active access policy for one of the staff member's roles. Inside a case only the case category's purpose counts; outside a case (e.g. an advisor's student list with indicators) any such purpose counts, and attributes not consented are simply left out. Every allowed read writes one ACCESSLOGS row per attribute; students reading their own data are not logged.
+- Consent expiry is checked when data is read (no background job): a granted consent past expiresAt gives no access until the student renews it.
+- Erasure: ATTRIBUTEKEYS holds one key per student per attribute, so withdrawing a consent queues an ERASUREREQUESTS row only when the attribute is no longer granted under any purpose and the student has an active key for it; the Steward executes it by destroying the key (wrappedKey wiped, status = destroyed).
+- Emergency access: Stewards share one pool of requests; the first Steward to approve or reject is stored in stewardId. An approved access ends on its own at scopeExpiresAt.
 - Usually one Programme Head for the whole app (the manager), but the system allows more. PROGRAMMES is kept but not used by other tables for now.

@@ -21,6 +21,8 @@ public partial class Consentpurpose
 
     public virtual ICollection<Accesspolicy> Accesspolicies { get; set; } = new List<Accesspolicy>();
 
+    public virtual ICollection<Consentrequest> Consentrequests { get; set; } = new List<Consentrequest>();
+
     public virtual ICollection<Consent> Consents { get; set; } = new List<Consent>();
 
     public virtual Account CreatedByNavigation { get; set; }

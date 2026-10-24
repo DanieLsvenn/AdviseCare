@@ -15,9 +15,9 @@ namespace AdviseCare.API.Controllers
 
         // Get all Roles, with optional pagination
         [HttpGet]
-        [Authorize(Roles = "System Administrator")]
-        [SwaggerOperation(Summary = "[System Administrator] Get all roles with optional pagination",
-            Description = "Retrieves every role (System Administrator, Data Protection Steward, Academic Advisor, Wellbeing Advisor, Student Welfare Officer, Student, Programme Head), ordered by name. Pass page and pageSize together to page the results.")]
+        [Authorize(Roles = "System Administrator,Data Protection Steward")]
+        [SwaggerOperation(Summary = "[System Administrator, Data Protection Steward] Get all roles with optional pagination",
+            Description = "Retrieves every role (System Administrator, Data Protection Steward, Academic Advisor, Wellbeing Advisor, Student Welfare Officer, Student, Programme Head), ordered by name. Pass page and pageSize together to page the results. The Steward uses it to pick the role of an access policy.")]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
             if (page.HasValue && pageSize.HasValue)
@@ -32,8 +32,8 @@ namespace AdviseCare.API.Controllers
 
         // Get a Role by Id
         [HttpGet("{id}")]
-        [Authorize(Roles = "System Administrator")]
-        [SwaggerOperation(Summary = "[System Administrator] Get role by Id",
+        [Authorize(Roles = "System Administrator,Data Protection Steward")]
+        [SwaggerOperation(Summary = "[System Administrator, Data Protection Steward] Get role by Id",
             Description = "Retrieves one role by its unique identifier.")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
@@ -43,8 +43,8 @@ namespace AdviseCare.API.Controllers
 
         // Search Roles by role name
         [HttpGet("search")]
-        [Authorize(Roles = "System Administrator")]
-        [SwaggerOperation(Summary = "[System Administrator] Search/Filter roles",
+        [Authorize(Roles = "System Administrator,Data Protection Steward")]
+        [SwaggerOperation(Summary = "[System Administrator, Data Protection Steward] Search/Filter roles",
             Description = "Searches roles whose name contains the given text. An empty request returns every role.")]
         public async Task<IActionResult> Search([FromQuery] SearchRoleRequest request)
         {

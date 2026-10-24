@@ -190,19 +190,15 @@ public partial class AdviseCareContext : DbContext
         {
             entity.ToTable("ACCESSPOLICIES");
 
+            entity.HasIndex(e => new { e.RoleId, e.ConsentPurposeId }, "UX_ACCESSPOLICIES_role_purpose_live")
+                .IsUnique()
+                .HasFilter("([status] IN (N'draft', N'active'))");
+
             entity.Property(e => e.AccessPolicyId)
                 .HasDefaultValueSql("(newsequentialid())")
                 .HasColumnName("accessPolicyId");
             entity.Property(e => e.ConsentPurposeId).HasColumnName("consentPurposeId");
             entity.Property(e => e.CreatedBy).HasColumnName("createdBy");
-            entity.Property(e => e.IsActive)
-                .HasDefaultValue(true)
-                .HasColumnName("isActive");
-            entity.Property(e => e.RequiredConsentStatus)
-                .IsRequired()
-                .HasMaxLength(30)
-                .HasDefaultValue("granted")
-                .HasColumnName("requiredConsentStatus");
             entity.Property(e => e.RoleId).HasColumnName("roleId");
             entity.Property(e => e.Status)
                 .IsRequired()
@@ -654,6 +650,10 @@ public partial class AdviseCareContext : DbContext
         {
             entity.ToTable("CONSENTS");
 
+            entity.HasIndex(e => new { e.StudentId, e.ConsentPurposeId, e.DataAttributeId }, "UX_CONSENTS_student_purpose_attribute_granted")
+                .IsUnique()
+                .HasFilter("([status]=N'granted')");
+
             entity.Property(e => e.ConsentId)
                 .HasDefaultValueSql("(newsequentialid())")
                 .HasColumnName("consentId");
@@ -665,9 +665,6 @@ public partial class AdviseCareContext : DbContext
             entity.Property(e => e.GrantedAt)
                 .HasPrecision(3)
                 .HasColumnName("grantedAt");
-            entity.Property(e => e.NarrowedAt)
-                .HasPrecision(3)
-                .HasColumnName("narrowedAt");
             entity.Property(e => e.Status)
                 .IsRequired()
                 .HasMaxLength(30)
@@ -745,7 +742,7 @@ public partial class AdviseCareContext : DbContext
             entity.Property(e => e.Status)
                 .IsRequired()
                 .HasMaxLength(30)
-                .HasDefaultValue("active")
+                .HasDefaultValue("inactive")
                 .HasColumnName("status");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.Consentpurposes)
@@ -781,6 +778,7 @@ public partial class AdviseCareContext : DbContext
                 .HasDefaultValueSql("(newsequentialid())")
                 .HasColumnName("consentRequestId");
             entity.Property(e => e.AdvisorId).HasColumnName("advisorId");
+            entity.Property(e => e.ConsentPurposeId).HasColumnName("consentPurposeId");
             entity.Property(e => e.DataAttributeId).HasColumnName("dataAttributeId");
             entity.Property(e => e.PurposeStated)
                 .IsRequired()
@@ -803,6 +801,11 @@ public partial class AdviseCareContext : DbContext
                 .HasForeignKey(d => d.AdvisorId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_CONSENTREQUESTS_advisorId");
+
+            entity.HasOne(d => d.ConsentPurpose).WithMany(p => p.Consentrequests)
+                .HasForeignKey(d => d.ConsentPurposeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CONSENTREQUESTS_consentPurposeId");
 
             entity.HasOne(d => d.DataAttribute).WithMany(p => p.Consentrequests)
                 .HasForeignKey(d => d.DataAttributeId)
@@ -891,9 +894,6 @@ public partial class AdviseCareContext : DbContext
             entity.Property(e => e.CreatedBy).HasColumnName("createdBy");
             entity.Property(e => e.FieldMapping).HasColumnName("fieldMapping");
             entity.Property(e => e.IndicatorId).HasColumnName("indicatorId");
-            entity.Property(e => e.IsActive)
-                .HasDefaultValue(true)
-                .HasColumnName("isActive");
             entity.Property(e => e.SourceName)
                 .IsRequired()
                 .HasMaxLength(255)

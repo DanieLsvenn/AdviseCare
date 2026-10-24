@@ -55,6 +55,7 @@ Master data (created in EX11)
 Consent data (created in WF3)
 - Indicators/attributes: GPA (numeric) -> {indGpaId}/{attrGpaId}; Attendance rate (numeric) -> {indAttendanceId}/{attrAttendanceId}; Accommodation status (categorical) -> {indAccommodationId}/{attrAccommodationId}; Financial difficulty (boolean) -> {indFinancialId}/{attrFinancialId}
 - Purposes: Academic advising (GPA, Attendance rate) -> {purposeAcademicId}; Wellbeing support (Attendance rate, Accommodation status) -> {purposeWellbeingId}; Financial support (Financial difficulty, Accommodation status) -> {purposeFinancialId}
+- Access policies (all active): Academic Advisor - Academic advising; Wellbeing Advisor - Wellbeing support; Wellbeing Advisor - Financial support; Student Welfare Officer - Financial support
 
 Support categories (created in EX11 step 4)
 - Course content question (academic, Academic advising) -> {catCourseContentId}
@@ -72,7 +73,7 @@ RECOMMENDED RUN ORDER
 ==========
 
 EX11 steps 1-3 (faculties, programmes, terms, subjects) -> WF1 -> EX1 -> EX2 -> EX12 -> WF3 -> EX11 step 4 (support categories) -> WF5 -> WF2 -> EX7 -> EX4 -> WF2b -> EX5 -> EX6 -> EX3 -> EX8 -> EX9 -> EX10 -> EX13 -> EX14 -> EX15 -> WF4 -> EX16
-Member A can test EX11 (steps 1-3), WF1, EX1, EX2, EX12 and EX16 now; the rest wait for Members B, C and D.
+Members A and B can be tested now: EX11 (steps 1-3), WF1, EX1, EX2, EX12, EX16, WF3, EX7, EX8 (except the profile check in 4.1), EX9 (the log fills once Member C reads data through the access guard) and EX10; the rest wait for Members C and D.
 
 ==========
 MAIN WORKFLOWS
@@ -196,11 +197,12 @@ WF2: Student requests support and gets advised
 2.3. Writes the reason (part of the body in 2.5)
 2.4. Chooses which data attributes to share
 2.4.1. Only the attributes of the category's consent purpose are offered
-   GET /api/SupportCategories/{catCourseContentId}/shareable-attributes [PLANNED - Member D, reads Member B's PURPOSE_ATTRIBUTE]
+   GET /api/SupportCategories/{catCourseContentId} [PLANNED - Member D] -> its consentPurposeId
+   GET /api/ConsentPurposes/{purposeAcademicId} [EXISTS]
    Auth: {studentToken}
-   Expect: GPA and Attendance rate (the attributes of Academic advising)
+   Expect: dataAttributes = GPA and Attendance rate (the attributes of Academic advising); only active ones are offered
 2.4.2. The student may leave it empty (sharedAttributeIds = [])
-2.4.3. Each chosen attribute is recorded as consent for that purpose (done by the server in 2.5)
+2.4.3. Each chosen attribute is recorded as consent for that purpose (done by the server in 2.5, through IConsentService.CreateAsync)
 2.5. Submits; the case is created with stage = pending
    POST /api/Cases [PLANNED - Member D]
    Auth: {studentToken}
@@ -268,7 +270,7 @@ WF2: Student requests support and gets advised
    Auth: {academicAdvisorToken}
    Expect: the case with requestReason, category Course content question, subject PRN212
 5.2. Opens the student profile: only consented data, with source and missing-data notices
-   GET /api/StudentIndicators/students/{studentId}/profile?caseId={caseAcademicId} [PLANNED - Member C, through Member B's access guard]
+   GET /api/StudentIndicators/students/{studentId}/profile?caseId={caseAcademicId} [PLANNED - Member C, through Member B's IAccessGuardService with the case category's purpose]
    Auth: {academicAdvisorToken}
    Expect: GPA and Attendance rate values with provenanceNote (from WF5); Accommodation status and Financial difficulty shown as "exists, not shared"; missing indicators flagged; one ACCESSLOGS row per attribute read
 5.3. If more data is needed, the advisor sends a consent request -> see EX7
@@ -432,7 +434,7 @@ WF3: Steward sets up consent
    Save: token -> {stewardToken}
 2. Steward defines the shareable data
 2.1. Creates an indicator together with its data attribute
-   POST /api/Indicators [PLANNED - Member B]
+   POST /api/Indicators [EXISTS]
    Auth: {stewardToken}
    Body (one call per indicator):
    {
@@ -442,67 +444,76 @@ WF3: Steward sets up consent
      "indicatorName": "GPA",
      "dataType": "numeric"
    }
-   Expect: 200, indicatorId and dataAttributeId (1:1)
+   Expect: 200, indicatorId and dataAttributeId (1:1), status = active
    Save: -> {indGpaId}, {attrGpaId}
    Other three:
    { "attributeDescription": "How often you attended your classes this term", "attributeName": "Attendance rate", "description": "Percentage of attended slots (0-100)", "indicatorName": "Attendance rate", "dataType": "numeric" } -> {indAttendanceId}, {attrAttendanceId}
    { "attributeDescription": "Where you are living this term", "attributeName": "Accommodation status", "description": "dormitory / rented / family / other", "indicatorName": "Accommodation status", "dataType": "categorical" } -> {indAccommodationId}, {attrAccommodationId}
    { "attributeDescription": "Whether you have reported financial difficulty", "attributeName": "Financial difficulty", "description": "true when the student has reported financial difficulty", "indicatorName": "Financial difficulty", "dataType": "boolean" } -> {indFinancialId}, {attrFinancialId}
-   Negative: "dataType": "text" -> 400
+   Negative: "dataType": "text" -> 400; the same indicatorName or attributeName again -> 409; called with {academicAdvisorToken} -> 403
+   Edit: PUT /api/Indicators/{indGpaId} [EXISTS]
+   Body: { "attributeDescription": "Your cumulative GPA (10-point scale) for the current term", "description": "Cumulative GPA on a 10-point scale" }
+   Lists: GET /api/Indicators, GET /api/Indicators/search?status=active [EXISTS] (open to every signed-in role)
 2.2. Archives indicators/attributes that are no longer used
-   PUT /api/Indicators/{id}/archive [PLANNED - Member B] (create a fifth indicator "Old test indicator" just for this)
-   Expect: the indicator no longer appears in purpose attribute lists; old values stay
+   POST /api/Indicators [EXISTS] with "indicatorName": "Old test indicator", "attributeName": "Old test attribute", "dataType": "boolean" -> {indOldId}, {attrOldId}
+   PUT /api/Indicators/{indOldId}/archive [EXISTS]
+   Expect: true; the indicator and its attribute have status = archived; archiving it again -> 409; PUT /api/Indicators/{indOldId} -> 409; attaching {attrOldId} to a purpose (3.2) -> 409
 3. Steward defines consent purposes
 3.1. Creates a purpose
-   POST /api/ConsentPurposes [PLANNED - Member B]
+   POST /api/ConsentPurposes [EXISTS]
    Auth: {stewardToken}
    Body:
    {
      "description": "Lets your academic advisor see your study results so they can help with your subjects",
-     "purposeName": "Academic advising",
-     "status": "inactive"
+     "purposeName": "Academic advising"
    }
+   Expect: status = inactive
    Save: -> {purposeAcademicId}
-   Also: "Wellbeing support" ("Lets your wellbeing advisor understand your situation outside class") -> {purposeWellbeingId}; "Financial support" ("Lets the welfare officer check your financial situation to arrange support") -> {purposeFinancialId}
+   Also: "Wellbeing support" ("Lets your wellbeing advisor understand your situation outside class") -> {purposeWellbeingId}; "Financial support" ("Lets the welfare officer and your wellbeing advisor check your financial situation to arrange support") -> {purposeFinancialId}
+   Negative: the same purposeName again -> 409
 3.2. Attaches the data attributes the purpose covers
-   POST /api/ConsentPurposes/purpose-attributes [PLANNED - Member B]
+   POST /api/ConsentPurposes/purpose-attributes [EXISTS]
    Auth: {stewardToken}
    Body: { "consentPurposeId": "{purposeAcademicId}", "dataAttributeId": "{attrGpaId}" }
    Repeat: Academic advising + {attrAttendanceId}; Wellbeing support + {attrAttendanceId}, {attrAccommodationId}; Financial support + {attrFinancialId}, {attrAccommodationId}
-   Expect: Attendance rate and Accommodation status each belong to 2 purposes
-   Remove test: DELETE /api/ConsentPurposes/purpose-attributes/{purposeAcademicId}/{attrAttendanceId}, then add it back
-   Negative: the same pair twice -> 400
+   Expect: GET /api/ConsentPurposes/purpose-attributes/search?dataAttributeId={attrAccommodationId} [EXISTS] -> 2 purposes
+   Remove test: DELETE /api/ConsentPurposes/purpose-attributes/{purposeAcademicId}/{attrAttendanceId} [EXISTS], then add it back
+   Negative: the same pair twice -> 409; an archived attribute -> 409
 3.3. Activates the purpose
-   PUT /api/ConsentPurposes/{purposeAcademicId}/activate [PLANNED - Member B] (repeat for the other two)
-   Expect: status = active
+   PUT /api/ConsentPurposes/{purposeAcademicId}/activate [EXISTS] (repeat for the other two)
+   Expect: true, status = active; a purpose with no active attribute -> 400
+   Detail: GET /api/ConsentPurposes/{purposeAcademicId} [EXISTS] -> the purpose with its dataAttributes
 4. Steward configures access policies
-4.1. Links a role to a purpose
-4.2. Sets the consent state required for access
-   GET /api/Roles [EXISTS] (needs the System Administrator role today; Member B may need it opened to the Steward)
+4.1. Links a role to a purpose (the student's consent must be granted)
+   GET /api/Roles [EXISTS] (open to the Steward)
+   Auth: {stewardToken}
    Save: roleId of Academic Advisor -> {roleAcademicAdvisorId}, Wellbeing Advisor -> {roleWellbeingAdvisorId}, Student Welfare Officer -> {roleWelfareOfficerId}
-   POST /api/AccessPolicies [PLANNED - Member B]
+   POST /api/AccessPolicies [EXISTS]
    Auth: {stewardToken}
    Body:
    {
      "consentPurposeId": "{purposeAcademicId}",
-     "roleId": "{roleAcademicAdvisorId}",
-     "requiredConsentStatus": "granted"
+     "roleId": "{roleAcademicAdvisorId}"
    }
-   Expect: status = draft, isActive = false
+   Expect: status = draft
    Save: accessPolicyId -> {policyAcademicId}
-   Also: Wellbeing support -> Wellbeing Advisor ({policyWellbeingId}); Financial support -> Student Welfare Officer ({policyFinancialId}); all with "granted"
-   PUT /api/AccessPolicies/{policyAcademicId}/activate [PLANNED - Member B]
-   Expect: status = active, isActive = true
+   Also: Wellbeing support -> Wellbeing Advisor ({policyWellbeingId}); Financial support -> Wellbeing Advisor ({policyFinancialWbId}, the wellbeing advisor handles the Money case first); Financial support -> Student Welfare Officer ({policyFinancialId})
+   Negative: the same role and purpose again -> 409; the Student role -> 400
+   Edit test: PUT /api/AccessPolicies/{policyAcademicId} [EXISTS] with the same body while it is a draft -> 200; after activating -> 409
+4.2. Activates the policy
+   PUT /api/AccessPolicies/{policyAcademicId}/activate [EXISTS] (repeat for the other three)
+   Expect: true, status = active
 4.3. Tests the policy against a sample case
-   POST /api/AccessPolicies/{policyAcademicId}/test [PLANNED - Member B]
+   POST /api/AccessPolicies/{policyAcademicId}/test [EXISTS]
    Auth: {stewardToken}
    Body: { "studentId": "{studentId}" }
-   Expect: per attribute of the purpose, whether an academic advisor could read it now (allowed / exists, not shared); nothing is logged in ACCESSLOGS
+   Expect: one line per attribute of the purpose with hasConsent, hasValue and result (allowed / allowedOnceActive / notShared); before WF2 the student has shared nothing, so every result is notShared; nothing is logged in ACCESSLOGS
 5. Admin links each support category to its purpose -> see EX11 step 4
 6. Later changes
-   PUT /api/ConsentPurposes/{id}/retire [PLANNED - Member B] (on a test purpose "Old purpose")
-   PUT /api/AccessPolicies/{id}/revoke [PLANNED - Member B]
-   Expect: retired purposes are no longer offered but old consents keep pointing to them; a revoked policy has status = revoked, isActive = false; there is no DELETE and no edit of a policy (create a new one instead)
+   POST /api/ConsentPurposes [EXISTS] "Old purpose" -> {purposeOldId}; PUT /api/ConsentPurposes/{purposeOldId}/retire [EXISTS]
+   Expect: status = retired; activate, edit or attach on it -> 409
+   PUT /api/AccessPolicies/{id}/revoke [EXISTS] (on a test policy)
+   Expect: status = revoked; there is no DELETE and no edit of an active policy (revoke it and create a new one instead)
 
 WF4: Programme Head lists, reports and exports
 1. Programme Head signs in and opens the reports page
@@ -790,99 +801,115 @@ EX6: Advisor assignment change
    Body: { "advisorId": "{academicAdvisorId}", "reason": "Advisor is back from leave" }
 
 EX7: Advisor asks for more data (consent request)
-1. Advisor picks the student and the data attribute needed
+1. Advisor picks the student, the purpose and the data attribute needed
 2. Advisor states the purpose
-   POST /api/ConsentRequests [PLANNED - Member B]
+   POST /api/ConsentRequests [EXISTS]
    Auth: {wellbeingAdvisorToken}
    Body:
    {
+     "consentPurposeId": "{purposeWellbeingId}",
      "dataAttributeId": "{attrAccommodationId}",
      "studentId": "{studentId}",
      "purposeStated": "To understand whether your housing situation is affecting your finances."
    }
-   Expect: status = pending; the student is notified
+   Expect: status = pending; the student gets a notification
    Save: consentRequestId -> {consentRequestId}
+   Negative: an attribute the purpose does not cover -> 400; a purpose with no active policy for the advisor's role -> 400; the same pending request again -> 409; called with {studentToken} -> 403
+   Edit: PUT /api/ConsentRequests/{consentRequestId} [EXISTS], body { "purposeStated": "To check whether your housing costs are part of the money problem." }
 3. Student gets a notification and grants or denies
-   GET /api/ConsentRequests/me?status=pending [PLANNED - Member B]
+   GET /api/ConsentRequests/me/received [EXISTS]
    Auth: {studentToken}
 3.1. Granted
-   PUT /api/ConsentRequests/{consentRequestId}/grant [PLANNED - Member B]
+   PUT /api/ConsentRequests/{consentRequestId}/grant [EXISTS]
    Auth: {studentToken}
-   Expect: status = granted, respondedAt set; a CONSENTS row and a CONSENTHISTORIES row; the advisor's profile call (WF2 5.2) now shows Accommodation status = rented
-3.2. Denied (on a second request)
-   PUT /api/ConsentRequests/{id}/deny [PLANNED - Member B]
+   Expect: true; request status = granted, respondedAt set; a CONSENTS row under Wellbeing support for Accommodation status and a CONSENTHISTORIES row (null -> granted); the advisor is notified
+3.2. Denied (on a second request, e.g. for {attrAttendanceId})
+   PUT /api/ConsentRequests/{id}/deny [EXISTS]
    Expect: status = denied; the advisor still sees "exists, not shared"
 4. Advisor can withdraw a request that is still pending
-   PUT /api/ConsentRequests/{id}/withdraw [PLANNED - Member B]
+   PUT /api/ConsentRequests/{id}/withdraw [EXISTS]
    Auth: {wellbeingAdvisorToken}
-   Expect: status = withdrawn; withdrawing an answered request -> 400
+   Expect: status = withdrawn; withdrawing an answered request -> 409
+   GET /api/ConsentRequests/me/sent [EXISTS] -> every request of the advisor with its status
 
 EX8: Student manages consent and erasure
-1. Student opens the consent page
-   GET /api/Consents/me [PLANNED - Member B]
+1. Student opens the consent page and sees each purpose and its attributes
+   GET /api/Consents/me [EXISTS]
    Auth: {studentToken}
-   Expect: each active purpose with its attributes and the student's consent status per attribute (granted / narrowed / withdrawn / none)
-2. Student grants, narrows or withdraws consent per purpose
-   Grant: POST /api/Consents [PLANNED - Member B]
+   Expect: each active purpose (and any purpose the student has consents under) with its attributes and the student's status per attribute (none / granted / expired / withdrawn)
+2. Student grants or withdraws consent per purpose, or withdraws single attributes of a purpose
+   Grant: POST /api/Consents [EXISTS]
    Body:
    {
      "consentPurposeId": "{purposeWellbeingId}",
      "dataAttributeIds": ["{attrAttendanceId}", "{attrAccommodationId}"],
      "expiresAt": "2027-04-25T00:00:00Z"
    }
+   Expect: one consent per attribute (an attribute already granted is kept, an expired one is renewed)
    Save: consentIds -> {consentAttendanceWbId}, {consentAccommodationWbId}
-   Narrow: PUT /api/Consents/{consentAccommodationWbId}/narrow [PLANNED - Member B]
-   Withdraw: PUT /api/Consents/{consentAttendanceWbId}/withdraw [PLANNED - Member B]
+   Change expiry: PUT /api/Consents/{consentAccommodationWbId} [EXISTS], body { "expiresAt": null }
+   Withdraw one attribute: PUT /api/Consents/{consentAttendanceWbId}/withdraw [EXISTS]
+   Withdraw a whole purpose: PUT /api/Consents/me/purposes/{purposeWellbeingId}/withdraw [EXISTS] -> number withdrawn
+   Negative: an archived attribute or an attribute outside the purpose -> 409/400; "expiresAt" in the past -> 400; another student's consentId -> 404
 3. Every change is recorded in consent history
-   GET /api/ConsentHistories/search?consentId={consentAttendanceWbId} [PLANNED - Member B]
-   Expect: none -> granted -> withdrawn with changedBy = student
+   GET /api/Consents/me/histories [EXISTS] (Student), GET /api/Consents/histories/search?consentId={consentAttendanceWbId} [EXISTS] (Steward)
+   Expect: null -> granted, then granted -> withdrawn, changedBy = student
 4. On withdrawal
 4.1. Access is blocked immediately
    GET /api/StudentIndicators/students/{studentId}/profile [PLANNED - Member C] with {wellbeingAdvisorToken}
-   Expect: Attendance rate -> "exists, not shared"
-4.2. An erasure request is queued (automatic)
+   Expect: Attendance rate -> "exists, not shared" (unless still granted under another purpose the advisor's role has a policy for)
+4.2. An erasure request is queued (automatic, only when the attribute is no longer granted under any purpose and the student has an active key for it)
+   Note: keys are created by B4.1 (envelope encryption, not built yet), so until then no erasure request is queued
 4.3. Steward verifies the withdrawal and executes the erasure
-   GET /api/ErasureRequests/search?status=pending [PLANNED - Member B]
-   PUT /api/ErasureRequests/{erasureRequestId}/execute [PLANNED - Member B]
+   GET /api/ErasureRequests/search?status=pending [EXISTS]
+   PUT /api/ErasureRequests/{erasureRequestId}/execute [EXISTS]
    Auth: {stewardToken}
-   Expect: status = completed, executedAt set; the ATTRIBUTEKEYS row status = destroyed
+   Expect: status = completed, executedAt and executedBy set; the ATTRIBUTEKEYS row status = destroyed; executing again -> 409; executing after the student shared the attribute again -> 409
 4.4. The values become unreadable; the audit trail stays
-   Expect: profile shows the value as erased; ACCESSLOGS and CONSENTHISTORIES rows are still there
+   Expect: consents, consent history and access log rows are still there
 4.5. Student is notified
    GET /api/Notifications/me [EXISTS] with {studentToken}
 
 EX9: Access log review
-1. Every staff read of student data is checked and logged (automatic, see WF2 5.2)
+1. Every staff read of student data is checked and logged (automatic, IAccessGuardService; one row per attribute read, see WF2 5.2)
 2. Student views own access log and may flag an entry
-   GET /api/AccessLogs/me [PLANNED - Member B]
-   PUT /api/AccessLogs/me/{accessLogId}/flag [PLANNED - Member B]
+   GET /api/AccessLogs/me?fromDate=2026-10-01&toDate=2026-11-01&roleName=Wellbeing Advisor [EXISTS]
+   PUT /api/AccessLogs/me/{accessLogId}/flag [EXISTS]
    Auth: {studentToken}
-   Expect: isFlagged = true, status = unreviewed
+   Expect: isFlagged = true, status = unreviewed; every Steward is notified; flagging it again -> 409; another student's entry -> 404
 3. Steward searches/filters the access log, reviews flagged entries and exports processing records
-   GET /api/AccessLogs/search?isFlagged=true&from=2026-10-01&to=2026-10-31 [PLANNED - Member B]
-   PUT /api/AccessLogs/{accessLogId}/review [PLANNED - Member B]
-   Body: { "status": "cleared" }   (or "confirmedIssue")
-   GET /api/AccessLogs/processing-record/export?studentId={studentId}&from=2026-09-07&to=2026-12-27&format=xlsx [PLANNED - Member B]
+   GET /api/AccessLogs/search?isFlagged=true&fromDate=2026-10-01&toDate=2026-11-01 [EXISTS]
+   PUT /api/AccessLogs/{accessLogId}/flag [EXISTS] (the Steward can flag too)
+   PUT /api/AccessLogs/{accessLogId}/review [EXISTS]
+   Body: { "status": "cleared" }   (or "confirmedIssue"; reviewing an entry that is not flagged -> 409)
+   GET /api/AccessLogs/processing-record/export?studentId={studentId}&format=xlsx [EXISTS]
+   GET /api/AccessLogs/processing-record/export?fromDate=2026-09-07&toDate=2026-12-27&format=csv [EXISTS]
    Auth: {stewardToken}
+   Expect: a file download (not JSON); neither a student nor both dates -> 400
 
 EX10: Emergency access (pending review)
 1. Staff requests access beyond consent with a justification
-   POST /api/EmergencyAccessRequests [PLANNED - Member B]
+   POST /api/EmergencyAccessRequests [EXISTS]
    Auth: {wellbeingAdvisorToken}
    Body:
    {
      "studentId": "{studentId}",
      "justification": "Student has not attended for 3 weeks and is not answering; need the accommodation record to check on their safety."
    }
+   Expect: status = pending, stewardId = null; every Steward is notified
    Save: -> {emergencyRequestId}
-2. Steward approves with a time limit, or rejects
-   GET /api/EmergencyAccessRequests/search?status=pending [PLANNED - Member B]
-   PUT /api/EmergencyAccessRequests/{emergencyRequestId}/approve [PLANNED - Member B]
-   Body: { "scopeExpiresAt": "2026-10-22T10:00:00Z" }
-   PUT /api/EmergencyAccessRequests/{id}/reject [PLANNED - Member B]
+   Edit: PUT /api/EmergencyAccessRequests/{emergencyRequestId} [EXISTS], body { "justification": "..." } (pending only)
+   GET /api/EmergencyAccessRequests/me [EXISTS] -> the requester's own requests
+2. A Steward approves with a time limit, or rejects (Stewards share one pool; the first to act decides)
+   GET /api/EmergencyAccessRequests/search?status=pending [EXISTS]
+   PUT /api/EmergencyAccessRequests/{emergencyRequestId}/approve [EXISTS]
+   Body: { "scopeExpiresAt": "2026-10-25T10:00:00Z" }
+   PUT /api/EmergencyAccessRequests/{id}/reject [EXISTS]
    Auth: {stewardToken}
+   Expect: stewardId = the steward who acted; a second steward acting on the same request -> 409; scopeExpiresAt in the past -> 400
 3. Access ends automatically when the time limit passes; every access is logged
-   Test: approve with a scopeExpiresAt 5 minutes ahead, read the profile (allowed), wait, read again (refused)
+   Expect: isExpired = true once scopeExpiresAt has passed
+   Note: the access guard does not use emergency access yet, because ACCESSLOGS.consentPurposeId is required and an emergency read has no purpose (open question in NOTES)
 
 EX11: Master data setup
 1. Admin manages academic terms
@@ -1073,16 +1100,15 @@ NOTES
 ==========
 
 - All [PLANNED] routes are proposals: the member who builds the controller may rename them; update this file when they do
+- Member B's routes are built and tagged [EXISTS]; Members C and D call IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync, then LogAccessAsync) before showing or exporting any indicator value
 - EX1, EX2 step 4, WF1 step 4.2 and EX16 avatar need Google, Gmail and Supabase values in appsettings.json; until then they return errors from the outside service
 - Notifications sent by other features (WF2 step 4, EX4, EX5, EX6, EX7, EX8, EX15) depend on NotificationService.NotifyAsync being called by Members B, C and D
-- GET /api/Roles is System Administrator only today; WF3 step 4 (Steward picks a role) needs it opened to the Steward or a role list inside the access policy API
 - Open questions for the owners of the planned endpoints:
   - WF2 2.5: does the student set the case priority, or only the Programme Head / Welfare Officer?
   - WF2b 2.2: is the priority set on the case or on the referral?
   - WF2b 2.3 and EX4 step 4: REFERRALS has no column for the return reason (store it in the stage history reason?)
   - WF2b 6: after the welfare referral is accepted, does the case's advisorId change to the Welfare Officer, or stay with the wellbeing advisor?
-  - WF3 2.2: INDICATORS and DATAATTRIBUTES have no status column, so archiving needs one
-  - WF3 3.1: CONSENTPURPOSES defaults to active, but WF3 activates it in step 3.3 (create as inactive?)
   - EX6 3.2: ASSIGNMENTCHANGEREQUESTS has no column for the rejection reason (reason holds the requester's reason)
-  - EX7 3.1: CONSENTREQUESTS has no consentPurposeId, but CONSENTS needs one when the request is granted
+  - EX10 3: ACCESSLOGS.consentPurposeId is required, but an emergency read has no purpose (make it nullable, null = emergency access?)
+  - EX10 2: "Reject a request with a reason" (Functional Requirements) has no column in EMERGENCYACCESSREQUESTS
   - EX15 1: is fieldName the indicator name, or should CORRECTIONREQUESTS point to the STUDENTINDICATORS row?

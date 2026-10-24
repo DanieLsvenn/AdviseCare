@@ -5,12 +5,12 @@ namespace AdviseCare.Application.Interfaces.Services
 {
     public interface IIndicatorService
     {
-        Task<IEnumerable<GetAllIndicatorResponse>> GetAllAsync();
+        Task<IEnumerable<GetAllIndicatorResponse>> GetAll();
         Task<IEnumerable<GetAllIndicatorWithPaginationResponse>> GetAllWithPaginationAsync(int page, int pageSize);
-        Task<GetIndicatorByIdResponse> GetByIdAsync(Guid id);
+        Task<GetIndicatorByIdResponse> GetByIdAsync(Guid IndicatorId);
         Task<List<SearchIndicatorResponse>> SearchAsync(SearchIndicatorRequest request);
         Task<CreateIndicatorResponse> CreateAsync(CreateIndicatorRequest request);
-        Task<UpdateIndicatorResponse> UpdateAsync(Guid id, UpdateIndicatorRequest request);
-        Task<ArchiveIndicatorResponse> ArchiveAsync(Guid id);
+        Task<UpdateIndicatorResponse> UpdateAsync(Guid IndicatorId, UpdateIndicatorRequest request);
+        Task<bool> ArchiveAsync(Guid IndicatorId);
     }
 }
