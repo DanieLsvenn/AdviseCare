@@ -61,6 +61,7 @@ builder.Services.AddScoped<IStudentIndicatorProfileService, StudentIndicatorProf
 builder.Services.AddScoped<IStudentDataExportService, StudentDataExportService>();
 builder.Services.AddScoped<ICorrectionRequestService, CorrectionRequestService>();
 builder.Services.AddScoped<IWelfareStatisticsService, WelfareStatisticsService>();
+builder.Services.AddScoped<ICohortIndicatorService, CohortIndicatorService>();
 builder.Services.AddScoped<IAuthenticatedEnvelopeEncryptionService, AuthenticatedEnvelopeEncryptionService>();
 
 // Member B

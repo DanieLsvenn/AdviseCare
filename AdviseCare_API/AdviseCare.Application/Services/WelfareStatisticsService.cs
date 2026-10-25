@@ -6,7 +6,6 @@ using AdviseCare.Application.Interfaces.Services;
 using AdviseCare.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
-using System.Text;
 
 namespace AdviseCare.Application.Services;
 
@@ -119,31 +118,17 @@ public sealed class WelfareStatisticsService(
 
     private static byte[] ToCsv(IReadOnlyList<WelfareStatisticsByCategoryResponse> statistics)
     {
-        var builder = new StringBuilder();
-        builder.AppendLine("categoryName,caseCount,studentCount");
+        var rows = statistics.Select(statistic => (IReadOnlyList<string>)
+            new[]
+            {
+                CsvExportWriter.EscapeTextCell(statistic.CategoryName),
+                statistic.CaseCount.ToString(CultureInfo.InvariantCulture),
+                statistic.StudentCount.ToString(CultureInfo.InvariantCulture)
+            });
 
-        foreach (var statistic in statistics)
-        {
-            builder.Append(EscapeCsv(statistic.CategoryName));
-            builder.Append(',');
-            builder.Append(statistic.CaseCount.ToString(CultureInfo.InvariantCulture));
-            builder.Append(',');
-            builder.Append(statistic.StudentCount.ToString(CultureInfo.InvariantCulture));
-            builder.AppendLine();
-        }
-
-        return Encoding.UTF8.GetPreamble()
-            .Concat(Encoding.UTF8.GetBytes(builder.ToString()))
-            .ToArray();
-    }
-
-    private static string EscapeCsv(string value)
-    {
-        var firstNonWhitespace = value.FirstOrDefault(character => !char.IsWhiteSpace(character));
-        var safeValue = firstNonWhitespace is '=' or '+' or '-' or '@'
-            ? $"'{value}"
-            : value;
-        return $"\"{safeValue.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+        return CsvExportWriter.WriteRows(
+            new[] { "categoryName", "caseCount", "studentCount" },
+            rows);
     }
 
     private sealed record CaseDateRange(

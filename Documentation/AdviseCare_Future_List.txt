@@ -66,4 +66,3 @@ NOT FUTURE, BUT PENDING REVIEW
 ==========
 
 - Emergency access (EMERGENCYACCESSREQUESTS)
-- Anonymised cohort indicators

@@ -91,6 +91,13 @@ C3.4. Escalations: officer raises, Programme Head responds, status tracking
 C3.5. Anonymised welfare statistics (implemented as C-09): aggregate cases by support category for one academic term or a complete UTC calendar-date range; suppress categories with fewer than five distinct students; return no student-level rows or overall totals; Welfare Officer-only CSV export is generated on demand and activity-logged.
 Note: welfare works on existing CASES rows (from the seed data), so it does not wait for Member D's case APIs
 
+C4. Anonymised cohort indicator analytics (C-10)
+C4.1. Staff-only summary and CSV export; require a term, faculty, or both (faculty-only queries remain separated by term)
+C4.2. Use the latest row per student/indicator/term; exclude missing, erased, and inactive-indicator values
+C4.3. Decrypt only after the access guard approves the active "Cohort Analytics" purpose, caller role policy, and each student's explicit consent; log every source-value read
+C4.4. Return numeric mean/count and categorical/boolean frequency/count cells only; suppress each cell with fewer than ten distinct students and never return student-level values
+C4.5. Use the student's current programme/faculty association; historical faculty-at-term analysis is unavailable because programme history is not stored
+
 ==========
 MEMBER D - SUPPORT REQUESTS, CASES, MATCHING AND REPORTS
 Tables owned: SUPPORTCATEGORIES, CASES, CASENOTES, CASESTAGEHISTORIES, REFERRALS, ADVISORASSIGNMENTS, ASSIGNMENTCHANGEREQUESTS

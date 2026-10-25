@@ -56,6 +56,7 @@ Consent data (created in WF3)
 - Indicators/attributes: GPA (numeric) -> {indGpaId}/{attrGpaId}; Attendance rate (numeric) -> {indAttendanceId}/{attrAttendanceId}; Accommodation status (categorical) -> {indAccommodationId}/{attrAccommodationId}; Financial difficulty (boolean) -> {indFinancialId}/{attrFinancialId}
 - Purposes: Academic advising (GPA, Attendance rate) -> {purposeAcademicId}; Wellbeing support (Attendance rate, Accommodation status) -> {purposeWellbeingId}; Financial support (Financial difficulty, Accommodation status) -> {purposeFinancialId}
 - Access policies (all active): Academic Advisor - Academic advising; Wellbeing Advisor - Wellbeing support; Wellbeing Advisor - Financial support; Student Welfare Officer - Financial support
+- Cohort analytics test prerequisite: configure an active "Cohort Analytics" purpose covering the selected attributes, active policies for the staff roles under test, and explicit granted consent for each test student's selected attributes. The API never grants consent automatically.
 
 Support categories (created in EX11 step 4)
 - Course content question (academic, Academic advising) -> {catCourseContentId}
@@ -72,28 +73,8 @@ Files to prepare (keep them in a TestFiles folder next to this file)
 RECOMMENDED RUN ORDER
 ==========
 
-EX11 steps 1-3 (faculties, programmes, terms, subjects) -> WF1 -> EX1 -> EX2 -> EX12 -> WF3 -> EX11 step 4 (support categories) -> WF5 -> WF2 -> EX7 -> EX4 -> WF2b -> EX5 -> EX6 -> EX3 -> EX8 -> EX9 -> EX10 -> EX13 -> EX14 -> EX15 -> WF4 -> EX16
+EX11 steps 1-3 (faculties, programmes, terms, subjects) -> WF1 -> EX1 -> EX2 -> EX12 -> WF3 -> EX11 step 4 (support categories) -> WF5 -> WF2 -> EX7 -> EX4 -> WF2b -> EX5 -> EX6 -> EX3 -> EX8 -> EX9 -> EX10 -> EX13 -> EX14 -> EX15 -> WF4 -> EX16 -> EX17 -> EX18
 Members A and B can be tested now: EX11 (steps 1-3), WF1, EX1, EX2, EX12, EX16, WF3, EX7, EX8 (except the profile check in 4.1), EX9 (the log fills once Member C reads data through the access guard) and EX10; the rest wait for Members C and D.
-
-MEMBER C IMPLEMENTATION CHECKPOINTS
-===================================
-
-Each checkpoint is a separate change intended to be reviewed and pushed independently. Implement them in dependency order; stop for approval between checkpoints.
-- C-01 External service read API: list, get by id, and filter the catalogue (implemented).
-- C-02 External service catalogue writes: create/update (System Administrator only; Welfare Officers have read access; implemented).
-- C-03 External referrals and follow-up, including overdue detection (uses existing CASES and EXTERNALSERVICES; implemented).
-- C-04 Welfare escalations (uses existing CASES; implemented).
-- C-05 Interventions and support grants (uses existing CASES; implemented).
-- C-06a Indicator import file preview, column mapping, and whole-file validation for .xlsx/.csv (implemented; no data is written).
-- C-06b1 Authenticated AES-256-GCM envelope encryption and per-student/attribute Vault Transit key provisioning (implemented; Vault keys enable deletion, DEKs are wrapped by Transit, and HMAC subkeys are HKDF-derived).
-- C-06b2 Insert-only indicator persistence, missing flags, StudentProfile provisioning, studentCode resolution, and import activity logging (implemented; imports are all-or-nothing, and missing rows cover all active Student-role accounts for each imported indicator/term pair).
-- C-07a Authorized advisor indicator-profile reads, consent-gated decryption, and per-value access logging (implemented; assigned-case advisor only; optional term filter).
-- C-07b Point-in-time indicator history and comparison (implemented; reconstructs system knowledge through the end of the selected UTC date; each snapshot uses C-07a access checks and logging).
-- C-07c Student own-profile access and JSON export (implemented; self-only profile, current indicator values, own cases and own access log; export recorded in ACTIVITYLOGS).
-- C-08 Correction requests (implemented; each request has a composite FK to its exact student-indicator row, encrypted before/after values, assigned-advisor review, and insert-only correction history).
-- C-09 Anonymised welfare statistics (implemented; cases grouped by support category for one academic term or a complete UTC date range; categories with fewer than five distinct students are suppressed; Welfare Officer-only CSV export is generated on demand and activity-logged).
-- C-08 runtime verification (passed on 2026-10-25 against the v6 development database and local Vault Transit dev server; the temporary fixture remains for inspection; see [Member C changes and runtime validation](./Member_C_Changes_and_Runtime_Validation.md)).
-- Runtime fixes confirmed: Studentprofile's EF primary key is mapped, DI-provided database options are preserved, and new Vault Transit keys are configured for deletion after creation.
 
 ==========
 MAIN WORKFLOWS
@@ -427,6 +408,7 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    Expect: the selected service, or 404 if it does not exist
    GET /api/ExternalServices?page=1&pageSize=20 [IMPLEMENTED - Member C C-01]
    Expect: first page of services, ordered by service name
+   Runtime validation: current build returned the fixture rows in sorted order; page 1/page 2 returned 2/1 rows, and service-name, type, active/inactive, combined, and no-match filters passed. Unknown ID returned 404, invalid page returned 400, anonymous access returned 401, and Student-role read access returned 200. The three synthetic services were removed afterward.
 4.1.1. If a service is not listed, the System Administrator adds it to the catalogue
    POST /api/ExternalServices [IMPLEMENTED - Member C C-02]
    Auth: {adminToken}
@@ -442,6 +424,7 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    Auth: {adminToken}
    Body: { "contactInfo": "Hotline 1900 1234", "serviceName": "Example Bank Student Loan Desk", "serviceType": "Bank", "isActive": true }
    Expect: 200, updated service; a Welfare Officer calling PUT receives 403
+   Runtime validation: current build created and updated a synthetic service as System Administrator; normalized fields and persisted inactive-state read-back passed. Welfare Officer writes returned 403, anonymous create returned 401, invalid inputs returned 400, and unknown update returned 404. The synthetic service was removed afterward.
 4.1.2. Welfare Officer records the external referral with an expected follow-up date
    POST /api/ExternalReferrals [IMPLEMENTED - Member C C-03]
    Auth: {welfareOfficerToken}
@@ -463,12 +446,14 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    Auth: {welfareOfficerToken}
    Body: { "followUpOutcome": "Bank approved a student loan of 20,000,000 VND for the remaining tuition." }
    Expect: status = followedUp, isOverdue = false; a second follow-up update returns 409
+   Runtime validation: current build created future- and past-due referrals; search filters and persisted overdue marking passed. Follow-up changed status to followedUp, cleared overdue, and a second update returned 409. Inactive service returned 400, unknown case/service 404, anonymous access 401, and Student role 403. All synthetic referral/case/service/category/purpose rows were removed.
 5. If the case goes beyond the Welfare Officer's authority -> see EX5
 6. Welfare Officer closes the intervention; the case goes back to the advisor
    PUT /api/Interventions/{interventionId}/close [IMPLEMENTED - Member C C-05]
    Auth: {welfareOfficerToken}
    Body: { "outcome": "Tuition reduced and bank loan approved. Handing back to the wellbeing advisor." }
    Expect: isClosed = true, status = completed; the case's assigned advisor is notified when assigned; further intervention edits return 409
+   Runtime validation: current build created/updated an intervention, recorded a support grant, persisted outcome, and closed it as completed. Offset dates normalized to UTC; grant search and advisor in-app notification passed. Closed intervention mutations/grant creation returned 409; invalid inputs returned 400, unknown case 404, and Student/anonymous access 403/401. The synthetic grant/intervention/case/category/purpose, notification, and temporary email safeguard were removed.
    Then the wellbeing advisor continues with WF2 step 9 on {caseWellbeingId}
 
 WF3: Steward sets up consent
@@ -618,10 +603,12 @@ WF5: Admin imports student indicator data
    student@gmail.com      | GPA             | abc   | Fall 2026 | 2026-10-20     (not numeric)
    student@gmail.com      | Attendance rate | 80    | Winter 99 | 2026-10-20     (term does not exist)
    Expect: isValid = false, the 4 invalid rows with their reasons, validRowCount = 0; no STUDENTINDICATORS rows are added
+   Runtime validation: current build previewed CSV and XLSX files, validated six valid CSV rows and two valid XLSX rows, and reported an unknown student plus a nonnumeric value as invalid with validRowCount=0. Unsupported extension returned 400; Student and anonymous requests returned 403/401. STUDENTINDICATORS, ATTRIBUTEKEYS, and ACTIVITYLOGS counts did not change; the import endpoint was not called.
 4.2. If all rows are valid, every value will be inserted as a new row; existing history is never updated
    POST /api/StudentIndicators/import [IMPLEMENTED - Member C C-06b2]
    Form: file = indicators_fall2026.xlsx (same mapping)
    Expect: isSuccess = true; insertedCount = 4; missingCount reports generated missing rows. Each value row has dataSourceId = null, status = original, provenanceNote with file name/import date, and ciphertext/HMAC from the student's per-attribute key. Profiles, keys, indicator rows, and the activity log commit together.
+   Runtime validation: an invalid mixed-row CSV returned errors without writing indicator, key, profile, or import-log rows. A valid two-row CSV matched one student by studentCode and one by email, inserted two encrypted values with two wrapped keys, provisioned the missing StudentProfile, generated one missing row for the other active Student account, and wrote the indicatorsImported activity log. All synthetic rows and Vault keys were removed; only authentication audit events were retained.
    For EX13, import indicators_fall2026_update.xlsx afterwards (new rows, never updates):
    student@gmail.com | GPA             | 7.5 | Fall 2026 | 2026-11-20
    student@gmail.com | Attendance rate | 85  | Fall 2026 | 2026-11-20
@@ -818,6 +805,7 @@ EX5: Escalation to the Programme Head
    GET /api/Escalations/{escalationId} [IMPLEMENTED - Member C C-04]
    Auth: {welfareOfficerToken}
    Expect: escalation details only for the Welfare Officer who raised it or the Programme Head it was addressed to
+   Runtime validation: current build created a pending escalation, delivered the in-app notifications to the intended accounts, and allowed only the involved parties to search/read it. Programme Head response persisted as responded; repeated response returned 409. Invalid recipient/response returned 400, unknown case/escalation 404, Welfare Officer response 403, Admin/Student search 403, and anonymous access 401. Test emails were disabled temporarily; all synthetic records/preferences were removed.
 
 EX6: Advisor assignment change
 1. Advisor requests a change of the assigned advisor
@@ -1164,13 +1152,30 @@ EX17: Welfare Officer views anonymised welfare statistics
    GET /api/WelfareStatistics/export?fromDate=2026-01-01&toDate=2026-06-30 [IMPLEMENTED - Member C C-09]
    Expect: generated CSV attachment; export is recorded in ACTIVITYLOGS.
    Negative: missing either date, reversed dates, or combining termId with dates -> 400; unknown termId -> 404; another role -> 403.
+   Runtime validation: current build passed on port 5168. Term returned 7 cases from 6 students; 2026-09-10 through 2026-09-15 returned 6 cases from 5 students, including both boundary dates. The 4-student category was suppressed; CSV matched the date-range result and produced one retained export activity record. Missing filters, partial dates, reversed dates, and term/date combinations returned 400; unknown term returned 404; anonymous access returned 401.
+
+EX18: Staff views anonymised cohort indicators
+1. Configure the active Cohort Analytics purpose and role policies; students explicitly grant consent for the attributes being analyzed
+2. View by academic term
+   GET /api/CohortIndicators?termId={termFall2026Id} [IMPLEMENTED - Member C C-10]
+   Auth: {authorizedStaffToken}
+   Expect: rows contain indicatorId, indicatorName, dataType, termId, termName, categoryValue, meanValue, and studentCount. Numeric indicators return meanValue and studentCount; categorical/boolean indicators return categoryValue and studentCount. Cells with fewer than ten distinct students are omitted; no student identifiers or individual values are returned.
+3. View by faculty, retaining a separate result for each term
+   GET /api/CohortIndicators?facultyId={facultySeId} [IMPLEMENTED - Member C C-10]
+4. View by both term and faculty
+   GET /api/CohortIndicators?termId={termFall2026Id}&facultyId={facultySeId} [IMPLEMENTED - Member C C-10]
+5. Export the same summary as CSV
+   GET /api/CohortIndicators/export?termId={termFall2026Id}&facultyId={facultySeId} [IMPLEMENTED - Member C C-10]
+   Expect: generated CSV attachment; export is recorded in ACTIVITYLOGS.
+   Negative: no filters -> 400; unknown term or faculty -> 404; Student role -> 403; values without the active purpose policy and explicit student consent are excluded. Faculty filtering uses the student's current programme, not historical faculty-at-term.
+   Runtime validation: a ten-student positive control released mean 5.5 (n=10). Removing one consent or withdrawing one consent suppressed the cell; each request logged only the nine permitted reads. Revoking the Academic Advisor policy returned an empty summary without access logs; deactivating the purpose returned 409 without access logs. Test fixtures were removed.
 
 ==========
 NOTES
 ==========
 
 - All [PLANNED] routes are proposals: the member who builds the controller may rename them; update this file when they do
-- Member B's routes are built and tagged [EXISTS]; Members C and D call IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync, then LogAccessAsync) before showing or exporting any indicator value. C-07a's assigned-advisor profile read is implemented at GET /api/StudentIndicators/students/{studentId}/profile?caseId={caseId}[&termId={termId}]. C-07b's as-of and compare reads require the same case assignment and consent checks. C-07c permits a Student-role account to read only its own profile; the access guard intentionally skips access-log rows for self-reads, while JSON exports write a dataExported activity log.
+- Member B's routes are built and tagged [EXISTS]; Members C and D call IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync, then LogAccessAsync) before showing or exporting any indicator value. C-07a's assigned-advisor profile read is implemented at GET /api/StudentIndicators/students/{studentId}/profile?caseId={caseId}[&termId={termId}]. C-07b's as-of and compare reads require the same case assignment and consent checks. C-07c permits a Student-role account to read only its own profile; ordinary self-reads intentionally skip access-log rows, while C-10 logs each source value used in the cohort aggregate under its explicit purpose. JSON exports write a dataExported activity log.
 - STUDENTINDICATORS.indicatorValue is binary ciphertext linked to ATTRIBUTEKEYS.attributeKeyId; missing rows have no key or payload. The API must encrypt before insert and must never return ciphertext as a user-facing value.
 - Erasure uses Vault Transit: configure `VaultTransit:Address`, `VaultTransit:MountPath`, and `VaultTransit:KeyNamePrefix`; provide `VaultTransit:Token` through environment/user secrets, never source control. Each key must have Vault `deletion_allowed=true`; the API does not report completion until external deletion and SQL confirmation both succeed.
 - CASES.requestReasonVisibility and CASENOTES.visibility default to caseTeam and allow assignedAdvisor; API enforcement is still required before case text is returned, referred or exported.

@@ -1,0 +1,24 @@
+@baseUrl = http://127.0.0.1:5167
+@staffToken = replace-with-authorized-staff-jwt
+@termId = 00000000-0000-0000-0000-000000000001
+@facultyId = 00000000-0000-0000-0000-000000000002
+
+### View cohort indicator statistics by term
+GET {{baseUrl}}/api/CohortIndicators?termId={{termId}}
+Authorization: Bearer {{staffToken}}
+
+### View cohort indicator statistics by faculty, with separate results per term
+GET {{baseUrl}}/api/CohortIndicators?facultyId={{facultyId}}
+Authorization: Bearer {{staffToken}}
+
+### View cohort indicator statistics by both term and faculty
+GET {{baseUrl}}/api/CohortIndicators?termId={{termId}}&facultyId={{facultyId}}
+Authorization: Bearer {{staffToken}}
+
+### Export cohort indicator statistics as CSV
+GET {{baseUrl}}/api/CohortIndicators/export?termId={{termId}}&facultyId={{facultyId}}
+Authorization: Bearer {{staffToken}}
+
+### Invalid: at least one cohort filter is required
+GET {{baseUrl}}/api/CohortIndicators
+Authorization: Bearer {{staffToken}}

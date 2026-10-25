@@ -3,26 +3,6 @@ ADVISECARE WORKFLOWS (current version)
 Actors: System Administrator (Admin), Data Protection Steward (Steward), Academic Advisor, Wellbeing Advisor, Student Welfare Officer (Welfare Officer), Student, Programme Head (usually one for the whole app, the manager; the system allows more)
 External: Google (personal account sign-in), Email service, External Support Services
 
-MEMBER C IMPLEMENTATION CHECKPOINTS
-===================================
-
-Member C work is split into independently reviewable/pushable checkpoints. Proceed one checkpoint at a time and request approval before starting the next:
-- C-01 External service read API: list, get by id, and filter the catalogue (implemented).
-- C-02 External service catalogue writes: create/update (System Administrator only; Welfare Officers have read access; implemented).
-- C-03 External referrals and follow-up, including overdue detection (uses existing CASES and EXTERNALSERVICES; implemented).
-- C-04 Welfare escalations (uses existing CASES; implemented).
-- C-05 Interventions and support grants (uses existing CASES; implemented).
-- C-06a Indicator import file preview, column mapping, and whole-file validation for .xlsx/.csv (implemented; no data is written).
-- C-06b1 Authenticated AES-256-GCM envelope encryption and per-student/attribute Vault Transit key provisioning (implemented; Vault keys enable deletion, DEKs are wrapped by Transit, and HMAC subkeys are HKDF-derived).
-- C-06b2 Insert-only indicator persistence, missing flags, StudentProfile provisioning, studentCode resolution, and import activity logging (implemented; imports are all-or-nothing and missing rows cover all active Student-role accounts for each imported indicator/term pair).
-- C-07a Authorized advisor indicator-profile reads, consent-gated decryption, and per-value access logging (implemented; assigned-case advisor only; optional term filter).
-- C-07b Point-in-time indicator history and comparison (implemented; reconstructs system knowledge through the end of the selected UTC date; each snapshot uses C-07a access checks and logging).
-- C-07c Student own-profile access and JSON export (implemented; self-only profile, current indicator values, own cases and own access log; export recorded in ACTIVITYLOGS).
-- C-08 Correction requests (implemented; each request has a composite FK to its exact student-indicator row, encrypted before/after values, assigned-advisor review, and insert-only correction history).
-- C-09 Anonymised welfare statistics (implemented; cases grouped by support category for one academic term or a complete UTC date range; categories with fewer than five distinct students are suppressed; Welfare Officer-only CSV export is generated on demand and activity-logged).
-- C-08 runtime verification (passed on 2026-10-25 against the v6 development database and local Vault Transit dev server; the temporary fixture remains for inspection; see [Member C changes and runtime validation](./Member_C_Changes_and_Runtime_Validation.md)).
-- Startup fixes confirmed during runtime verification: Studentprofile has its EF primary-key mapping, DI-provided database options are preserved, and Vault Transit keys are configured for deletion after creation.
-
 ==========
 MAIN WORKFLOWS
 ==========
@@ -142,7 +122,7 @@ WF5: Admin imports student indicator data
 4.2. If all rows are valid, C-06b2 inserts new STUDENTINDICATORS rows only (dataSourceId null, provenanceNote includes file name and import date); C-06b1 supplies authenticated ciphertext and HMAC using the student's per-attribute key
 5. C-06b2 inserts an isMissing row for every active Student-role account missing each indicator/term pair represented in the import; missing-row validFrom is the term start date
 6. C-06b2 writes import activity history in the same database save and returns inserted/missing row counts
-7. Note: C-06b1 authenticated encryption/key provisioning, C-06b2 import persistence, C-07, and C-08 are implemented; C-08 has passed manual runtime verification. The next Member C checkpoint has not started and requires user approval. Scheduled automatic ingestion (data sources, schedules, jobs) is future work (see AdviseCare_Future_List.txt)
+7. Note: C-06b1 authenticated encryption/key provisioning and C-06b2 import persistence have passed runtime validation; C-08, C-09, and C-10 have also passed runtime verification (see AdviseCare_Backend_Task_Division.txt and Member_C_Changes_and_Runtime_Validation.md). C-07 is implemented but has not yet been runtime-verified. No unimplemented checkpoint is currently listed for Member C. Scheduled automatic ingestion (data sources, schedules, jobs) remains future work (see AdviseCare_Future_List.txt).
 
 ==========
 EXTRA WORKFLOWS
@@ -272,6 +252,16 @@ EX17: Welfare Officer views anonymised welfare statistics
 2. System counts cases by support category using the case opened date; categories represented by fewer than five distinct students are suppressed
 3. Welfare Officer views the category, case count, and distinct-student count; no student-level rows or overall total are shown
 4. Welfare Officer can download the same aggregate results as a generated CSV file
+
+EX18: Staff views anonymised cohort indicators
+1. A System Administrator configures an active Cohort Analytics purpose and role policies; each student explicitly consents to sharing the covered attributes
+2. An authorized staff member selects a term, a faculty, or both; faculty-only results stay separated by term
+3. The system uses the latest indicator value per student/indicator/term, and excludes missing, erased, and inactive-indicator values
+4. The system applies the consent/access policy before decryption, logs each source-value read, and returns only aggregates
+5. Numeric indicators show mean and distinct-student count; categorical/boolean indicators show frequency and distinct-student count
+6. Any aggregate cell representing fewer than ten distinct students is suppressed; student-level identifiers and values are never returned
+7. The staff member can download the same summary as a generated CSV file; the export is activity-logged
+8. Faculty filtering reflects each student's current programme/faculty because historical programme membership is not stored
 
 ==========
 FUTURE (not in the current version, details in AdviseCare_Future_List.txt)

@@ -346,11 +346,14 @@ For now matching is manual; an automated/AI matching mode is a future plan.
 + Review advisor caseload volume and case closure times
 + Export the list/report (Excel/CSV/PDF)
 
-- View anonymised cohort indicators (pending review):
+- View anonymised cohort indicators (staff roles only, with the active "Cohort Analytics" purpose, an active role policy, and each student's explicit consent):
 
-+ View cohort-level indicator summary
-+ Filter by term or faculty
-+ Export cohort summary
++ Require a term, a faculty, or both; when only a faculty is selected, keep results separated by term
++ Use the latest indicator value per student/indicator/term and exclude missing, erased, or inactive-indicator values
++ Show numeric mean and distinct-student count, or categorical/boolean frequency and distinct-student count
++ Suppress each released cell with fewer than ten distinct students; never expose student-level values or identifiers
++ Use each student's current faculty association; historical faculty-at-term filtering is not available
++ Export the same anonymised summary as CSV
 
 All authenticated users
 

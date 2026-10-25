@@ -34,9 +34,13 @@ namespace AdviseCare.Application.Services
         }
 
         // Check the same data attributes for a list of students at once (e.g. the advisor's student list with indicators), under any purpose
-        public async Task<List<AccessDecision>> CheckAccessForStudentsAsync(Guid AccessorId, List<Guid> StudentIds, List<Guid> DataAttributeIds)
+        public async Task<List<AccessDecision>> CheckAccessForStudentsAsync(
+            Guid AccessorId,
+            List<Guid> StudentIds,
+            List<Guid> DataAttributeIds,
+            Guid? ConsentPurposeId = null)
         {
-            return await DecideAsync(AccessorId, StudentIds, DataAttributeIds, null);
+            return await DecideAsync(AccessorId, StudentIds, DataAttributeIds, ConsentPurposeId);
         }
 
         // Write one access log row (one row per data attribute read; students reading their own data are not logged)
@@ -45,18 +49,43 @@ namespace AdviseCare.Application.Services
             if (AccessorId == StudentId)
                 return;
 
-            var accessedResource = AccessedResource.Trim();
-            await _accessLogRepository.CreateAsync(new Accesslog
+            await LogAccessBatchAsync(
+                AccessorId,
+                new[] { new AccessLogBatchEntry(StudentId, ConsentPurposeId, AccessedResource) });
+        }
+
+        public async Task LogAccessBatchAsync(
+            Guid AccessorId,
+            IReadOnlyCollection<AccessLogBatchEntry> Entries)
+        {
+            var now = DateTime.UtcNow;
+            var logs = Entries
+                .Select(entry =>
+                {
+                    var accessedResource = entry.AccessedResource.Trim();
+                    return new Accesslog
+                    {
+                        AccessLogId = Guid.NewGuid(),
+                        AccessorId = AccessorId,
+                        ConsentPurposeId = entry.ConsentPurposeId,
+                        RecordedUserId = entry.StudentId,
+                        AccessedResource = accessedResource.Length > 255 ? accessedResource[..255] : accessedResource,
+                        AccessedAt = now,
+                        IsFlagged = false,
+                        Status = null
+                    };
+                })
+                .ToList();
+
+            if (logs.Count == 0)
             {
-                AccessLogId = Guid.NewGuid(),
-                AccessorId = AccessorId,
-                ConsentPurposeId = ConsentPurposeId,
-                RecordedUserId = StudentId,
-                AccessedResource = accessedResource.Length > 255 ? accessedResource[..255] : accessedResource,
-                AccessedAt = DateTime.UtcNow,
-                IsFlagged = false,
-                Status = null
-            });
+                return;
+            }
+
+            foreach (var log in logs)
+                _accessLogRepository.PrepareCreate(log);
+
+            await _accessLogRepository.SaveAsync();
         }
 
         // Helper: access is allowed when the student has a granted, unexpired consent on the attribute under a purpose that is active,
@@ -69,12 +98,17 @@ namespace AdviseCare.Application.Services
                 .SelectMany(s => attributeIds.Select(a => new AccessDecision { StudentId = s, DataAttributeId = a }))
                 .ToList();
 
-            // Students always see their own data
-            foreach (var decision in decisions.Where(d => d.StudentId == AccessorId))
-                decision.IsAllowed = true;
+            // Self-reads without a specified purpose retain the student-profile behavior.
+            if (!ConsentPurposeId.HasValue)
+            {
+                foreach (var decision in decisions.Where(d => d.StudentId == AccessorId))
+                    decision.IsAllowed = true;
+            }
 
-            var otherStudentIds = studentIds.Where(s => s != AccessorId).ToList();
-            if (otherStudentIds.Count == 0 || attributeIds.Count == 0)
+            var studentsRequiringConsent = ConsentPurposeId.HasValue
+                ? studentIds
+                : studentIds.Where(studentId => studentId != AccessorId).ToList();
+            if (studentsRequiringConsent.Count == 0 || attributeIds.Count == 0)
                 return decisions;
 
             var roleIds = (await _accountRoleRepository.SearchAsync(ar => ar.AccountId == AccessorId))
@@ -100,7 +134,7 @@ namespace AdviseCare.Application.Services
 
             var now = DateTime.UtcNow;
             var consents = (await _consentRepository.SearchAsync(c =>
-                    otherStudentIds.Contains(c.StudentId) &&
+                    studentsRequiringConsent.Contains(c.StudentId) &&
                     attributeIds.Contains(c.DataAttributeId) &&
                     purposeIds.Contains(c.ConsentPurposeId) &&
                     c.Status == "granted" &&
@@ -108,7 +142,7 @@ namespace AdviseCare.Application.Services
                 .Where(c => coveredAttributes[c.ConsentPurposeId].Contains(c.DataAttributeId))
                 .ToList();
 
-            foreach (var decision in decisions.Where(d => d.StudentId != AccessorId))
+            foreach (var decision in decisions.Where(d => studentsRequiringConsent.Contains(d.StudentId)))
             {
                 var consent = consents
                     .Where(c => c.StudentId == decision.StudentId && c.DataAttributeId == decision.DataAttributeId)
