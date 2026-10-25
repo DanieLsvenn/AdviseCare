@@ -26,6 +26,7 @@ namespace AdviseCare.Application.Services
         private readonly IGenericRepository<Role> _roleRepository;
         private readonly IGenericRepository<AccountRole> _accountRoleRepository;
         private readonly IGenericRepository<Faculty> _facultyRepository;
+        private readonly IGenericRepository<Studentprofile> _studentProfileRepository;
         private readonly IGenericRepository<Session> _sessionRepository;
         private readonly IActivityLogService _activityLogService;
         private readonly IPasswordHasher _passwordHasher;
@@ -40,6 +41,7 @@ namespace AdviseCare.Application.Services
             IGenericRepository<Role> roleRepository,
             IGenericRepository<AccountRole> accountRoleRepository,
             IGenericRepository<Faculty> facultyRepository,
+            IGenericRepository<Studentprofile> studentProfileRepository,
             IGenericRepository<Session> sessionRepository,
             IActivityLogService activityLogService,
             IPasswordHasher passwordHasher,
@@ -53,6 +55,7 @@ namespace AdviseCare.Application.Services
             _roleRepository = roleRepository;
             _accountRoleRepository = accountRoleRepository;
             _facultyRepository = facultyRepository;
+            _studentProfileRepository = studentProfileRepository;
             _sessionRepository = sessionRepository;
             _activityLogService = activityLogService;
             _passwordHasher = passwordHasher;
@@ -205,6 +208,14 @@ namespace AdviseCare.Application.Services
             _accountRepository.PrepareCreate(account);
             foreach (var role in roles)
                 _accountRoleRepository.PrepareCreate(new AccountRole { AccountId = account.AccountId, RoleId = role.RoleId, AssignedAt = DateTime.UtcNow });
+            if (roles.Any(role => role.RoleName == "Student"))
+            {
+                _studentProfileRepository.PrepareCreate(new Studentprofile
+                {
+                    StudentId = account.AccountId,
+                    AcademicStatus = "unknown"
+                });
+            }
             await _accountRepository.SaveAsync();
 
             await _activityLogService.LogCurrentAccountAsync("accountCreated", $"Created account {account.Email} ({string.Join(", ", roles.Select(r => r.RoleName))})");
@@ -384,6 +395,14 @@ namespace AdviseCare.Application.Services
                 _accountRepository.PrepareCreate(account);
                 foreach (var role in accountRoles)
                     _accountRoleRepository.PrepareCreate(new AccountRole { AccountId = account.AccountId, RoleId = role.RoleId, AssignedAt = DateTime.UtcNow });
+                if (accountRoles.Any(role => role.RoleName == "Student"))
+                {
+                    _studentProfileRepository.PrepareCreate(new Studentprofile
+                    {
+                        StudentId = account.AccountId,
+                        AcademicStatus = "unknown"
+                    });
+                }
             }
             await _accountRepository.SaveAsync();
 
@@ -810,7 +829,17 @@ namespace AdviseCare.Application.Services
                 RoleId = request.RoleId,
                 AssignedAt = DateTime.UtcNow
             };
-            await _accountRoleRepository.CreateAsync(accountRole);
+            _accountRoleRepository.PrepareCreate(accountRole);
+            if (role.RoleName == "Student" &&
+                !await _studentProfileRepository.ExistsAsync(profile => profile.StudentId == account.AccountId))
+            {
+                _studentProfileRepository.PrepareCreate(new Studentprofile
+                {
+                    StudentId = account.AccountId,
+                    AcademicStatus = "unknown"
+                });
+            }
+            await _accountRoleRepository.SaveAsync();
 
             await _activityLogService.LogCurrentAccountAsync("accountRolesChanged", $"Gave {account.Email} the role {role.RoleName}");
 

@@ -3,6 +3,8 @@ using AdviseCare.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Net;
+using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace AdviseCare.Infrastructure.Security;
@@ -12,6 +14,7 @@ public sealed class VaultTransitKeyManagementService : IKeyManagementService
     private readonly HttpClient _httpClient;
     private readonly VaultTransitSettings _settings;
     private readonly ILogger<VaultTransitKeyManagementService> _logger;
+    private const int DataKeyLengthBytes = 32;
 
     public VaultTransitKeyManagementService(
         HttpClient httpClient,
@@ -39,6 +42,100 @@ public sealed class VaultTransitKeyManagementService : IKeyManagementService
         }
 
         _httpClient.BaseAddress = new Uri(address.AbsoluteUri.TrimEnd('/') + "/", UriKind.Absolute);
+    }
+
+    public async Task CreateKeyAsync(
+        string keyManagementKeyId,
+        CancellationToken cancellationToken = default)
+    {
+        using var content = JsonContent.Create(new
+        {
+            type = "aes256-gcm96",
+            deletion_allowed = true
+        });
+        using var response = await SendAsync(
+            HttpMethod.Post,
+            GetKeyPath(keyManagementKeyId),
+            cancellationToken,
+            content);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("Vault Transit key creation failed with HTTP status {StatusCode}.", response.StatusCode);
+            response.EnsureSuccessStatusCode();
+        }
+    }
+
+    public async Task<string> WrapDataKeyAsync(
+        string keyManagementKeyId,
+        ReadOnlyMemory<byte> dataKey,
+        CancellationToken cancellationToken = default)
+    {
+        if (dataKey.Length != DataKeyLengthBytes)
+        {
+            throw new ArgumentException("The data-encryption key must be 256 bits.", nameof(dataKey));
+        }
+
+        using var content = JsonContent.Create(new
+        {
+            plaintext = Convert.ToBase64String(dataKey.Span)
+        });
+        using var response = await SendAsync(
+            HttpMethod.Post,
+            GetTransitPath("encrypt", keyManagementKeyId),
+            cancellationToken,
+            content);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("Vault Transit data-key wrapping failed with HTTP status {StatusCode}.", response.StatusCode);
+            response.EnsureSuccessStatusCode();
+        }
+
+        return await ReadDataStringAsync(response, "ciphertext", cancellationToken);
+    }
+
+    public async Task<byte[]> UnwrapDataKeyAsync(
+        string keyManagementKeyId,
+        string wrappedKey,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(wrappedKey))
+        {
+            throw new ArgumentException("A wrapped data key is required.", nameof(wrappedKey));
+        }
+
+        using var content = JsonContent.Create(new { ciphertext = wrappedKey });
+        using var response = await SendAsync(
+            HttpMethod.Post,
+            GetTransitPath("decrypt", keyManagementKeyId),
+            cancellationToken,
+            content);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("Vault Transit data-key unwrapping failed with HTTP status {StatusCode}.", response.StatusCode);
+            response.EnsureSuccessStatusCode();
+        }
+
+        var plaintext = await ReadDataStringAsync(response, "plaintext", cancellationToken);
+        byte[] dataKey;
+        try
+        {
+            dataKey = Convert.FromBase64String(plaintext);
+        }
+        catch (FormatException exception)
+        {
+            throw new InvalidDataException("Vault Transit returned a data key that was not valid base64.", exception);
+        }
+
+        if (dataKey.Length == DataKeyLengthBytes)
+        {
+            return dataKey;
+        }
+
+        CryptographicOperations.ZeroMemory(dataKey);
+        throw new InvalidDataException("Vault Transit returned a data key with an unexpected length.");
     }
 
     public async Task EnsureKeyCanBeDestroyedAsync(
@@ -106,7 +203,8 @@ public sealed class VaultTransitKeyManagementService : IKeyManagementService
     private async Task<HttpResponseMessage> SendAsync(
         HttpMethod method,
         string path,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        HttpContent? content = null)
     {
         if (string.IsNullOrWhiteSpace(_settings.Token))
         {
@@ -116,6 +214,7 @@ public sealed class VaultTransitKeyManagementService : IKeyManagementService
 
         using var request = new HttpRequestMessage(method, path);
         request.Headers.Add("X-Vault-Token", _settings.Token);
+        request.Content = content;
         return await _httpClient.SendAsync(request, cancellationToken);
     }
 
@@ -129,6 +228,36 @@ public sealed class VaultTransitKeyManagementService : IKeyManagementService
         }
 
         return $"v1/{_settings.MountPath}/keys/{Uri.EscapeDataString(keyManagementKeyId)}";
+    }
+
+    private string GetTransitPath(string operation, string keyManagementKeyId)
+    {
+        if (!IsPathSegment(operation))
+        {
+            throw new ArgumentException("The Vault Transit operation is invalid.", nameof(operation));
+        }
+
+        _ = GetKeyPath(keyManagementKeyId);
+        return $"v1/{_settings.MountPath}/{operation}/{Uri.EscapeDataString(keyManagementKeyId)}";
+    }
+
+    private static async Task<string> ReadDataStringAsync(
+        HttpResponseMessage response,
+        string propertyName,
+        CancellationToken cancellationToken)
+    {
+        await using var content = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var document = await JsonDocument.ParseAsync(content, cancellationToken: cancellationToken);
+        if (!document.RootElement.TryGetProperty("data", out var data) ||
+            !data.TryGetProperty(propertyName, out var value) ||
+            value.ValueKind != JsonValueKind.String ||
+            string.IsNullOrWhiteSpace(value.GetString()))
+        {
+            throw new InvalidDataException(
+                $"Vault Transit returned a response without a valid {propertyName} value.");
+        }
+
+        return value.GetString()!;
     }
 
     private static bool IsPathSegment(string value) =>

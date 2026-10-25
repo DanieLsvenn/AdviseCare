@@ -19,6 +19,14 @@ namespace AdviseCare.Application.Contracts.Responses.StudentIndicator
         public List<StudentIndicatorImportRowError> Errors { get; set; } = new();
     }
 
+    public class ImportStudentIndicatorResponse
+    {
+        public bool IsSuccess { get; set; }
+        public int InsertedCount { get; set; }
+        public int MissingCount { get; set; }
+        public List<StudentIndicatorImportRowError> Errors { get; set; } = new();
+    }
+
     public class StudentIndicatorImportRowError
     {
         public int RowNumber { get; set; }

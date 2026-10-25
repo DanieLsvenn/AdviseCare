@@ -7,5 +7,6 @@ namespace AdviseCare.Application.Interfaces.Services
     {
         Task<PreviewStudentIndicatorImportResponse> PreviewAsync(PreviewStudentIndicatorImportRequest request);
         Task<ValidateStudentIndicatorImportResponse> ValidateAsync(ValidateStudentIndicatorImportRequest request);
+        Task<ImportStudentIndicatorResponse> ImportAsync(ValidateStudentIndicatorImportRequest request);
     }
 }

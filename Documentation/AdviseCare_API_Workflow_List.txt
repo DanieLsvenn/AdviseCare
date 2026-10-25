@@ -85,8 +85,11 @@ Each checkpoint is a separate change intended to be reviewed and pushed independ
 - C-04 Welfare escalations (uses existing CASES; implemented).
 - C-05 Interventions and support grants (uses existing CASES; implemented).
 - C-06a Indicator import file preview, column mapping, and whole-file validation for .xlsx/.csv (implemented; no data is written).
-- C-06b Insert-only indicator persistence, missing flags, and import activity logging (v5 EF mappings and two-phase Vault erasure are implemented; authenticated value encryption/key creation, decryption, import persistence, StudentProfile provisioning, and studentCode resolution remain).
-- C-07 Student profile, point-in-time history, own-profile access, and JSON export (Member B's access guard/access log are available; value reads still require backend decryption).
+- C-06b1 Authenticated AES-256-GCM envelope encryption and per-student/attribute Vault Transit key provisioning (implemented; Vault keys enable deletion, DEKs are wrapped by Transit, and HMAC subkeys are HKDF-derived).
+- C-06b2 Insert-only indicator persistence, missing flags, StudentProfile provisioning, studentCode resolution, and import activity logging (implemented; imports are all-or-nothing, and missing rows cover all active Student-role accounts for each imported indicator/term pair).
+- C-07a Authorized advisor indicator-profile reads, consent-gated decryption, and per-value access logging (implemented; assigned-case advisor only; optional term filter).
+- C-07b Point-in-time indicator history and comparison (implemented; reconstructs system knowledge through the end of the selected UTC date; each snapshot uses C-07a access checks and logging).
+- C-07c Student own-profile access and JSON export (implemented; self-only profile, current indicator values, own cases and own access log; export recorded in ACTIVITYLOGS).
 - C-08 Correction requests (scope remains pending review; confirm how a request identifies the source indicator row before implementation).
 
 ==========
@@ -284,9 +287,9 @@ WF2: Student requests support and gets advised
    Auth: {academicAdvisorToken}
    Expect: the case with requestReason, category Course content question, subject PRN212
 5.2. Opens the student profile: only consented data, with source and missing-data notices
-   GET /api/StudentIndicators/students/{studentId}/profile?caseId={caseAcademicId} [PLANNED - Member C, through Member B's IAccessGuardService with the case category's purpose]
+   GET /api/StudentIndicators/students/{studentId}/profile?caseId={caseAcademicId}&termId={termFall2026Id} [IMPLEMENTED - Member C C-07a; termId is optional]
    Auth: {academicAdvisorToken}
-   Expect: GPA and Attendance rate values with provenanceNote (from WF5); Accommodation status and Financial difficulty shown as "exists, not shared"; missing indicators flagged; one ACCESSLOGS row per attribute read
+   Expect: only the assigned advisor for the matching case can read; Member B's access guard checks each data attribute using the case category's consent purpose before any value is decrypted. Permitted values include provenance and missing/erased state; denied attributes show only their indicator/term and whether a value exists. One ACCESSLOGS row is written per permitted indicator value; ciphertext and HMAC are never returned.
 5.3. If more data is needed, the advisor sends a consent request -> see EX7
 6. Advisor and student meet
 6.1. They decide when and how to meet, outside the app [NO API]
@@ -599,7 +602,7 @@ WF5: Admin imports student indicator data
    Form (multipart/form-data):
    file = indicators_fall2026.xlsx
    columnMapping = { "studentIdentifier": "Student email", "indicator": "Indicator", "value": "Value", "term": "Term", "validFrom": "Valid from" }
-   Student identifier may be a unique studentCode, email or username; studentCode resolution is planned for C-06b.
+   Student identifier may be a unique studentCode, email or username; studentCode resolution is implemented in C-06b2.
    Expect: isValid = true, validRowCount = 4, errors = []; this validation endpoint does not create STUDENTINDICATORS rows
 4.1. If any row is invalid, nothing is imported
    POST /api/StudentIndicators/import/validate [IMPLEMENTED - Member C C-06a]
@@ -612,19 +615,19 @@ WF5: Admin imports student indicator data
    student@gmail.com      | GPA             | abc   | Fall 2026 | 2026-10-20     (not numeric)
    student@gmail.com      | Attendance rate | 80    | Winter 99 | 2026-10-20     (term does not exist)
    Expect: isValid = false, the 4 invalid rows with their reasons, validRowCount = 0; no STUDENTINDICATORS rows are added
-4.2. If all rows are valid, every value will be inserted as a new row (C-06b, pending authenticated encryption/key creation)
-   POST /api/StudentIndicators/import [PLANNED - Member C C-06b]
+4.2. If all rows are valid, every value will be inserted as a new row; existing history is never updated
+   POST /api/StudentIndicators/import [IMPLEMENTED - Member C C-06b2]
    Form: file = indicators_fall2026.xlsx (same mapping)
-   Expected after C-06b: insertedCount = 4; each row has dataSourceId = null, status = original, provenanceNote like "Imported from indicators_fall2026.xlsx on 2026-10-21"; values and HMACs are produced using the student's per-attribute key
+   Expect: isSuccess = true; insertedCount = 4; missingCount reports generated missing rows. Each value row has dataSourceId = null, status = original, provenanceNote with file name/import date, and ciphertext/HMAC from the student's per-attribute key. Profiles, keys, indicator rows, and the activity log commit together.
    For EX13, import indicators_fall2026_update.xlsx afterwards (new rows, never updates):
    student@gmail.com | GPA             | 7.5 | Fall 2026 | 2026-11-20
    student@gmail.com | Attendance rate | 85  | Fall 2026 | 2026-11-20
-5. Expected indicators missing for a student are flagged
-   GET /api/StudentIndicators/search?termId={termFall2026Id}&isMissing=true [PLANNED - Member C C-06b]
+5. For each distinct imported indicator/term pair, an isMissing row is inserted for every active Student-role account with no value row in this import. This is global school scope, including students with no rows in the file; missing-row validFrom uses the term start date.
+   GET /api/StudentIndicators/search?termId={termFall2026Id}&isMissing=true [PLANNED - Member C C-07a]
    Auth: {adminToken}
    Expect: rows with isMissing = true for every student without values (e.g. student01)
 6. Admin views the import result and the import history
-   GET /api/ActivityLogs/search?activityType=indicatorsImported [EXISTS endpoint; the indicatorsImported log will be written by Member C C-06b]
+   GET /api/ActivityLogs/search?activityType=indicatorsImported [EXISTS endpoint; one log entry is written per successful C-06b2 import]
    Auth: {adminToken}
    Expect: one entry per successful import with the file name and row count
 7. Scheduled automatic ingestion is future (FU1) [NO API]
@@ -903,7 +906,7 @@ EX8: Student manages consent and erasure
    GET /api/StudentIndicators/students/{studentId}/profile [PLANNED - Member C] with {wellbeingAdvisorToken}
    Expect: Attendance rate -> "exists, not shared" (unless still granted under another purpose the advisor's role has a policy for)
 4.2. An erasure request is queued (automatic, only when the attribute is no longer granted under any purpose and the student has an active key for it)
-   Note: key creation/encryption is not built yet, so until an active per-attribute Vault key exists no erasure request is queued
+   Note: C-06b1 provides Vault key creation and authenticated encryption; C-06b2 must persist the key and indicator before that imported value can be erased through this workflow
 4.3. Steward verifies the withdrawal and executes the erasure
    GET /api/ErasureRequests/search?status=pending [EXISTS]
    PUT /api/ErasureRequests/{erasureRequestId}/execute [EXISTS]
@@ -1057,22 +1060,25 @@ EX13: Point-in-time reconstruction ("way back machine")
 1. Advisor opens a student and clicks "View as of date"
 2. Advisor picks the date
 3. System rebuilds the record as it was on that date
-   GET /api/StudentIndicators/students/{studentId}/as-of?date=2026-10-31 [PLANNED - Member C]
+   GET /api/StudentIndicators/students/{studentId}/as-of?date=2026-10-31&caseId={caseAcademicId} [IMPLEMENTED - Member C C-07b; termId is optional]
    Auth: {academicAdvisorToken}
-   Expect: GPA 6.8, Attendance rate 72
-   GET /api/StudentIndicators/students/{studentId}/as-of?date=2026-11-30
-   Expect: GPA 7.5, Attendance rate 85
+   Expect: GPA 6.8, Attendance rate 72; returns the latest row per indicator/term recorded by the system through 23:59:59.999 UTC on the requested date. Permitted values include provenance/missing metadata; denied attributes disclose only indicator/term and whether a value exists.
+   GET /api/StudentIndicators/students/{studentId}/as-of?date=2026-11-30&caseId={caseAcademicId}
+   Expect: GPA 7.5, Attendance rate 85; each permitted value read is logged.
 4. Advisor can compare two dates; the access is logged
-   GET /api/StudentIndicators/students/{studentId}/compare?dateA=2026-10-31&dateB=2026-11-30 [PLANNED - Member C]
-   Expect: both values side by side per indicator; ACCESSLOGS rows for the read
+   GET /api/StudentIndicators/students/{studentId}/compare?dateA=2026-10-31&dateB=2026-11-30&caseId={caseAcademicId} [IMPLEMENTED - Member C C-07b; termId is optional]
+   Expect: both snapshots side by side per indicator/term, including null for a row absent from one snapshot; each permitted value in each snapshot is logged.
 
 EX14: Student exports own record
 1. Student opens account settings and chooses "Export my data"
-2. System builds a JSON file with the student's record and access log
-3. Student downloads it; the export is logged
-   GET /api/StudentIndicators/me/export [PLANNED - Member C]
+2. Student may view their own profile without case assignment or consent
+   GET /api/StudentIndicators/me/profile [IMPLEMENTED - Member C C-07c; optional termId]
    Auth: {studentToken}
-   Expect: a .json file download with profile, indicator values (decryptable ones), cases and own access log; activity log dataExported
+   Expect: only the authenticated student's own values; student self-reads do not create ACCESSLOGS rows.
+3. System builds a JSON file with the student's identity, current indicator profile, own cases and own access log
+   GET /api/StudentIndicators/me/export [IMPLEMENTED - Member C C-07c]
+   Auth: {studentToken}
+   Expect: an application/json file download with profile, decrypted own indicator values, cases and own access log; an ACTIVITYLOGS entry with activityType = dataExported
 
 EX15: Correction request (pending review)
 1. Student selects a value believed to be wrong and explains why
@@ -1144,7 +1150,7 @@ NOTES
 ==========
 
 - All [PLANNED] routes are proposals: the member who builds the controller may rename them; update this file when they do
-- Member B's routes are built and tagged [EXISTS]; Members C and D call IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync, then LogAccessAsync) before showing or exporting any indicator value
+- Member B's routes are built and tagged [EXISTS]; Members C and D call IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync, then LogAccessAsync) before showing or exporting any indicator value. C-07a's assigned-advisor profile read is implemented at GET /api/StudentIndicators/students/{studentId}/profile?caseId={caseId}[&termId={termId}]. C-07b's as-of and compare reads require the same case assignment and consent checks. C-07c permits a Student-role account to read only its own profile; the access guard intentionally skips access-log rows for self-reads, while JSON exports write a dataExported activity log.
 - STUDENTINDICATORS.indicatorValue is binary ciphertext linked to ATTRIBUTEKEYS.attributeKeyId; missing rows have no key or payload. The API must encrypt before insert and must never return ciphertext as a user-facing value.
 - Erasure uses Vault Transit: configure `VaultTransit:Address`, `VaultTransit:MountPath`, and `VaultTransit:KeyNamePrefix`; provide `VaultTransit:Token` through environment/user secrets, never source control. Each key must have Vault `deletion_allowed=true`; the API does not report completion until external deletion and SQL confirmation both succeed.
 - CASES.requestReasonVisibility and CASENOTES.visibility default to caseTeam and allow assignedAdvisor; API enforcement is still required before case text is returned, referred or exported.

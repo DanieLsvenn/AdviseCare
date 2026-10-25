@@ -443,7 +443,7 @@ CREATE TABLE [dbo].[STUDENTINDICATORS] (
     [termId] UNIQUEIDENTIFIER NOT NULL,
     -- Raw authenticated-encryption payload (nonce + ciphertext + tag); never store plaintext here.
     [indicatorValue] VARBINARY(MAX) NULL,
-    -- HMAC-SHA256 of the normalized plaintext, generated with a separate secret held outside SQL Server.
+    -- HMAC-SHA256 of normalized plaintext, using an HKDF-derived subkey never stored in SQL Server.
     [valueHmac] VARBINARY(32) NULL,
     -- Free text: must describe where the value came from, never contain the value itself.
     [provenanceNote] NVARCHAR(MAX) NULL,
@@ -1439,7 +1439,7 @@ GO
    ITEMS INTENTIONALLY LEFT FOR BACKEND / TEAM DECISIONS (not DB-only fixes)
 
    1. Backend must encrypt/decrypt indicator and correction payloads using authenticated
-      encryption, keep HMAC secrets separately, and store only ciphertext in VARBINARY.
+      encryption, derive a dedicated HMAC subkey from each data key, and store only ciphertext in VARBINARY.
    2. Backend must call the external KMS/HSM to destroy the exact per-attribute key and
       call usp_ConfirmKmsKeyDestruction only after a trusted successful confirmation.
       SQL Server cannot independently prove external key destruction or purge every backup.

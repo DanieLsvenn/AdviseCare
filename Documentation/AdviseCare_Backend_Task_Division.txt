@@ -72,16 +72,16 @@ Tables owned: STUDENTINDICATORS, CORRECTIONREQUESTS, INTERVENTIONS, SUPPORTGRANT
 ==========
 
 C1. Indicator data import (Admin)
-C1.1. Upload Excel/CSV or read a Google Sheet; map columns to indicators and resolve students by studentCode, email or username
+C1.1. Upload Excel/CSV, map columns to indicators, and resolve students by studentCode, email or username (implemented; Google Sheet import remains future setup)
 C1.2. Validate the whole file, all-or-nothing; return the list of invalid rows
 C1.3. Insert new STUDENTINDICATORS rows only (dataSourceId null, provenanceNote = file name + import date); never update
-C1.4. Flag expected-but-missing indicators (isMissing)
-C1.5. Import history through ACTIVITYLOGS
+C1.4. Flag expected-but-missing indicators (isMissing) for all active Student-role accounts across each imported indicator/term pair
+C1.5. Write one ACTIVITYLOGS entry per successful import in the same database save
 C2. Student profile and history
-C2.1. Student profile API: indicators with sources and missing-data notices, every value passed through Member B's access guard (IAccessGuardService.CheckAccessAsync, then LogAccessAsync for each value shown)
-C2.2. Point-in-time view ("way back machine"): current row = latest row up to the chosen date; compare two dates
-C2.3. Student's own profile view
-C2.4. Student JSON export (own record + own access log), generated on the fly
+C2.1. C-07a: Decrypt indicator values only after Member B's access guard approves; write one access log per value shown
+C2.2. C-07b: Point-in-time view ("way back machine"): current row = latest row up to the chosen date; compare two dates (depends on C-07a)
+C2.3. C-07c: Student's own profile view, restricted to the authenticated student (depends on C-07a)
+C2.4. C-07c: Student JSON export (own record + own access log), generated on the fly (depends on C-07a)
 C2.5. Correction requests (pending review): submit, advisor review, approved = new "correction" row, withdraw
 C3. Welfare (Student Welfare Officer)
 C3.1. Interventions: log, update until closed, outcome, history per student

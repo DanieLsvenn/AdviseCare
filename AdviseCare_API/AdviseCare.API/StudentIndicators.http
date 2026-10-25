@@ -1,0 +1,29 @@
+@baseUrl = http://localhost:5151
+@advisorToken = replace-with-advisor-jwt
+@studentId = 00000000-0000-0000-0000-000000000001
+@caseId = 00000000-0000-0000-0000-000000000002
+@termId = 00000000-0000-0000-0000-000000000003
+
+### Read a student's profile for a case and academic term
+GET {{baseUrl}}/api/StudentIndicators/students/{{studentId}}/profile?caseId={{caseId}}&termId={{termId}}
+Authorization: Bearer {{advisorToken}}
+
+### Malformed caseId is rejected by API model validation
+GET {{baseUrl}}/api/StudentIndicators/students/{{studentId}}/profile?caseId=not-a-guid
+Authorization: Bearer {{advisorToken}}
+
+### Reconstruct a student's profile as of a date
+GET {{baseUrl}}/api/StudentIndicators/students/{{studentId}}/as-of?date=2026-10-31&caseId={{caseId}}
+Authorization: Bearer {{advisorToken}}
+
+### Compare two point-in-time profiles
+GET {{baseUrl}}/api/StudentIndicators/students/{{studentId}}/compare?dateA=2026-10-31&dateB=2026-11-30&caseId={{caseId}}
+Authorization: Bearer {{advisorToken}}
+
+### Read the authenticated student's own indicator profile
+GET {{baseUrl}}/api/StudentIndicators/me/profile
+Authorization: Bearer {{studentToken}}
+
+### Download the authenticated student's JSON data export
+GET {{baseUrl}}/api/StudentIndicators/me/export
+Authorization: Bearer {{studentToken}}

@@ -13,8 +13,11 @@ Member C work is split into independently reviewable/pushable checkpoints. Proce
 - C-04 Welfare escalations (uses existing CASES; implemented).
 - C-05 Interventions and support grants (uses existing CASES; implemented).
 - C-06a Indicator import file preview, column mapping, and whole-file validation for .xlsx/.csv (implemented; no data is written).
-- C-06b Insert-only indicator persistence, missing flags, and import activity logging (v5 EF mappings and two-phase Vault erasure are implemented; authenticated value encryption/key creation, decryption, import persistence, StudentProfile provisioning, and studentCode resolution remain).
-- C-07 Student profile, point-in-time history, own-profile access, and JSON export (Member B's access guard/access log are available; value reads still require backend decryption).
+- C-06b1 Authenticated AES-256-GCM envelope encryption and per-student/attribute Vault Transit key provisioning (implemented; Vault keys enable deletion, DEKs are wrapped by Transit, and HMAC subkeys are HKDF-derived).
+- C-06b2 Insert-only indicator persistence, missing flags, StudentProfile provisioning, studentCode resolution, and import activity logging (implemented; imports are all-or-nothing and missing rows cover all active Student-role accounts for each imported indicator/term pair).
+- C-07a Authorized advisor indicator-profile reads, consent-gated decryption, and per-value access logging (implemented; assigned-case advisor only; optional term filter).
+- C-07b Point-in-time indicator history and comparison (implemented; reconstructs system knowledge through the end of the selected UTC date; each snapshot uses C-07a access checks and logging).
+- C-07c Student own-profile access and JSON export (implemented; self-only profile, current indicator values, own cases and own access log; export recorded in ACTIVITYLOGS).
 - C-08 Correction requests (scope remains pending review; confirm how a request identifies the source indicator row before implementation).
 
 ==========
@@ -133,10 +136,10 @@ WF5: Admin imports student indicator data
 3. Admin maps file columns to indicators (student identifier, indicator, value, term, date)
 4. System previews the file and validates the whole file without persisting rows (C-06a)
 4.1. If any row is invalid, nothing is imported and the system lists the invalid rows (all-or-nothing)
-4.2. If all rows are valid, C-06b will insert new STUDENTINDICATORS rows only (dataSourceId null, provenanceNote includes file name and import date); authenticated ciphertext and HMAC use the student's per-attribute key
-5. C-06b will flag expected-but-missing indicators
-6. C-06b will write import activity history and show the result
-7. Note: C-06b still needs authenticated encryption/key creation, decryption, import persistence and studentCode resolution; scheduled automatic ingestion (data sources, schedules, jobs) is future work (see AdviseCare_Future_List.txt)
+4.2. If all rows are valid, C-06b2 inserts new STUDENTINDICATORS rows only (dataSourceId null, provenanceNote includes file name and import date); C-06b1 supplies authenticated ciphertext and HMAC using the student's per-attribute key
+5. C-06b2 inserts an isMissing row for every active Student-role account missing each indicator/term pair represented in the import; missing-row validFrom is the term start date
+6. C-06b2 writes import activity history in the same database save and returns inserted/missing row counts
+7. Note: C-06b1 authenticated encryption/key provisioning and C-06b2 import persistence are implemented; C-07a is the next backend checkpoint. Scheduled automatic ingestion (data sources, schedules, jobs) is future work (see AdviseCare_Future_List.txt)
 
 ==========
 EXTRA WORKFLOWS
@@ -240,13 +243,14 @@ EX12: Account management
 EX13: Point-in-time reconstruction ("way back machine")
 1. Advisor opens a student and clicks "View as of date"
 2. Advisor picks the date
-3. System rebuilds the record as it was on that date (only computed on request)
+3. System rebuilds the record from the latest row per indicator/term recorded by the system through the end of that UTC date (only computed on request; each snapshot applies case-based consent checks and logs each permitted value)
 4. Advisor can compare two dates; the access is logged
 
 EX14: Student exports own record
 1. Student opens account settings and chooses "Export my data"
-2. System builds a JSON file with the student's record and access log
-3. Student downloads it; the export is logged
+2. Student can view their own profile; no case assignment or consent is required
+3. System builds a JSON file with the student's identity, current indicator profile, own cases and own access log
+4. Student downloads it; the export is logged in ACTIVITYLOGS
 
 EX15: Correction request (pending review)
 1. Student selects a value believed to be wrong and explains why

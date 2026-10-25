@@ -57,6 +57,9 @@ builder.Services.AddScoped<IEscalationService, EscalationService>();
 builder.Services.AddScoped<IInterventionService, InterventionService>();
 builder.Services.AddScoped<ISupportGrantService, SupportGrantService>();
 builder.Services.AddScoped<IStudentIndicatorImportService, StudentIndicatorImportService>();
+builder.Services.AddScoped<IStudentIndicatorProfileService, StudentIndicatorProfileService>();
+builder.Services.AddScoped<IStudentDataExportService, StudentDataExportService>();
+builder.Services.AddScoped<IAuthenticatedEnvelopeEncryptionService, AuthenticatedEnvelopeEncryptionService>();
 
 // Member B
 builder.Services.AddScoped<IIndicatorService, IndicatorService>();
