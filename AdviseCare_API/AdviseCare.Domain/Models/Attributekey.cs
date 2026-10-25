@@ -15,6 +15,8 @@ public partial class Attributekey
 
     public string WrappedKey { get; set; }
 
+    public string KeyManagementKeyId { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime? DestroyedAt { get; set; }
@@ -25,5 +27,7 @@ public partial class Attributekey
 
     public virtual ICollection<Erasurerequest> Erasurerequests { get; set; } = new List<Erasurerequest>();
 
-    public virtual Account Student { get; set; }
+    public virtual ICollection<Studentindicator> Studentindicators { get; set; } = new List<Studentindicator>();
+
+    public virtual Studentprofile Student { get; set; }
 }

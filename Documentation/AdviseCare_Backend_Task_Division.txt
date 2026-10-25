@@ -28,6 +28,7 @@ A2.2. Bulk import from an Excel file (email, fullName, userName, facultyCode, ro
 A2.3. Send / resend account-linking emails, linkStatus notLinked -> emailSent
 A2.4. Roles CRUD and account roles (ACCOUNT_ROLE); the last System Administrator role cannot be removed
 A2.5. Activate/deactivate, ban/unban (never on the admin's own account; ends all active sessions)
+A2.6. Maintain STUDENTPROFILES for Student-role accounts (optional unique studentCode, current programme, academicStatus); profile details may be completed after account creation
 A3. Master data (Admin)
 A3.1. Faculties, programmes and academic terms CRUD; only one term can be current, setting a new current term moves the old one to past
 A3.2. Subjects under a faculty CRUD; link academic advisors to subjects (ACCOUNT_SUBJECT)
@@ -56,8 +57,8 @@ B3.1. List purposes and their attributes; grant, withdraw (single attribute or w
 B3.2. Consent requests from advisors (with the purpose): create, edit pending, respond (grant/deny), withdraw pending
 B3.3. Consent expiry check (when data is read)
 B4. Encryption and erasure
-B4.1. Envelope encryption: one key per student per attribute (ATTRIBUTEKEYS), master key from configuration; encrypt/decrypt helper used when indicator values are written/read
-B4.2. Withdrawal queues an erasure request; Steward verifies and executes it (destroy key), audit trail kept
+B4.1. Use one destroyable Vault Transit key per student per attribute; store its Vault key name in ATTRIBUTEKEYS.keyManagementKeyId, keep wrapped key material only as required by the envelope-encryption design, and use authenticated encryption for indicator/correction payloads. Key creation must enable Vault deletion_allowed; keep Vault tokens outside source control.
+B4.2. Withdrawal queues an erasure request; the API calls usp_ExecuteErasure to clear live ciphertext/HMAC, deletes the exact Vault Transit key, then calls usp_ConfirmKmsKeyDestruction. Never mark a key destroyed before Vault confirms; retries must resume pendingKeyDestruction. Keep the consent and erasure audit history.
 B5. Access log and processing records
 B5.1. Search/filter access log; flag entries; Steward review (cleared / confirmed issue)
 B5.2. Student's own access log
@@ -71,7 +72,7 @@ Tables owned: STUDENTINDICATORS, CORRECTIONREQUESTS, INTERVENTIONS, SUPPORTGRANT
 ==========
 
 C1. Indicator data import (Admin)
-C1.1. Upload Excel/CSV or read a Google Sheet; map columns to indicators
+C1.1. Upload Excel/CSV or read a Google Sheet; map columns to indicators and resolve students by studentCode, email or username
 C1.2. Validate the whole file, all-or-nothing; return the list of invalid rows
 C1.3. Insert new STUDENTINDICATORS rows only (dataSourceId null, provenanceNote = file name + import date); never update
 C1.4. Flag expected-but-missing indicators (isMissing)
@@ -109,6 +110,7 @@ D4. Advisor case workflow (Academic and Wellbeing Advisors)
 D4.1. Assigned case list: sort, filter, unread count
 D4.2. Advisor opens a case for a student based on indicators
 D4.3. Case notes: draft, edit, finalize (no edits after finalize)
+D4.3a. Enforce requestReasonVisibility and note visibility on every case read, referral, and export; assignedAdvisor is restricted to the current handler, caseTeam includes only authorized case participants
 D4.4. Stage changes with reason (CASESTAGEHISTORIES insert-only); close, reopen
 D4.5. Referrals: to another advisor (same/other type) or to the Welfare Officer; accept / return
 D5. Assignment change requests: request with proposed advisor, Programme Head approves/rejects (revoke old, create new assignment)

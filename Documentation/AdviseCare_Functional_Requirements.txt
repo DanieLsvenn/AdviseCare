@@ -154,6 +154,7 @@ Advisors can also start a case themselves when a student's indicators (merits, a
 
 + View indicators of the students assigned to them (only what consent allows: "if you consent, we serve", attributes not shared are left out of the list)
 + Open a case for a student with a reason
++ Mark the case reason visible to the assigned advisor only or the authorized case team
 + Get the student notified that the advisor wants to meet
 
 - Open a student profile with source provenance and missing-data notices:
@@ -171,6 +172,7 @@ Every value shown says where it came from (which import) and if something is mis
 Advisor and student decide by themselves how and when to meet (online, offline, external messaging app). The advisor writes down what was discussed. Once finalized, a note can't be edited.
 
 + Add a case note
++ Mark the note visible to the assigned advisor only or the authorized case team
 + Record agreed actions in the note
 + Edit a note before it's finalized
 + Finalize a note
@@ -257,6 +259,12 @@ When a case goes beyond what the officer is allowed to decide, it is escalated t
 + Export the statistics
 
 Student
+
+- Maintain student identity and programme details:
+
++ Store an optional unique student code, current programme and academic status separately from login/account status
++ Allow profile details to be completed after account creation
++ Match indicator imports by student code, email or username when available
 
 - Request support (create a case):
 

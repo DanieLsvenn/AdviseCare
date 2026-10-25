@@ -1,9 +1,9 @@
 /* =====================================================================
    AdviseCare - Microsoft SQL Server database script
-   Source: AdviseCare_ERD_Tables.txt (44 tables)
+   Source: AdviseCare_ERD_Tables.txt (45 tables)
    1. Creates database AdviseCareDB if it does not exist
    2. Drops every AdviseCare table that exists, child tables first
-   3. Creates all 44 tables in dependency order (parents first)
+   3. Creates all 45 tables in dependency order (parents first)
    4. Seeds the 7 roles and one test account per role (password 123456)
    WARNING: re-running this script deletes all data in these tables.
    Conventions: uuid -> UNIQUEIDENTIFIER (NEWSEQUENTIALID), date -> DATETIME2(3) in UTC,
@@ -24,6 +24,7 @@ DROP TABLE IF EXISTS [dbo].[RESTOREOPERATIONS];
 DROP TABLE IF EXISTS [dbo].[BACKUPS];
 DROP TABLE IF EXISTS [dbo].[REPORTS];
 DROP TABLE IF EXISTS [dbo].[ERASUREREQUESTS];
+DROP TABLE IF EXISTS [dbo].[STUDENTINDICATORS];
 DROP TABLE IF EXISTS [dbo].[ATTRIBUTEKEYS];
 DROP TABLE IF EXISTS [dbo].[EMERGENCYACCESSREQUESTS];
 DROP TABLE IF EXISTS [dbo].[ACCESSLOGS];
@@ -47,7 +48,6 @@ DROP TABLE IF EXISTS [dbo].[ADVISORASSIGNMENTS];
 DROP TABLE IF EXISTS [dbo].[SUPPORTCATEGORIES];
 DROP TABLE IF EXISTS [dbo].[CONSENTPURPOSES];
 DROP TABLE IF EXISTS [dbo].[ACCOUNT_SUBJECT];
-DROP TABLE IF EXISTS [dbo].[STUDENTINDICATORS];
 DROP TABLE IF EXISTS [dbo].[INGESTIONJOBS];
 DROP TABLE IF EXISTS [dbo].[INGESTIONSCHEDULES];
 DROP TABLE IF EXISTS [dbo].[DATASOURCES];
@@ -55,6 +55,7 @@ DROP TABLE IF EXISTS [dbo].[SUBJECTS];
 DROP TABLE IF EXISTS [dbo].[INDICATORS];
 DROP TABLE IF EXISTS [dbo].[DATAATTRIBUTES];
 DROP TABLE IF EXISTS [dbo].[ACADEMICTERMS];
+DROP TABLE IF EXISTS [dbo].[STUDENTPROFILES];
 DROP TABLE IF EXISTS [dbo].[PROGRAMMES];
 DROP TABLE IF EXISTS [dbo].[ACTIVITYLOGS];
 DROP TABLE IF EXISTS [dbo].[NOTIFICATIONPREFERENCES];
@@ -191,6 +192,19 @@ CREATE TABLE [dbo].[PROGRAMMES] (
 );
 GO
 
+-- 45. STUDENTPROFILES
+CREATE TABLE [dbo].[STUDENTPROFILES] (
+    [studentId] UNIQUEIDENTIFIER NOT NULL,
+    [studentCode] NVARCHAR(50) NULL,
+    [programmeId] UNIQUEIDENTIFIER NULL,
+    [academicStatus] NVARCHAR(30) NOT NULL CONSTRAINT [DF_STUDENTPROFILES_academicStatus] DEFAULT N'unknown',
+    CONSTRAINT [PK_STUDENTPROFILES] PRIMARY KEY ([studentId]),
+    CONSTRAINT [FK_STUDENTPROFILES_studentId] FOREIGN KEY ([studentId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_STUDENTPROFILES_programmeId] FOREIGN KEY ([programmeId]) REFERENCES [dbo].[PROGRAMMES]([programmeId]),
+    CONSTRAINT [CK_STUDENTPROFILES_academicStatus] CHECK ([academicStatus] IN (N'enrolled', N'onLeave', N'graduated', N'withdrawn', N'unknown'))
+);
+GO
+
 -- 10. ACADEMICTERMS
 CREATE TABLE [dbo].[ACADEMICTERMS] (
     [termId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ACADEMICTERMS_termId] DEFAULT NEWSEQUENTIALID(),
@@ -305,8 +319,10 @@ CREATE TABLE [dbo].[STUDENTINDICATORS] (
     [dataSourceId] UNIQUEIDENTIFIER NULL,
     [indicatorId] UNIQUEIDENTIFIER NOT NULL,
     [studentId] UNIQUEIDENTIFIER NOT NULL,
+    [attributeKeyId] UNIQUEIDENTIFIER NULL,
     [termId] UNIQUEIDENTIFIER NOT NULL,
-    [indicatorValue] NVARCHAR(MAX) NOT NULL,
+    -- Raw authenticated-encryption payload (nonce + ciphertext + tag); never store plaintext here.
+    [indicatorValue] VARBINARY(MAX) NULL,
     [provenanceNote] NVARCHAR(MAX) NULL,
     [transactionFrom] DATETIME2(3) NOT NULL CONSTRAINT [DF_STUDENTINDICATORS_transactionFrom] DEFAULT SYSUTCDATETIME(),
     [validFrom] DATETIME2(3) NOT NULL,
@@ -317,6 +333,10 @@ CREATE TABLE [dbo].[STUDENTINDICATORS] (
     CONSTRAINT [FK_STUDENTINDICATORS_indicatorId] FOREIGN KEY ([indicatorId]) REFERENCES [dbo].[INDICATORS]([indicatorId]),
     CONSTRAINT [FK_STUDENTINDICATORS_studentId] FOREIGN KEY ([studentId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
     CONSTRAINT [FK_STUDENTINDICATORS_termId] FOREIGN KEY ([termId]) REFERENCES [dbo].[ACADEMICTERMS]([termId]),
+    CONSTRAINT [CK_STUDENTINDICATORS_missing_payload] CHECK (
+        ([isMissing] = 1 AND [attributeKeyId] IS NULL AND [indicatorValue] IS NULL)
+        OR ([isMissing] = 0 AND [attributeKeyId] IS NOT NULL AND [indicatorValue] IS NOT NULL)
+    ),
     CONSTRAINT [CK_STUDENTINDICATORS_status] CHECK ([status] IN (N'original', N'correction'))
 );
 GO
@@ -409,6 +429,8 @@ CREATE TABLE [dbo].[CASES] (
     [subjectId] UNIQUEIDENTIFIER NULL,
     [supportCategoryId] UNIQUEIDENTIFIER NOT NULL,
     [requestReason] NVARCHAR(MAX) NOT NULL,
+    -- This is an access classification, not indicator consent; the API must enforce it for every case read.
+    [requestReasonVisibility] NVARCHAR(30) NOT NULL CONSTRAINT [DF_CASES_requestReasonVisibility] DEFAULT N'caseTeam',
     [closedAt] DATETIME2(3) NULL,
     [openedAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_CASES_openedAt] DEFAULT SYSUTCDATETIME(),
     [currentStage] NVARCHAR(30) NOT NULL CONSTRAINT [DF_CASES_currentStage] DEFAULT N'pending',
@@ -420,6 +442,7 @@ CREATE TABLE [dbo].[CASES] (
     CONSTRAINT [FK_CASES_studentId] FOREIGN KEY ([studentId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
     CONSTRAINT [FK_CASES_subjectId] FOREIGN KEY ([subjectId]) REFERENCES [dbo].[SUBJECTS]([subjectId]),
     CONSTRAINT [FK_CASES_supportCategoryId] FOREIGN KEY ([supportCategoryId]) REFERENCES [dbo].[SUPPORTCATEGORIES]([supportCategoryId]),
+    CONSTRAINT [CK_CASES_requestReasonVisibility] CHECK ([requestReasonVisibility] IN (N'assignedAdvisor', N'caseTeam')),
     CONSTRAINT [CK_CASES_currentStage] CHECK ([currentStage] IN (N'pending', N'assigned', N'contacted', N'referred', N'followUp', N'closed')),
     CONSTRAINT [CK_CASES_priority] CHECK ([priority] IN (N'low', N'medium', N'high', N'urgent')),
     CONSTRAINT [CK_CASES_status] CHECK ([status] IN (N'open', N'closed', N'reopened'))
@@ -432,12 +455,15 @@ CREATE TABLE [dbo].[CASENOTES] (
     [authorId] UNIQUEIDENTIFIER NOT NULL,
     [caseId] UNIQUEIDENTIFIER NOT NULL,
     [noteText] NVARCHAR(MAX) NOT NULL,
+    -- caseTeam includes authorized current/former case handlers; the API must enforce the audience.
+    [visibility] NVARCHAR(30) NOT NULL CONSTRAINT [DF_CASENOTES_visibility] DEFAULT N'caseTeam',
     [createdAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_CASENOTES_createdAt] DEFAULT SYSUTCDATETIME(),
     [editedAt] DATETIME2(3) NULL,
     [isFinalized] BIT NOT NULL CONSTRAINT [DF_CASENOTES_isFinalized] DEFAULT 0,
     CONSTRAINT [PK_CASENOTES] PRIMARY KEY ([caseNoteId]),
     CONSTRAINT [FK_CASENOTES_authorId] FOREIGN KEY ([authorId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
-    CONSTRAINT [FK_CASENOTES_caseId] FOREIGN KEY ([caseId]) REFERENCES [dbo].[CASES]([caseId])
+    CONSTRAINT [FK_CASENOTES_caseId] FOREIGN KEY ([caseId]) REFERENCES [dbo].[CASES]([caseId]),
+    CONSTRAINT [CK_CASENOTES_visibility] CHECK ([visibility] IN (N'assignedAdvisor', N'caseTeam'))
 );
 GO
 
@@ -700,15 +726,26 @@ CREATE TABLE [dbo].[ATTRIBUTEKEYS] (
     [attributeKeyId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ATTRIBUTEKEYS_attributeKeyId] DEFAULT NEWSEQUENTIALID(),
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
     [studentId] UNIQUEIDENTIFIER NOT NULL,
-    [wrappedKey] NVARCHAR(255) NOT NULL,
+    [wrappedKey] NVARCHAR(255) NULL,
     [createdAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_ATTRIBUTEKEYS_createdAt] DEFAULT SYSUTCDATETIME(),
     [destroyedAt] DATETIME2(3) NULL,
     [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_ATTRIBUTEKEYS_status] DEFAULT N'active',
     CONSTRAINT [PK_ATTRIBUTEKEYS] PRIMARY KEY ([attributeKeyId]),
+    CONSTRAINT [UQ_ATTRIBUTEKEYS_attributeKeyId_studentId] UNIQUE ([attributeKeyId], [studentId]),
     CONSTRAINT [FK_ATTRIBUTEKEYS_dataAttributeId] FOREIGN KEY ([dataAttributeId]) REFERENCES [dbo].[DATAATTRIBUTES]([dataAttributeId]),
     CONSTRAINT [FK_ATTRIBUTEKEYS_studentId] FOREIGN KEY ([studentId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
-    CONSTRAINT [CK_ATTRIBUTEKEYS_status] CHECK ([status] IN (N'active', N'destroyed'))
+    CONSTRAINT [CK_ATTRIBUTEKEYS_status] CHECK (
+        ([status] = N'active' AND [wrappedKey] IS NOT NULL AND [destroyedAt] IS NULL)
+        OR ([status] = N'destroyed' AND [wrappedKey] IS NULL AND [destroyedAt] IS NOT NULL)
+    )
 );
+GO
+
+-- Keep each encrypted indicator row linked to a key for the same student.
+ALTER TABLE [dbo].[STUDENTINDICATORS]
+ADD CONSTRAINT [FK_STUDENTINDICATORS_attributeKeyId_studentId]
+    FOREIGN KEY ([attributeKeyId], [studentId])
+    REFERENCES [dbo].[ATTRIBUTEKEYS]([attributeKeyId], [studentId]);
 GO
 
 -- 40. ERASUREREQUESTS
@@ -774,10 +811,14 @@ CREATE TABLE [dbo].[RESTOREOPERATIONS] (
 GO
 
 /* ---------- Extra indexes ---------- */
+SET QUOTED_IDENTIFIER ON;
 -- googleId must be unique once linked (NULL allowed many times)
 CREATE UNIQUE INDEX [UX_ACCOUNTS_googleId] ON [dbo].[ACCOUNTS]([googleId]) WHERE [googleId] IS NOT NULL;
 -- only one academic term can be the current one
 CREATE UNIQUE INDEX [UX_ACADEMICTERMS_status_current] ON [dbo].[ACADEMICTERMS]([status]) WHERE [status] = N'current';
+-- student codes are unique when supplied; staff and students not yet assigned a code may have no profile code
+CREATE UNIQUE INDEX [UX_STUDENTPROFILES_studentCode] ON [dbo].[STUDENTPROFILES]([studentCode]) WHERE [studentCode] IS NOT NULL;
+CREATE INDEX [IX_STUDENTPROFILES_programme_status] ON [dbo].[STUDENTPROFILES]([programmeId], [academicStatus]);
 -- one active key per student per attribute (a new key may be created after an erasure if the student shares again)
 CREATE UNIQUE INDEX [UX_ATTRIBUTEKEYS_student_attribute_active] ON [dbo].[ATTRIBUTEKEYS]([studentId], [dataAttributeId]) WHERE [status] = N'active';
 -- one granted consent per student, purpose and attribute (withdrawn rows stay as history)
@@ -786,6 +827,8 @@ CREATE UNIQUE INDEX [UX_CONSENTS_student_purpose_attribute_granted] ON [dbo].[CO
 CREATE UNIQUE INDEX [UX_ACCESSPOLICIES_role_purpose_live] ON [dbo].[ACCESSPOLICIES]([roleId], [consentPurposeId]) WHERE [status] IN (N'draft', N'active');
 -- fast lookup of the next row for point-in-time reconstruction
 CREATE INDEX [IX_STUDENTINDICATORS_student_indicator_time] ON [dbo].[STUDENTINDICATORS]([studentId], [indicatorId], [transactionFrom], [validFrom]);
+-- find every retained ciphertext protected by a key during an erasure audit
+CREATE INDEX [IX_STUDENTINDICATORS_attributeKeyId_studentId] ON [dbo].[STUDENTINDICATORS]([attributeKeyId], [studentId]) WHERE [attributeKeyId] IS NOT NULL;
 GO
 
 /* ---------- 4. Seed data: roles + one test account per role ---------- */

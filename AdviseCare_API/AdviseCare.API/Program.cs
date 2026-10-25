@@ -72,6 +72,7 @@ builder.Services.AddScoped<IEmergencyAccessRequestService, EmergencyAccessReques
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+builder.Services.AddScoped<IErasureWorkflowRepository, ErasureWorkflowRepository>();
 
 // --- Security ---
 builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
@@ -81,8 +82,11 @@ builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 // --- Email (Gmail SMTP), storage (Supabase) and Excel import/export ---
 builder.Services.Configure<GmailSettings>(builder.Configuration.GetSection("Gmail"));
 builder.Services.Configure<SupabaseSettings>(builder.Configuration.GetSection("Supabase"));
+builder.Services.Configure<VaultTransitSettings>(builder.Configuration.GetSection("VaultTransit"));
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHttpClient<IStorageService, SupabaseStorageService>();
+builder.Services.AddHttpClient<IKeyManagementService, VaultTransitKeyManagementService>()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 builder.Services.AddScoped<IExcelReader, ExcelReader>();
 builder.Services.AddScoped<ICsvReader, CsvReader>();
 builder.Services.AddScoped<IExcelWriter, ExcelWriter>();

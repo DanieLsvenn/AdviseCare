@@ -13,17 +13,25 @@ public partial class Studentindicator
 
     public Guid IndicatorId { get; set; }
 
+    public Guid DataAttributeId { get; set; }
+
     public Guid StudentId { get; set; }
+
+    public Guid? AttributeKeyId { get; set; }
 
     public Guid TermId { get; set; }
 
-    public string IndicatorValue { get; set; }
+    public byte[] IndicatorValue { get; set; }
+
+    public byte[] ValueHmac { get; set; }
 
     public string ProvenanceNote { get; set; }
 
     public DateTime TransactionFrom { get; set; }
 
     public DateTime ValidFrom { get; set; }
+
+    public DateTime? ErasedAt { get; set; }
 
     public bool IsMissing { get; set; }
 
@@ -33,7 +41,9 @@ public partial class Studentindicator
 
     public virtual Indicator Indicator { get; set; }
 
-    public virtual Account Student { get; set; }
+    public virtual Attributekey AttributeKey { get; set; }
+
+    public virtual Studentprofile Student { get; set; }
 
     public virtual Academicterm Term { get; set; }
 }

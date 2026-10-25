@@ -85,8 +85,8 @@ Each checkpoint is a separate change intended to be reviewed and pushed independ
 - C-04 Welfare escalations (uses existing CASES; implemented).
 - C-05 Interventions and support grants (uses existing CASES; implemented).
 - C-06a Indicator import file preview, column mapping, and whole-file validation for .xlsx/.csv (implemented; no data is written).
-- C-06b Insert-only indicator persistence, missing flags, and import activity logging (blocked until Member B's encryption contract is available).
-- C-07 Student profile, point-in-time history, own-profile access, and JSON export (requires Member B's access guard and access-log contract).
+- C-06b Insert-only indicator persistence, missing flags, and import activity logging (v5 EF mappings and two-phase Vault erasure are implemented; authenticated value encryption/key creation, decryption, import persistence, StudentProfile provisioning, and studentCode resolution remain).
+- C-07 Student profile, point-in-time history, own-profile access, and JSON export (Member B's access guard/access log are available; value reads still require backend decryption).
 - C-08 Correction requests (scope remains pending review; confirm how a request identifies the source indicator row before implementation).
 
 ==========
@@ -599,6 +599,7 @@ WF5: Admin imports student indicator data
    Form (multipart/form-data):
    file = indicators_fall2026.xlsx
    columnMapping = { "studentIdentifier": "Student email", "indicator": "Indicator", "value": "Value", "term": "Term", "validFrom": "Valid from" }
+   Student identifier may be a unique studentCode, email or username; studentCode resolution is planned for C-06b.
    Expect: isValid = true, validRowCount = 4, errors = []; this validation endpoint does not create STUDENTINDICATORS rows
 4.1. If any row is invalid, nothing is imported
    POST /api/StudentIndicators/import/validate [IMPLEMENTED - Member C C-06a]
@@ -611,10 +612,10 @@ WF5: Admin imports student indicator data
    student@gmail.com      | GPA             | abc   | Fall 2026 | 2026-10-20     (not numeric)
    student@gmail.com      | Attendance rate | 80    | Winter 99 | 2026-10-20     (term does not exist)
    Expect: isValid = false, the 4 invalid rows with their reasons, validRowCount = 0; no STUDENTINDICATORS rows are added
-4.2. If all rows are valid, every value will be inserted as a new row (C-06b, pending Member B's encryption contract)
+4.2. If all rows are valid, every value will be inserted as a new row (C-06b, pending authenticated encryption/key creation)
    POST /api/StudentIndicators/import [PLANNED - Member C C-06b]
    Form: file = indicators_fall2026.xlsx (same mapping)
-   Expected after C-06b: insertedCount = 4; each row has dataSourceId = null, status = original, provenanceNote like "Imported from indicators_fall2026.xlsx on 2026-10-21"; values are encrypted with the student's attribute key (Member B)
+   Expected after C-06b: insertedCount = 4; each row has dataSourceId = null, status = original, provenanceNote like "Imported from indicators_fall2026.xlsx on 2026-10-21"; values and HMACs are produced using the student's per-attribute key
    For EX13, import indicators_fall2026_update.xlsx afterwards (new rows, never updates):
    student@gmail.com | GPA             | 7.5 | Fall 2026 | 2026-11-20
    student@gmail.com | Attendance rate | 85  | Fall 2026 | 2026-11-20
@@ -902,12 +903,12 @@ EX8: Student manages consent and erasure
    GET /api/StudentIndicators/students/{studentId}/profile [PLANNED - Member C] with {wellbeingAdvisorToken}
    Expect: Attendance rate -> "exists, not shared" (unless still granted under another purpose the advisor's role has a policy for)
 4.2. An erasure request is queued (automatic, only when the attribute is no longer granted under any purpose and the student has an active key for it)
-   Note: keys are created by B4.1 (envelope encryption, not built yet), so until then no erasure request is queued
+   Note: key creation/encryption is not built yet, so until an active per-attribute Vault key exists no erasure request is queued
 4.3. Steward verifies the withdrawal and executes the erasure
    GET /api/ErasureRequests/search?status=pending [EXISTS]
    PUT /api/ErasureRequests/{erasureRequestId}/execute [EXISTS]
    Auth: {stewardToken}
-   Expect: status = completed, executedAt and executedBy set; the ATTRIBUTEKEYS row status = destroyed; executing again -> 409; executing after the student shared the attribute again -> 409
+   Expect: SQL first removes live ciphertext/HMAC and marks pendingKeyDestruction; the API deletes the Vault Transit key and only then confirms status = completed, executedAt and executedBy set, and ATTRIBUTEKEYS.status = destroyed; a retry resumes pendingKeyDestruction
 4.4. The values become unreadable; the audit trail stays
    Expect: consents, consent history and access log rows are still there
 4.5. Student is notified
@@ -1144,6 +1145,9 @@ NOTES
 
 - All [PLANNED] routes are proposals: the member who builds the controller may rename them; update this file when they do
 - Member B's routes are built and tagged [EXISTS]; Members C and D call IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync, then LogAccessAsync) before showing or exporting any indicator value
+- STUDENTINDICATORS.indicatorValue is binary ciphertext linked to ATTRIBUTEKEYS.attributeKeyId; missing rows have no key or payload. The API must encrypt before insert and must never return ciphertext as a user-facing value.
+- Erasure uses Vault Transit: configure `VaultTransit:Address`, `VaultTransit:MountPath`, and `VaultTransit:KeyNamePrefix`; provide `VaultTransit:Token` through environment/user secrets, never source control. Each key must have Vault `deletion_allowed=true`; the API does not report completion until external deletion and SQL confirmation both succeed.
+- CASES.requestReasonVisibility and CASENOTES.visibility default to caseTeam and allow assignedAdvisor; API enforcement is still required before case text is returned, referred or exported.
 - EX1, EX2 step 4, WF1 step 4.2 and EX16 avatar need Google, Gmail and Supabase values in appsettings.json; until then they return errors from the outside service
 - Notifications sent by other features (WF2 step 4, EX4, EX5, EX6, EX7, EX8, EX15) depend on NotificationService.NotifyAsync being called by Members B, C and D
 - Open questions for the owners of the planned endpoints:
