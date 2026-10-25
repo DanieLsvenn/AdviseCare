@@ -12,7 +12,8 @@ Member C work is split into independently reviewable/pushable checkpoints. Proce
 - C-03 External referrals and follow-up, including overdue detection (uses existing CASES and EXTERNALSERVICES; implemented).
 - C-04 Welfare escalations (uses existing CASES; implemented).
 - C-05 Interventions and support grants (uses existing CASES; implemented).
-- C-06 Indicator import parsing and all-row validation; insert-only persistence and missing-indicator rules follow after mapping and Member B's encryption contract are agreed.
+- C-06a Indicator import file preview, column mapping, and whole-file validation for .xlsx/.csv (implemented; no data is written).
+- C-06b Insert-only indicator persistence, missing flags, and import activity logging (blocked until Member B's encryption contract is available).
 - C-07 Student profile, point-in-time history, own-profile access, and JSON export (requires Member B's access guard and access-log contract).
 - C-08 Correction requests (scope remains pending review; confirm how a request identifies the source indicator row before implementation).
 
@@ -127,14 +128,14 @@ WF4: Programme Head lists, reports and exports
 
 WF5: Admin imports student indicator data
 1. Admin signs in and opens "Import indicator data"
-2. Admin uploads an Excel/CSV file or provides a Google Sheet
+2. Admin uploads an .xlsx/.csv file; Google Sheet import remains pending its integration setup
 3. Admin maps file columns to indicators (student identifier, indicator, value, term, date)
-4. System validates the whole file
+4. System previews the file and validates the whole file without persisting rows (C-06a)
 4.1. If any row is invalid, nothing is imported and the system lists the invalid rows (all-or-nothing)
-4.2. If all rows are valid, the system writes each value straight into STUDENTINDICATORS as a new row (dataSourceId stays null), with the file name and import date kept as its source note (provenanceNote)
-5. Expected indicators that are missing for a student are flagged as missing
-6. Admin views the import result and the import history
-7. Note: scheduled automatic ingestion (data sources, schedules, jobs) is kept in the ERD but not in the current version (see AdviseCare_Future_List.txt)
+4.2. If all rows are valid, C-06b will insert new STUDENTINDICATORS rows only (dataSourceId null, provenanceNote includes file name and import date); encrypted values use Member B's key service
+5. C-06b will flag expected-but-missing indicators
+6. C-06b will write import activity history and show the result
+7. Note: C-06b is blocked on Member B's encryption contract; scheduled automatic ingestion (data sources, schedules, jobs) is future work (see AdviseCare_Future_List.txt)
 
 ==========
 EXTRA WORKFLOWS

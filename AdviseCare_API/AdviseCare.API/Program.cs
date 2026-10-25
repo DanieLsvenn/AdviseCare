@@ -56,6 +56,7 @@ builder.Services.AddScoped<IExternalReferralService, ExternalReferralService>();
 builder.Services.AddScoped<IEscalationService, EscalationService>();
 builder.Services.AddScoped<IInterventionService, InterventionService>();
 builder.Services.AddScoped<ISupportGrantService, SupportGrantService>();
+builder.Services.AddScoped<IStudentIndicatorImportService, StudentIndicatorImportService>();
 
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.
@@ -72,6 +73,7 @@ builder.Services.Configure<SupabaseSettings>(builder.Configuration.GetSection("S
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHttpClient<IStorageService, SupabaseStorageService>();
 builder.Services.AddScoped<IExcelReader, ExcelReader>();
+builder.Services.AddScoped<ICsvReader, CsvReader>();
 
 // -- HttpContextAccessor ---
 builder.Services.AddHttpContextAccessor();

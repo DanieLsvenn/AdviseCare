@@ -18,6 +18,9 @@ namespace AdviseCare.Infrastructure.Excel
             // Header row: column number -> header name
             var headers = usedRows[0].CellsUsed()
                 .ToDictionary(c => c.Address.ColumnNumber, c => c.GetFormattedString().Trim());
+            var nonEmptyHeaders = headers.Values.Where(header => !string.IsNullOrEmpty(header)).ToList();
+            if (nonEmptyHeaders.Distinct(StringComparer.OrdinalIgnoreCase).Count() != nonEmptyHeaders.Count)
+                throw new InvalidDataException("Excel column headers must be unique.");
 
             return usedRows.Skip(1).Select(row =>
             {

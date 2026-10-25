@@ -83,7 +83,8 @@ Each checkpoint is a separate change intended to be reviewed and pushed independ
 - C-03 External referrals and follow-up, including overdue detection (uses existing CASES and EXTERNALSERVICES; implemented).
 - C-04 Welfare escalations (uses existing CASES; implemented).
 - C-05 Interventions and support grants (uses existing CASES; implemented).
-- C-06 Indicator import parsing and all-row validation; insert-only persistence and missing-indicator rules follow after mapping and Member B's encryption contract are agreed.
+- C-06a Indicator import file preview, column mapping, and whole-file validation for .xlsx/.csv (implemented; no data is written).
+- C-06b Insert-only indicator persistence, missing flags, and import activity logging (blocked until Member B's encryption contract is available).
 - C-07 Student profile, point-in-time history, own-profile access, and JSON export (requires Member B's access guard and access-log contract).
 - C-08 Correction requests (scope remains pending review; confirm how a request identifies the source indicator row before implementation).
 
@@ -569,9 +570,9 @@ WF5: Admin imports student indicator data
    POST /api/Auth/login [EXISTS] with admin@gmail.com / 123456 -> {adminToken}
 2. Admin uploads an Excel/CSV file or provides a Google Sheet
 3. Admin maps file columns to indicators
-   POST /api/StudentIndicators/import/preview [PLANNED - Member C]
+   POST /api/StudentIndicators/import/preview [IMPLEMENTED - Member C C-06a]
    Auth: {adminToken}
-   Form (multipart/form-data): file = indicators_fall2026.xlsx
+   Form (multipart/form-data): file = indicators_fall2026.xlsx (or .csv)
    Expect: the header row and the first rows, so the web app can show the column mapping
    indicators_fall2026.xlsx:
    Student email      | Indicator            | Value     | Term      | Valid from
@@ -581,13 +582,15 @@ WF5: Admin imports student indicator data
    student@gmail.com  | Financial difficulty | true      | Fall 2026 | 2026-10-01
    (no rows for student01: every expected indicator becomes missing for them)
    Google Sheet variant: POST /api/StudentIndicators/import-google-sheet [PLANNED - Member C], body { "sheetUrl": "https://docs.google.com/spreadsheets/d/...", "termId": "{termFall2026Id}", "columnMapping": { ... } } (needs the Google setup)
-4. System validates the whole file
-   POST /api/StudentIndicators/import [PLANNED - Member C]
+4. System validates the whole file without persisting rows
+   POST /api/StudentIndicators/import/validate [IMPLEMENTED - Member C C-06a]
    Auth: {adminToken}
    Form (multipart/form-data):
    file = indicators_fall2026.xlsx
    columnMapping = { "studentIdentifier": "Student email", "indicator": "Indicator", "value": "Value", "term": "Term", "validFrom": "Valid from" }
+   Expect: isValid = true, validRowCount = 4, errors = []; this validation endpoint does not create STUDENTINDICATORS rows
 4.1. If any row is invalid, nothing is imported
+   POST /api/StudentIndicators/import/validate [IMPLEMENTED - Member C C-06a]
    Form: file = indicators_invalid.xlsx (same mapping)
    indicators_invalid.xlsx:
    Student email          | Indicator       | Value | Term      | Valid from
@@ -596,19 +599,20 @@ WF5: Admin imports student indicator data
    student@gmail.com      | Height          | 170   | Fall 2026 | 2026-10-20     (indicator does not exist)
    student@gmail.com      | GPA             | abc   | Fall 2026 | 2026-10-20     (not numeric)
    student@gmail.com      | Attendance rate | 80    | Winter 99 | 2026-10-20     (term does not exist)
-   Expect: isSuccess = false, the 4 invalid rows with their reasons, no STUDENTINDICATORS rows added (not even the valid one); activity log indicatorImportFailed
-4.2. If all rows are valid, every value is inserted as a new row
-   Form: file = indicators_fall2026.xlsx
-   Expect: isSuccess = true, insertedCount = 4; each row has dataSourceId = null, status = original, provenanceNote like "Imported from indicators_fall2026.xlsx on 2026-10-21"; values are encrypted with the student's attribute key (Member B)
+   Expect: isValid = false, the 4 invalid rows with their reasons, validRowCount = 0; no STUDENTINDICATORS rows are added
+4.2. If all rows are valid, every value will be inserted as a new row (C-06b, pending Member B's encryption contract)
+   POST /api/StudentIndicators/import [PLANNED - Member C C-06b]
+   Form: file = indicators_fall2026.xlsx (same mapping)
+   Expected after C-06b: insertedCount = 4; each row has dataSourceId = null, status = original, provenanceNote like "Imported from indicators_fall2026.xlsx on 2026-10-21"; values are encrypted with the student's attribute key (Member B)
    For EX13, import indicators_fall2026_update.xlsx afterwards (new rows, never updates):
    student@gmail.com | GPA             | 7.5 | Fall 2026 | 2026-11-20
    student@gmail.com | Attendance rate | 85  | Fall 2026 | 2026-11-20
 5. Expected indicators missing for a student are flagged
-   GET /api/StudentIndicators/search?termId={termFall2026Id}&isMissing=true [PLANNED - Member C]
+   GET /api/StudentIndicators/search?termId={termFall2026Id}&isMissing=true [PLANNED - Member C C-06b]
    Auth: {adminToken}
    Expect: rows with isMissing = true for every student without values (e.g. student01)
 6. Admin views the import result and the import history
-   GET /api/ActivityLogs/search?activityType=indicatorsImported [EXISTS endpoint; the indicatorsImported log is written by Member C]
+   GET /api/ActivityLogs/search?activityType=indicatorsImported [EXISTS endpoint; the indicatorsImported log will be written by Member C C-06b]
    Auth: {adminToken}
    Expect: one entry per successful import with the file name and row count
 7. Scheduled automatic ingestion is future (FU1) [NO API]
