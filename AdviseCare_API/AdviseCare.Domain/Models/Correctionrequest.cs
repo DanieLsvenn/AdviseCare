@@ -13,7 +13,9 @@ public partial class Correctionrequest
 
     public Guid StudentId { get; set; }
 
-    public Guid? AttributeKeyId { get; set; }
+    public Guid StudentIndicatorId { get; set; }
+
+    public Guid AttributeKeyId { get; set; }
 
     public Guid DataAttributeId { get; set; }
 
@@ -46,4 +48,6 @@ public partial class Correctionrequest
     public virtual Dataattribute DataAttribute { get; set; }
 
     public virtual Studentprofile Student { get; set; }
+
+    public virtual Studentindicator StudentIndicator { get; set; }
 }

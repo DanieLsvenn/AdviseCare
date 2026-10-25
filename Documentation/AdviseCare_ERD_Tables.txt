@@ -232,6 +232,7 @@ status - enum - what kind of row this is when inserted (e.g. original/correction
 17 STUDENTINDICATORS - 45 STUDENTPROFILES: many to one (studentId)
 17 STUDENTINDICATORS - 41 ATTRIBUTEKEYS: many to one (attributeKeyId, studentId, dataAttributeId); missing rows have no key
 17 STUDENTINDICATORS - 10 ACADEMICTERMS: many to one (termId)
+17 STUDENTINDICATORS - 26 CORRECTIONREQUESTS: one to many (studentIndicatorId, studentId, dataAttributeId)
 
 
 ADVISOR MATCHING SETUP
@@ -353,10 +354,11 @@ status - enum - pending/accepted/returned, drives the receiver's referral queue
 correctionRequestId (PK) - uuid - unique identifier for one student-submitted correction request
 reviewedBy (FK) - uuid - which advisor reviewed the request
 studentId (FK) - uuid - which student profile submitted the request
-dataAttributeId (FK) - uuid - the protected attribute being corrected
-attributeKeyId (FK) - uuid, nullable - the same-student, same-attribute key protecting encrypted values
+studentIndicatorId (FK) - uuid - exact source row selected by the student; constrained together with studentId and dataAttributeId
+dataAttributeId (FK) - uuid - the protected attribute copied from the source indicator row
+attributeKeyId (FK) - uuid - the same-student, same-attribute key protecting encrypted values
 currentValue - varbinary, nullable - AES-256-GCM payload for the value on record before correction
-currentValueHmac - varbinary(32), nullable - HMAC for currentValue using a separate secret
+currentValueHmac - varbinary(32), nullable - HMAC for currentValue using a distinct HKDF-derived subkey
 decisionNotes - string - advisor's explanation for their approve/reject decision
 explanation - string - the student's justification for why the fact is wrong
 fieldName - string - which field is being disputed
@@ -369,6 +371,7 @@ status - enum - pending/approved/rejected/withdrawn, drives the tracking view fo
 
 26 CORRECTIONREQUESTS - 1 ACCOUNTS: many to one (reviewedBy)
 26 CORRECTIONREQUESTS - 45 STUDENTPROFILES: many to one (studentId)
+26 CORRECTIONREQUESTS - 17 STUDENTINDICATORS: many to one (studentIndicatorId, studentId, dataAttributeId)
 26 CORRECTIONREQUESTS - 13 DATAATTRIBUTES: many to one (dataAttributeId)
 26 CORRECTIONREQUESTS - 41 ATTRIBUTEKEYS: many to one (attributeKeyId, studentId, dataAttributeId)
 

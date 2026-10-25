@@ -111,11 +111,14 @@ public partial class AdviseCareContext : DbContext
         IConfiguration configuration = new ConfigurationBuilder()
          .SetBasePath(Directory.GetCurrentDirectory())
          .AddJsonFile("appsettings.json", true, true).Build();
-        return configuration["ConnectionStrings:DBDefault"];
+        return configuration["ConnectionStrings:AdviseCareDB"];
     }
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseSqlServer(GetConnectionString());
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.UseSqlServer(GetConnectionString());
+        }
     }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -833,12 +836,22 @@ public partial class AdviseCareContext : DbContext
         {
             entity.ToTable("CORRECTIONREQUESTS");
 
+            entity.HasIndex(e => e.StudentIndicatorId, "UX_CORRECTIONREQUESTS_pending_source")
+                .IsUnique()
+                .HasFilter("[status] = N'pending'");
+            entity.HasIndex(e => new { e.StudentId, e.Status, e.SubmittedAt }, "IX_CORRECTIONREQUESTS_student_status_submittedAt");
+
             entity.HasOne(d => d.AttributeKey).WithMany()
                 .HasForeignKey(d => new { d.AttributeKeyId, d.StudentId, d.DataAttributeId })
                 .HasPrincipalKey(p => new { p.AttributeKeyId, p.StudentId, p.DataAttributeId })
-                .IsRequired(false)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_CORRECTIONREQUESTS_key_student_attribute");
+
+            entity.HasOne(d => d.StudentIndicator).WithMany()
+                .HasForeignKey(d => new { d.StudentIndicatorId, d.StudentId, d.DataAttributeId })
+                .HasPrincipalKey(p => new { p.StudentIndicatorId, p.StudentId, p.DataAttributeId })
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CORRECTIONREQUESTS_indicator_student_attribute");
 
             entity.Property(e => e.CorrectionRequestId)
                 .HasDefaultValueSql("(newsequentialid())")
@@ -860,6 +873,7 @@ public partial class AdviseCareContext : DbContext
                 .HasColumnName("fieldName");
             entity.Property(e => e.ProposedValue).HasColumnName("proposedValue");
             entity.Property(e => e.ReviewedBy).HasColumnName("reviewedBy");
+            entity.Property(e => e.StudentIndicatorId).HasColumnName("studentIndicatorId");
             entity.Property(e => e.Status)
                 .IsRequired()
                 .HasMaxLength(30)
@@ -1539,6 +1553,8 @@ public partial class AdviseCareContext : DbContext
             entity.ToTable("STUDENTINDICATORS");
 
             entity.HasIndex(e => new { e.StudentId, e.IndicatorId, e.TransactionFrom, e.ValidFrom }, "IX_STUDENTINDICATORS_student_indicator_time");
+            entity.HasAlternateKey(e => new { e.StudentIndicatorId, e.StudentId, e.DataAttributeId })
+                .HasName("UQ_STUDENTINDICATORS_id_student_attribute");
 
             entity.Property(e => e.StudentIndicatorId)
                 .HasDefaultValueSql("(newsequentialid())")
@@ -1602,6 +1618,7 @@ public partial class AdviseCareContext : DbContext
         modelBuilder.Entity<Studentprofile>(entity =>
         {
             entity.ToTable("STUDENTPROFILES");
+            entity.HasKey(e => e.StudentId);
 
             entity.HasIndex(e => e.StudentCode, "UX_STUDENTPROFILES_studentCode")
                 .IsUnique()

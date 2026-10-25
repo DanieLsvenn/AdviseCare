@@ -90,7 +90,10 @@ Each checkpoint is a separate change intended to be reviewed and pushed independ
 - C-07a Authorized advisor indicator-profile reads, consent-gated decryption, and per-value access logging (implemented; assigned-case advisor only; optional term filter).
 - C-07b Point-in-time indicator history and comparison (implemented; reconstructs system knowledge through the end of the selected UTC date; each snapshot uses C-07a access checks and logging).
 - C-07c Student own-profile access and JSON export (implemented; self-only profile, current indicator values, own cases and own access log; export recorded in ACTIVITYLOGS).
-- C-08 Correction requests (scope remains pending review; confirm how a request identifies the source indicator row before implementation).
+- C-08 Correction requests (implemented; each request has a composite FK to its exact student-indicator row, encrypted before/after values, assigned-advisor review, and insert-only correction history).
+- C-09 Anonymised welfare statistics (implemented; cases grouped by support category for one academic term or a complete UTC date range; categories with fewer than five distinct students are suppressed; Welfare Officer-only CSV export is generated on demand and activity-logged).
+- C-08 runtime verification (passed on 2026-10-25 against the v6 development database and local Vault Transit dev server; the temporary fixture remains for inspection; see [Member C changes and runtime validation](./Member_C_Changes_and_Runtime_Validation.md)).
+- Runtime fixes confirmed: Studentprofile's EF primary key is mapped, DI-provided database options are preserved, and new Vault Transit keys are configured for deletion after creation.
 
 ==========
 MAIN WORKFLOWS
@@ -1080,30 +1083,33 @@ EX14: Student exports own record
    Auth: {studentToken}
    Expect: an application/json file download with profile, decrypted own indicator values, cases and own access log; an ACTIVITYLOGS entry with activityType = dataExported
 
-EX15: Correction request (pending review)
+EX15: Correction request
 1. Student selects a value believed to be wrong and explains why
-   POST /api/CorrectionRequests [PLANNED - Member C]
+   POST /api/CorrectionRequests [IMPLEMENTED - Member C C-08]
    Auth: {studentToken}
    Body:
    {
-     "currentValue": "72",
-     "explanation": "I was marked absent on 2026-10-05 and 2026-10-12 although I attended; my lecturer confirmed it by email.",
-     "fieldName": "Attendance rate",
-     "proposedValue": "80"
+     "studentIndicatorId": "{attendanceIndicatorRowId}",
+     "proposedValue": "80",
+     "explanation": "I was marked absent on 2026-10-05 and 2026-10-12 although I attended; my lecturer confirmed it by email."
    }
-   Save: -> {correctionRequestId}
-   Withdraw test (on a second request): PUT /api/CorrectionRequests/{id}/withdraw -> status = withdrawn
+   Expect: 201 with {correctionRequestId}; current value and indicator name are derived from the selected row, not trusted from the client, and both values are encrypted at rest.
+   GET /api/CorrectionRequests/me/{correctionRequestId} [IMPLEMENTED - Member C C-08] with {studentToken} -> own status/details only
+   Withdraw test (on a second request): PUT /api/CorrectionRequests/{id}/withdraw [IMPLEMENTED - Member C C-08] -> 204; only the owning student can withdraw a pending request
 2. Advisor reviews it against its source
-   GET /api/CorrectionRequests/search?status=pending [PLANNED - Member C]
+   GET /api/CorrectionRequests/search?status=pending [IMPLEMENTED - Member C C-08]
    Auth: {academicAdvisorToken}
+   Expect: requests for actively assigned students; current/proposed values and explanation are disclosed only when Member B's access guard allows the attribute, with one access-log row per request read.
 3. Approved or rejected
-   PUT /api/CorrectionRequests/{correctionRequestId}/approve [PLANNED - Member C]
+   PUT /api/CorrectionRequests/{correctionRequestId}/approve [IMPLEMENTED - Member C C-08]
    Body: { "decisionNotes": "Checked with the lecturer's attendance sheet; corrected." }
-   Expect: status = approved; a new STUDENTINDICATORS row with status = correction and value 80; the old row stays
-   PUT /api/CorrectionRequests/{id}/reject [PLANNED - Member C]
+   Expect: status = approved; a new STUDENTINDICATORS row with status = correction and value 80; the old row stays. The operation is rejected if the source is no longer the latest value.
+   PUT /api/CorrectionRequests/{id}/reject [IMPLEMENTED - Member C C-08]
    Body: { "decisionNotes": "The attendance sheet confirms the absences." }
 4. Student is notified
-   GET /api/Notifications/me [EXISTS] with {studentToken}
+   GET /api/Notifications/me [EXISTS] with {studentToken}; approval/rejection creates an in-app notification.
+
+Runtime verification evidence (2026-10-25): approval, rejection, and withdrawal passed against the local development database; all three correction requests retained encrypted current/proposed values and HMACs. The test fixture is `C08-RUNTIME-8dd625bac0-*`; do not use the development fixture or Vault dev credentials in production. See [Member C changes and runtime validation](./Member_C_Changes_and_Runtime_Validation.md) for run steps, evidence, and scoped cleanup.
 
 EX16: Notifications, language and settings
 1. User views notifications, marks them read, clicks through and clears old ones
@@ -1145,6 +1151,20 @@ EX16: Notifications, language and settings
    Expect: the new avatarUrl
    Negative: avatar_too_big.png -> 400; avatar.bmp -> 400
 
+EX17: Welfare Officer views anonymised welfare statistics
+1. View statistics for one academic term
+   GET /api/WelfareStatistics?termId={termId} [IMPLEMENTED - Member C C-09]
+   Auth: {welfareOfficerToken}
+   Expect: JSON rows with categoryName, caseCount, and studentCount; categories with fewer than five distinct students are omitted. No individual student data or overall total is returned.
+2. View statistics for a complete UTC calendar-date range
+   GET /api/WelfareStatistics?fromDate=2026-01-01&toDate=2026-06-30 [IMPLEMENTED - Member C C-09]
+   Expect: cases are selected by CASES.openedAt, including both calendar dates.
+3. Export the same summary as CSV
+   GET /api/WelfareStatistics/export?termId={termId} [IMPLEMENTED - Member C C-09]
+   GET /api/WelfareStatistics/export?fromDate=2026-01-01&toDate=2026-06-30 [IMPLEMENTED - Member C C-09]
+   Expect: generated CSV attachment; export is recorded in ACTIVITYLOGS.
+   Negative: missing either date, reversed dates, or combining termId with dates -> 400; unknown termId -> 404; another role -> 403.
+
 ==========
 NOTES
 ==========
@@ -1164,4 +1184,3 @@ NOTES
   - EX6 3.2: ASSIGNMENTCHANGEREQUESTS has no column for the rejection reason (reason holds the requester's reason)
   - EX10 3: ACCESSLOGS.consentPurposeId is required, but an emergency read has no purpose (make it nullable, null = emergency access?)
   - EX10 2: "Reject a request with a reason" (Functional Requirements) has no column in EMERGENCYACCESSREQUESTS
-  - EX15 1: is fieldName the indicator name, or should CORRECTIONREQUESTS point to the STUDENTINDICATORS row?

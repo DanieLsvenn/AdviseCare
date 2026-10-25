@@ -82,13 +82,13 @@ C2.1. C-07a: Decrypt indicator values only after Member B's access guard approve
 C2.2. C-07b: Point-in-time view ("way back machine"): current row = latest row up to the chosen date; compare two dates (depends on C-07a)
 C2.3. C-07c: Student's own profile view, restricted to the authenticated student (depends on C-07a)
 C2.4. C-07c: Student JSON export (own record + own access log), generated on the fly (depends on C-07a)
-C2.5. Correction requests (pending review): submit, advisor review, approved = new "correction" row, withdraw
+C2.5. C-08: Correction requests (implemented): each request references its exact STUDENTINDICATORS row; submit, assigned-advisor review, approve = new "correction" row, reject, withdraw
 C3. Welfare (Student Welfare Officer)
 C3.1. Interventions: log, update until closed, outcome, history per student
 C3.2. Support grants under an intervention
 C3.3. External services list; external referrals with follow-up due date, outcome, overdue flag (background check)
 C3.4. Escalations: officer raises, Programme Head responds, status tracking
-C3.5. Anonymised welfare statistics (pending review)
+C3.5. Anonymised welfare statistics (implemented as C-09): aggregate cases by support category for one academic term or a complete UTC calendar-date range; suppress categories with fewer than five distinct students; return no student-level rows or overall totals; Welfare Officer-only CSV export is generated on demand and activity-logged.
 Note: welfare works on existing CASES rows (from the seed data), so it does not wait for Member D's case APIs
 
 ==========

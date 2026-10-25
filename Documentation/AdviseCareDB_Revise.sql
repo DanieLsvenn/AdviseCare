@@ -1,5 +1,5 @@
 ﻿/* =====================================================================
-   AdviseCare - Microsoft SQL Server database script (v5, single file)
+   AdviseCare - Microsoft SQL Server database script (v6, single file)
    47 tables
    1. Creates database AdviseCareDB if it does not exist
    2. Drops every AdviseCare table that exists, child tables first
@@ -10,7 +10,7 @@
    Conventions: uuid -> UNIQUEIDENTIFIER (NEWSEQUENTIALID), date -> DATETIME2(3) in UTC,
    enum -> NVARCHAR(30) + CHECK constraint, bool -> BIT, FK delete rule = NO ACTION.
 
-   Review fixes integrated (v5 retains the v4 schema and adds SQL-level hardening):
+   Review fixes integrated (v6 retains the v5 schema and adds SQL-level hardening):
    - B1: encrypted indicator/correction values, HMAC fingerprints, student+attribute key binding,
          consent-withdrawal validation, and a two-step KMS key-destruction workflow.
    - B2: case-team history, referral-specific note sharing, and SQL Server row-level security
@@ -19,6 +19,7 @@
          filtered unique studentCode index (already present in v4), and nonblank-code validation.
    - V5: stricter consent timestamp consistency, nonblank KMS key-reference validation, and
          stronger CASENOTES write protection for updates/deletes.
+   - C-08: correction requests reference the exact student-indicator row and its encryption key.
    IMPORTANT: This is a full rebuild script. Back up the database before running it.
    Cryptographic erasure across backups requires a per-attribute key in an external KMS/HSM.
    The application must confirm permanent KMS destruction before calling the confirmation procedure.
@@ -454,6 +455,7 @@ CREATE TABLE [dbo].[STUDENTINDICATORS] (
     [erasedAt] DATETIME2(3) NULL,
     [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_STUDENTINDICATORS_status] DEFAULT N'original',
     CONSTRAINT [PK_STUDENTINDICATORS] PRIMARY KEY ([studentIndicatorId]),
+    CONSTRAINT [UQ_STUDENTINDICATORS_id_student_attribute] UNIQUE ([studentIndicatorId], [studentId], [dataAttributeId]),
     CONSTRAINT [FK_STUDENTINDICATORS_dataSourceId] FOREIGN KEY ([dataSourceId]) REFERENCES [dbo].[DATASOURCES]([dataSourceId]),
     CONSTRAINT [FK_STUDENTINDICATORS_indicatorId_dataAttributeId] FOREIGN KEY ([indicatorId], [dataAttributeId]) REFERENCES [dbo].[INDICATORS]([indicatorId], [dataAttributeId]),
     CONSTRAINT [FK_STUDENTINDICATORS_studentId] FOREIGN KEY ([studentId]) REFERENCES [dbo].[STUDENTPROFILES]([studentId]),
@@ -700,13 +702,14 @@ GO
 
 -- 26. CORRECTIONREQUESTS
 -- B1.4: currentValue / proposedValue are encrypted with an ATTRIBUTEKEYS key (VARBINARY), never plaintext.
--- The composite FK to ATTRIBUTEKEYS is added after that table exists (see below).
+-- Each request references the exact STUDENTINDICATORS source row and its key; the composite key FK is added after ATTRIBUTEKEYS exists.
 CREATE TABLE [dbo].[CORRECTIONREQUESTS] (
     [correctionRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CORRECTIONREQUESTS_correctionRequestId] DEFAULT NEWSEQUENTIALID(),
     [reviewedBy] UNIQUEIDENTIFIER NULL,
     [studentId] UNIQUEIDENTIFIER NOT NULL,
-    [dataAttributeId] UNIQUEIDENTIFIER NULL,
-    [attributeKeyId] UNIQUEIDENTIFIER NULL,
+    [studentIndicatorId] UNIQUEIDENTIFIER NOT NULL,
+    [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
+    [attributeKeyId] UNIQUEIDENTIFIER NOT NULL,
     [currentValue] VARBINARY(MAX) NULL,
     [currentValueHmac] VARBINARY(32) NULL,
     [decisionNotes] NVARCHAR(MAX) NULL,
@@ -722,11 +725,11 @@ CREATE TABLE [dbo].[CORRECTIONREQUESTS] (
     CONSTRAINT [PK_CORRECTIONREQUESTS] PRIMARY KEY ([correctionRequestId]),
     CONSTRAINT [FK_CORRECTIONREQUESTS_reviewedBy] FOREIGN KEY ([reviewedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
     CONSTRAINT [FK_CORRECTIONREQUESTS_studentId] FOREIGN KEY ([studentId]) REFERENCES [dbo].[STUDENTPROFILES]([studentId]),
+    CONSTRAINT [FK_CORRECTIONREQUESTS_indicator_student_attribute] FOREIGN KEY ([studentIndicatorId], [studentId], [dataAttributeId]) REFERENCES [dbo].[STUDENTINDICATORS]([studentIndicatorId], [studentId], [dataAttributeId]),
     CONSTRAINT [FK_CORRECTIONREQUESTS_dataAttributeId] FOREIGN KEY ([dataAttributeId]) REFERENCES [dbo].[DATAATTRIBUTES]([dataAttributeId]),
     CONSTRAINT [CK_CORRECTIONREQUESTS_encrypted_values] CHECK (
         (([currentValue] IS NULL AND [currentValueHmac] IS NULL) OR ([currentValue] IS NOT NULL AND [currentValueHmac] IS NOT NULL))
         AND (([proposedValue] IS NULL AND [proposedValueHmac] IS NULL) OR ([proposedValue] IS NOT NULL AND [proposedValueHmac] IS NOT NULL))
-        AND (([currentValue] IS NULL AND [proposedValue] IS NULL) OR ([attributeKeyId] IS NOT NULL AND [dataAttributeId] IS NOT NULL))
     ),
     CONSTRAINT [CK_CORRECTIONREQUESTS_textVisibility] CHECK ([textVisibility] IN (N'studentAndReviewer', N'stewardOnly')),
     CONSTRAINT [CK_CORRECTIONREQUESTS_status] CHECK ([status] IN (N'pending', N'approved', N'rejected', N'withdrawn'))
@@ -1077,6 +1080,8 @@ CREATE INDEX [IX_STUDENTINDICATORS_student_indicator_time] ON [dbo].[STUDENTINDI
 CREATE INDEX [IX_STUDENTINDICATORS_attributeKeyId_studentId] ON [dbo].[STUDENTINDICATORS]([attributeKeyId], [studentId]) WHERE [attributeKeyId] IS NOT NULL;
 -- find every encrypted correction value protected by a key during an erasure audit
 CREATE INDEX [IX_CORRECTIONREQUESTS_attributeKeyId_studentId] ON [dbo].[CORRECTIONREQUESTS]([attributeKeyId], [studentId]) WHERE [attributeKeyId] IS NOT NULL;
+CREATE INDEX [IX_CORRECTIONREQUESTS_student_status_submittedAt] ON [dbo].[CORRECTIONREQUESTS]([studentId], [status], [submittedAt]);
+CREATE UNIQUE INDEX [UX_CORRECTIONREQUESTS_pending_source] ON [dbo].[CORRECTIONREQUESTS]([studentIndicatorId]) WHERE [status] = N'pending';
 -- find the programme (and its head) quickly
 CREATE INDEX [IX_PROGRAMMES_programmeHeadId] ON [dbo].[PROGRAMMES]([programmeHeadId]) WHERE [programmeHeadId] IS NOT NULL;
 GO

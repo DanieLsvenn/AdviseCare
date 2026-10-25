@@ -252,11 +252,12 @@ When a case goes beyond what the officer is allowed to decide, it is escalated t
 + View status of an escalated case
 + View the Programme Head's response
 
-- View anonymised welfare statistics (pending review):
+- View anonymised welfare statistics:
 
-+ Select a term/date range
-+ View anonymised summary statistics by category
-+ Export the statistics
++ Select one academic term or a complete UTC calendar-date range; cases are filtered by openedAt
++ View summary statistics by support category, including case count and distinct-student count
++ Suppress any category with fewer than five distinct students; do not return student-level rows or an overall total
++ Export the same anonymised statistics as a generated CSV file
 
 Student
 
@@ -306,7 +307,7 @@ The main entry point: the student asks for help, picks the kind of help, explain
 
 + Export own record and access log as a JSON file
 
-- Request correction of an incorrect fact with advisor review (pending review):
+- Request correction of an incorrect fact with advisor review:
 
 + Select the field believed to be incorrect
 + Submit correction with supporting explanation

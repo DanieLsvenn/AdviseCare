@@ -50,8 +50,7 @@ public sealed class VaultTransitKeyManagementService : IKeyManagementService
     {
         using var content = JsonContent.Create(new
         {
-            type = "aes256-gcm96",
-            deletion_allowed = true
+            type = "aes256-gcm96"
         });
         using var response = await SendAsync(
             HttpMethod.Post,
@@ -64,6 +63,44 @@ public sealed class VaultTransitKeyManagementService : IKeyManagementService
             _logger.LogError("Vault Transit key creation failed with HTTP status {StatusCode}.", response.StatusCode);
             response.EnsureSuccessStatusCode();
         }
+
+        using var configurationContent = JsonContent.Create(new { deletion_allowed = true });
+        using var configurationResponse = await SendAsync(
+            HttpMethod.Post,
+            $"{GetKeyPath(keyManagementKeyId)}/config",
+            cancellationToken,
+            configurationContent);
+
+        if (configurationResponse.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        _logger.LogError(
+            "Vault Transit key deletion configuration failed with HTTP status {StatusCode}.",
+            configurationResponse.StatusCode);
+        var configurationError = new HttpRequestException(
+            "Vault Transit key deletion configuration failed.",
+            null,
+            configurationResponse.StatusCode);
+
+        try
+        {
+            using var cleanupResponse = await SendAsync(
+                HttpMethod.Delete,
+                GetKeyPath(keyManagementKeyId),
+                CancellationToken.None);
+            cleanupResponse.EnsureSuccessStatusCode();
+        }
+        catch (Exception cleanupError)
+        {
+            throw new AggregateException(
+                "Vault Transit key configuration failed and the newly created key could not be cleaned up.",
+                configurationError,
+                cleanupError);
+        }
+
+        throw configurationError;
     }
 
     public async Task<string> WrapDataKeyAsync(

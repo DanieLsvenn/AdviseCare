@@ -168,7 +168,7 @@ namespace AdviseCare.Application.Services
                     {
                         messages.Add($"Indicator '{indicatorName}' does not exist.");
                     }
-                    else if (!string.IsNullOrWhiteSpace(value) && !IsValidValue(indicator.DataType, value))
+                    else if (!string.IsNullOrWhiteSpace(value) && !IndicatorValueValidator.IsValid(indicator.DataType, value))
                     {
                         messages.Add($"Value '{value}' is not valid for {indicator.DataType} indicator '{indicatorName}'.");
                     }
@@ -572,14 +572,6 @@ namespace AdviseCare.Application.Services
             if (matches.All(match => match.AccountId != account.AccountId))
                 matches.Add(account);
         }
-
-        private static bool IsValidValue(string dataType, string value) => dataType switch
-        {
-            "numeric" => decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out _),
-            "boolean" => bool.TryParse(value, out _),
-            "categorical" => !string.IsNullOrWhiteSpace(value),
-            _ => false
-        };
 
         private sealed record ColumnMapping(
             string? StudentIdentifier,

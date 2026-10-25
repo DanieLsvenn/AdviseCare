@@ -18,7 +18,10 @@ Member C work is split into independently reviewable/pushable checkpoints. Proce
 - C-07a Authorized advisor indicator-profile reads, consent-gated decryption, and per-value access logging (implemented; assigned-case advisor only; optional term filter).
 - C-07b Point-in-time indicator history and comparison (implemented; reconstructs system knowledge through the end of the selected UTC date; each snapshot uses C-07a access checks and logging).
 - C-07c Student own-profile access and JSON export (implemented; self-only profile, current indicator values, own cases and own access log; export recorded in ACTIVITYLOGS).
-- C-08 Correction requests (scope remains pending review; confirm how a request identifies the source indicator row before implementation).
+- C-08 Correction requests (implemented; each request has a composite FK to its exact student-indicator row, encrypted before/after values, assigned-advisor review, and insert-only correction history).
+- C-09 Anonymised welfare statistics (implemented; cases grouped by support category for one academic term or a complete UTC date range; categories with fewer than five distinct students are suppressed; Welfare Officer-only CSV export is generated on demand and activity-logged).
+- C-08 runtime verification (passed on 2026-10-25 against the v6 development database and local Vault Transit dev server; the temporary fixture remains for inspection; see [Member C changes and runtime validation](./Member_C_Changes_and_Runtime_Validation.md)).
+- Startup fixes confirmed during runtime verification: Studentprofile has its EF primary-key mapping, DI-provided database options are preserved, and Vault Transit keys are configured for deletion after creation.
 
 ==========
 MAIN WORKFLOWS
@@ -139,7 +142,7 @@ WF5: Admin imports student indicator data
 4.2. If all rows are valid, C-06b2 inserts new STUDENTINDICATORS rows only (dataSourceId null, provenanceNote includes file name and import date); C-06b1 supplies authenticated ciphertext and HMAC using the student's per-attribute key
 5. C-06b2 inserts an isMissing row for every active Student-role account missing each indicator/term pair represented in the import; missing-row validFrom is the term start date
 6. C-06b2 writes import activity history in the same database save and returns inserted/missing row counts
-7. Note: C-06b1 authenticated encryption/key provisioning and C-06b2 import persistence are implemented; C-07a is the next backend checkpoint. Scheduled automatic ingestion (data sources, schedules, jobs) is future work (see AdviseCare_Future_List.txt)
+7. Note: C-06b1 authenticated encryption/key provisioning, C-06b2 import persistence, C-07, and C-08 are implemented; C-08 has passed manual runtime verification. The next Member C checkpoint has not started and requires user approval. Scheduled automatic ingestion (data sources, schedules, jobs) is future work (see AdviseCare_Future_List.txt)
 
 ==========
 EXTRA WORKFLOWS
@@ -252,7 +255,7 @@ EX14: Student exports own record
 3. System builds a JSON file with the student's identity, current indicator profile, own cases and own access log
 4. Student downloads it; the export is logged in ACTIVITYLOGS
 
-EX15: Correction request (pending review)
+EX15: Correction request
 1. Student selects a value believed to be wrong and explains why
 2. Advisor reviews it against its source
 3. Approved: a corrected value is stored as a new version (the old one stays in history); Rejected: the advisor writes the reason
@@ -263,6 +266,12 @@ EX16: Notifications, language and settings
 2. User sets notification preferences (email/in-app)
 3. User switches language (Vietnamese/English); the choice is remembered
 4. User views own activity history and edits account settings (username, avatar)
+
+EX17: Welfare Officer views anonymised welfare statistics
+1. Welfare Officer selects one academic term or a complete UTC calendar-date range
+2. System counts cases by support category using the case opened date; categories represented by fewer than five distinct students are suppressed
+3. Welfare Officer views the category, case count, and distinct-student count; no student-level rows or overall total are shown
+4. Welfare Officer can download the same aggregate results as a generated CSV file
 
 ==========
 FUTURE (not in the current version, details in AdviseCare_Future_List.txt)
