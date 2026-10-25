@@ -208,8 +208,10 @@ CREATE TABLE [dbo].[DATAATTRIBUTES] (
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_DATAATTRIBUTES_dataAttributeId] DEFAULT NEWSEQUENTIALID(),
     [attributeDescription] NVARCHAR(MAX) NULL,
     [attributeName] NVARCHAR(255) NOT NULL,
+    [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_DATAATTRIBUTES_status] DEFAULT N'active',
     CONSTRAINT [PK_DATAATTRIBUTES] PRIMARY KEY ([dataAttributeId]),
-    CONSTRAINT [UQ_DATAATTRIBUTES_attributeName] UNIQUE ([attributeName])
+    CONSTRAINT [UQ_DATAATTRIBUTES_attributeName] UNIQUE ([attributeName]),
+    CONSTRAINT [CK_DATAATTRIBUTES_status] CHECK ([status] IN (N'active', N'archived'))
 );
 GO
 
@@ -220,11 +222,13 @@ CREATE TABLE [dbo].[INDICATORS] (
     [description] NVARCHAR(MAX) NULL,
     [indicatorName] NVARCHAR(255) NOT NULL,
     [dataType] NVARCHAR(30) NOT NULL CONSTRAINT [DF_INDICATORS_dataType] DEFAULT N'numeric',
+    [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_INDICATORS_status] DEFAULT N'active',
     CONSTRAINT [PK_INDICATORS] PRIMARY KEY ([indicatorId]),
     CONSTRAINT [FK_INDICATORS_dataAttributeId] FOREIGN KEY ([dataAttributeId]) REFERENCES [dbo].[DATAATTRIBUTES]([dataAttributeId]),
     CONSTRAINT [UQ_INDICATORS_dataAttributeId] UNIQUE ([dataAttributeId]),
     CONSTRAINT [UQ_INDICATORS_indicatorName] UNIQUE ([indicatorName]),
-    CONSTRAINT [CK_INDICATORS_dataType] CHECK ([dataType] IN (N'numeric', N'categorical', N'boolean'))
+    CONSTRAINT [CK_INDICATORS_dataType] CHECK ([dataType] IN (N'numeric', N'categorical', N'boolean')),
+    CONSTRAINT [CK_INDICATORS_status] CHECK ([status] IN (N'active', N'archived'))
 );
 GO
 
@@ -251,7 +255,6 @@ CREATE TABLE [dbo].[DATASOURCES] (
     [fieldMapping] NVARCHAR(MAX) NULL,
     [sourceName] NVARCHAR(255) NOT NULL,
     [sourceType] NVARCHAR(30) NOT NULL CONSTRAINT [DF_DATASOURCES_sourceType] DEFAULT N'file',
-    [isActive] BIT NOT NULL CONSTRAINT [DF_DATASOURCES_isActive] DEFAULT 1,
     [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_DATASOURCES_status] DEFAULT N'active',
     CONSTRAINT [PK_DATASOURCES] PRIMARY KEY ([dataSourceId]),
     CONSTRAINT [FK_DATASOURCES_createdBy] FOREIGN KEY ([createdBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
@@ -335,7 +338,7 @@ CREATE TABLE [dbo].[CONSENTPURPOSES] (
     [createdBy] UNIQUEIDENTIFIER NOT NULL,
     [description] NVARCHAR(MAX) NULL,
     [purposeName] NVARCHAR(255) NOT NULL,
-    [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_CONSENTPURPOSES_status] DEFAULT N'active',
+    [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_CONSENTPURPOSES_status] DEFAULT N'inactive',
     CONSTRAINT [PK_CONSENTPURPOSES] PRIMARY KEY ([consentPurposeId]),
     CONSTRAINT [FK_CONSENTPURPOSES_createdBy] FOREIGN KEY ([createdBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
     CONSTRAINT [UQ_CONSENTPURPOSES_purposeName] UNIQUE ([purposeName]),
@@ -594,14 +597,13 @@ CREATE TABLE [dbo].[CONSENTS] (
     [studentId] UNIQUEIDENTIFIER NOT NULL,
     [expiresAt] DATETIME2(3) NULL,
     [grantedAt] DATETIME2(3) NOT NULL,
-    [narrowedAt] DATETIME2(3) NULL,
     [withdrawnAt] DATETIME2(3) NULL,
     [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_CONSENTS_status] DEFAULT N'granted',
     CONSTRAINT [PK_CONSENTS] PRIMARY KEY ([consentId]),
     CONSTRAINT [FK_CONSENTS_consentPurposeId] FOREIGN KEY ([consentPurposeId]) REFERENCES [dbo].[CONSENTPURPOSES]([consentPurposeId]),
     CONSTRAINT [FK_CONSENTS_dataAttributeId] FOREIGN KEY ([dataAttributeId]) REFERENCES [dbo].[DATAATTRIBUTES]([dataAttributeId]),
     CONSTRAINT [FK_CONSENTS_studentId] FOREIGN KEY ([studentId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
-    CONSTRAINT [CK_CONSENTS_status] CHECK ([status] IN (N'granted', N'narrowed', N'withdrawn'))
+    CONSTRAINT [CK_CONSENTS_status] CHECK ([status] IN (N'granted', N'withdrawn'))
 );
 GO
 
@@ -616,8 +618,8 @@ CREATE TABLE [dbo].[CONSENTHISTORIES] (
     CONSTRAINT [PK_CONSENTHISTORIES] PRIMARY KEY ([consentHistoryId]),
     CONSTRAINT [FK_CONSENTHISTORIES_changedBy] FOREIGN KEY ([changedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
     CONSTRAINT [FK_CONSENTHISTORIES_consentId] FOREIGN KEY ([consentId]) REFERENCES [dbo].[CONSENTS]([consentId]),
-    CONSTRAINT [CK_CONSENTHISTORIES_newStatus] CHECK ([newStatus] IN (N'granted', N'narrowed', N'withdrawn')),
-    CONSTRAINT [CK_CONSENTHISTORIES_previousStatus] CHECK ([previousStatus] IN (N'granted', N'narrowed', N'withdrawn'))
+    CONSTRAINT [CK_CONSENTHISTORIES_newStatus] CHECK ([newStatus] IN (N'granted', N'withdrawn')),
+    CONSTRAINT [CK_CONSENTHISTORIES_previousStatus] CHECK ([previousStatus] IN (N'granted', N'withdrawn'))
 );
 GO
 
@@ -625,6 +627,7 @@ GO
 CREATE TABLE [dbo].[CONSENTREQUESTS] (
     [consentRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTREQUESTS_consentRequestId] DEFAULT NEWSEQUENTIALID(),
     [advisorId] UNIQUEIDENTIFIER NOT NULL,
+    [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
     [studentId] UNIQUEIDENTIFIER NOT NULL,
     [purposeStated] NVARCHAR(MAX) NOT NULL,
@@ -633,6 +636,7 @@ CREATE TABLE [dbo].[CONSENTREQUESTS] (
     [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_CONSENTREQUESTS_status] DEFAULT N'pending',
     CONSTRAINT [PK_CONSENTREQUESTS] PRIMARY KEY ([consentRequestId]),
     CONSTRAINT [FK_CONSENTREQUESTS_advisorId] FOREIGN KEY ([advisorId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_CONSENTREQUESTS_consentPurposeId] FOREIGN KEY ([consentPurposeId]) REFERENCES [dbo].[CONSENTPURPOSES]([consentPurposeId]),
     CONSTRAINT [FK_CONSENTREQUESTS_dataAttributeId] FOREIGN KEY ([dataAttributeId]) REFERENCES [dbo].[DATAATTRIBUTES]([dataAttributeId]),
     CONSTRAINT [FK_CONSENTREQUESTS_studentId] FOREIGN KEY ([studentId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
     CONSTRAINT [CK_CONSENTREQUESTS_status] CHECK ([status] IN (N'pending', N'granted', N'denied', N'withdrawn'))
@@ -645,14 +649,11 @@ CREATE TABLE [dbo].[ACCESSPOLICIES] (
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
     [createdBy] UNIQUEIDENTIFIER NOT NULL,
     [roleId] UNIQUEIDENTIFIER NOT NULL,
-    [requiredConsentStatus] NVARCHAR(30) NOT NULL CONSTRAINT [DF_ACCESSPOLICIES_requiredConsentStatus] DEFAULT N'granted',
-    [isActive] BIT NOT NULL CONSTRAINT [DF_ACCESSPOLICIES_isActive] DEFAULT 1,
     [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_ACCESSPOLICIES_status] DEFAULT N'draft',
     CONSTRAINT [PK_ACCESSPOLICIES] PRIMARY KEY ([accessPolicyId]),
     CONSTRAINT [FK_ACCESSPOLICIES_consentPurposeId] FOREIGN KEY ([consentPurposeId]) REFERENCES [dbo].[CONSENTPURPOSES]([consentPurposeId]),
     CONSTRAINT [FK_ACCESSPOLICIES_createdBy] FOREIGN KEY ([createdBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
     CONSTRAINT [FK_ACCESSPOLICIES_roleId] FOREIGN KEY ([roleId]) REFERENCES [dbo].[ROLES]([roleId]),
-    CONSTRAINT [CK_ACCESSPOLICIES_requiredConsentStatus] CHECK ([requiredConsentStatus] IN (N'granted', N'narrowed')),
     CONSTRAINT [CK_ACCESSPOLICIES_status] CHECK ([status] IN (N'draft', N'active', N'revoked'))
 );
 GO
@@ -779,6 +780,10 @@ CREATE UNIQUE INDEX [UX_ACCOUNTS_googleId] ON [dbo].[ACCOUNTS]([googleId]) WHERE
 CREATE UNIQUE INDEX [UX_ACADEMICTERMS_status_current] ON [dbo].[ACADEMICTERMS]([status]) WHERE [status] = N'current';
 -- one active key per student per attribute (a new key may be created after an erasure if the student shares again)
 CREATE UNIQUE INDEX [UX_ATTRIBUTEKEYS_student_attribute_active] ON [dbo].[ATTRIBUTEKEYS]([studentId], [dataAttributeId]) WHERE [status] = N'active';
+-- one granted consent per student, purpose and attribute (withdrawn rows stay as history)
+CREATE UNIQUE INDEX [UX_CONSENTS_student_purpose_attribute_granted] ON [dbo].[CONSENTS]([studentId], [consentPurposeId], [dataAttributeId]) WHERE [status] = N'granted';
+-- one live (draft or active) access policy per role and purpose; revoked policies stay as history
+CREATE UNIQUE INDEX [UX_ACCESSPOLICIES_role_purpose_live] ON [dbo].[ACCESSPOLICIES]([roleId], [consentPurposeId]) WHERE [status] IN (N'draft', N'active');
 -- fast lookup of the next row for point-in-time reconstruction
 CREATE INDEX [IX_STUDENTINDICATORS_student_indicator_time] ON [dbo].[STUDENTINDICATORS]([studentId], [indicatorId], [transactionFrom], [validFrom]);
 GO

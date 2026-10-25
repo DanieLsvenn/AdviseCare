@@ -21,8 +21,6 @@ public partial class Datasource
 
     public string SourceType { get; set; }
 
-    public bool IsActive { get; set; }
-
     public string Status { get; set; }
 
     public virtual Account CreatedByNavigation { get; set; }

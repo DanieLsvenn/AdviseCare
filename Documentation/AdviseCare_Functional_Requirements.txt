@@ -60,6 +60,22 @@ Kept in the ERD for later, when a real data source exists.
 + Run the restore and the integrity check
 + View restore history log
 
+- Configure system settings (not officially registered in docs):
+
+An admin control panel for values that are fixed in code for now. It is kept out of the official reports; until a settings table exists (see the NOTES of AdviseCare_ERD_Tables.txt), the current values below are the defaults.
+
++ Choose which activity types are written to the activity log (every type in AdviseCare_Activity_Types.txt on by default)
++ Choose the access log granularity: one row per data attribute read (current) or one row per profile/page view
++ Set the session lifetime (current: 1 month)
++ Set how long the account-linking link (current: 7 days) and the password-reset link (current: 1 hour) stay valid
++ Set the default notification channels for new accounts (current: email and in-app both on) and which events also send an email
++ Set the avatar upload limits (current: PNG/JPEG/WEBP/GIF, up to 2 MB)
++ Set the import limits (maximum rows and file size for account and indicator imports)
++ Set the longest consent duration a student can choose, and the default expiry offered on the consent page (current: none)
++ Set the longest emergency access window a Steward can approve (current: no limit)
++ Set the default and maximum page size of paged lists
++ Set the overdue grace period for external referrals (current: overdue right after followUpDueAt)
+
 Data Protection Steward
 
 - Define indicators and shareable data attributes:
@@ -68,14 +84,14 @@ Deciding which pieces of student data exist in the system and can be shared. Eac
 
 + Create an indicator together with its data attribute (name, description, data type)
 + Edit the description shown to students
-+ Archive an indicator/attribute that is no longer used
++ Archive an indicator/attribute that is no longer used (one-way; it can no longer be attached, granted or requested, but existing values and consents are kept)
 + View the list of indicators and attributes
 
 - Define consent purposes and the attributes each purpose covers:
 
 Deciding the reasons the university may use student data (e.g. "Academic advising", "Wellbeing support", "Financial support") and exactly which data attributes each reason covers.
 
-+ Create a new consent purpose (name, description)
++ Create a new consent purpose (name, description); it starts inactive until its attributes are attached and it is activated
 + Attach/Remove specific data attributes to a purpose
 + Activate/Deactivate a purpose
 + Retire (not remove) a purpose that is no longer used - Retired purposes cannot be brought back
@@ -85,8 +101,8 @@ Deciding the reasons the university may use student data (e.g. "Academic advisin
 
 Writing the actual rule: "a Wellbeing Advisor may see Family Situation only if the purpose is Wellbeing Support AND the student's consent for it is currently Granted." All three conditions have to line up together.
 
-+ Create a policy - linking a role to a purpose
-+ Set the required consent state for the policy
++ Create a policy - linking a role to a purpose (starts as a draft; the student's consent must be granted)
++ Activate a draft policy
 + View all policies affecting a given role
 + Revoke an existing policy
 + Test a policy against a sample case
@@ -103,7 +119,7 @@ Being able to pull up "who looked at what, when, and why", for audits and becaus
 
 - Approve or reject requests for out-of-scope emergency access (pending review):
 
-+ View pending emergency access requests
++ View pending emergency access requests (Stewards share one pool; the first Steward to act decides)
 + View requester's justification
 + Approve a request with time-limited scope
 + Reject a request with a reason
@@ -136,7 +152,7 @@ Their homepage: the cases the Programme Head matched to them, plus cases they op
 
 Advisors can also start a case themselves when a student's indicators (merits, attendance, grades...) suggest the student needs help. There is no automatic case opening.
 
-+ View indicators of the students assigned to them (only what consent allows)
++ View indicators of the students assigned to them (only what consent allows: "if you consent, we serve", attributes not shared are left out of the list)
 + Open a case for a student with a reason
 + Get the student notified that the advisor wants to meet
 
@@ -191,7 +207,7 @@ Like a "way back machine": only when the advisor clicks, the system rebuilds wha
 
 If an advisor needs data the student has not shared, they send a specific named request instead of relying on a blanket permission.
 
-+ Select the student and attribute needed
++ Select the student, the purpose and the attribute needed
 + State the purpose for the request
 + Send the request to the student
 + View request status (pending/granted/denied)
@@ -261,11 +277,12 @@ The main entry point: the student asks for help, picks the kind of help, explain
 + See notice where data about them is missing
 + View own consent status per section
 
-- Grant, narrow or withdraw consent per purpose at any time:
+- Grant or withdraw consent per purpose at any time:
 
 + View all purposes currently requesting/using data
 + Grant consent to a purpose
-+ Narrow consent to fewer attributes for a purpose
++ Withdraw single attributes of a purpose while keeping the rest shared
++ Set or change an optional expiry date for a consent
 + Withdraw consent entirely for a purpose
 + Respond to an advisor's consent request (grant/deny)
 + View consent change history

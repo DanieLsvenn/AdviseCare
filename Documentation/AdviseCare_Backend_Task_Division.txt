@@ -36,6 +36,7 @@ A4.1. Notification CRUD; own inbox: list, mark read, mark all read, delete, clea
 A4.2. NotifyAsync for other features: writes the in-app notification and, if the account's email preference is on, also sends it by email
 A4.3. Notification preferences (email / in-app); a missing row means the channel is on
 A5. Own account: profile (username, preferred language), avatar upload (Supabase Storage), activity history (ACTIVITYLOGS, types listed in AdviseCare_Activity_Types.txt)
+A6. Admin configuration panel (not officially registered in docs; not started): the settings listed in AdviseCare_Functional_Requirements.txt, needs a SYSTEMSETTINGS table
 
 ==========
 MEMBER B - CONSENT AND DATA PROTECTION
@@ -43,17 +44,17 @@ Tables owned: DATAATTRIBUTES, INDICATORS, CONSENTPURPOSES, PURPOSE_ATTRIBUTE, AC
 ==========
 
 B1. Steward configuration
-B1.1. Indicators and their data attribute (created together, 1:1); archive
-B1.2. Consent purposes: create, attach/remove attributes, activate/deactivate, retire
-B1.3. Access policies: role + purpose + required consent state; revoke; test a policy against a sample student
-B2. Access guard
-B2.1. Decide access from role + purpose + consent state (+ approved emergency access)
-B2.2. Return "exists, not shared" instead of the value when access is refused
-B2.3. Write every access to ACCESSLOGS
+B1.1. Indicators and their data attribute (created together, 1:1); archive (one-way, done as a pair)
+B1.2. Consent purposes: create (starts inactive), attach/remove attributes, activate/deactivate, retire
+B1.3. Access policies: role + purpose (draft -> active -> revoked, no edit once active); test a policy against a sample student
+B2. Access guard (IAccessGuardService, used by Member C for every profile, point-in-time and export read)
+B2.1. Decide access: granted, unexpired consent + purpose active and still covering the attribute + active policy for one of the accessor's roles ("if you consent, we serve"); the case category's purpose inside a case, any purpose outside a case
+B2.2. Return "exists, not shared" instead of the value when access is refused (inside a case); leave the attribute out of student lists
+B2.3. Write every access to ACCESSLOGS (one row per attribute read)
 B3. Student consent
-B3.1. List purposes and their attributes; grant, narrow, withdraw; consent history rows
-B3.2. Consent requests from advisors: create, respond (grant/deny), withdraw pending
-B3.3. Consent expiry check
+B3.1. List purposes and their attributes; grant, withdraw (single attribute or whole purpose), change expiry; consent history rows
+B3.2. Consent requests from advisors (with the purpose): create, edit pending, respond (grant/deny), withdraw pending
+B3.3. Consent expiry check (when data is read)
 B4. Encryption and erasure
 B4.1. Envelope encryption: one key per student per attribute (ATTRIBUTEKEYS), master key from configuration; encrypt/decrypt helper used when indicator values are written/read
 B4.2. Withdrawal queues an erasure request; Steward verifies and executes it (destroy key), audit trail kept
@@ -61,7 +62,7 @@ B5. Access log and processing records
 B5.1. Search/filter access log; flag entries; Steward review (cleared / confirmed issue)
 B5.2. Student's own access log
 B5.3. Export processing record for one student or a date range
-B6. Emergency access (pending review): request, approve with time limit, reject, auto-expire
+B6. Emergency access (pending review): request, approve with time limit, reject, auto-expire; Stewards share one pool, the first to act is stored as stewardId
 
 ==========
 MEMBER C - STUDENT DATA, PROFILE AND WELFARE
@@ -76,7 +77,7 @@ C1.3. Insert new STUDENTINDICATORS rows only (dataSourceId null, provenanceNote 
 C1.4. Flag expected-but-missing indicators (isMissing)
 C1.5. Import history through ACTIVITYLOGS
 C2. Student profile and history
-C2.1. Student profile API: indicators with sources and missing-data notices, every value passed through Member B's access guard
+C2.1. Student profile API: indicators with sources and missing-data notices, every value passed through Member B's access guard (IAccessGuardService.CheckAccessAsync, then LogAccessAsync for each value shown)
 C2.2. Point-in-time view ("way back machine"): current row = latest row up to the chosen date; compare two dates
 C2.3. Student's own profile view
 C2.4. Student JSON export (own record + own access log), generated on the fly

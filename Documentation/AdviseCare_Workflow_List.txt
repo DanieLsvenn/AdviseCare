@@ -104,14 +104,14 @@ WF3: Steward sets up consent
 1. Steward signs in
 2. Steward defines the shareable data
 2.1. Creates an indicator together with its data attribute (name, description shown to students, data type)
-2.2. Archives indicators/attributes that are no longer used
+2.2. Archives indicators/attributes that are no longer used (one-way; existing values and consents are kept)
 3. Steward defines consent purposes
-3.1. Creates a purpose (e.g. Academic advising, Wellbeing support, Financial support)
+3.1. Creates a purpose (e.g. Academic advising, Wellbeing support, Financial support); it starts inactive
 3.2. Attaches the data attributes the purpose covers (an attribute can belong to several purposes)
 3.3. Activates the purpose
 4. Steward configures access policies
-4.1. Links a role to a purpose
-4.2. Sets the consent state required for access
+4.1. Links a role to a purpose (the policy starts as a draft; the student's consent must be granted)
+4.2. Activates the policy
 4.3. Tests the policy against a sample case
 5. Admin links each support category to the purpose that governs it (see EX11), so students only see the matching attributes when they request support
 6. Later changes: a purpose is retired (never deleted) when no longer used; policies are revoked rather than edited
@@ -166,7 +166,7 @@ EX2: Sign in, forgot password and sessions
 6. User views active sessions and logs out of other sessions
 
 EX3: Advisor reaches out based on indicators
-1. Advisor views indicators of the students assigned to them (only consented data)
+1. Advisor views indicators of the students assigned to them (only consented data: "if you consent, we serve", attributes a student has not shared are left out)
 2. Advisor notices a student who needs help (merits, attendance, grades...)
 3. Advisor opens a case for that student with a reason and category
 4. System notifies the student that the advisor wants to meet, with the advisor's contact information
@@ -195,20 +195,20 @@ EX6: Advisor assignment change
 5. Programme Head can also reassign directly without a request
 
 EX7: Advisor asks for more data (consent request)
-1. Advisor picks the student and the data attribute needed
+1. Advisor picks the student, the purpose and the data attribute needed
 2. Advisor states the purpose
 3. Student gets a notification and grants or denies
-3.1. Granted: a consent record is created and the advisor can now see the value
+3.1. Granted: a consent record is created under the request's purpose and the advisor can now see the value
 3.2. Denied: the advisor sees the attribute as "exists, not shared"
 4. Advisor can withdraw a request that is still pending
 
 EX8: Student manages consent and erasure
 1. Student opens the consent page and sees each purpose and its attributes
-2. Student grants, narrows or withdraws consent per purpose
+2. Student grants or withdraws consent per purpose, or withdraws single attributes of a purpose
 3. Every change is recorded in consent history
 4. On withdrawal
 4.1. Access is blocked immediately
-4.2. An erasure request is queued
+4.2. An erasure request is queued (when the attribute is no longer shared under any purpose and values are stored)
 4.3. Steward verifies the withdrawal and executes the erasure (destroys the attribute key)
 4.4. The values become unreadable; the audit trail stays
 4.5. Student is notified
@@ -220,7 +220,7 @@ EX9: Access log review
 
 EX10: Emergency access (pending review)
 1. Staff requests access beyond consent with a justification
-2. Steward approves with a time limit, or rejects
+2. A Steward approves with a time limit, or rejects (Stewards share one pool of requests; the first to act decides)
 3. Access ends automatically when the time limit passes; every access is logged
 
 EX11: Master data setup

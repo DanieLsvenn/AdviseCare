@@ -11,6 +11,8 @@ public partial class Consentrequest
 
     public Guid AdvisorId { get; set; }
 
+    public Guid ConsentPurposeId { get; set; }
+
     public Guid DataAttributeId { get; set; }
 
     public Guid StudentId { get; set; }
@@ -24,6 +26,8 @@ public partial class Consentrequest
     public string Status { get; set; }
 
     public virtual Account Advisor { get; set; }
+
+    public virtual Consentpurpose ConsentPurpose { get; set; }
 
     public virtual Dataattribute DataAttribute { get; set; }
 

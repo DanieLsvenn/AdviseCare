@@ -19,8 +19,6 @@ public partial class Consent
 
     public DateTime GrantedAt { get; set; }
 
-    public DateTime? NarrowedAt { get; set; }
-
     public DateTime? WithdrawnAt { get; set; }
 
     public string Status { get; set; }
