@@ -28,6 +28,7 @@ A2.2. Bulk import from an Excel file (email, fullName, userName, facultyCode, ro
 A2.3. Send / resend account-linking emails, linkStatus notLinked -> emailSent
 A2.4. Roles CRUD and account roles (ACCOUNT_ROLE); the last System Administrator role cannot be removed
 A2.5. Activate/deactivate, ban/unban (never on the admin's own account; ends all active sessions)
+A2.6. Maintain STUDENTPROFILES for Student-role accounts (optional unique studentCode, current programme, academicStatus); profile details may be completed after account creation
 A3. Master data (Admin)
 A3.1. Faculties, programmes and academic terms CRUD; only one term can be current, setting a new current term moves the old one to past
 A3.2. Subjects under a faculty CRUD; link academic advisors to subjects (ACCOUNT_SUBJECT)
@@ -58,6 +59,8 @@ B3.3. Consent expiry check (when data is read)
 B4. Encryption and erasure
 B4.1. Envelope encryption: one key per student per attribute (ATTRIBUTEKEYS), master key from configuration (Encryption:MasterKey); IAttributeKeyService.EncryptValuesAsync / DecryptValuesAsync used when indicator values are written/read; values stored as v1:{attributeKeyId}:{payload}; Steward can list key status (never the key)
 B4.2. Withdrawal queues an erasure request; Steward verifies and executes it (destroy key), audit trail kept
+B4.1. Use one destroyable Vault Transit key per student per attribute; store its Vault key name in ATTRIBUTEKEYS.keyManagementKeyId, keep wrapped key material only as required by the envelope-encryption design, and use authenticated encryption for indicator/correction payloads. Key creation must enable Vault deletion_allowed; keep Vault tokens outside source control.
+B4.2. Withdrawal queues an erasure request; the API calls usp_ExecuteErasure to clear live ciphertext/HMAC, deletes the exact Vault Transit key, then calls usp_ConfirmKmsKeyDestruction. Never mark a key destroyed before Vault confirms; retries must resume pendingKeyDestruction. Keep the consent and erasure audit history.
 B5. Access log and processing records
 B5.1. Search/filter access log; flag entries; Steward review (cleared / confirmed issue)
 B5.2. Student's own access log
@@ -71,7 +74,7 @@ Tables owned: STUDENTINDICATORS, CORRECTIONREQUESTS, INTERVENTIONS, SUPPORTGRANT
 ==========
 
 C1. Indicator data import (Admin)
-C1.1. Upload Excel/CSV or read a Google Sheet; map columns to indicators
+C1.1. Upload Excel/CSV, map columns to indicators, and resolve students by studentCode, email or username (implemented; Google Sheet import remains future setup)
 C1.2. Validate the whole file, all-or-nothing; return the list of invalid rows
 C1.3. Insert new STUDENTINDICATORS rows only (dataSourceId null, provenanceNote = file name + import date); never update; encrypt each value with Member B's IAttributeKeyService.EncryptValuesAsync before saving (new keys are saved by the same SaveAsync)
 C1.4. Flag expected-but-missing indicators (isMissing)
@@ -82,13 +85,29 @@ C2.2. Point-in-time view ("way back machine"): current row = latest row up to th
 C2.3. Student's own profile view
 C2.4. Student JSON export (own record + own access log), generated on the fly
 C2.5. Correction requests (pending review): submit, advisor review, approved = new "correction" row, withdraw
+C1.3. Insert new STUDENTINDICATORS rows only (dataSourceId null, provenanceNote = file name + import date); never update
+C1.4. Flag expected-but-missing indicators (isMissing) for all active Student-role accounts across each imported indicator/term pair
+C1.5. Write one ACTIVITYLOGS entry per successful import in the same database save
+C2. Student profile and history
+C2.1. C-07a: Decrypt indicator values only after Member B's access guard approves; write one access log per value shown
+C2.2. C-07b: Point-in-time view ("way back machine"): current row = latest row up to the chosen date; compare two dates (depends on C-07a)
+C2.3. C-07c: Student's own profile view, restricted to the authenticated student (depends on C-07a)
+C2.4. C-07c: Student JSON export (own record + own access log), generated on the fly (depends on C-07a)
+C2.5. C-08: Correction requests (implemented): each request references its exact STUDENTINDICATORS row; submit, assigned-advisor review, approve = new "correction" row, reject, withdraw
 C3. Welfare (Student Welfare Officer)
 C3.1. Interventions: log, update until closed, outcome, history per student
 C3.2. Support grants under an intervention
 C3.3. External services list; external referrals with follow-up due date, outcome, overdue flag (background check)
 C3.4. Escalations: officer raises, Programme Head responds, status tracking
-C3.5. Anonymised welfare statistics (pending review)
+C3.5. Anonymised welfare statistics (implemented as C-09): aggregate cases by support category for one academic term or a complete UTC calendar-date range; suppress categories with fewer than five distinct students; return no student-level rows or overall totals; Welfare Officer-only CSV export is generated on demand and activity-logged.
 Note: welfare works on existing CASES rows (from the seed data), so it does not wait for Member D's case APIs
+
+C4. Anonymised cohort indicator analytics (C-10)
+C4.1. Staff-only summary and CSV export; require a term, faculty, or both (faculty-only queries remain separated by term)
+C4.2. Use the latest row per student/indicator/term; exclude missing, erased, and inactive-indicator values
+C4.3. Decrypt only after the access guard approves the active "Cohort Analytics" purpose, caller role policy, and each student's explicit consent; log every source-value read
+C4.4. Return numeric mean/count and categorical/boolean frequency/count cells only; suppress each cell with fewer than ten distinct students and never return student-level values
+C4.5. Use the student's current programme/faculty association; historical faculty-at-term analysis is unavailable because programme history is not stored
 
 ==========
 MEMBER D - SUPPORT REQUESTS, CASES, MATCHING AND REPORTS
@@ -109,6 +128,7 @@ D4. Advisor case workflow (Academic and Wellbeing Advisors)
 D4.1. Assigned case list: sort, filter, unread count
 D4.2. Advisor opens a case for a student based on indicators
 D4.3. Case notes: draft, edit, finalize (no edits after finalize)
+D4.3a. Enforce requestReasonVisibility and note visibility on every case read, referral, and export; assignedAdvisor is restricted to the current handler, caseTeam includes only authorized case participants
 D4.4. Stage changes with reason (CASESTAGEHISTORIES insert-only); close, reopen
 D4.5. Referrals: to another advisor (same/other type) or to the Welfare Officer; accept / return
 D5. Assignment change requests: request with proposed advisor, Programme Head approves/rejects (revoke old, create new assignment)

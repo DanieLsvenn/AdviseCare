@@ -6,6 +6,7 @@ using AdviseCare.Application.Interfaces.Security;
 using AdviseCare.Application.Interfaces.Services;
 using AdviseCare.Application.Interfaces.Storage;
 using AdviseCare.Application.Services;
+using AdviseCare.API.BackgroundServices;
 using AdviseCare.Domain.Models;
 using AdviseCare.Infrastructure.Configuration;
 using AdviseCare.Infrastructure.Email;
@@ -26,7 +27,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- Database (SQL Server) ---
 // Enums are stored as NVARCHAR + CHECK in AdviseCareDB and stay as string in code, so no enum mapping is needed here.
-var connectionString = builder.Configuration.GetConnectionString("DBDefault") ?? throw new InvalidOperationException("Connection string 'DBDefault' was not found.");
+var connectionString = builder.Configuration.GetConnectionString("AdviseCareDB") ?? throw new InvalidOperationException("Connection string 'AdviseCareDB' was not found.");
 builder.Services.AddDbContext<AdviseCareContext>(options => options.UseSqlServer(connectionString));
 
 // --- CORS ---
@@ -50,6 +51,19 @@ builder.Services.AddScoped<IFacultyService, FacultyService>();
 builder.Services.AddScoped<IProgrammeService, ProgrammeService>();
 builder.Services.AddScoped<IAcademicTermService, AcademicTermService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
+builder.Services.AddScoped<IExternalServiceService, ExternalServiceService>();
+builder.Services.AddScoped<IExternalReferralService, ExternalReferralService>();
+builder.Services.AddScoped<IEscalationService, EscalationService>();
+builder.Services.AddScoped<IInterventionService, InterventionService>();
+builder.Services.AddScoped<ISupportGrantService, SupportGrantService>();
+builder.Services.AddScoped<IStudentIndicatorImportService, StudentIndicatorImportService>();
+builder.Services.AddScoped<IStudentIndicatorProfileService, StudentIndicatorProfileService>();
+builder.Services.AddScoped<IStudentDataExportService, StudentDataExportService>();
+builder.Services.AddScoped<ICorrectionRequestService, CorrectionRequestService>();
+builder.Services.AddScoped<IWelfareStatisticsService, WelfareStatisticsService>();
+builder.Services.AddScoped<ICohortIndicatorService, CohortIndicatorService>();
+builder.Services.AddScoped<IAuthenticatedEnvelopeEncryptionService, AuthenticatedEnvelopeEncryptionService>();
+
 // Member B
 builder.Services.AddScoped<IIndicatorService, IndicatorService>();
 builder.Services.AddScoped<IConsentPurposeService, ConsentPurposeService>();
@@ -65,6 +79,7 @@ builder.Services.AddScoped<IAttributeKeyService, AttributeKeyService>();
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+builder.Services.AddScoped<IErasureWorkflowRepository, ErasureWorkflowRepository>();
 
 // --- Security ---
 builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
@@ -82,9 +97,13 @@ builder.Services.AddScoped<IDataEncryptor, AesGcmDataEncryptor>();
 // --- Email (Gmail SMTP), storage (Supabase) and Excel import/export ---
 builder.Services.Configure<GmailSettings>(builder.Configuration.GetSection("Gmail"));
 builder.Services.Configure<SupabaseSettings>(builder.Configuration.GetSection("Supabase"));
+builder.Services.Configure<VaultTransitSettings>(builder.Configuration.GetSection("VaultTransit"));
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHttpClient<IStorageService, SupabaseStorageService>();
+builder.Services.AddHttpClient<IKeyManagementService, VaultTransitKeyManagementService>()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 builder.Services.AddScoped<IExcelReader, ExcelReader>();
+builder.Services.AddScoped<ICsvReader, CsvReader>();
 builder.Services.AddScoped<IExcelWriter, ExcelWriter>();
 
 // -- HttpContextAccessor ---
@@ -98,7 +117,7 @@ builder.Services.AddLogging(loggingBuilder =>
 });
 
 // --- Background services ---
-// builder.Services.AddHostedService<...>();
+builder.Services.AddHostedService<ExternalReferralOverdueService>();
 
 // --- Controllers + Swagger ---
 builder.Services.AddControllers();

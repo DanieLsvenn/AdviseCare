@@ -66,6 +66,3 @@ NOT FUTURE, BUT PENDING REVIEW
 ==========
 
 - Emergency access (EMERGENCYACCESSREQUESTS)
-- Correction requests (CORRECTIONREQUESTS)
-- Anonymised welfare statistics
-- Anonymised cohort indicators

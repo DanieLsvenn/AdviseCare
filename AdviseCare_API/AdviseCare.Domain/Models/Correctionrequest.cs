@@ -13,7 +13,15 @@ public partial class Correctionrequest
 
     public Guid StudentId { get; set; }
 
-    public string CurrentValue { get; set; }
+    public Guid StudentIndicatorId { get; set; }
+
+    public Guid AttributeKeyId { get; set; }
+
+    public Guid DataAttributeId { get; set; }
+
+    public byte[] CurrentValue { get; set; }
+
+    public byte[] CurrentValueHmac { get; set; }
 
     public string DecisionNotes { get; set; }
 
@@ -21,7 +29,11 @@ public partial class Correctionrequest
 
     public string FieldName { get; set; }
 
-    public string ProposedValue { get; set; }
+    public byte[] ProposedValue { get; set; }
+
+    public byte[] ProposedValueHmac { get; set; }
+
+    public string TextVisibility { get; set; }
 
     public DateTime? DecidedAt { get; set; }
 
@@ -31,5 +43,11 @@ public partial class Correctionrequest
 
     public virtual Account ReviewedByNavigation { get; set; }
 
-    public virtual Account Student { get; set; }
+    public virtual Attributekey AttributeKey { get; set; }
+
+    public virtual Dataattribute DataAttribute { get; set; }
+
+    public virtual Studentprofile Student { get; set; }
+
+    public virtual Studentindicator StudentIndicator { get; set; }
 }

@@ -155,6 +155,7 @@ Advisors can also start a case themselves when a student's indicators (merits, a
 
 + View indicators of the students assigned to them (only what consent allows: "if you consent, we serve", attributes not shared are left out of the list)
 + Open a case for a student with a reason
++ Mark the case reason visible to the assigned advisor only or the authorized case team
 + Get the student notified that the advisor wants to meet
 
 - Open a student profile with source provenance and missing-data notices:
@@ -172,6 +173,7 @@ Every value shown says where it came from (which import) and if something is mis
 Advisor and student decide by themselves how and when to meet (online, offline, external messaging app). The advisor writes down what was discussed. Once finalized, a note can't be edited.
 
 + Add a case note
++ Mark the note visible to the assigned advisor only or the authorized case team
 + Record agreed actions in the note
 + Edit a note before it's finalized
 + Finalize a note
@@ -251,13 +253,20 @@ When a case goes beyond what the officer is allowed to decide, it is escalated t
 + View status of an escalated case
 + View the Programme Head's response
 
-- View anonymised welfare statistics (pending review):
+- View anonymised welfare statistics:
 
-+ Select a term/date range
-+ View anonymised summary statistics by category
-+ Export the statistics
++ Select one academic term or a complete UTC calendar-date range; cases are filtered by openedAt
++ View summary statistics by support category, including case count and distinct-student count
++ Suppress any category with fewer than five distinct students; do not return student-level rows or an overall total
++ Export the same anonymised statistics as a generated CSV file
 
 Student
+
+- Maintain student identity and programme details:
+
++ Store an optional unique student code, current programme and academic status separately from login/account status
++ Allow profile details to be completed after account creation
++ Match indicator imports by student code, email or username when available
 
 - Request support (create a case):
 
@@ -299,7 +308,7 @@ The main entry point: the student asks for help, picks the kind of help, explain
 
 + Export own record and access log as a JSON file
 
-- Request correction of an incorrect fact with advisor review (pending review):
+- Request correction of an incorrect fact with advisor review:
 
 + Select the field believed to be incorrect
 + Submit correction with supporting explanation
@@ -338,11 +347,14 @@ For now matching is manual; an automated/AI matching mode is a future plan.
 + Review advisor caseload volume and case closure times
 + Export the list/report (Excel/CSV/PDF)
 
-- View anonymised cohort indicators (pending review):
+- View anonymised cohort indicators (staff roles only, with the active "Cohort Analytics" purpose, an active role policy, and each student's explicit consent):
 
-+ View cohort-level indicator summary
-+ Filter by term or faculty
-+ Export cohort summary
++ Require a term, a faculty, or both; when only a faculty is selected, keep results separated by term
++ Use the latest indicator value per student/indicator/term and exclude missing, erased, or inactive-indicator values
++ Show numeric mean and distinct-student count, or categorical/boolean frequency and distinct-student count
++ Suppress each released cell with fewer than ten distinct students; never expose student-level values or identifiers
++ Use each student's current faculty association; historical faculty-at-term filtering is not available
++ Export the same anonymised summary as CSV
 
 All authenticated users
 

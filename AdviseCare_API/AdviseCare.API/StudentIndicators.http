@@ -1,0 +1,72 @@
+@baseUrl = http://localhost:5151
+@advisorToken = replace-with-advisor-jwt
+@studentId = 00000000-0000-0000-0000-000000000001
+@caseId = 00000000-0000-0000-0000-000000000002
+@termId = 00000000-0000-0000-0000-000000000003
+@studentIndicatorId = 00000000-0000-0000-0000-000000000004
+@correctionRequestId = 00000000-0000-0000-0000-000000000005
+
+### Read a student's profile for a case and academic term
+GET {{baseUrl}}/api/StudentIndicators/students/{{studentId}}/profile?caseId={{caseId}}&termId={{termId}}
+Authorization: Bearer {{advisorToken}}
+
+### Malformed caseId is rejected by API model validation
+GET {{baseUrl}}/api/StudentIndicators/students/{{studentId}}/profile?caseId=not-a-guid
+Authorization: Bearer {{advisorToken}}
+
+### Reconstruct a student's profile as of a date
+GET {{baseUrl}}/api/StudentIndicators/students/{{studentId}}/as-of?date=2026-10-31&caseId={{caseId}}
+Authorization: Bearer {{advisorToken}}
+
+### Compare two point-in-time profiles
+GET {{baseUrl}}/api/StudentIndicators/students/{{studentId}}/compare?dateA=2026-10-31&dateB=2026-11-30&caseId={{caseId}}
+Authorization: Bearer {{advisorToken}}
+
+### Read the authenticated student's own indicator profile
+GET {{baseUrl}}/api/StudentIndicators/me/profile
+Authorization: Bearer {{studentToken}}
+
+### Download the authenticated student's JSON data export
+GET {{baseUrl}}/api/StudentIndicators/me/export
+Authorization: Bearer {{studentToken}}
+
+### Submit a correction request for one exact student-indicator row
+POST {{baseUrl}}/api/CorrectionRequests
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "studentIndicatorId": "{{studentIndicatorId}}",
+  "proposedValue": "80",
+  "explanation": "My attendance record does not match the attendance sheet."
+}
+
+### Read the authenticated student's correction-request status
+GET {{baseUrl}}/api/CorrectionRequests/me/{{correctionRequestId}}
+Authorization: Bearer {{studentToken}}
+
+### Search correction requests for assigned students
+GET {{baseUrl}}/api/CorrectionRequests/search?status=pending
+Authorization: Bearer {{advisorToken}}
+
+### Approve a correction request
+PUT {{baseUrl}}/api/CorrectionRequests/{{correctionRequestId}}/approve
+Authorization: Bearer {{advisorToken}}
+Content-Type: application/json
+
+{
+  "decisionNotes": "Verified the attendance sheet and corrected the value."
+}
+
+### Reject a correction request
+PUT {{baseUrl}}/api/CorrectionRequests/{{correctionRequestId}}/reject
+Authorization: Bearer {{advisorToken}}
+Content-Type: application/json
+
+{
+  "decisionNotes": "The source attendance sheet confirms the original value."
+}
+
+### Withdraw a pending correction request
+PUT {{baseUrl}}/api/CorrectionRequests/{{correctionRequestId}}/withdraw
+Authorization: Bearer {{studentToken}}

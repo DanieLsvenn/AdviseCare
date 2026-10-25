@@ -31,5 +31,5 @@ public partial class Consent
 
     public virtual ICollection<Erasurerequest> Erasurerequests { get; set; } = new List<Erasurerequest>();
 
-    public virtual Account Student { get; set; }
+    public virtual Studentprofile Student { get; set; }
 }
