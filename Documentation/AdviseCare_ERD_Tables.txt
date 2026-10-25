@@ -217,7 +217,7 @@ dataSourceId (FK) - uuid - the data source the value was ingested from (future s
 indicatorId (FK) - uuid - which kind of indicator this value represents
 studentId (FK) - uuid - which student the value belongs to
 termId (FK) - uuid - which academic term this value is scoped to
-indicatorValue - string - the actual recorded value (kept as string to accommodate numeric/categorical/boolean types uniformly)
+indicatorValue - string - the recorded value, stored encrypted as v1:{attributeKeyId}:{payload} with the student's key for this attribute (AES-256-GCM, tied to the student and attribute); kept as string to accommodate numeric/categorical/boolean types uniformly; unreadable once that key is destroyed by an erasure
 provenanceNote - string - human-readable statement of where this value came from (e.g. imported file name and import date) and any caveats, satisfying the "state source" requirement; the only source information for imported values, since their dataSourceId is null
 transactionFrom - date - bitemporal field: when this row became known to the system (system time, i.e. when the value was imported); a row stays the system's current belief until the next row for the same student/indicator, so its end is derived from the next row's transactionFrom (no transactionTo column, rows are never updated)
 validFrom - date - bitemporal field: when this value became true in the real world (valid time); it stays true until the next row's validFrom (no validTo column)
@@ -499,7 +499,7 @@ status - enum - draft/active/revoked; only an active policy is enforced, policie
 38. ACCESSLOGS
 accessLogId (PK) - uuid - unique identifier for one logged access event
 accessorId (FK) - uuid - who accessed the data
-consentPurposeId (FK) - uuid - under what stated purpose the access occurred
+consentPurposeId (FK) - uuid - under what stated purpose the access occurred; null when the read was allowed through an approved emergency access instead of a consent
 recordedUserId (FK) - uuid - whose record was accessed
 accessedResource - string - what specifically was viewed/exported
 accessedAt - date - when the access occurred
@@ -515,6 +515,7 @@ requestedBy (FK) - uuid - who requested emergency access
 stewardId (FK) - uuid - the steward who decided the request; stewards share one pool of requests and the first one to approve or reject is recorded here, null while pending
 studentId (FK) - uuid - whose record the emergency access would cover
 justification - string - the stated reason for needing emergency access, reviewed by the steward
+rejectionReason - string - why the steward rejected the request, sent to the requester; null unless rejected
 requestedAt - date - when the request was made
 decidedAt - date - when the steward decided
 scopeExpiresAt - date - when the granted emergency access automatically lapses, limiting its blast radius
@@ -539,8 +540,8 @@ status - enum - pending/completed, drives the steward's erasure queue
 attributeKeyId (PK) - uuid - unique identifier for one encryption key protecting one data attribute of one student
 dataAttributeId (FK) - uuid - which data attribute the key protects
 studentId (FK) - uuid - whose data the key protects
-wrappedKey - string - the data key itself, stored encrypted by a master key kept in server configuration (envelope encryption); wiping this value makes the student's values for that attribute permanently unreadable
-createdAt - date - when the key was generated (first time the student's value for this attribute was stored)
+wrappedKey - string - the data key itself, stored encrypted (AES-256-GCM) by a master key kept only in server configuration (envelope encryption), so a copy of the database alone cannot decrypt anything; users never receive it; wiped (empty) by an erasure, which makes the student's values for that attribute permanently unreadable
+createdAt - date - when the key was generated (when the student's first value for this attribute was stored; after an erasure, a value stored again gets a new key)
 destroyedAt - date - when the key was destroyed by an erasure, null while active
 status - enum - active/destroyed
 
@@ -597,6 +598,8 @@ NOTES (current version)
 - FUTURE, not in this ERD (would need new tables):
   + In-app meeting scheduling: advisor time slots, student booking, advisors swapping meetings
   + In-app chat between advisor and student (possible stretch goal)
+  + Backups and erasure: a backup taken before an erasure still holds the old wrapped key, so restoring it must re-apply completed erasures (destroy those keys again)
+  + Master key rotation: re-wrap every attribute key with a new master key (the v1 prefix of each value leaves room for a new format)
   + Admin configuration panel (not officially registered in docs): a SYSTEMSETTINGS key/value table (settingKey, settingValue, updatedBy, updatedAt) holding the settings listed in AdviseCare_Functional_Requirements.txt; until then the values are fixed in code/appsettings.json
 - Imports and ingestion jobs are all-or-nothing: one invalid row fails the whole import and nothing is written.
 - STUDENTINDICATORS has no transactionTo/validTo: each row's end time is the transactionFrom/validFrom of the next row for the same student and indicator.
@@ -604,8 +607,9 @@ NOTES (current version)
 - Point-in-time reconstruction ("way back machine") is computed only when an advisor asks for a past date; nothing is precomputed.
 - Removed in this version: EVENTCATEGORIES, EVENTS, EVENT_REGISTRATION. Removed columns: CONSENTS.narrowedAt and the "narrowed" consent state (a student shares or withdraws per attribute instead), ACCESSPOLICIES.requiredConsentStatus (only "granted" was left) and ACCESSPOLICIES.isActive / DATASOURCES.isActive (the status enum of the same table already says it).
 - Archiving INDICATORS / DATAATTRIBUTES is one-way and done as a pair: an archived attribute can no longer be attached to a purpose, granted or requested, but existing values and consents are kept and still apply.
-- Access guard ("if you consent, we serve"): staff may read a student's attribute only when the student has a granted, unexpired consent on it under a purpose that is active, still covers the attribute (PURPOSE_ATTRIBUTE) and has an active access policy for one of the staff member's roles. Inside a case only the case category's purpose counts; outside a case (e.g. an advisor's student list with indicators) any such purpose counts, and attributes not consented are simply left out. Every allowed read writes one ACCESSLOGS row per attribute; students reading their own data are not logged.
+- Access guard ("if you consent, we serve"): staff may read a student's attribute only when the student has a granted, unexpired consent on it under a purpose that is active, still covers the attribute (PURPOSE_ATTRIBUTE) and has an active access policy for one of the staff member's roles. Inside a case only the case category's purpose counts; outside a case (e.g. an advisor's student list with indicators) any such purpose counts, and attributes not consented are simply left out. A consent is given to everyone holding a role that has a policy for the purpose, not to one named advisor, so the guard does not check which advisor is asking (by design). Every allowed read writes one ACCESSLOGS row per attribute; students reading their own data are not logged.
 - Consent expiry is checked when data is read (no background job): a granted consent past expiresAt gives no access until the student renews it.
 - Erasure: ATTRIBUTEKEYS holds one key per student per attribute, so withdrawing a consent queues an ERASUREREQUESTS row only when the attribute is no longer granted under any purpose and the student has an active key for it; the Steward executes it by destroying the key (wrappedKey wiped, status = destroyed).
-- Emergency access: Stewards share one pool of requests; the first Steward to approve or reject is stored in stewardId. An approved access ends on its own at scopeExpiresAt.
+- Emergency access: Stewards share one pool of requests; the first Steward to approve or reject is stored in stewardId (a rejection needs a rejectionReason). While approved and before scopeExpiresAt, the requester may read every attribute of that student through the access guard; each read is logged with consentPurposeId = null. The access ends on its own at scopeExpiresAt.
+- Encryption (envelope encryption, AES-256-GCM): the master key lives only in server configuration (Encryption:MasterKey); each student/attribute key in ATTRIBUTEKEYS is stored wrapped by it, and each value in STUDENTINDICATORS is stored as v1:{attributeKeyId}:{payload}, tied to its student and attribute. Users never receive a key: the server decrypts in memory only after the access guard allows the read, and API responses are sent with Cache-Control: no-store. Withdrawing a consent stops access at the guard at once; erasure is the later step that makes the stored values unreadable to everyone. Losing the master key makes every value unreadable, so it must be kept safe and shared only with the deployment.
 - Usually one Programme Head for the whole app (the manager), but the system allows more. PROGRAMMES is kept but not used by other tables for now.

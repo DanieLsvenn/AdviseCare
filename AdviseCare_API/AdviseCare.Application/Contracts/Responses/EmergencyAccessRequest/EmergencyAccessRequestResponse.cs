@@ -10,6 +10,7 @@ namespace AdviseCare.Application.Contracts.Responses.EmergencyAccessRequest
         public string StewardFullName { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
         public string Justification { get; set; } = string.Empty;
+        public string RejectionReason { get; set; } = string.Empty;
         public DateTime? DecidedAt { get; set; }
         public DateTime RequestedAt { get; set; }
         public DateTime? ScopeExpiresAt { get; set; }
@@ -27,6 +28,7 @@ namespace AdviseCare.Application.Contracts.Responses.EmergencyAccessRequest
         public string StewardFullName { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
         public string Justification { get; set; } = string.Empty;
+        public string RejectionReason { get; set; } = string.Empty;
         public DateTime? DecidedAt { get; set; }
         public DateTime RequestedAt { get; set; }
         public DateTime? ScopeExpiresAt { get; set; }
@@ -44,6 +46,7 @@ namespace AdviseCare.Application.Contracts.Responses.EmergencyAccessRequest
         public string StewardFullName { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
         public string Justification { get; set; } = string.Empty;
+        public string RejectionReason { get; set; } = string.Empty;
         public DateTime? DecidedAt { get; set; }
         public DateTime RequestedAt { get; set; }
         public DateTime? ScopeExpiresAt { get; set; }
@@ -61,6 +64,7 @@ namespace AdviseCare.Application.Contracts.Responses.EmergencyAccessRequest
         public string StewardFullName { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
         public string Justification { get; set; } = string.Empty;
+        public string RejectionReason { get; set; } = string.Empty;
         public DateTime? DecidedAt { get; set; }
         public DateTime RequestedAt { get; set; }
         public DateTime? ScopeExpiresAt { get; set; }
@@ -78,6 +82,7 @@ namespace AdviseCare.Application.Contracts.Responses.EmergencyAccessRequest
         public string StewardFullName { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
         public string Justification { get; set; } = string.Empty;
+        public string RejectionReason { get; set; } = string.Empty;
         public DateTime? DecidedAt { get; set; }
         public DateTime RequestedAt { get; set; }
         public DateTime? ScopeExpiresAt { get; set; }
@@ -95,6 +100,7 @@ namespace AdviseCare.Application.Contracts.Responses.EmergencyAccessRequest
         public string StewardFullName { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
         public string Justification { get; set; } = string.Empty;
+        public string RejectionReason { get; set; } = string.Empty;
         public DateTime? DecidedAt { get; set; }
         public DateTime RequestedAt { get; set; }
         public DateTime? ScopeExpiresAt { get; set; }
@@ -112,6 +118,7 @@ namespace AdviseCare.Application.Contracts.Responses.EmergencyAccessRequest
         public string StewardFullName { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
         public string Justification { get; set; } = string.Empty;
+        public string RejectionReason { get; set; } = string.Empty;
         public DateTime? DecidedAt { get; set; }
         public DateTime RequestedAt { get; set; }
         public DateTime? ScopeExpiresAt { get; set; }

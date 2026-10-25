@@ -11,7 +11,7 @@ public partial class Accesslog
 
     public Guid AccessorId { get; set; }
 
-    public Guid ConsentPurposeId { get; set; }
+    public Guid? ConsentPurposeId { get; set; }
 
     public Guid RecordedUserId { get; set; }
 

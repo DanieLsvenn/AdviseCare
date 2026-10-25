@@ -115,7 +115,7 @@ WF5: Admin imports student indicator data
 3. Admin maps file columns to indicators (student identifier, indicator, value, term, date)
 4. System validates the whole file
 4.1. If any row is invalid, nothing is imported and the system lists the invalid rows (all-or-nothing)
-4.2. If all rows are valid, the system writes each value straight into STUDENTINDICATORS as a new row (dataSourceId stays null), with the file name and import date kept as its source note (provenanceNote)
+4.2. If all rows are valid, the system writes each value straight into STUDENTINDICATORS as a new row (dataSourceId stays null), encrypted with the student's key for that attribute (created on the first value), with the file name and import date kept as its source note (provenanceNote)
 5. Expected indicators that are missing for a student are flagged as missing
 6. Admin views the import result and the import history
 7. Note: scheduled automatic ingestion (data sources, schedules, jobs) is kept in the ERD but not in the current version (see AdviseCare_Future_List.txt)
@@ -203,8 +203,8 @@ EX9: Access log review
 
 EX10: Emergency access (pending review)
 1. Staff requests access beyond consent with a justification
-2. A Steward approves with a time limit, or rejects (Stewards share one pool of requests; the first to act decides)
-3. Access ends automatically when the time limit passes; every access is logged
+2. A Steward approves with a time limit, or rejects with a reason (Stewards share one pool of requests; the first to act decides)
+3. While approved, the requester can read every attribute of that student; access ends automatically when the time limit passes; every access is logged (as an emergency access, without a purpose)
 
 EX11: Master data setup
 1. Admin manages academic terms (create, edit, set status; only one term can be current)

@@ -58,7 +58,7 @@ namespace AdviseCare.API.Controllers
         [HttpPost]
         [Authorize(Roles = "Academic Advisor,Wellbeing Advisor,Student Welfare Officer,Programme Head")]
         [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor, Student Welfare Officer, Programme Head] Request emergency access",
-            Description = "Asks for access to a student's record beyond the student's consent, with a justification. Every Data Protection Steward is notified; they share one pool of requests and the first to act decides. " +
+            Description = "Asks for access to a student's record beyond the student's consent, with a justification. Every Data Protection Steward is notified; they share one pool of requests and the first to act decides. While approved and unexpired, the requester can read every attribute of that student, and each read is logged as an emergency access. " +
                 "Only one pending request or running access per requester and student.")]
         public async Task<IActionResult> Create([FromBody] CreateEmergencyAccessRequestRequest request)
         {
@@ -96,11 +96,11 @@ namespace AdviseCare.API.Controllers
         [HttpPut("{id}/reject")]
         [Authorize(Roles = "Data Protection Steward")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Reject emergency access",
-            Description = "Rejects a pending request; the requester is notified and the signed-in steward is recorded as the decider. Returns 409 when another steward has already decided the request.")]
-        public async Task<IActionResult> Reject([FromRoute] Guid id)
+            Description = "Rejects a pending request with a reason; the requester is notified with the reason and the signed-in steward is recorded as the decider. Returns 409 when another steward has already decided the request.")]
+        public async Task<IActionResult> Reject([FromRoute] Guid id, [FromBody] RejectEmergencyAccessRequestRequest request)
         {
             var stewardId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
-            var response = await _emergencyAccessRequestService.RejectAsync(stewardId, id);
+            var response = await _emergencyAccessRequestService.RejectAsync(stewardId, id, request);
             return Ok(response);
         }
 

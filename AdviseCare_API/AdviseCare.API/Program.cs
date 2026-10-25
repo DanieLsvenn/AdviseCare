@@ -60,6 +60,7 @@ builder.Services.AddScoped<IConsentRequestService, ConsentRequestService>();
 builder.Services.AddScoped<IAccessLogService, AccessLogService>();
 builder.Services.AddScoped<IErasureRequestService, ErasureRequestService>();
 builder.Services.AddScoped<IEmergencyAccessRequestService, EmergencyAccessRequestService>();
+builder.Services.AddScoped<IAttributeKeyService, AttributeKeyService>();
 
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.
@@ -69,6 +70,14 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+
+// --- Encryption of student data (envelope encryption, AES-256-GCM) ---
+// The API refuses to start when Encryption:MasterKey is missing or not 32 bytes of base64
+builder.Services.AddOptions<EncryptionSettings>()
+    .Bind(builder.Configuration.GetSection("Encryption"))
+    .Validate(settings => EncryptionSettings.IsValidMasterKey(settings.MasterKey), "Encryption:MasterKey must be 32 random bytes in base64.")
+    .ValidateOnStart();
+builder.Services.AddScoped<IDataEncryptor, AesGcmDataEncryptor>();
 
 // --- Email (Gmail SMTP), storage (Supabase) and Excel import/export ---
 builder.Services.Configure<GmailSettings>(builder.Configuration.GetSection("Gmail"));
@@ -156,6 +165,22 @@ app.UseExceptionHandler(errorApp =>
     app.UseSwagger();
     app.UseSwaggerUI();
 //}
+
+// --- No caching of API responses ---
+// Responses can contain decrypted student data, so browsers and proxies must not keep a copy
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api"))
+    {
+        context.Response.OnStarting(() =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            context.Response.Headers.Pragma = "no-cache";
+            return Task.CompletedTask;
+        });
+    }
+    await next();
+});
 
 app.UseCors("CorsPolicy");
 app.UseHttpsRedirection();

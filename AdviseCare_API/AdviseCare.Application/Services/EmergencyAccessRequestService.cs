@@ -46,6 +46,7 @@ namespace AdviseCare.Application.Services
                 StewardFullName = e.Steward?.FullName ?? string.Empty,
                 StudentFullName = e.Student.FullName,
                 Justification = e.Justification,
+                RejectionReason = e.RejectionReason ?? string.Empty,
                 DecidedAt = e.DecidedAt,
                 RequestedAt = e.RequestedAt,
                 ScopeExpiresAt = e.ScopeExpiresAt,
@@ -76,6 +77,7 @@ namespace AdviseCare.Application.Services
                     StewardFullName = e.Steward?.FullName ?? string.Empty,
                     StudentFullName = e.Student.FullName,
                     Justification = e.Justification,
+                    RejectionReason = e.RejectionReason ?? string.Empty,
                     DecidedAt = e.DecidedAt,
                     RequestedAt = e.RequestedAt,
                     ScopeExpiresAt = e.ScopeExpiresAt,
@@ -101,6 +103,7 @@ namespace AdviseCare.Application.Services
                 StewardFullName = request.Steward?.FullName ?? string.Empty,
                 StudentFullName = request.Student.FullName,
                 Justification = request.Justification,
+                RejectionReason = request.RejectionReason ?? string.Empty,
                 DecidedAt = request.DecidedAt,
                 RequestedAt = request.RequestedAt,
                 ScopeExpiresAt = request.ScopeExpiresAt,
@@ -129,6 +132,7 @@ namespace AdviseCare.Application.Services
                 StewardFullName = e.Steward?.FullName ?? string.Empty,
                 StudentFullName = e.Student.FullName,
                 Justification = e.Justification,
+                RejectionReason = e.RejectionReason ?? string.Empty,
                 DecidedAt = e.DecidedAt,
                 RequestedAt = e.RequestedAt,
                 ScopeExpiresAt = e.ScopeExpiresAt,
@@ -180,6 +184,7 @@ namespace AdviseCare.Application.Services
                 StewardFullName = string.Empty,
                 StudentFullName = student.FullName,
                 Justification = emergencyRequest.Justification,
+                RejectionReason = emergencyRequest.RejectionReason ?? string.Empty,
                 DecidedAt = emergencyRequest.DecidedAt,
                 RequestedAt = emergencyRequest.RequestedAt,
                 ScopeExpiresAt = emergencyRequest.ScopeExpiresAt,
@@ -214,6 +219,7 @@ namespace AdviseCare.Application.Services
                 StewardFullName = emergencyRequest.Steward?.FullName ?? string.Empty,
                 StudentFullName = emergencyRequest.Student.FullName,
                 Justification = emergencyRequest.Justification,
+                RejectionReason = emergencyRequest.RejectionReason ?? string.Empty,
                 DecidedAt = emergencyRequest.DecidedAt,
                 RequestedAt = emergencyRequest.RequestedAt,
                 ScopeExpiresAt = emergencyRequest.ScopeExpiresAt,
@@ -243,20 +249,21 @@ namespace AdviseCare.Application.Services
             return true;
         }
 
-        // Reject Emergency access request (the first Steward to act is recorded)
-        public async Task<bool> RejectAsync(Guid StewardId, Guid EmergencyAccessRequestId)
+        // Reject Emergency access request with a reason (the first Steward to act is recorded)
+        public async Task<bool> RejectAsync(Guid StewardId, Guid EmergencyAccessRequestId, RejectEmergencyAccessRequestRequest request)
         {
             var emergencyRequest = await GetPendingAsync(EmergencyAccessRequestId);
 
             emergencyRequest.StewardId = StewardId;
             emergencyRequest.DecidedAt = DateTime.UtcNow;
+            emergencyRequest.RejectionReason = request.RejectionReason.Trim();
             emergencyRequest.Status = "rejected";
             await _emergencyAccessRequestRepository.SaveAsync();
 
             await _notificationService.NotifyAsync(emergencyRequest.RequestedBy, "Emergency access rejected",
-                $"Your emergency access request for {emergencyRequest.Student.FullName}'s record was rejected.", "/emergency-access");
+                $"Your emergency access request for {emergencyRequest.Student.FullName}'s record was rejected: {emergencyRequest.RejectionReason}", "/emergency-access");
             await _activityLogService.LogCurrentAccountAsync("emergencyAccessDecided",
-                $"Rejected emergency access for {emergencyRequest.RequestedByNavigation.FullName} to {emergencyRequest.Student.FullName}'s record");
+                $"Rejected emergency access for {emergencyRequest.RequestedByNavigation.FullName} to {emergencyRequest.Student.FullName}'s record: {emergencyRequest.RejectionReason}");
             return true;
         }
 
@@ -276,6 +283,7 @@ namespace AdviseCare.Application.Services
                 StewardFullName = e.Steward?.FullName ?? string.Empty,
                 StudentFullName = e.Student.FullName,
                 Justification = e.Justification,
+                RejectionReason = e.RejectionReason ?? string.Empty,
                 DecidedAt = e.DecidedAt,
                 RequestedAt = e.RequestedAt,
                 ScopeExpiresAt = e.ScopeExpiresAt,

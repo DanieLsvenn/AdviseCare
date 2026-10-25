@@ -12,19 +12,22 @@ namespace AdviseCare.Application.Services
         private readonly IGenericRepository<Consentpurpose> _consentPurposeRepository;
         private readonly IGenericRepository<Consent> _consentRepository;
         private readonly IGenericRepository<Accesslog> _accessLogRepository;
+        private readonly IGenericRepository<Emergencyaccessrequest> _emergencyAccessRequestRepository;
 
         public AccessGuardService(
             IGenericRepository<AccountRole> accountRoleRepository,
             IGenericRepository<Accesspolicy> accessPolicyRepository,
             IGenericRepository<Consentpurpose> consentPurposeRepository,
             IGenericRepository<Consent> consentRepository,
-            IGenericRepository<Accesslog> accessLogRepository)
+            IGenericRepository<Accesslog> accessLogRepository,
+            IGenericRepository<Emergencyaccessrequest> emergencyAccessRequestRepository)
         {
             _accountRoleRepository = accountRoleRepository;
             _accessPolicyRepository = accessPolicyRepository;
             _consentPurposeRepository = consentPurposeRepository;
             _consentRepository = consentRepository;
             _accessLogRepository = accessLogRepository;
+            _emergencyAccessRequestRepository = emergencyAccessRequestRepository;
         }
 
         // Check which data attributes of one student the accessor may read; pass the case category's purpose inside a case, or null outside a case
@@ -39,8 +42,8 @@ namespace AdviseCare.Application.Services
             return await DecideAsync(AccessorId, StudentIds, DataAttributeIds, null);
         }
 
-        // Write one access log row (one row per data attribute read; students reading their own data are not logged)
-        public async Task LogAccessAsync(Guid AccessorId, Guid StudentId, Guid ConsentPurposeId, string AccessedResource)
+        // Write one access log row (one row per data attribute read; consentPurposeId = null for an emergency access read; students reading their own data are not logged)
+        public async Task LogAccessAsync(Guid AccessorId, Guid StudentId, Guid? ConsentPurposeId, string AccessedResource)
         {
             if (AccessorId == StudentId)
                 return;
@@ -60,7 +63,8 @@ namespace AdviseCare.Application.Services
         }
 
         // Helper: access is allowed when the student has a granted, unexpired consent on the attribute under a purpose that is active,
-        // still covers the attribute, and has an active access policy for one of the accessor's roles
+        // still covers the attribute, and has an active access policy for one of the accessor's roles; otherwise it is allowed only
+        // through an approved, unexpired emergency access request of the accessor for that student (every attribute, no purpose)
         private async Task<List<AccessDecision>> DecideAsync(Guid AccessorId, List<Guid> StudentIds, List<Guid> DataAttributeIds, Guid? ConsentPurposeId)
         {
             var studentIds = StudentIds.Distinct().ToList();
@@ -77,6 +81,14 @@ namespace AdviseCare.Application.Services
             if (otherStudentIds.Count == 0 || attributeIds.Count == 0)
                 return decisions;
 
+            await ApplyConsentsAsync(AccessorId, otherStudentIds, attributeIds, ConsentPurposeId, decisions);
+            await ApplyEmergencyAccessAsync(AccessorId, decisions.Where(d => !d.IsAllowed).ToList());
+            return decisions;
+        }
+
+        // Helper: allow the decisions covered by a consent under a purpose the accessor's roles have an active policy for
+        private async Task ApplyConsentsAsync(Guid AccessorId, List<Guid> otherStudentIds, List<Guid> attributeIds, Guid? ConsentPurposeId, List<AccessDecision> decisions)
+        {
             var roleIds = (await _accountRoleRepository.SearchAsync(ar => ar.AccountId == AccessorId))
                 .Select(ar => ar.RoleId)
                 .ToList();
@@ -89,7 +101,7 @@ namespace AdviseCare.Application.Services
                 .Distinct()
                 .ToList();
             if (purposeIds.Count == 0)
-                return decisions;
+                return;
 
             // Attributes each purpose still covers (PURPOSE_ATTRIBUTE)
             var purposes = await _consentPurposeRepository.SearchAsyncInclude(p => purposeIds.Contains(p.ConsentPurposeId), p => p.DataAttributes);
@@ -120,8 +132,30 @@ namespace AdviseCare.Application.Services
                     decision.ConsentPurposeId = consent.ConsentPurposeId;
                 }
             }
+        }
 
-            return decisions;
+        // Helper: allow the remaining decisions of students the accessor has an approved, unexpired emergency access for
+        private async Task ApplyEmergencyAccessAsync(Guid AccessorId, List<AccessDecision> refused)
+        {
+            if (refused.Count == 0)
+                return;
+
+            var studentIds = refused.Select(d => d.StudentId).Distinct().ToList();
+            var now = DateTime.UtcNow;
+            var emergencyStudentIds = (await _emergencyAccessRequestRepository.SearchAsync(e =>
+                    e.RequestedBy == AccessorId &&
+                    studentIds.Contains(e.StudentId) &&
+                    e.Status == "approved" &&
+                    e.ScopeExpiresAt > now))
+                .Select(e => e.StudentId)
+                .ToHashSet();
+
+            foreach (var decision in refused.Where(d => emergencyStudentIds.Contains(d.StudentId)))
+            {
+                decision.IsAllowed = true;
+                decision.IsEmergencyAccess = true;
+                decision.ConsentPurposeId = null;
+            }
         }
     }
 }

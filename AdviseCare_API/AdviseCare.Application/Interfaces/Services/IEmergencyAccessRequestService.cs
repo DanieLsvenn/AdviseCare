@@ -12,7 +12,7 @@ namespace AdviseCare.Application.Interfaces.Services
         Task<CreateEmergencyAccessRequestResponse> CreateAsync(Guid CreatorId, CreateEmergencyAccessRequestRequest request);
         Task<UpdateEmergencyAccessRequestResponse> UpdateAsync(Guid RequesterId, Guid EmergencyAccessRequestId, UpdateEmergencyAccessRequestRequest request);
         Task<bool> ApproveAsync(Guid StewardId, Guid EmergencyAccessRequestId, ApproveEmergencyAccessRequestRequest request);
-        Task<bool> RejectAsync(Guid StewardId, Guid EmergencyAccessRequestId);
+        Task<bool> RejectAsync(Guid StewardId, Guid EmergencyAccessRequestId, RejectEmergencyAccessRequestRequest request);
         Task<List<GetMyEmergencyAccessRequestResponse>> GetMyRequestsAsync(Guid RequesterId);
     }
 }

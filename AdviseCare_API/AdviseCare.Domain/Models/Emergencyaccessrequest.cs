@@ -17,6 +17,8 @@ public partial class Emergencyaccessrequest
 
     public string Justification { get; set; }
 
+    public string RejectionReason { get; set; }
+
     public DateTime RequestedAt { get; set; }
 
     public DateTime? DecidedAt { get; set; }

@@ -177,7 +177,6 @@ public partial class AdviseCareContext : DbContext
 
             entity.HasOne(d => d.ConsentPurpose).WithMany(p => p.Accesslogs)
                 .HasForeignKey(d => d.ConsentPurposeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ACCESSLOGS_consentPurposeId");
 
             entity.HasOne(d => d.RecordedUser).WithMany(p => p.AccesslogRecordedUsers)
@@ -932,6 +931,7 @@ public partial class AdviseCareContext : DbContext
             entity.Property(e => e.Justification)
                 .IsRequired()
                 .HasColumnName("justification");
+            entity.Property(e => e.RejectionReason).HasColumnName("rejectionReason");
             entity.Property(e => e.RequestedAt)
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())")

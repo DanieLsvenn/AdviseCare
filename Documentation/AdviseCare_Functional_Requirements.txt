@@ -101,7 +101,7 @@ Deciding the reasons the university may use student data (e.g. "Academic advisin
 
 Writing the actual rule: "a Wellbeing Advisor may see Family Situation only if the purpose is Wellbeing Support AND the student's consent for it is currently Granted." All three conditions have to line up together.
 
-+ Create a policy - linking a role to a purpose (starts as a draft; the student's consent must be granted)
++ Create a policy - linking a role to a purpose (starts as a draft; the student's consent must be granted). A policy covers everyone with that role: students consent to a role group, not to one named person
 + Activate a draft policy
 + View all policies affecting a given role
 + Revoke an existing policy
@@ -134,6 +134,7 @@ When a student withdraws consent, the Steward triggers the destruction of the en
 + Execute cryptographic erasure (destroy key)
 + Confirm audit trail remains intact after erasure
 + View erasure completion log
++ View the key status of each student's attributes (active/destroyed; the key itself is never shown)
 
 Academic Advisor and Wellbeing Advisor (shared requirements)
 

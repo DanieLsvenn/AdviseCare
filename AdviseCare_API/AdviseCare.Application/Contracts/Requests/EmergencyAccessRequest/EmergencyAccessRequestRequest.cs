@@ -29,4 +29,10 @@ namespace AdviseCare.Application.Contracts.Requests.EmergencyAccessRequest
         [Required(ErrorMessage = "The end of the access window is required.")]
         public DateTime? ScopeExpiresAt { get; set; }
     }
+
+    public class RejectEmergencyAccessRequestRequest
+    {
+        [Required(ErrorMessage = "The reason for rejecting is required.")]
+        public string RejectionReason { get; set; } = string.Empty;
+    }
 }

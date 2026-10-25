@@ -573,7 +573,8 @@ WF5: Admin imports student indicator data
    Expect: isSuccess = false, the 4 invalid rows with their reasons, no STUDENTINDICATORS rows added (not even the valid one); activity log indicatorImportFailed
 4.2. If all rows are valid, every value is inserted as a new row
    Form: file = indicators_fall2026.xlsx
-   Expect: isSuccess = true, insertedCount = 4; each row has dataSourceId = null, status = original, provenanceNote like "Imported from indicators_fall2026.xlsx on 2026-10-21"; values are encrypted with the student's attribute key (Member B)
+   Expect: isSuccess = true, insertedCount = 4; each row has dataSourceId = null, status = original, provenanceNote like "Imported from indicators_fall2026.xlsx on 2026-10-21"; values are stored encrypted as v1:{attributeKeyId}:{payload} (Member C calls IAttributeKeyService.EncryptValuesAsync; the student's key for each attribute is created on the first value)
+   Check: GET /api/AttributeKeys/search?studentId={studentId} [EXISTS] with {stewardToken} -> one active key per imported attribute (the key itself is never returned)
    For EX13, import indicators_fall2026_update.xlsx afterwards (new rows, never updates):
    student@gmail.com | GPA             | 7.5 | Fall 2026 | 2026-11-20
    student@gmail.com | Attendance rate | 85  | Fall 2026 | 2026-11-20
@@ -859,14 +860,15 @@ EX8: Student manages consent and erasure
    GET /api/StudentIndicators/students/{studentId}/profile [PLANNED - Member C] with {wellbeingAdvisorToken}
    Expect: Attendance rate -> "exists, not shared" (unless still granted under another purpose the advisor's role has a policy for)
 4.2. An erasure request is queued (automatic, only when the attribute is no longer granted under any purpose and the student has an active key for it)
-   Note: keys are created by B4.1 (envelope encryption, not built yet), so until then no erasure request is queued
+   Note: keys are created when Member C's import stores the student's values (WF5); a student with no stored value for the attribute has no key, so nothing is queued
 4.3. Steward verifies the withdrawal and executes the erasure
    GET /api/ErasureRequests/search?status=pending [EXISTS]
    PUT /api/ErasureRequests/{erasureRequestId}/execute [EXISTS]
    Auth: {stewardToken}
-   Expect: status = completed, executedAt and executedBy set; the ATTRIBUTEKEYS row status = destroyed; executing again -> 409; executing after the student shared the attribute again -> 409
+   Expect: status = completed, executedAt and executedBy set; GET /api/AttributeKeys/{attributeKeyId} [EXISTS] -> status = destroyed, destroyedAt set; executing again -> 409; executing after the student shared the attribute again -> 409
 4.4. The values become unreadable; the audit trail stays
-   Expect: consents, consent history and access log rows are still there
+   Expect: the student's own profile and every staff view show the erased values as erased (IAttributeKeyService.DecryptValuesAsync returns isErased = true); consents, consent history and access log rows are still there
+   Re-share test: grant the attribute again and import a new value -> a new active key; old rows stay erased, the new value is readable
 4.5. Student is notified
    GET /api/Notifications/me [EXISTS] with {studentToken}
 
@@ -900,16 +902,17 @@ EX10: Emergency access (pending review)
    Save: -> {emergencyRequestId}
    Edit: PUT /api/EmergencyAccessRequests/{emergencyRequestId} [EXISTS], body { "justification": "..." } (pending only)
    GET /api/EmergencyAccessRequests/me [EXISTS] -> the requester's own requests
-2. A Steward approves with a time limit, or rejects (Stewards share one pool; the first to act decides)
+2. A Steward approves with a time limit, or rejects with a reason (Stewards share one pool; the first to act decides)
    GET /api/EmergencyAccessRequests/search?status=pending [EXISTS]
    PUT /api/EmergencyAccessRequests/{emergencyRequestId}/approve [EXISTS]
    Body: { "scopeExpiresAt": "2026-10-25T10:00:00Z" }
    PUT /api/EmergencyAccessRequests/{id}/reject [EXISTS]
+   Body: { "rejectionReason": "The student was reached by phone and is safe; the normal consent process applies." }
    Auth: {stewardToken}
    Expect: stewardId = the steward who acted; a second steward acting on the same request -> 409; scopeExpiresAt in the past -> 400
-3. Access ends automatically when the time limit passes; every access is logged
-   Expect: isExpired = true once scopeExpiresAt has passed
-   Note: the access guard does not use emergency access yet, because ACCESSLOGS.consentPurposeId is required and an emergency read has no purpose (open question in NOTES)
+3. While approved, the requester can read every attribute of that student; access ends automatically when the time limit passes; every access is logged
+   Expect: the access guard allows the requester for that student (isEmergencyAccess = true); each read appears in GET /api/AccessLogs/search?recordedUserId={studentId} with purposeName = "Emergency access" (consentPurposeId = null); after scopeExpiresAt, isExpired = true and the guard refuses again
+   Note: the profile read itself is Member C's endpoint
 
 EX11: Master data setup
 1. Admin manages academic terms
@@ -1100,7 +1103,8 @@ NOTES
 ==========
 
 - All [PLANNED] routes are proposals: the member who builds the controller may rename them; update this file when they do
-- Member B's routes are built and tagged [EXISTS]; Members C and D call IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync, then LogAccessAsync) before showing or exporting any indicator value
+- Member B's routes are built and tagged [EXISTS]; Members C and D call IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync), then IAttributeKeyService.DecryptValuesAsync and LogAccessAsync before showing or exporting any indicator value; Member C's import encrypts with IAttributeKeyService.EncryptValuesAsync
+- The API needs Encryption:MasterKey (32 random bytes in base64) in appsettings.json, or the environment variable Encryption__MasterKey on MonsterASP; it refuses to start without it. Every environment that shares a database must use the same master key
 - EX1, EX2 step 4, WF1 step 4.2 and EX16 avatar need Google, Gmail and Supabase values in appsettings.json; until then they return errors from the outside service
 - Notifications sent by other features (WF2 step 4, EX4, EX5, EX6, EX7, EX8, EX15) depend on NotificationService.NotifyAsync being called by Members B, C and D
 - Open questions for the owners of the planned endpoints:
@@ -1109,6 +1113,4 @@ NOTES
   - WF2b 2.3 and EX4 step 4: REFERRALS has no column for the return reason (store it in the stage history reason?)
   - WF2b 6: after the welfare referral is accepted, does the case's advisorId change to the Welfare Officer, or stay with the wellbeing advisor?
   - EX6 3.2: ASSIGNMENTCHANGEREQUESTS has no column for the rejection reason (reason holds the requester's reason)
-  - EX10 3: ACCESSLOGS.consentPurposeId is required, but an emergency read has no purpose (make it nullable, null = emergency access?)
-  - EX10 2: "Reject a request with a reason" (Functional Requirements) has no column in EMERGENCYACCESSREQUESTS
   - EX15 1: is fieldName the indicator name, or should CORRECTIONREQUESTS point to the STUDENTINDICATORS row?

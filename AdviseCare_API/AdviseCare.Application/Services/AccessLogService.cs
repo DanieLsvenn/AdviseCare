@@ -12,6 +12,9 @@ namespace AdviseCare.Application.Services
 {
     public class AccessLogService : IAccessLogService
     {
+        // Shown instead of a purpose name for reads made through an approved emergency access (consentPurposeId = null)
+        private const string EmergencyAccessLabel = "Emergency access";
+
         private readonly IGenericRepository<Accesslog> _accessLogRepository;
         private readonly IGenericRepository<Account> _accountRepository;
         private readonly IGenericRepository<AccountRole> _accountRoleRepository;
@@ -47,7 +50,7 @@ namespace AdviseCare.Application.Services
                 ConsentPurposeId = l.ConsentPurposeId,
                 RecordedUserId = l.RecordedUserId,
                 AccessorFullName = l.Accessor.FullName,
-                PurposeName = l.ConsentPurpose.PurposeName,
+                PurposeName = l.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,
                 RecordedUserFullName = l.RecordedUser.FullName,
                 AccessedResource = l.AccessedResource,
                 AccessedAt = l.AccessedAt,
@@ -74,7 +77,7 @@ namespace AdviseCare.Application.Services
                     ConsentPurposeId = l.ConsentPurposeId,
                     RecordedUserId = l.RecordedUserId,
                     AccessorFullName = l.Accessor.FullName,
-                    PurposeName = l.ConsentPurpose.PurposeName,
+                    PurposeName = l.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,
                     RecordedUserFullName = l.RecordedUser.FullName,
                     AccessedResource = l.AccessedResource,
                     AccessedAt = l.AccessedAt,
@@ -96,7 +99,7 @@ namespace AdviseCare.Application.Services
                 ConsentPurposeId = log.ConsentPurposeId,
                 RecordedUserId = log.RecordedUserId,
                 AccessorFullName = log.Accessor.FullName,
-                PurposeName = log.ConsentPurpose.PurposeName,
+                PurposeName = log.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,
                 RecordedUserFullName = log.RecordedUser.FullName,
                 AccessedResource = log.AccessedResource,
                 AccessedAt = log.AccessedAt,
@@ -124,7 +127,7 @@ namespace AdviseCare.Application.Services
                 ConsentPurposeId = l.ConsentPurposeId,
                 RecordedUserId = l.RecordedUserId,
                 AccessorFullName = l.Accessor.FullName,
-                PurposeName = l.ConsentPurpose.PurposeName,
+                PurposeName = l.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,
                 RecordedUserFullName = l.RecordedUser.FullName,
                 AccessedResource = l.AccessedResource,
                 AccessedAt = l.AccessedAt,
@@ -190,7 +193,7 @@ namespace AdviseCare.Application.Services
                     ConsentPurposeId = l.ConsentPurposeId,
                     AccessorFullName = l.Accessor.FullName,
                     AccessorRoleNames = accessorRoles.TryGetValue(l.AccessorId, out var roles) ? roles : new List<string>(),
-                    PurposeName = l.ConsentPurpose.PurposeName,
+                    PurposeName = l.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,
                     AccessedResource = l.AccessedResource,
                     AccessedAt = l.AccessedAt,
                     IsFlagged = l.IsFlagged,
@@ -250,7 +253,7 @@ namespace AdviseCare.Application.Services
                 l.AccessedAt.ToString("yyyy-MM-dd HH:mm:ss"),
                 l.Accessor.FullName,
                 l.RecordedUser.FullName,
-                l.ConsentPurpose.PurposeName,
+                l.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,
                 l.AccessedResource,
                 l.IsFlagged ? "yes" : "no",
                 l.Status ?? string.Empty
