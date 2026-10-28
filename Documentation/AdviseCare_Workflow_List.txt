@@ -37,7 +37,6 @@ WF2: Student requests support and gets advised
 2.2.1. Academic: the subject (dropdown) and the topic (e.g. course content, study plan, FLM/FAP/LMS usage)
 2.2.2. Wellbeing: the issue (e.g. mental health, accommodation, family, money)
 2.3. Writes the reason
-2.3.1. The reason is visible to the authorized case team by default; the backend must enforce the selected visibility scope
 2.4. Chooses which data attributes to share
 2.4.1. Only the attributes covered by the category's consent purpose are offered (defined by the Steward)
 2.4.2. The student may leave it empty
@@ -60,7 +59,7 @@ WF2: Student requests support and gets advised
 6. Advisor and student meet
 6.1. They decide by themselves when and how to meet (online, offline, external messaging app); the app has no scheduling system for now
 6.2. Advisor moves the case to stage = contacted
-7. Advisor records case notes (discussion, agreed actions), selects assignedAdvisor or caseTeam visibility, and finalizes them; the API enforces the audience on reads and referrals
+7. Advisor records case notes (discussion, agreed actions) and finalizes them
 8. If the case needs someone else
 8.1. Advisor refers it to another advisor of the same or the other type (see EX4)
 8.2. Wellbeing Advisor refers money matters to the Welfare Officer (see WF2b)
@@ -77,15 +76,12 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
 3.1. Logs each intervention (type, date, notes)
 3.2. Records any support grant issued
 3.3. Records the outcome
-3.4. Reviews intervention history for the student
 4. If an outside service is needed (e.g. a money-lending service, a bank)
-4.1. Welfare Officer reads the external services catalogue; only active services are selected for new referrals
-4.2. System Administrator creates or updates catalogue entries (Welfare Officers cannot write to the catalogue)
-4.3. Welfare Officer records the external referral with an expected follow-up date
-4.4. System flags it as overdue if the date passes without an outcome
-4.5. Welfare Officer logs the follow-up outcome
+4.1. Welfare Officer records the external referral with an expected follow-up date
+4.2. System flags it as overdue if the date passes without an outcome
+4.3. Welfare Officer logs the follow-up outcome
 5. If the case goes beyond the Welfare Officer's authority, it is escalated (see EX5)
-6. Welfare Officer closes the intervention; the case's assigned advisor is notified to continue follow-up and closure
+6. Welfare Officer closes the intervention; the case goes back to the advisor for follow-up and closure
 
 WF3: Steward sets up consent
 1. Steward signs in
@@ -115,18 +111,14 @@ WF4: Programme Head lists, reports and exports
 
 WF5: Admin imports student indicator data
 1. Admin signs in and opens "Import indicator data"
-2. Admin uploads an .xlsx/.csv file; Google Sheet import remains pending its integration setup
+2. Admin uploads an Excel/CSV file or provides a Google Sheet
 3. Admin maps file columns to indicators (student identifier, indicator, value, term, date)
-4. System previews the file and validates the whole file without persisting rows (C-06a)
+4. System validates the whole file
 4.1. If any row is invalid, nothing is imported and the system lists the invalid rows (all-or-nothing)
 4.2. If all rows are valid, the system writes each value straight into STUDENTINDICATORS as a new row (dataSourceId stays null), encrypted with the student's key for that attribute (created on the first value), with the file name and import date kept as its source note (provenanceNote)
 5. Expected indicators that are missing for a student are flagged as missing
 6. Admin views the import result and the import history
 7. Note: scheduled automatic ingestion (data sources, schedules, jobs) is kept in the ERD but not in the current version (see AdviseCare_Future_List.txt)
-4.2. If all rows are valid, C-06b2 inserts new STUDENTINDICATORS rows only (dataSourceId null, provenanceNote includes file name and import date); C-06b1 supplies authenticated ciphertext and HMAC using the student's per-attribute key
-5. C-06b2 inserts an isMissing row for every active Student-role account missing each indicator/term pair represented in the import; missing-row validFrom is the term start date
-6. C-06b2 writes import activity history in the same database save and returns inserted/missing row counts
-7. Note: C-06b1 authenticated encryption/key provisioning and C-06b2 import persistence have passed runtime validation; C-08, C-09, and C-10 have also passed runtime verification (see AdviseCare_Backend_Task_Division.txt and Member_C_Changes_and_Runtime_Validation.md). C-07 is implemented but has not yet been runtime-verified. No unimplemented checkpoint is currently listed for Member C. Scheduled automatic ingestion (data sources, schedules, jobs) remains future work (see AdviseCare_Future_List.txt).
 
 ==========
 EXTRA WORKFLOWS
@@ -200,7 +192,7 @@ EX8: Student manages consent and erasure
 4. On withdrawal
 4.1. Access is blocked immediately
 4.2. An erasure request is queued (when the attribute is no longer shared under any purpose and values are stored)
-4.3. Steward verifies the withdrawal; SQL removes live ciphertext/HMAC, Vault Transit destroys the per-attribute key, and SQL records completion only after the KMS call succeeds
+4.3. Steward verifies the withdrawal and executes the erasure (destroys the attribute key)
 4.4. The values become unreadable; the audit trail stays
 4.5. Student is notified
 
@@ -230,16 +222,15 @@ EX12: Account management
 EX13: Point-in-time reconstruction ("way back machine")
 1. Advisor opens a student and clicks "View as of date"
 2. Advisor picks the date
-3. System rebuilds the record from the latest row per indicator/term recorded by the system through the end of that UTC date (only computed on request; each snapshot applies case-based consent checks and logs each permitted value)
+3. System rebuilds the record as it was on that date (only computed on request)
 4. Advisor can compare two dates; the access is logged
 
 EX14: Student exports own record
 1. Student opens account settings and chooses "Export my data"
-2. Student can view their own profile; no case assignment or consent is required
-3. System builds a JSON file with the student's identity, current indicator profile, own cases and own access log
-4. Student downloads it; the export is logged in ACTIVITYLOGS
+2. System builds a JSON file with the student's record and access log
+3. Student downloads it; the export is logged
 
-EX15: Correction request
+EX15: Correction request (pending review)
 1. Student selects a value believed to be wrong and explains why
 2. Advisor reviews it against its source
 3. Approved: a corrected value is stored as a new version (the old one stays in history); Rejected: the advisor writes the reason
@@ -250,22 +241,6 @@ EX16: Notifications, language and settings
 2. User sets notification preferences (email/in-app)
 3. User switches language (Vietnamese/English); the choice is remembered
 4. User views own activity history and edits account settings (username, avatar)
-
-EX17: Welfare Officer views anonymised welfare statistics
-1. Welfare Officer selects one academic term or a complete UTC calendar-date range
-2. System counts cases by support category using the case opened date; categories represented by fewer than five distinct students are suppressed
-3. Welfare Officer views the category, case count, and distinct-student count; no student-level rows or overall total are shown
-4. Welfare Officer can download the same aggregate results as a generated CSV file
-
-EX18: Staff views anonymised cohort indicators
-1. A System Administrator configures an active Cohort Analytics purpose and role policies; each student explicitly consents to sharing the covered attributes
-2. An authorized staff member selects a term, a faculty, or both; faculty-only results stay separated by term
-3. The system uses the latest indicator value per student/indicator/term, and excludes missing, erased, and inactive-indicator values
-4. The system applies the consent/access policy before decryption, logs each source-value read, and returns only aggregates
-5. Numeric indicators show mean and distinct-student count; categorical/boolean indicators show frequency and distinct-student count
-6. Any aggregate cell representing fewer than ten distinct students is suppressed; student-level identifiers and values are never returned
-7. The staff member can download the same summary as a generated CSV file; the export is activity-logged
-8. Faculty filtering reflects each student's current programme/faculty because historical programme membership is not stored
 
 ==========
 FUTURE (not in the current version, details in AdviseCare_Future_List.txt)

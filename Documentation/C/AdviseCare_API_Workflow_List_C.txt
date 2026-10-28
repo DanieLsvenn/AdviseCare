@@ -1,0 +1,1191 @@
+ADVISECARE API WORKFLOWS (current version)
+
+API version of AdviseCare_Workflow_List.txt. The step numbers and names are the same as there, and each step shows the endpoint(s) it calls plus test input.
+For the meaning and rules of each step, read AdviseCare_Workflow_List.txt. This file only covers how to test the steps through the API.
+
+==========
+HOW TO READ THIS FILE
+==========
+
+Endpoint tags
+- [EXISTS] - the endpoint is in the backend now (Member A)
+- [PLANNED - Member B/C/D] - not built yet; the route and body are a proposal following the same conventions, to be confirmed by the member who owns it (see AdviseCare_Backend_Task_Division.txt)
+- [NO API] - the step happens outside the backend (web app page, email inbox, Google)
+
+Step layout
+N. Step name (same as AdviseCare_Workflow_List.txt)
+   METHOD /api/Route [tag]
+   Auth: which token to send (Authorization: Bearer {token})
+   Body / Query / Form: test input
+   Expect: what a correct response looks like
+   Save: values from the response used in later steps
+
+Conventions
+- Base URL: https://localhost:{port} locally, the MonsterASP URL once deployed
+- JSON is camelCase; enum values are sent as strings exactly as in the database (e.g. "notLinked", "followUp"); dates are UTC ISO 8601
+- {curlyName} is a placeholder for a value saved in an earlier step (ids, tokens)
+- Get-all endpoints accept the optional query ?page=1&pageSize=20; search endpoints take their filters as query parameters, empty filters are ignored
+- Planned routes follow the existing pattern: one controller per main table (api/[controller], plural entity name), junction tables as sub-routes of the owning controller (like /api/Accounts/roles and /api/Subjects/account-subjects), own data under /me
+- createdBy/openedBy/assignedBy-type fields are never in the body; the server takes them from the JWT
+
+==========
+TEST DATA
+==========
+
+Seed accounts (AdviseCare_Database_Script.sql, password 123456 for all)
+- admin@gmail.com / admin - System Administrator -> {adminToken}, {adminId}
+- steward@gmail.com / steward - Data Protection Steward -> {stewardToken}
+- academicadvisor@gmail.com / academicadvisor - Academic Advisor -> {academicAdvisorToken}, {academicAdvisorId}
+- wellbeingadvisor@gmail.com / wellbeingadvisor - Wellbeing Advisor -> {wellbeingAdvisorToken}, {wellbeingAdvisorId}
+- welfareofficer@gmail.com / welfareofficer - Student Welfare Officer -> {welfareOfficerToken}, {welfareOfficerId}
+- student@gmail.com / student - Student -> {studentToken}, {studentId}
+- programmehead@gmail.com / programmehead - Programme Head -> {programmeHeadToken}, {programmeHeadId}
+The seed has no faculties, programmes, terms or subjects: create them in EX11 first.
+
+Accounts created during testing
+- Emails use Gmail plus-addressing so every test email reaches one inbox you own: replace yourgmail with your own Gmail name (yourgmail+student01@gmail.com is delivered to yourgmail@gmail.com)
+- For the Google linking test (EX1) the account email must be exactly the email of a real Google account you can sign in with, because the Google email has to match the account email; plus-addresses will not match
+
+Master data (created in EX11)
+- Faculties: SE - Software Engineering -> {facultySeId}; BA - Business Administration -> {facultyBaId}
+- Programme: BSE - Bachelor of Software Engineering (faculty SE) -> {programmeBseId}
+- Terms: Summer 2026 (2026-05-04 to 2026-08-23, past) -> {termSummer2026Id}; Fall 2026 (2026-09-07 to 2026-12-27, current) -> {termFall2026Id}; Spring 2027 (2027-01-04 to 2027-04-25, upcoming) -> {termSpring2027Id}
+- Subjects: PRN212 - Basic Cross-Platform Application Programming With .NET (SE) -> {subjectPrn212Id}; SWP391 - Software Development Project (SE) -> {subjectSwp391Id}; MKT101 - Marketing Principles (BA) -> {subjectMkt101Id}
+
+Consent data (created in WF3)
+- Indicators/attributes: GPA (numeric) -> {indGpaId}/{attrGpaId}; Attendance rate (numeric) -> {indAttendanceId}/{attrAttendanceId}; Accommodation status (categorical) -> {indAccommodationId}/{attrAccommodationId}; Financial difficulty (boolean) -> {indFinancialId}/{attrFinancialId}
+- Purposes: Academic advising (GPA, Attendance rate) -> {purposeAcademicId}; Wellbeing support (Attendance rate, Accommodation status) -> {purposeWellbeingId}; Financial support (Financial difficulty, Accommodation status) -> {purposeFinancialId}
+- Access policies (all active): Academic Advisor - Academic advising; Wellbeing Advisor - Wellbeing support; Wellbeing Advisor - Financial support; Student Welfare Officer - Financial support
+- Cohort analytics test prerequisite: configure an active "Cohort Analytics" purpose covering the selected attributes, active policies for the staff roles under test, and explicit granted consent for each test student's selected attributes. The API never grants consent automatically.
+
+Support categories (created in EX11 step 4)
+- Course content question (academic, Academic advising) -> {catCourseContentId}
+- Study plan (academic, Academic advising) -> {catStudyPlanId}
+- Accommodation (wellbeing, Wellbeing support) -> {catAccommodationId}
+- Money (wellbeing, Financial support) -> {catMoneyId}
+
+Files to prepare (keep them in a TestFiles folder next to this file)
+- accounts_valid.xlsx, accounts_invalid.xlsx (WF1)
+- indicators_fall2026.xlsx, indicators_fall2026_update.xlsx, indicators_invalid.xlsx (WF5)
+- avatar.png (under 2 MB), avatar_too_big.png (over 2 MB), avatar.bmp (EX16)
+
+==========
+RECOMMENDED RUN ORDER
+==========
+
+EX11 steps 1-3 (faculties, programmes, terms, subjects) -> WF1 -> EX1 -> EX2 -> EX12 -> WF3 -> EX11 step 4 (support categories) -> WF5 -> WF2 -> EX7 -> EX4 -> WF2b -> EX5 -> EX6 -> EX3 -> EX8 -> EX9 -> EX10 -> EX13 -> EX14 -> EX15 -> WF4 -> EX16 -> EX17 -> EX18
+Members A and B can be tested now: EX11 (steps 1-3), WF1, EX1, EX2, EX12, EX16, WF3, EX7, EX8 (except the profile check in 4.1), EX9 (the log fills once Member C reads data through the access guard) and EX10; the rest wait for Members C and D.
+
+==========
+MAIN WORKFLOWS
+==========
+
+WF1: Admin creates accounts
+1. Admin signs in with the admin account
+   POST /api/Auth/login [EXISTS]
+   Auth: none
+   Body:
+   {
+     "identifier": "admin@gmail.com",
+     "password": "123456",
+     "deviceInfo": "Chrome 141 on Windows 11"
+   }
+   Expect: 200, roles contains "System Administrator", hasPassword = true, token is a JWT
+   Save: token -> {adminToken}, accountId -> {adminId}
+   Negative: "password": "wrong123" -> 401; "identifier": "admin" (username) also works -> 200
+2. Out of scope: the school collects students' information itself [NO API]
+3. Admin chooses how to create accounts
+   Load the form choices first:
+   GET /api/Faculties/search?status=active [EXISTS]
+   GET /api/Roles [EXISTS]
+   Auth: {adminToken}
+   Expect: faculties SE and BA (from EX11), the 7 seed roles
+3.1. Bulk import
+3.1.1. Admin uploads an Excel file
+   POST /api/Accounts/import [EXISTS]
+   Auth: {adminToken}
+   Form (multipart/form-data): file = accounts_valid.xlsx
+   accounts_valid.xlsx (first sheet, row 1 = header):
+   email                          | fullName           | userName  | facultyCode | role
+   yourgmail+student01@gmail.com  | Nguyen Van An      | student01 | SE          | Student
+   yourgmail+student02@gmail.com  | Tran Thi Binh      | student02 | SE          | Student
+   yourgmail+student03@gmail.com  | Le Hoang Cuong     | student03 | BA          | Student
+   yourgmail+advisor01@gmail.com  | Pham Minh Duc      | advisor01 | SE          | Academic Advisor
+   yourgmail+staff01@gmail.com    | Vo Thi Em          | staff01   | SE          | Academic Advisor, Programme Head
+3.1.2. System validates every row (no separate call, part of the import)
+3.1.3. If any row is invalid, nothing is created
+   POST /api/Accounts/import [EXISTS]
+   Auth: {adminToken}
+   Form: file = accounts_invalid.xlsx
+   accounts_invalid.xlsx:
+   email                          | fullName        | userName  | facultyCode | role
+   yourgmail+student04@gmail.com  | Hoang Van Phuc  | student04 | SE          | Student            (valid row)
+   not-an-email                   | Bad Email       | bademail  | SE          | Student            (email format)
+   student@gmail.com              | Duplicate       | dupuser   | SE          | Student            (email already in the system)
+   yourgmail+student05@gmail.com  | Unknown Faculty | student05 | XX          | Student            (faculty code does not exist)
+   yourgmail+student06@gmail.com  | Unknown Role    | student06 | SE          | Teacher            (role does not exist)
+   yourgmail+student07@gmail.com  |                 | student04 | SE          | Student            (missing fullName, username repeated in the file)
+   Expect: 200, isSuccess = false, createdCount = 0, one error per invalid row with its row number; student04 is not created either
+3.1.4. If all rows are valid, the accounts are created
+   Use the accounts_valid.xlsx call from 3.1.1
+   Expect: 200, isSuccess = true, createdCount = 5, createdAccountIds has 5 ids; each account has linkStatus = notLinked, hasPassword = false
+   Save: createdAccountIds -> {importedAccountIds}; the id of student01 -> {student01Id}, advisor01 -> {advisor01Id}
+3.2. Single account
+3.2.1. Used for special cases (e.g. late enrolment, staff)
+3.2.2. Admin fills in email, fullName, userName, faculty and role
+3.2.3. System creates the account
+   POST /api/Accounts [EXISTS]
+   Auth: {adminToken}
+   Body:
+   {
+     "email": "yourgmail+latestudent@gmail.com",
+     "fullName": "Dang Thi Giang",
+     "userName": "latestudent",
+     "facultyId": "{facultySeId}",
+     "roleNames": ["Student"]
+   }
+   Expect: 200, linkStatus = notLinked, status = active
+   Save: accountId -> {lateStudentId}
+   Negative: same email again -> 409/400 duplicate; "roleNames": [] -> 400; facultyId of an archived faculty -> 400
+4. System prompts the Admin to send account-linking emails
+4.1. Admin confirms (web app dialog) [NO API]
+4.2. System emails each account a one-time linking link
+   POST /api/Accounts/linking-emails [EXISTS]
+   Auth: {adminToken}
+   Body:
+   {
+     "accountIds": ["{student01Id}", "{advisor01Id}", "{lateStudentId}"]
+   }
+   Expect: 200, sentCount = 3, skippedAccountIds = [], failedAccountIds = []; the 3 accounts now have linkStatus = emailSent; 3 emails arrive in your Gmail inbox
+   Negative: include an already linked account (e.g. after EX1) -> it is listed in skippedAccountIds
+5. (User side) the user links the account -> see EX1
+6. Admin views the account dashboard
+   GET /api/Accounts?page=1&pageSize=20 [EXISTS]
+   Auth: {adminToken}
+   Expect: 200, newest first, each item has roles, linkStatus, status, hasPassword
+6.1. Sort/filter accounts
+   GET /api/Accounts/search?roleName=Student&linkStatus=emailSent [EXISTS]
+   GET /api/Accounts/search?facultyId={facultySeId}&status=active [EXISTS]
+   GET /api/Accounts/search?fullName=nguyen [EXISTS]
+   Auth: {adminToken}
+   Expect: only the matching accounts (sorting is done by the web app)
+6.2. Resend the linking email to accounts still in emailSent
+   POST /api/Accounts/linking-emails [EXISTS]
+   Auth: {adminToken}
+   Body: { "accountIds": ["{student01Id}"] }
+   Expect: sentCount = 1; only the newest email's link works (the old link is replaced)
+6.3. Open an account to edit it, change roles, deactivate or ban it -> see EX12
+   GET /api/Accounts/{student01Id} [EXISTS]
+   Auth: {adminToken}
+
+WF2: Student requests support and gets advised
+1. Student signs in
+   POST /api/Auth/login [EXISTS]
+   Body: { "identifier": "student@gmail.com", "password": "123456", "deviceInfo": "Chrome 141 on Windows 11" }
+   Save: token -> {studentToken}, accountId -> {studentId}
+2. Student opens "Request support" and creates a new case
+2.1. Chooses the support type: academic or wellbeing (web app choice) [NO API]
+2.2. Chooses the category
+   GET /api/SupportCategories/search?supportType=academic&status=active [PLANNED - Member D]
+   GET /api/SupportCategories/search?supportType=wellbeing&status=active [PLANNED - Member D]
+   Auth: {studentToken}
+   Expect: academic -> Course content question, Study plan; wellbeing -> Accommodation, Money
+2.2.1. Academic: the subject (dropdown) and the topic
+   GET /api/Subjects/search?status=active [EXISTS]
+   Auth: {studentToken}
+   Expect: PRN212, SWP391, MKT101
+2.2.2. Wellbeing: the issue (the category itself, e.g. Accommodation, Money)
+2.3. Writes the reason (part of the body in 2.5)
+2.4. Chooses which data attributes to share
+2.4.1. Only the attributes of the category's consent purpose are offered
+   GET /api/SupportCategories/{catCourseContentId} [PLANNED - Member D] -> its consentPurposeId
+   GET /api/ConsentPurposes/{purposeAcademicId} [EXISTS]
+   Auth: {studentToken}
+   Expect: dataAttributes = GPA and Attendance rate (the attributes of Academic advising); only active ones are offered
+2.4.2. The student may leave it empty (sharedAttributeIds = [])
+2.4.3. Each chosen attribute is recorded as consent for that purpose (done by the server in 2.5, through IConsentService.CreateAsync)
+2.5. Submits; the case is created with stage = pending
+   POST /api/Cases [PLANNED - Member D]
+   Auth: {studentToken}
+   Body (academic case):
+   {
+     "subjectId": "{subjectPrn212Id}",
+     "supportCategoryId": "{catCourseContentId}",
+     "requestReason": "I don't understand dependency injection in PRN212 and failed the progress test. I need help before the final exam.",
+     "sharedAttributeIds": ["{attrGpaId}", "{attrAttendanceId}"]
+   }
+   Expect: 200, currentStage = pending, status = open, advisorId = null, openedBy = studentId; 2 CONSENTS rows (purpose Academic advising, status granted); 1 stage history row (pending)
+   Save: caseId -> {caseAcademicId}
+   Second case for the wellbeing path (used in WF2 step 8.2 and WF2b):
+   {
+     "subjectId": null,
+     "supportCategoryId": "{catMoneyId}",
+     "requestReason": "My family can no longer pay my tuition this term and I may have to drop out.",
+     "sharedAttributeIds": ["{attrFinancialId}"]
+   }
+   Save: caseId -> {caseWellbeingId}
+   Negative: subjectId with a wellbeing category -> 400; an attribute outside the category's purpose (e.g. {attrAccommodationId} for Course content question) -> 400
+3. Programme Head matches the case (manual for now)
+   POST /api/Auth/login [EXISTS]
+   Body: { "identifier": "programmehead@gmail.com", "password": "123456", "deviceInfo": "Edge 141 on Windows 11" }
+   Save: token -> {programmeHeadToken}
+3.1. Programme Head sees the case in the matching queue
+   GET /api/Cases/matching-queue [PLANNED - Member D]
+   Auth: {programmeHeadToken}
+   Expect: both cases with currentStage = pending, ordered by priority then openedAt
+3.2. Programme Head picks a suitable advisor
+   GET /api/Cases/{caseAcademicId}/suggested-advisors [PLANNED - Member D]
+   Auth: {programmeHeadToken}
+   Expect (3.2.1): academicadvisor first (linked to PRN212 in EX11 step 3), then general academic advisors of faculty SE (advisor01, staff01); each with current caseload
+   Expect (3.2.2): for {caseWellbeingId} -> wellbeingadvisor
+   Expect (3.2.3, optional): an advisor who already has an active assignment with this student is listed first
+   GET /api/AdvisorAssignments/search?studentId={studentId}&status=active [PLANNED - Member D]
+3.3. System sets the case's advisor, records the assignment and moves the case to assigned
+   PUT /api/Cases/{caseAcademicId}/assign [PLANNED - Member D]
+   Auth: {programmeHeadToken}
+   Body:
+   {
+     "advisorId": "{academicAdvisorId}",
+     "reason": "Specialised in PRN212"
+   }
+   Expect: 200, advisorId set, currentStage = assigned; an active ADVISORASSIGNMENTS row (advisor + student) is created or kept; stage history pending -> assigned
+   Save: advisorAssignmentId -> {assignmentAcademicId}
+   Repeat for {caseWellbeingId} with "advisorId": "{wellbeingAdvisorId}", "reason": "Financial worry, wellbeing advisor first"
+   Negative: assign a wellbeing advisor to the academic case -> 400; assign an already assigned case -> 400 (use EX6 to change it)
+4. System notifies both sides
+4.1. Student receives the advisor's contact information by email and in-app
+   GET /api/Notifications/me [EXISTS]
+   Auth: {studentToken}
+   Expect: a new unread notification with the advisor's name and email, redirectUrl to the case; an email in the student's inbox if the email channel is on
+4.2. Advisor receives a notification of the new case
+   POST /api/Auth/login [EXISTS]
+   Body: { "identifier": "academicadvisor@gmail.com", "password": "123456", "deviceInfo": "Firefox 143 on Ubuntu" }
+   Save: token -> {academicAdvisorToken}
+   GET /api/Notifications/me/unread-count [EXISTS]
+   Auth: {academicAdvisorToken}
+   Expect: count >= 1
+5. Advisor reviews the case
+5.1. Opens the case: reason, category, subject
+   GET /api/Cases/assigned?currentStage=assigned [PLANNED - Member D]
+   GET /api/Cases/{caseAcademicId} [PLANNED - Member D]
+   Auth: {academicAdvisorToken}
+   Expect: the case with requestReason, category Course content question, subject PRN212
+5.2. Opens the student profile: only consented data, with source and missing-data notices
+   GET /api/StudentIndicators/students/{studentId}/profile?caseId={caseAcademicId}&termId={termFall2026Id} [IMPLEMENTED - Member C C-07a; termId is optional]
+   Auth: {academicAdvisorToken}
+   Expect: only the assigned advisor for the matching case can read; Member B's access guard checks each data attribute using the case category's consent purpose before any value is decrypted. Permitted values include provenance and missing/erased state; denied attributes show only their indicator/term and whether a value exists. One ACCESSLOGS row is written per permitted indicator value; ciphertext and HMAC are never returned.
+5.3. If more data is needed, the advisor sends a consent request -> see EX7
+6. Advisor and student meet
+6.1. They decide when and how to meet, outside the app [NO API]
+6.2. Advisor moves the case to stage = contacted
+   PUT /api/Cases/{caseAcademicId}/stage [PLANNED - Member D]
+   Auth: {academicAdvisorToken}
+   Body:
+   {
+     "toStage": "contacted",
+     "reason": "Met the student on Google Meet on 2026-10-22"
+   }
+   Expect: 200, currentStage = contacted; stage history assigned -> contacted
+   Negative: "toStage": "pending" -> 400 (not allowed to go back to pending)
+7. Advisor records case notes and finalizes them
+   POST /api/CaseNotes [PLANNED - Member D]
+   Auth: {academicAdvisorToken}
+   Body:
+   {
+     "caseId": "{caseAcademicId}",
+     "noteText": "Went through constructor injection and service lifetimes. Student will redo lab 3 and send it by 2026-10-29."
+   }
+   Expect: 200, isFinalized = false
+   Save: caseNoteId -> {caseNoteId}
+   PUT /api/CaseNotes/{caseNoteId} [PLANNED - Member D]
+   Body: { "noteText": "Went through constructor injection and service lifetimes (AddScoped vs AddSingleton). Student will redo lab 3 and send it by 2026-10-29." }
+   Expect: editedAt is set
+   PUT /api/CaseNotes/{caseNoteId}/finalize [PLANNED - Member D]
+   Expect: isFinalized = true
+   Negative: PUT /api/CaseNotes/{caseNoteId} after finalizing -> 400
+8. If the case needs someone else
+8.1. Advisor refers it to another advisor -> see EX4
+8.2. Wellbeing Advisor refers money matters to the Welfare Officer
+   POST /api/Auth/login [EXISTS]
+   Body: { "identifier": "wellbeingadvisor@gmail.com", "password": "123456", "deviceInfo": "Chrome 141 on macOS" }
+   Save: token -> {wellbeingAdvisorToken}
+   POST /api/Referrals [PLANNED - Member D]
+   Auth: {wellbeingAdvisorToken}
+   Body:
+   {
+     "caseId": "{caseWellbeingId}",
+     "toAccountId": "{welfareOfficerId}",
+     "referralReason": "Student needs a tuition loan or financial aid; family income stopped in September.",
+     "priority": "high"
+   }
+   Expect: 200, status = pending; case currentStage = referred; the Welfare Officer is notified
+   Save: referralId -> {referralWelfareId} -> continue in WF2b
+9. Advisor follows up and closes the case
+   PUT /api/Cases/{caseAcademicId}/stage [PLANNED - Member D]
+   Auth: {academicAdvisorToken}
+   Body: { "toStage": "followUp", "reason": "Checking lab 3 resubmission" }
+   Then: { "toStage": "closed", "reason": "Lab 3 passed, student is confident for the final exam" }
+   Expect: currentStage = closed, status = closed, closedAt set
+   Reopen test: PUT /api/Cases/{caseAcademicId}/reopen [PLANNED - Member D]
+   Body: { "reason": "Student failed the final exam and asks for a study plan" }
+   Expect: status = reopened, currentStage = assigned
+10. Every stage change is recorded in the case's stage history
+   GET /api/CaseStageHistories/search?caseId={caseAcademicId} [PLANNED - Member D]
+   Auth: {academicAdvisorToken} (also {studentToken} for own cases)
+   Expect: pending -> assigned -> contacted -> followUp -> closed (-> assigned on reopen), each with changedBy, reason and changedAt
+
+WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2)
+1. Welfare Officer sees the referral in the incoming queue
+   POST /api/Auth/login [EXISTS]
+   Body: { "identifier": "welfareofficer@gmail.com", "password": "123456", "deviceInfo": "Chrome 141 on Windows 11" }
+   Save: token -> {welfareOfficerToken}
+   GET /api/Referrals/me/incoming?status=pending [PLANNED - Member D]
+   Auth: {welfareOfficerToken}
+   Expect: {referralWelfareId} with the case, the sender and priority high
+2. Welfare Officer triages it
+2.1. Opens the referral and the advisor's notes
+   GET /api/Referrals/{referralWelfareId} [PLANNED - Member D]
+   GET /api/CaseNotes/search?caseId={caseWellbeingId} [PLANNED - Member D]
+   Auth: {welfareOfficerToken}
+2.2. Sets the priority
+   PUT /api/Cases/{caseWellbeingId}/priority [PLANNED - Member D]
+   Auth: {welfareOfficerToken}
+   Body: { "priority": "urgent" }
+   Expect: case priority = urgent
+2.3. Accepts it, or returns it with a reason
+   PUT /api/Referrals/{referralWelfareId}/accept [PLANNED - Member D]
+   Auth: {welfareOfficerToken}
+   Expect: status = accepted, acceptedAt set; the wellbeing advisor is notified
+   Return test (on a second referral): PUT /api/Referrals/{id}/return [PLANNED - Member D]
+   Body: { "reason": "Not a financial matter, the student needs accommodation support" }
+   Expect: status = returned; case back to the sender
+3. Welfare Officer works with the student
+3.1. Logs each intervention
+   POST /api/Interventions [IMPLEMENTED - Member C C-05]
+   Auth: {welfareOfficerToken}
+   Body:
+   {
+     "caseId": "{caseWellbeingId}",
+     "interventionDate": "2026-10-23T02:00:00Z",
+     "notes": "Met the student and checked the family income documents. Prepared the tuition support application.",
+     "interventionType": "financialAid",
+     "status": "inProgress"
+   }
+   Expect: 200, isClosed = false, officerId is the signed-in Welfare Officer
+   Save: interventionId -> {interventionId}
+   PUT /api/Interventions/{interventionId} [IMPLEMENTED - Member C C-05]
+   Auth: {welfareOfficerToken}
+   Body: { "interventionDate": "2026-10-23T02:00:00Z", "notes": "Application sent to the finance office on 2026-10-24.", "interventionType": "financialAid", "status": "inProgress" }
+   Expect: updated intervention; only its creating officer can update it, and completed interventions return 409
+   GET /api/Interventions/search?studentId={studentId} [IMPLEMENTED - Member C C-05]
+   Auth: {welfareOfficerToken}
+   Expect: that student's interventions, newest first; search also accepts caseId and an optional status
+3.2. Records any support grant issued
+   POST /api/SupportGrants [IMPLEMENTED - Member C C-05]
+   Auth: {welfareOfficerToken}
+   Body:
+   {
+     "interventionId": "{interventionId}",
+     "grantDescription": "50% tuition reduction for Fall 2026",
+     "grantType": "Tuition reduction",
+     "issuedAt": "2026-10-28T03:00:00Z"
+   }
+   Expect: status = issued; grant can only be added to an open intervention owned by the signed-in Welfare Officer
+   Save: supportGrantId -> {supportGrantId}
+   GET /api/SupportGrants/search?interventionId={interventionId} [IMPLEMENTED - Member C C-05]
+   Auth: {welfareOfficerToken}
+   Expect: grants recorded under that officer's intervention
+3.3. Records the outcome
+   PUT /api/Interventions/{interventionId}/outcome [IMPLEMENTED - Member C C-05]
+   Auth: {welfareOfficerToken}
+   Body: { "outcome": "Tuition reduction granted; student can stay enrolled this term." }
+4. If an outside service is needed
+4.1. Welfare Officer finds an active external service
+   GET /api/ExternalServices/search?isActive=true [IMPLEMENTED - Member C C-01]
+   Auth: {welfareOfficerToken}
+   Expect: active services, ordered by service name
+   GET /api/ExternalServices/{externalServiceId} [IMPLEMENTED - Member C C-01]
+   Expect: the selected service, or 404 if it does not exist
+   GET /api/ExternalServices?page=1&pageSize=20 [IMPLEMENTED - Member C C-01]
+   Expect: first page of services, ordered by service name
+   Runtime validation: current build returned the fixture rows in sorted order; page 1/page 2 returned 2/1 rows, and service-name, type, active/inactive, combined, and no-match filters passed. Unknown ID returned 404, invalid page returned 400, anonymous access returned 401, and Student-role read access returned 200. The three synthetic services were removed afterward.
+4.1.1. If a service is not listed, the System Administrator adds it to the catalogue
+   POST /api/ExternalServices [IMPLEMENTED - Member C C-02]
+   Auth: {adminToken}
+   Body:
+   {
+     "contactInfo": "Hotline 1900 1234, studentloan@examplebank.vn",
+     "serviceName": "Example Bank Student Loan Desk",
+     "serviceType": "Bank"
+   }
+   Expect: 200, active service with a new externalServiceId; a Welfare Officer calling POST receives 403
+   Save: externalServiceId -> {externalServiceId}
+   PUT /api/ExternalServices/{externalServiceId} [IMPLEMENTED - Member C C-02]
+   Auth: {adminToken}
+   Body: { "contactInfo": "Hotline 1900 1234", "serviceName": "Example Bank Student Loan Desk", "serviceType": "Bank", "isActive": true }
+   Expect: 200, updated service; a Welfare Officer calling PUT receives 403
+   Runtime validation: current build created and updated a synthetic service as System Administrator; normalized fields and persisted inactive-state read-back passed. Welfare Officer writes returned 403, anonymous create returned 401, invalid inputs returned 400, and unknown update returned 404. The synthetic service was removed afterward.
+4.1.2. Welfare Officer records the external referral with an expected follow-up date
+   POST /api/ExternalReferrals [IMPLEMENTED - Member C C-03]
+   Auth: {welfareOfficerToken}
+   Body:
+   {
+     "caseId": "{caseWellbeingId}",
+     "externalServiceId": "{externalServiceId}",
+     "followUpDueAt": "2026-11-15T00:00:00Z"
+   }
+   Expect: status = sent, isOverdue = false, referredBy is the signed-in Welfare Officer; the service must be active and the case must exist
+   Save: externalReferralId -> {externalReferralId}
+4.2. System flags it as overdue if the date passes without an outcome (background check)
+   Test: create a second referral with "followUpDueAt": "2026-10-01T00:00:00Z" (already past), then
+   GET /api/ExternalReferrals/search?isOverdue=true [IMPLEMENTED - Member C C-03]
+   Auth: {welfareOfficerToken}
+   Expect: that referral has isOverdue = true immediately in search results; the background service persists the flag on the database within 5 minutes
+4.3. Welfare Officer logs the follow-up outcome
+   PUT /api/ExternalReferrals/{externalReferralId}/follow-up [IMPLEMENTED - Member C C-03]
+   Auth: {welfareOfficerToken}
+   Body: { "followUpOutcome": "Bank approved a student loan of 20,000,000 VND for the remaining tuition." }
+   Expect: status = followedUp, isOverdue = false; a second follow-up update returns 409
+   Runtime validation: current build created future- and past-due referrals; search filters and persisted overdue marking passed. Follow-up changed status to followedUp, cleared overdue, and a second update returned 409. Inactive service returned 400, unknown case/service 404, anonymous access 401, and Student role 403. All synthetic referral/case/service/category/purpose rows were removed.
+5. If the case goes beyond the Welfare Officer's authority -> see EX5
+6. Welfare Officer closes the intervention; the case goes back to the advisor
+   PUT /api/Interventions/{interventionId}/close [IMPLEMENTED - Member C C-05]
+   Auth: {welfareOfficerToken}
+   Body: { "outcome": "Tuition reduced and bank loan approved. Handing back to the wellbeing advisor." }
+   Expect: isClosed = true, status = completed; the case's assigned advisor is notified when assigned; further intervention edits return 409
+   Runtime validation: current build created/updated an intervention, recorded a support grant, persisted outcome, and closed it as completed. Offset dates normalized to UTC; grant search and advisor in-app notification passed. Closed intervention mutations/grant creation returned 409; invalid inputs returned 400, unknown case 404, and Student/anonymous access 403/401. The synthetic grant/intervention/case/category/purpose, notification, and temporary email safeguard were removed.
+   Then the wellbeing advisor continues with WF2 step 9 on {caseWellbeingId}
+
+WF3: Steward sets up consent
+1. Steward signs in
+   POST /api/Auth/login [EXISTS]
+   Body: { "identifier": "steward@gmail.com", "password": "123456", "deviceInfo": "Chrome 141 on Windows 11" }
+   Save: token -> {stewardToken}
+2. Steward defines the shareable data
+2.1. Creates an indicator together with its data attribute
+   POST /api/Indicators [EXISTS]
+   Auth: {stewardToken}
+   Body (one call per indicator):
+   {
+     "attributeDescription": "Your cumulative grade point average for the term",
+     "attributeName": "GPA",
+     "description": "Cumulative GPA on a 10-point scale",
+     "indicatorName": "GPA",
+     "dataType": "numeric"
+   }
+   Expect: 200, indicatorId and dataAttributeId (1:1), status = active
+   Save: -> {indGpaId}, {attrGpaId}
+   Other three:
+   { "attributeDescription": "How often you attended your classes this term", "attributeName": "Attendance rate", "description": "Percentage of attended slots (0-100)", "indicatorName": "Attendance rate", "dataType": "numeric" } -> {indAttendanceId}, {attrAttendanceId}
+   { "attributeDescription": "Where you are living this term", "attributeName": "Accommodation status", "description": "dormitory / rented / family / other", "indicatorName": "Accommodation status", "dataType": "categorical" } -> {indAccommodationId}, {attrAccommodationId}
+   { "attributeDescription": "Whether you have reported financial difficulty", "attributeName": "Financial difficulty", "description": "true when the student has reported financial difficulty", "indicatorName": "Financial difficulty", "dataType": "boolean" } -> {indFinancialId}, {attrFinancialId}
+   Negative: "dataType": "text" -> 400; the same indicatorName or attributeName again -> 409; called with {academicAdvisorToken} -> 403
+   Edit: PUT /api/Indicators/{indGpaId} [EXISTS]
+   Body: { "attributeDescription": "Your cumulative GPA (10-point scale) for the current term", "description": "Cumulative GPA on a 10-point scale" }
+   Lists: GET /api/Indicators, GET /api/Indicators/search?status=active [EXISTS] (open to every signed-in role)
+2.2. Archives indicators/attributes that are no longer used
+   POST /api/Indicators [EXISTS] with "indicatorName": "Old test indicator", "attributeName": "Old test attribute", "dataType": "boolean" -> {indOldId}, {attrOldId}
+   PUT /api/Indicators/{indOldId}/archive [EXISTS]
+   Expect: true; the indicator and its attribute have status = archived; archiving it again -> 409; PUT /api/Indicators/{indOldId} -> 409; attaching {attrOldId} to a purpose (3.2) -> 409
+3. Steward defines consent purposes
+3.1. Creates a purpose
+   POST /api/ConsentPurposes [EXISTS]
+   Auth: {stewardToken}
+   Body:
+   {
+     "description": "Lets your academic advisor see your study results so they can help with your subjects",
+     "purposeName": "Academic advising"
+   }
+   Expect: status = inactive
+   Save: -> {purposeAcademicId}
+   Also: "Wellbeing support" ("Lets your wellbeing advisor understand your situation outside class") -> {purposeWellbeingId}; "Financial support" ("Lets the welfare officer and your wellbeing advisor check your financial situation to arrange support") -> {purposeFinancialId}
+   Negative: the same purposeName again -> 409
+3.2. Attaches the data attributes the purpose covers
+   POST /api/ConsentPurposes/purpose-attributes [EXISTS]
+   Auth: {stewardToken}
+   Body: { "consentPurposeId": "{purposeAcademicId}", "dataAttributeId": "{attrGpaId}" }
+   Repeat: Academic advising + {attrAttendanceId}; Wellbeing support + {attrAttendanceId}, {attrAccommodationId}; Financial support + {attrFinancialId}, {attrAccommodationId}
+   Expect: GET /api/ConsentPurposes/purpose-attributes/search?dataAttributeId={attrAccommodationId} [EXISTS] -> 2 purposes
+   Remove test: DELETE /api/ConsentPurposes/purpose-attributes/{purposeAcademicId}/{attrAttendanceId} [EXISTS], then add it back
+   Negative: the same pair twice -> 409; an archived attribute -> 409
+3.3. Activates the purpose
+   PUT /api/ConsentPurposes/{purposeAcademicId}/activate [EXISTS] (repeat for the other two)
+   Expect: true, status = active; a purpose with no active attribute -> 400
+   Detail: GET /api/ConsentPurposes/{purposeAcademicId} [EXISTS] -> the purpose with its dataAttributes
+4. Steward configures access policies
+4.1. Links a role to a purpose (the student's consent must be granted)
+   GET /api/Roles [EXISTS] (open to the Steward)
+   Auth: {stewardToken}
+   Save: roleId of Academic Advisor -> {roleAcademicAdvisorId}, Wellbeing Advisor -> {roleWellbeingAdvisorId}, Student Welfare Officer -> {roleWelfareOfficerId}
+   POST /api/AccessPolicies [EXISTS]
+   Auth: {stewardToken}
+   Body:
+   {
+     "consentPurposeId": "{purposeAcademicId}",
+     "roleId": "{roleAcademicAdvisorId}"
+   }
+   Expect: status = draft
+   Save: accessPolicyId -> {policyAcademicId}
+   Also: Wellbeing support -> Wellbeing Advisor ({policyWellbeingId}); Financial support -> Wellbeing Advisor ({policyFinancialWbId}, the wellbeing advisor handles the Money case first); Financial support -> Student Welfare Officer ({policyFinancialId})
+   Negative: the same role and purpose again -> 409; the Student role -> 400
+   Edit test: PUT /api/AccessPolicies/{policyAcademicId} [EXISTS] with the same body while it is a draft -> 200; after activating -> 409
+4.2. Activates the policy
+   PUT /api/AccessPolicies/{policyAcademicId}/activate [EXISTS] (repeat for the other three)
+   Expect: true, status = active
+4.3. Tests the policy against a sample case
+   POST /api/AccessPolicies/{policyAcademicId}/test [EXISTS]
+   Auth: {stewardToken}
+   Body: { "studentId": "{studentId}" }
+   Expect: one line per attribute of the purpose with hasConsent, hasValue and result (allowed / allowedOnceActive / notShared); before WF2 the student has shared nothing, so every result is notShared; nothing is logged in ACCESSLOGS
+5. Admin links each support category to its purpose -> see EX11 step 4
+6. Later changes
+   POST /api/ConsentPurposes [EXISTS] "Old purpose" -> {purposeOldId}; PUT /api/ConsentPurposes/{purposeOldId}/retire [EXISTS]
+   Expect: status = retired; activate, edit or attach on it -> 409
+   PUT /api/AccessPolicies/{id}/revoke [EXISTS] (on a test policy)
+   Expect: status = revoked; there is no DELETE and no edit of an active policy (revoke it and create a new one instead)
+
+WF4: Programme Head lists, reports and exports
+1. Programme Head signs in and opens the reports page
+   POST /api/Auth/login [EXISTS] with programmehead@gmail.com / 123456 -> {programmeHeadToken}
+2. Chooses a time range
+3. Filters by advisor, support type, category, subject or stage
+4. Views the result
+4.1. List of cases in the range
+   GET /api/Reports/cases?from=2026-09-07&to=2026-12-27 [PLANNED - Member D]
+   GET /api/Reports/cases?from=2026-09-07&to=2026-12-27&advisorId={academicAdvisorId}&supportType=academic&subjectId={subjectPrn212Id}&currentStage=closed [PLANNED - Member D]
+   Auth: {programmeHeadToken}
+   Expect: the cases from WF2/EX3 that match
+4.2. Caseload volume per advisor
+4.3. Average time to close a case per advisor
+   GET /api/Reports/caseload-closure?from=2026-09-07&to=2026-12-27 [PLANNED - Member D]
+   Auth: {programmeHeadToken}
+   Expect: per advisor: open cases, closed cases, average days to close (closed cases only)
+5. Exports the list/report
+   GET /api/Reports/cases/export?from=2026-09-07&to=2026-12-27&format=xlsx [PLANNED - Member D]
+   GET /api/Reports/caseload-closure/export?from=2026-09-07&to=2026-12-27&format=pdf [PLANNED - Member D]
+   Auth: {programmeHeadToken}
+   Expect: a file download (xlsx / csv / pdf), generated on the fly, nothing stored
+   Negative: "to" before "from" -> 400; "format=docx" -> 400
+
+WF5: Admin imports student indicator data
+1. Admin signs in and opens "Import indicator data"
+   POST /api/Auth/login [EXISTS] with admin@gmail.com / 123456 -> {adminToken}
+2. Admin uploads an Excel/CSV file or provides a Google Sheet
+3. Admin maps file columns to indicators
+   POST /api/StudentIndicators/import/preview [IMPLEMENTED - Member C C-06a]
+   Auth: {adminToken}
+   Form (multipart/form-data): file = indicators_fall2026.xlsx (or .csv)
+   Expect: the header row and the first rows, so the web app can show the column mapping
+   indicators_fall2026.xlsx:
+   Student email      | Indicator            | Value     | Term      | Valid from
+   student@gmail.com  | GPA                  | 6.8       | Fall 2026 | 2026-10-15
+   student@gmail.com  | Attendance rate      | 72        | Fall 2026 | 2026-10-15
+   student@gmail.com  | Accommodation status | rented    | Fall 2026 | 2026-09-07
+   student@gmail.com  | Financial difficulty | true      | Fall 2026 | 2026-10-01
+   (no rows for student01: every expected indicator becomes missing for them)
+   Google Sheet variant: POST /api/StudentIndicators/import-google-sheet [PLANNED - Member C], body { "sheetUrl": "https://docs.google.com/spreadsheets/d/...", "termId": "{termFall2026Id}", "columnMapping": { ... } } (needs the Google setup)
+4. System validates the whole file without persisting rows
+   POST /api/StudentIndicators/import/validate [IMPLEMENTED - Member C C-06a]
+   Auth: {adminToken}
+   Form (multipart/form-data):
+   file = indicators_fall2026.xlsx
+   columnMapping = { "studentIdentifier": "Student email", "indicator": "Indicator", "value": "Value", "term": "Term", "validFrom": "Valid from" }
+   Student identifier may be a unique studentCode, email or username; studentCode resolution is implemented in C-06b2.
+   Expect: isValid = true, validRowCount = 4, errors = []; this validation endpoint does not create STUDENTINDICATORS rows
+4.1. If any row is invalid, nothing is imported
+   POST /api/StudentIndicators/import/validate [IMPLEMENTED - Member C C-06a]
+   Form: file = indicators_invalid.xlsx (same mapping)
+   indicators_invalid.xlsx:
+   Student email          | Indicator       | Value | Term      | Valid from
+   student@gmail.com      | GPA             | 7.2   | Fall 2026 | 2026-10-20     (valid row)
+   nobody@gmail.com       | GPA             | 5.0   | Fall 2026 | 2026-10-20     (student does not exist)
+   student@gmail.com      | Height          | 170   | Fall 2026 | 2026-10-20     (indicator does not exist)
+   student@gmail.com      | GPA             | abc   | Fall 2026 | 2026-10-20     (not numeric)
+   student@gmail.com      | Attendance rate | 80    | Winter 99 | 2026-10-20     (term does not exist)
+   Expect: isValid = false, the 4 invalid rows with their reasons, validRowCount = 0; no STUDENTINDICATORS rows are added
+   Runtime validation: current build previewed CSV and XLSX files, validated six valid CSV rows and two valid XLSX rows, and reported an unknown student plus a nonnumeric value as invalid with validRowCount=0. Unsupported extension returned 400; Student and anonymous requests returned 403/401. STUDENTINDICATORS, ATTRIBUTEKEYS, and ACTIVITYLOGS counts did not change; the import endpoint was not called.
+4.2. If all rows are valid, every value will be inserted as a new row; existing history is never updated
+   POST /api/StudentIndicators/import [IMPLEMENTED - Member C C-06b2]
+   Form: file = indicators_fall2026.xlsx (same mapping)
+   Expect: isSuccess = true; insertedCount = 4; missingCount reports generated missing rows. Each value row has dataSourceId = null, status = original, provenanceNote with file name/import date, and ciphertext/HMAC from the student's per-attribute key. Profiles, keys, indicator rows, and the activity log commit together.
+   Runtime validation: an invalid mixed-row CSV returned errors without writing indicator, key, profile, or import-log rows. A valid two-row CSV matched one student by studentCode and one by email, inserted two encrypted values with two wrapped keys, provisioned the missing StudentProfile, generated one missing row for the other active Student account, and wrote the indicatorsImported activity log. All synthetic rows and Vault keys were removed; only authentication audit events were retained.
+   For EX13, import indicators_fall2026_update.xlsx afterwards (new rows, never updates):
+   student@gmail.com | GPA             | 7.5 | Fall 2026 | 2026-11-20
+   student@gmail.com | Attendance rate | 85  | Fall 2026 | 2026-11-20
+5. For each distinct imported indicator/term pair, an isMissing row is inserted for every active Student-role account with no value row in this import. This is global school scope, including students with no rows in the file; missing-row validFrom uses the term start date.
+   GET /api/StudentIndicators/search?termId={termFall2026Id}&isMissing=true [PLANNED - Member C C-07a]
+   Auth: {adminToken}
+   Expect: rows with isMissing = true for every student without values (e.g. student01)
+6. Admin views the import result and the import history
+   GET /api/ActivityLogs/search?activityType=indicatorsImported [EXISTS endpoint; one log entry is written per successful C-06b2 import]
+   Auth: {adminToken}
+   Expect: one entry per successful import with the file name and row count
+7. Scheduled automatic ingestion is future (FU1) [NO API]
+
+==========
+EXTRA WORKFLOWS
+==========
+
+EX1: Account linking and first sign-in
+(Needs Gmail and Google set up. Create the account with your real Google email first, e.g. through WF1 3.2, and send it the linking email.)
+1. User opens the account-linking email [NO API]
+2. User clicks the one-time link
+   The link opens the web app page, e.g. {webAppUrl}/link-account?token={linkToken} [NO API]
+   Save: the token from the link -> {linkToken}
+2.1. If the link has expired, the user is told to ask the Admin to resend it (returned by the call in step 3)
+3. User signs in with the personal Google account
+   POST /api/Auth/link-google [EXISTS]
+   Auth: none
+   Body:
+   {
+     "token": "{linkToken}",
+     "idToken": "{googleIdToken}",
+     "deviceInfo": "Chrome 141 on Windows 11"
+   }
+   {googleIdToken}: the credential from the "Sign in with Google" button on the web app (for Swagger testing, copy it from the browser's network tab)
+   Expect: 200, linkStatus = linked, hasPassword = false, a JWT; activity log accountLinked
+   Save: token -> {linkedUserToken}
+3.1. Negative: sign in with a Google account whose email differs from the account email -> 400, nothing changes
+3.2. Negative: a Google account already linked to another account -> 400
+3.3. Negative: reuse the same {linkToken} -> 400 (one-time); a token older than 7 days -> 400 with "ask the Admin to resend"
+4. Account setup step: set a password or skip
+   POST /api/Auth/change-password [EXISTS]
+   Auth: {linkedUserToken}
+   Body:
+   {
+     "oldPassword": "",
+     "newPassword": "Linked@2026",
+     "confirmPassword": "Linked@2026"
+   }
+   Expect: 200, hasPassword = true; activity log passwordSet
+   Skip = no call
+5. User sets the preferred language
+   PUT /api/Auth/me [EXISTS]
+   Auth: {linkedUserToken}
+   Body: { "userName": "student01", "preferredLanguage": "en" }
+   Expect: preferredLanguage = en
+6. User lands on the home page of their role
+   GET /api/Auth/me [EXISTS]
+   Auth: {linkedUserToken}
+   Expect: roles, used by the web app to pick the home page
+7. Later sign-ins
+   POST /api/Auth/google [EXISTS]
+   Body: { "idToken": "{googleIdToken}", "deviceInfo": "Chrome 141 on Android" }
+   Expect: 200 for the linked Google account; 401 for any Google account not linked
+   POST /api/Auth/login [EXISTS]
+   Body: { "identifier": "student01", "password": "Linked@2026", "deviceInfo": "Chrome 141 on Windows 11" }
+
+EX2: Sign in, forgot password and sessions
+1. User signs in with Google or with password
+   POST /api/Auth/login [EXISTS]
+   Body: { "identifier": "academicadvisor@gmail.com", "password": "123456", "deviceInfo": "Chrome 141 on Windows 11" } -> {sessionAToken}
+   Same body with "deviceInfo": "Safari on iPhone 16" -> {sessionBToken}
+2. System checks the account status
+   Negative: deactivate the account first (EX12 step 4), then log in -> 403; activate it again afterwards
+3. System opens a session and records the device
+   GET /api/Auth/sessions [EXISTS]
+   Auth: {sessionAToken}
+   Expect: 2 live sessions with their deviceInfo and expiry (1 month after sign-in); the session of {sessionAToken} has isCurrent = true
+   Save: the other session's id -> {sessionBId}
+4. Forgot password (needs Gmail set up)
+4.1. User enters the email
+   POST /api/Auth/forgot-password [EXISTS]
+   Auth: none
+   Body: { "email": "yourgmail@gmail.com" }   (a linked account, from EX1)
+   Expect: 200 with the same message for linked, not-linked and unknown emails ("nobody@gmail.com" too); only the linked account gets an email
+4.2. System emails a one-time reset link (valid for 1 hour) [NO API]
+   Save: the token from the link -> {resetToken}
+4.3. User sets a new password; every session is logged out
+   POST /api/Auth/reset-password [EXISTS]
+   Auth: none
+   Body:
+   {
+     "token": "{resetToken}",
+     "newPassword": "Reset@2026",
+     "confirmPassword": "Reset@2026"
+   }
+   Expect: 200; every old token of that account now gets 401; activity log passwordReset
+   Negative: same token again -> 400; "confirmPassword": "Other@2026" -> 400
+5. User sets or changes the password in Settings
+   POST /api/Auth/change-password [EXISTS]
+   Auth: {sessionAToken}
+   Body:
+   {
+     "oldPassword": "123456",
+     "newPassword": "Advisor@2026",
+     "confirmPassword": "Advisor@2026"
+   }
+   Expect: 200; {sessionAToken} still works, {sessionBToken} gets 401
+   Negative: wrong oldPassword -> 400/401; "newPassword": "12345" -> 400 (minimum 6 characters)
+   Clean-up: change it back to 123456 so the other workflows keep working
+6. User views active sessions and logs out of other sessions
+   GET /api/Auth/sessions [EXISTS]
+   POST /api/Auth/sessions/{sessionBId}/logout [EXISTS] (one chosen session)
+   POST /api/Auth/sessions/logout-others [EXISTS] (all other sessions)
+   POST /api/Auth/logout [EXISTS] (current session)
+   Auth: {sessionAToken}
+   Expect: after logout, GET /api/Auth/me with {sessionAToken} -> 401
+
+EX3: Advisor reaches out based on indicators
+1. Advisor views indicators of the students assigned to them (only consented data)
+   GET /api/AdvisorAssignments/me/students [PLANNED - Member D]
+   Auth: {academicAdvisorToken}
+   Expect: student (from WF2 3.3)
+   GET /api/StudentIndicators/students/{studentId}/profile [PLANNED - Member C]
+   Expect: GPA 6.8 and Attendance rate 72 (consented in WF2), the rest "exists, not shared"
+2. Advisor notices a student who needs help [NO API]
+3. Advisor opens a case for that student
+   POST /api/Cases [PLANNED - Member D]
+   Auth: {academicAdvisorToken}
+   Body:
+   {
+     "studentId": "{studentId}",
+     "subjectId": "{subjectSwp391Id}",
+     "supportCategoryId": "{catStudyPlanId}",
+     "requestReason": "Attendance dropped to 72% and GPA to 6.8 this term. I would like to make a study plan for SWP391 together.",
+     "priority": "high"
+   }
+   Expect: openedBy = advisor, advisorId = advisor, currentStage = assigned (no matching needed)
+   Save: caseId -> {caseOutreachId}
+4. System notifies the student with the advisor's contact information
+   GET /api/Notifications/me [EXISTS]
+   Auth: {studentToken}
+5. Continues as WF2 from step 5 with {caseOutreachId}
+
+EX4: Referral between advisors
+1. Advisor opens the case and chooses "Refer"
+2. Advisor picks the receiver and writes the reason and priority
+   POST /api/Referrals [PLANNED - Member D]
+   Auth: {academicAdvisorToken}
+   Body:
+   {
+     "caseId": "{caseOutreachId}",
+     "toAccountId": "{wellbeingAdvisorId}",
+     "referralReason": "The low attendance comes from a long commute after moving out of the dorm; this is more of a wellbeing issue.",
+     "priority": "medium"
+   }
+   Expect: status = pending, case currentStage = referred
+   Save: referralId -> {referralAdvisorId}
+3. Receiver gets a notification
+   GET /api/Notifications/me [EXISTS]
+   GET /api/Referrals/me/incoming?status=pending [PLANNED - Member D]
+   Auth: {wellbeingAdvisorToken}
+4. Receiver accepts or returns the referral
+   PUT /api/Referrals/{referralAdvisorId}/accept [PLANNED - Member D]
+   Auth: {wellbeingAdvisorToken}
+   Expect: status = accepted; case advisorId = wellbeing advisor; currentStage back to assigned
+   Return test (on another referral): PUT /api/Referrals/{id}/return, body { "reason": "The student only needs help with the subject" }
+5. Case stage history records the hand-over
+   GET /api/CaseStageHistories/search?caseId={caseOutreachId} [PLANNED - Member D]
+   Expect: assigned -> referred -> assigned with the referral reason
+
+EX5: Escalation to the Programme Head
+1. Welfare Officer marks the case for escalation and writes the reason
+   POST /api/Escalations [IMPLEMENTED - Member C C-04]
+   Auth: {welfareOfficerToken}
+   Body:
+   {
+     "caseId": "{caseWellbeingId}",
+     "escalatedTo": "{programmeHeadId}",
+     "reason": "The student needs a tuition deadline extension, which only the Programme Head can approve."
+   }
+   Expect: status = pending; selected account must be an active Programme Head, and an in-app notification is sent
+   Save: escalationId -> {escalationId}
+2. Programme Head gets a notification
+   GET /api/Notifications/me [EXISTS]
+   GET /api/Escalations/search?status=pending [IMPLEMENTED - Member C C-04]
+   Auth: {programmeHeadToken}
+   Expect: only pending escalations addressed to the signed-in Programme Head
+3. Programme Head records a response/decision
+   PUT /api/Escalations/{escalationId}/respond [IMPLEMENTED - Member C C-04]
+   Auth: {programmeHeadToken}
+   Body: { "response": "Approved: tuition deadline extended to 2026-12-15." }
+   Expect: status = responded; the Welfare Officer is notified
+4. Welfare Officer sees the response and continues the case
+   GET /api/Escalations/{escalationId} [IMPLEMENTED - Member C C-04]
+   Auth: {welfareOfficerToken}
+   Expect: escalation details only for the Welfare Officer who raised it or the Programme Head it was addressed to
+   Runtime validation: current build created a pending escalation, delivered the in-app notifications to the intended accounts, and allowed only the involved parties to search/read it. Programme Head response persisted as responded; repeated response returned 409. Invalid recipient/response returned 400, unknown case/escalation 404, Welfare Officer response 403, Admin/Student search 403, and anonymous access 401. Test emails were disabled temporarily; all synthetic records/preferences were removed.
+
+EX6: Advisor assignment change
+1. Advisor requests a change of the assigned advisor
+   POST /api/AssignmentChangeRequests [PLANNED - Member D]
+   Auth: {academicAdvisorToken}
+   Body:
+   {
+     "advisorAssignmentId": "{assignmentAcademicId}",
+     "proposedAdvisorId": "{advisor01Id}",
+     "reason": "I am on leave from November; advisor01 also teaches PRN212."
+   }
+   Expect: status = pending, programmeHeadId set (the Programme Head who will review)
+   Save: assignmentChangeRequestId -> {changeRequestId}
+2. Programme Head reviews the request
+   GET /api/AssignmentChangeRequests/search?status=pending [PLANNED - Member D]
+   Auth: {programmeHeadToken}
+3. Programme Head approves or rejects it
+3.1. Approved
+   PUT /api/AssignmentChangeRequests/{changeRequestId}/approve [PLANNED - Member D]
+   Auth: {programmeHeadToken}
+   Expect: status = approved; old assignment status = revoked with revokedAt; a new active assignment for advisor01 and the student; open cases of that pair move to advisor01
+3.2. Rejected (on a second request)
+   PUT /api/AssignmentChangeRequests/{id}/reject [PLANNED - Member D]
+   Body: { "reason": "advisor01 already has too many cases this term" }
+   Expect: status = rejected, decidedAt set
+4. Both advisors and the student are notified
+   GET /api/Notifications/me [EXISTS] with each of the 3 tokens
+5. Programme Head can also reassign directly
+   PUT /api/AdvisorAssignments/{assignmentId}/reassign [PLANNED - Member D]
+   Auth: {programmeHeadToken}
+   Body: { "advisorId": "{academicAdvisorId}", "reason": "Advisor is back from leave" }
+
+EX7: Advisor asks for more data (consent request)
+1. Advisor picks the student, the purpose and the data attribute needed
+2. Advisor states the purpose
+   POST /api/ConsentRequests [EXISTS]
+   Auth: {wellbeingAdvisorToken}
+   Body:
+   {
+     "consentPurposeId": "{purposeWellbeingId}",
+     "dataAttributeId": "{attrAccommodationId}",
+     "studentId": "{studentId}",
+     "purposeStated": "To understand whether your housing situation is affecting your finances."
+   }
+   Expect: status = pending; the student gets a notification
+   Save: consentRequestId -> {consentRequestId}
+   Negative: an attribute the purpose does not cover -> 400; a purpose with no active policy for the advisor's role -> 400; the same pending request again -> 409; called with {studentToken} -> 403
+   Edit: PUT /api/ConsentRequests/{consentRequestId} [EXISTS], body { "purposeStated": "To check whether your housing costs are part of the money problem." }
+3. Student gets a notification and grants or denies
+   GET /api/ConsentRequests/me/received [EXISTS]
+   Auth: {studentToken}
+3.1. Granted
+   PUT /api/ConsentRequests/{consentRequestId}/grant [EXISTS]
+   Auth: {studentToken}
+   Expect: true; request status = granted, respondedAt set; a CONSENTS row under Wellbeing support for Accommodation status and a CONSENTHISTORIES row (null -> granted); the advisor is notified
+3.2. Denied (on a second request, e.g. for {attrAttendanceId})
+   PUT /api/ConsentRequests/{id}/deny [EXISTS]
+   Expect: status = denied; the advisor still sees "exists, not shared"
+4. Advisor can withdraw a request that is still pending
+   PUT /api/ConsentRequests/{id}/withdraw [EXISTS]
+   Auth: {wellbeingAdvisorToken}
+   Expect: status = withdrawn; withdrawing an answered request -> 409
+   GET /api/ConsentRequests/me/sent [EXISTS] -> every request of the advisor with its status
+
+EX8: Student manages consent and erasure
+1. Student opens the consent page and sees each purpose and its attributes
+   GET /api/Consents/me [EXISTS]
+   Auth: {studentToken}
+   Expect: each active purpose (and any purpose the student has consents under) with its attributes and the student's status per attribute (none / granted / expired / withdrawn)
+2. Student grants or withdraws consent per purpose, or withdraws single attributes of a purpose
+   Grant: POST /api/Consents [EXISTS]
+   Body:
+   {
+     "consentPurposeId": "{purposeWellbeingId}",
+     "dataAttributeIds": ["{attrAttendanceId}", "{attrAccommodationId}"],
+     "expiresAt": "2027-04-25T00:00:00Z"
+   }
+   Expect: one consent per attribute (an attribute already granted is kept, an expired one is renewed)
+   Save: consentIds -> {consentAttendanceWbId}, {consentAccommodationWbId}
+   Change expiry: PUT /api/Consents/{consentAccommodationWbId} [EXISTS], body { "expiresAt": null }
+   Withdraw one attribute: PUT /api/Consents/{consentAttendanceWbId}/withdraw [EXISTS]
+   Withdraw a whole purpose: PUT /api/Consents/me/purposes/{purposeWellbeingId}/withdraw [EXISTS] -> number withdrawn
+   Negative: an archived attribute or an attribute outside the purpose -> 409/400; "expiresAt" in the past -> 400; another student's consentId -> 404
+3. Every change is recorded in consent history
+   GET /api/Consents/me/histories [EXISTS] (Student), GET /api/Consents/histories/search?consentId={consentAttendanceWbId} [EXISTS] (Steward)
+   Expect: null -> granted, then granted -> withdrawn, changedBy = student
+4. On withdrawal
+4.1. Access is blocked immediately
+   GET /api/StudentIndicators/students/{studentId}/profile [PLANNED - Member C] with {wellbeingAdvisorToken}
+   Expect: Attendance rate -> "exists, not shared" (unless still granted under another purpose the advisor's role has a policy for)
+4.2. An erasure request is queued (automatic, only when the attribute is no longer granted under any purpose and the student has an active key for it)
+   Note: C-06b1 provides Vault key creation and authenticated encryption; C-06b2 must persist the key and indicator before that imported value can be erased through this workflow
+4.3. Steward verifies the withdrawal and executes the erasure
+   GET /api/ErasureRequests/search?status=pending [EXISTS]
+   PUT /api/ErasureRequests/{erasureRequestId}/execute [EXISTS]
+   Auth: {stewardToken}
+   Expect: SQL first removes live ciphertext/HMAC and marks pendingKeyDestruction; the API deletes the Vault Transit key and only then confirms status = completed, executedAt and executedBy set, and ATTRIBUTEKEYS.status = destroyed; a retry resumes pendingKeyDestruction
+4.4. The values become unreadable; the audit trail stays
+   Expect: consents, consent history and access log rows are still there
+4.5. Student is notified
+   GET /api/Notifications/me [EXISTS] with {studentToken}
+
+EX9: Access log review
+1. Every staff read of student data is checked and logged (automatic, IAccessGuardService; one row per attribute read, see WF2 5.2)
+2. Student views own access log and may flag an entry
+   GET /api/AccessLogs/me?fromDate=2026-10-01&toDate=2026-11-01&roleName=Wellbeing Advisor [EXISTS]
+   PUT /api/AccessLogs/me/{accessLogId}/flag [EXISTS]
+   Auth: {studentToken}
+   Expect: isFlagged = true, status = unreviewed; every Steward is notified; flagging it again -> 409; another student's entry -> 404
+3. Steward searches/filters the access log, reviews flagged entries and exports processing records
+   GET /api/AccessLogs/search?isFlagged=true&fromDate=2026-10-01&toDate=2026-11-01 [EXISTS]
+   PUT /api/AccessLogs/{accessLogId}/flag [EXISTS] (the Steward can flag too)
+   PUT /api/AccessLogs/{accessLogId}/review [EXISTS]
+   Body: { "status": "cleared" }   (or "confirmedIssue"; reviewing an entry that is not flagged -> 409)
+   GET /api/AccessLogs/processing-record/export?studentId={studentId}&format=xlsx [EXISTS]
+   GET /api/AccessLogs/processing-record/export?fromDate=2026-09-07&toDate=2026-12-27&format=csv [EXISTS]
+   Auth: {stewardToken}
+   Expect: a file download (not JSON); neither a student nor both dates -> 400
+
+EX10: Emergency access (pending review)
+1. Staff requests access beyond consent with a justification
+   POST /api/EmergencyAccessRequests [EXISTS]
+   Auth: {wellbeingAdvisorToken}
+   Body:
+   {
+     "studentId": "{studentId}",
+     "justification": "Student has not attended for 3 weeks and is not answering; need the accommodation record to check on their safety."
+   }
+   Expect: status = pending, stewardId = null; every Steward is notified
+   Save: -> {emergencyRequestId}
+   Edit: PUT /api/EmergencyAccessRequests/{emergencyRequestId} [EXISTS], body { "justification": "..." } (pending only)
+   GET /api/EmergencyAccessRequests/me [EXISTS] -> the requester's own requests
+2. A Steward approves with a time limit, or rejects (Stewards share one pool; the first to act decides)
+   GET /api/EmergencyAccessRequests/search?status=pending [EXISTS]
+   PUT /api/EmergencyAccessRequests/{emergencyRequestId}/approve [EXISTS]
+   Body: { "scopeExpiresAt": "2026-10-25T10:00:00Z" }
+   PUT /api/EmergencyAccessRequests/{id}/reject [EXISTS]
+   Auth: {stewardToken}
+   Expect: stewardId = the steward who acted; a second steward acting on the same request -> 409; scopeExpiresAt in the past -> 400
+3. Access ends automatically when the time limit passes; every access is logged
+   Expect: isExpired = true once scopeExpiresAt has passed
+   Note: the access guard does not use emergency access yet, because ACCESSLOGS.consentPurposeId is required and an emergency read has no purpose (open question in NOTES)
+
+EX11: Master data setup
+1. Admin manages academic terms
+   POST /api/AcademicTerms [EXISTS]
+   Auth: {adminToken}
+   Body:
+   {
+     "endDate": "2026-08-23T00:00:00Z",
+     "startDate": "2026-05-04T00:00:00Z",
+     "termName": "Summer 2026",
+     "status": "past"
+   }
+   Also:
+   { "endDate": "2026-12-27T00:00:00Z", "startDate": "2026-09-07T00:00:00Z", "termName": "Fall 2026", "status": "current" } -> {termFall2026Id}
+   { "endDate": "2027-04-25T00:00:00Z", "startDate": "2027-01-04T00:00:00Z", "termName": "Spring 2027", "status": "upcoming" } -> {termSpring2027Id}
+   Expect: 200 each
+   Only one current term:
+   PUT /api/AcademicTerms/{termSpring2027Id} [EXISTS]
+   Body: { "endDate": "2027-04-25T00:00:00Z", "startDate": "2027-01-04T00:00:00Z", "termName": "Spring 2027", "status": "current" }
+   Expect: Spring 2027 = current, Fall 2026 moved to past; set Fall 2026 back to current afterwards
+   GET /api/AcademicTerms/search?status=current [EXISTS] -> exactly one term
+   Negative: endDate before startDate -> 400; "status": "finished" -> 400
+2. Admin manages faculties and subjects
+   POST /api/Faculties [EXISTS]
+   Auth: {adminToken}
+   Body: { "facultyCode": "SE", "facultyName": "Software Engineering" } -> {facultySeId}
+   Body: { "facultyCode": "BA", "facultyName": "Business Administration" } -> {facultyBaId}
+   PUT /api/Faculties/{facultyBaId} [EXISTS]
+   Body: { "facultyCode": "BA", "facultyName": "Business Administration", "status": "active" }
+   Negative: duplicate facultyCode "SE" -> 400
+   POST /api/Programmes [EXISTS]
+   Body: { "facultyId": "{facultySeId}", "programmeCode": "BSE", "programmeName": "Bachelor of Software Engineering" } -> {programmeBseId}
+   POST /api/Subjects [EXISTS]
+   Body: { "facultyId": "{facultySeId}", "subjectCode": "PRN212", "subjectName": "Basic Cross-Platform Application Programming With .NET" } -> {subjectPrn212Id}
+   Body: { "facultyId": "{facultySeId}", "subjectCode": "SWP391", "subjectName": "Software Development Project" } -> {subjectSwp391Id}
+   Body: { "facultyId": "{facultyBaId}", "subjectCode": "MKT101", "subjectName": "Marketing Principles" } -> {subjectMkt101Id}
+   Archive test: PUT /api/Subjects/{subjectMkt101Id} with "status": "archived", then GET /api/Subjects/search?status=active -> MKT101 not listed; set it back to active
+3. Admin links academic advisors to the subjects they specialise in
+   POST /api/Subjects/account-subjects [EXISTS]
+   Auth: {adminToken}
+   Body: { "accountId": "{academicAdvisorId}", "subjectId": "{subjectPrn212Id}" }
+   Body: { "accountId": "{academicAdvisorId}", "subjectId": "{subjectSwp391Id}" }
+   GET /api/Subjects/account-subjects/search?subjectId={subjectPrn212Id} [EXISTS] (also allowed for {programmeHeadToken})
+   DELETE /api/Subjects/account-subjects/{academicAdvisorId}/{subjectSwp391Id} [EXISTS], then add it back
+   Negative: link a Student account -> 400; the same pair twice -> 400
+4. Admin manages support categories (after WF3)
+   POST /api/SupportCategories [PLANNED - Member D]
+   Auth: {adminToken}
+   Body:
+   {
+     "consentPurposeId": "{purposeAcademicId}",
+     "categoryName": "Course content question",
+     "description": "Questions about lectures, labs or assignments of a subject",
+     "supportType": "academic"
+   }
+   Also:
+   { "consentPurposeId": "{purposeAcademicId}", "categoryName": "Study plan", "description": "Planning which subjects to take or retake", "supportType": "academic" } -> {catStudyPlanId}
+   { "consentPurposeId": "{purposeWellbeingId}", "categoryName": "Accommodation", "description": "Problems with the dormitory or renting", "supportType": "wellbeing" } -> {catAccommodationId}
+   { "consentPurposeId": "{purposeFinancialId}", "categoryName": "Money", "description": "Tuition, loans or other money problems", "supportType": "wellbeing" } -> {catMoneyId}
+   PUT /api/SupportCategories/{id} [PLANNED - Member D] (edit or "status": "archived")
+
+EX12: Account management
+1. Admin opens an account from the dashboard
+   GET /api/Accounts/{student01Id} [EXISTS]
+   Auth: {adminToken}
+2. Admin edits the account details
+   PUT /api/Accounts/{student01Id} [EXISTS]
+   Body:
+   {
+     "email": "yourgmail+student01@gmail.com",
+     "fullName": "Nguyen Van An",
+     "userName": "an.nguyen",
+     "facultyId": "{facultySeId}"
+   }
+   Expect: userName changed, linkStatus unchanged
+   Email change on a linked account (from EX1): send a new email
+   Expect: linkStatus = notLinked, the Google link is removed; resend the linking email (WF1 4.2)
+   Negative: an email or username used by another account -> 400
+3. Admin adjusts roles
+   GET /api/Roles/search?roleName=Programme Head [EXISTS] -> {roleProgrammeHeadId}
+   POST /api/Accounts/roles [EXISTS]
+   Body: { "accountId": "{advisor01Id}", "roleId": "{roleProgrammeHeadId}" }
+   Expect: advisor01 has Academic Advisor and Programme Head (the new role is in the JWT from the next sign-in)
+   GET /api/Accounts/roles/search?roleId={roleProgrammeHeadId} [EXISTS] -> programmehead, staff01, advisor01
+   DELETE /api/Accounts/{advisor01Id}/roles/{roleProgrammeHeadId} [EXISTS]
+   Negative: GET /api/Roles/search?roleName=System Administrator -> {roleAdminId}; DELETE /api/Accounts/{adminId}/roles/{roleAdminId} while admin is the only System Administrator -> 400; the same role twice -> 400
+4. Admin deactivates/activates or bans/unbans the account
+   PUT /api/Accounts/{student01Id}/deactivate [EXISTS] -> status = deactivated
+   PUT /api/Accounts/{student01Id}/activate [EXISTS] -> status = active
+   PUT /api/Accounts/{student01Id}/ban [EXISTS] -> status = banned
+   PUT /api/Accounts/{student01Id}/unban [EXISTS] -> status = active
+   Auth: {adminToken}
+   Negative: PUT /api/Accounts/{adminId}/deactivate or /ban with the admin's own token -> 400
+5. Deactivating or banning ends all active sessions
+   Test: sign in as student (seed), keep {studentToken}, deactivate the account, then GET /api/Auth/me with {studentToken} -> 401
+   GET /api/Sessions/search?accountId={studentId}&isActive=true [EXISTS] -> empty
+   Clean-up: activate the student again
+
+EX13: Point-in-time reconstruction ("way back machine")
+(Needs both WF5 imports.)
+1. Advisor opens a student and clicks "View as of date"
+2. Advisor picks the date
+3. System rebuilds the record as it was on that date
+   GET /api/StudentIndicators/students/{studentId}/as-of?date=2026-10-31&caseId={caseAcademicId} [IMPLEMENTED - Member C C-07b; termId is optional]
+   Auth: {academicAdvisorToken}
+   Expect: GPA 6.8, Attendance rate 72; returns the latest row per indicator/term recorded by the system through 23:59:59.999 UTC on the requested date. Permitted values include provenance/missing metadata; denied attributes disclose only indicator/term and whether a value exists.
+   GET /api/StudentIndicators/students/{studentId}/as-of?date=2026-11-30&caseId={caseAcademicId}
+   Expect: GPA 7.5, Attendance rate 85; each permitted value read is logged.
+4. Advisor can compare two dates; the access is logged
+   GET /api/StudentIndicators/students/{studentId}/compare?dateA=2026-10-31&dateB=2026-11-30&caseId={caseAcademicId} [IMPLEMENTED - Member C C-07b; termId is optional]
+   Expect: both snapshots side by side per indicator/term, including null for a row absent from one snapshot; each permitted value in each snapshot is logged.
+
+EX14: Student exports own record
+1. Student opens account settings and chooses "Export my data"
+2. Student may view their own profile without case assignment or consent
+   GET /api/StudentIndicators/me/profile [IMPLEMENTED - Member C C-07c; optional termId]
+   Auth: {studentToken}
+   Expect: only the authenticated student's own values; student self-reads do not create ACCESSLOGS rows.
+3. System builds a JSON file with the student's identity, current indicator profile, own cases and own access log
+   GET /api/StudentIndicators/me/export [IMPLEMENTED - Member C C-07c]
+   Auth: {studentToken}
+   Expect: an application/json file download with profile, decrypted own indicator values, cases and own access log; an ACTIVITYLOGS entry with activityType = dataExported
+
+EX15: Correction request
+1. Student selects a value believed to be wrong and explains why
+   POST /api/CorrectionRequests [IMPLEMENTED - Member C C-08]
+   Auth: {studentToken}
+   Body:
+   {
+     "studentIndicatorId": "{attendanceIndicatorRowId}",
+     "proposedValue": "80",
+     "explanation": "I was marked absent on 2026-10-05 and 2026-10-12 although I attended; my lecturer confirmed it by email."
+   }
+   Expect: 201 with {correctionRequestId}; current value and indicator name are derived from the selected row, not trusted from the client, and both values are encrypted at rest.
+   GET /api/CorrectionRequests/me/{correctionRequestId} [IMPLEMENTED - Member C C-08] with {studentToken} -> own status/details only
+   Withdraw test (on a second request): PUT /api/CorrectionRequests/{id}/withdraw [IMPLEMENTED - Member C C-08] -> 204; only the owning student can withdraw a pending request
+2. Advisor reviews it against its source
+   GET /api/CorrectionRequests/search?status=pending [IMPLEMENTED - Member C C-08]
+   Auth: {academicAdvisorToken}
+   Expect: requests for actively assigned students; current/proposed values and explanation are disclosed only when Member B's access guard allows the attribute, with one access-log row per request read.
+3. Approved or rejected
+   PUT /api/CorrectionRequests/{correctionRequestId}/approve [IMPLEMENTED - Member C C-08]
+   Body: { "decisionNotes": "Checked with the lecturer's attendance sheet; corrected." }
+   Expect: status = approved; a new STUDENTINDICATORS row with status = correction and value 80; the old row stays. The operation is rejected if the source is no longer the latest value.
+   PUT /api/CorrectionRequests/{id}/reject [IMPLEMENTED - Member C C-08]
+   Body: { "decisionNotes": "The attendance sheet confirms the absences." }
+4. Student is notified
+   GET /api/Notifications/me [EXISTS] with {studentToken}; approval/rejection creates an in-app notification.
+
+Runtime verification evidence (2026-10-25): approval, rejection, and withdrawal passed against the local development database; all three correction requests retained encrypted current/proposed values and HMACs. The test fixture is `C08-RUNTIME-8dd625bac0-*`; do not use the development fixture or Vault dev credentials in production. See [Member C changes and runtime validation](./Member_C_Changes_and_Runtime_Validation.md) for run steps, evidence, and scoped cleanup.
+
+EX16: Notifications, language and settings
+1. User views notifications, marks them read, clicks through and clears old ones
+   GET /api/Notifications/me [EXISTS]
+   GET /api/Notifications/me/unread-count [EXISTS]
+   PUT /api/Notifications/me/{notificationId}/read [EXISTS]
+   PUT /api/Notifications/me/read-all [EXISTS]
+   DELETE /api/Notifications/me/{notificationId} [EXISTS]
+   DELETE /api/Notifications/me/clear [EXISTS] (removes read notifications only)
+   Auth: {studentToken}
+   Test data (no other feature sends notifications yet): create some as admin
+   POST /api/Notifications [EXISTS]
+   Auth: {adminToken}
+   Body:
+   {
+     "accountId": "{studentId}",
+     "message": "Your advisor has been assigned. Check the case for their contact details.",
+     "redirectUrl": "/cases",
+     "title": "Advisor assigned"
+   }
+   Negative: DELETE /api/Notifications/me/{id of another account's notification} -> 404
+2. User sets notification preferences
+   GET /api/NotificationPreferences/me [EXISTS]
+   PUT /api/NotificationPreferences/me [EXISTS]
+   Auth: {studentToken}
+   Body: { "channel": "email", "isEnabled": false }
+   Expect: email off, inApp still on (a missing row means on); activity log notificationPreferencesUpdated
+   Negative: "channel": "sms" -> 400
+3. User switches language
+   PUT /api/Auth/me [EXISTS]
+   Body: { "userName": "student", "preferredLanguage": "en" }
+   Negative: "preferredLanguage": "fr" -> 400
+4. User views own activity history and edits account settings
+   GET /api/ActivityLogs/me [EXISTS]
+   Auth: {studentToken}
+   Expect: signedIn, profileUpdated, notificationPreferencesUpdated, ... newest first
+   POST /api/Auth/me/avatar [EXISTS] (needs Supabase set up)
+   Form (multipart/form-data): file = avatar.png
+   Expect: the new avatarUrl
+   Negative: avatar_too_big.png -> 400; avatar.bmp -> 400
+
+EX17: Welfare Officer views anonymised welfare statistics
+1. View statistics for one academic term
+   GET /api/WelfareStatistics?termId={termId} [IMPLEMENTED - Member C C-09]
+   Auth: {welfareOfficerToken}
+   Expect: JSON rows with categoryName, caseCount, and studentCount; categories with fewer than five distinct students are omitted. No individual student data or overall total is returned.
+2. View statistics for a complete UTC calendar-date range
+   GET /api/WelfareStatistics?fromDate=2026-01-01&toDate=2026-06-30 [IMPLEMENTED - Member C C-09]
+   Expect: cases are selected by CASES.openedAt, including both calendar dates.
+3. Export the same summary as CSV
+   GET /api/WelfareStatistics/export?termId={termId} [IMPLEMENTED - Member C C-09]
+   GET /api/WelfareStatistics/export?fromDate=2026-01-01&toDate=2026-06-30 [IMPLEMENTED - Member C C-09]
+   Expect: generated CSV attachment; export is recorded in ACTIVITYLOGS.
+   Negative: missing either date, reversed dates, or combining termId with dates -> 400; unknown termId -> 404; another role -> 403.
+   Runtime validation: current build passed on port 5168. Term returned 7 cases from 6 students; 2026-09-10 through 2026-09-15 returned 6 cases from 5 students, including both boundary dates. The 4-student category was suppressed; CSV matched the date-range result and produced one retained export activity record. Missing filters, partial dates, reversed dates, and term/date combinations returned 400; unknown term returned 404; anonymous access returned 401.
+
+EX18: Staff views anonymised cohort indicators
+1. Configure the active Cohort Analytics purpose and role policies; students explicitly grant consent for the attributes being analyzed
+2. View by academic term
+   GET /api/CohortIndicators?termId={termFall2026Id} [IMPLEMENTED - Member C C-10]
+   Auth: {authorizedStaffToken}
+   Expect: rows contain indicatorId, indicatorName, dataType, termId, termName, categoryValue, meanValue, and studentCount. Numeric indicators return meanValue and studentCount; categorical/boolean indicators return categoryValue and studentCount. Cells with fewer than ten distinct students are omitted; no student identifiers or individual values are returned.
+3. View by faculty, retaining a separate result for each term
+   GET /api/CohortIndicators?facultyId={facultySeId} [IMPLEMENTED - Member C C-10]
+4. View by both term and faculty
+   GET /api/CohortIndicators?termId={termFall2026Id}&facultyId={facultySeId} [IMPLEMENTED - Member C C-10]
+5. Export the same summary as CSV
+   GET /api/CohortIndicators/export?termId={termFall2026Id}&facultyId={facultySeId} [IMPLEMENTED - Member C C-10]
+   Expect: generated CSV attachment; export is recorded in ACTIVITYLOGS.
+   Negative: no filters -> 400; unknown term or faculty -> 404; Student role -> 403; values without the active purpose policy and explicit student consent are excluded. Faculty filtering uses the student's current programme, not historical faculty-at-term.
+   Runtime validation: a ten-student positive control released mean 5.5 (n=10). Removing one consent or withdrawing one consent suppressed the cell; each request logged only the nine permitted reads. Revoking the Academic Advisor policy returned an empty summary without access logs; deactivating the purpose returned 409 without access logs. Test fixtures were removed.
+
+==========
+NOTES
+==========
+
+- All [PLANNED] routes are proposals: the member who builds the controller may rename them; update this file when they do
+- Member B's routes are built and tagged [EXISTS]; Members C and D call IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync, then LogAccessAsync) before showing or exporting any indicator value. C-07a's assigned-advisor profile read is implemented at GET /api/StudentIndicators/students/{studentId}/profile?caseId={caseId}[&termId={termId}]. C-07b's as-of and compare reads require the same case assignment and consent checks. C-07c permits a Student-role account to read only its own profile; ordinary self-reads intentionally skip access-log rows, while C-10 logs each source value used in the cohort aggregate under its explicit purpose. JSON exports write a dataExported activity log.
+- STUDENTINDICATORS.indicatorValue is binary ciphertext linked to ATTRIBUTEKEYS.attributeKeyId; missing rows have no key or payload. The API must encrypt before insert and must never return ciphertext as a user-facing value.
+- Erasure uses Vault Transit: configure `VaultTransit:Address`, `VaultTransit:MountPath`, and `VaultTransit:KeyNamePrefix`; provide `VaultTransit:Token` through environment/user secrets, never source control. Each key must have Vault `deletion_allowed=true`; the API does not report completion until external deletion and SQL confirmation both succeed.
+- CASES.requestReasonVisibility and CASENOTES.visibility default to caseTeam and allow assignedAdvisor; API enforcement is still required before case text is returned, referred or exported.
+- EX1, EX2 step 4, WF1 step 4.2 and EX16 avatar need Google, Gmail and Supabase values in appsettings.json; until then they return errors from the outside service
+- Notifications sent by other features (WF2 step 4, EX4, EX5, EX6, EX7, EX8, EX15) depend on NotificationService.NotifyAsync being called by Members B, C and D
+- Open questions for the owners of the planned endpoints:
+  - WF2 2.5: does the student set the case priority, or only the Programme Head / Welfare Officer?
+  - WF2b 2.2: is the priority set on the case or on the referral?
+  - WF2b 2.3 and EX4 step 4: REFERRALS has no column for the return reason (store it in the stage history reason?)
+  - WF2b 6: after the welfare referral is accepted, does the case's advisorId change to the Welfare Officer, or stay with the wellbeing advisor?
+  - EX6 3.2: ASSIGNMENTCHANGEREQUESTS has no column for the rejection reason (reason holds the requester's reason)
+  - EX10 3: ACCESSLOGS.consentPurposeId is required, but an emergency read has no purpose (make it nullable, null = emergency access?)
+  - EX10 2: "Reject a request with a reason" (Functional Requirements) has no column in EMERGENCYACCESSREQUESTS

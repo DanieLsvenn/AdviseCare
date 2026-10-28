@@ -56,7 +56,6 @@ Consent data (created in WF3)
 - Indicators/attributes: GPA (numeric) -> {indGpaId}/{attrGpaId}; Attendance rate (numeric) -> {indAttendanceId}/{attrAttendanceId}; Accommodation status (categorical) -> {indAccommodationId}/{attrAccommodationId}; Financial difficulty (boolean) -> {indFinancialId}/{attrFinancialId}
 - Purposes: Academic advising (GPA, Attendance rate) -> {purposeAcademicId}; Wellbeing support (Attendance rate, Accommodation status) -> {purposeWellbeingId}; Financial support (Financial difficulty, Accommodation status) -> {purposeFinancialId}
 - Access policies (all active): Academic Advisor - Academic advising; Wellbeing Advisor - Wellbeing support; Wellbeing Advisor - Financial support; Student Welfare Officer - Financial support
-- Cohort analytics test prerequisite: configure an active "Cohort Analytics" purpose covering the selected attributes, active policies for the staff roles under test, and explicit granted consent for each test student's selected attributes. The API never grants consent automatically.
 
 Support categories (created in EX11 step 4)
 - Course content question (academic, Academic advising) -> {catCourseContentId}
@@ -73,7 +72,7 @@ Files to prepare (keep them in a TestFiles folder next to this file)
 RECOMMENDED RUN ORDER
 ==========
 
-EX11 steps 1-3 (faculties, programmes, terms, subjects) -> WF1 -> EX1 -> EX2 -> EX12 -> WF3 -> EX11 step 4 (support categories) -> WF5 -> WF2 -> EX7 -> EX4 -> WF2b -> EX5 -> EX6 -> EX3 -> EX8 -> EX9 -> EX10 -> EX13 -> EX14 -> EX15 -> WF4 -> EX16 -> EX17 -> EX18
+EX11 steps 1-3 (faculties, programmes, terms, subjects) -> WF1 -> EX1 -> EX2 -> EX12 -> WF3 -> EX11 step 4 (support categories) -> WF5 -> WF2 -> EX7 -> EX4 -> WF2b -> EX5 -> EX6 -> EX3 -> EX8 -> EX9 -> EX10 -> EX13 -> EX14 -> EX15 -> WF4 -> EX16
 Members A and B can be tested now: EX11 (steps 1-3), WF1, EX1, EX2, EX12, EX16, WF3, EX7, EX8 (except the profile check in 4.1), EX9 (the log fills once Member C reads data through the access guard) and EX10; the rest wait for Members C and D.
 
 ==========
@@ -271,9 +270,9 @@ WF2: Student requests support and gets advised
    Auth: {academicAdvisorToken}
    Expect: the case with requestReason, category Course content question, subject PRN212
 5.2. Opens the student profile: only consented data, with source and missing-data notices
-   GET /api/StudentIndicators/students/{studentId}/profile?caseId={caseAcademicId}&termId={termFall2026Id} [IMPLEMENTED - Member C C-07a; termId is optional]
+   GET /api/StudentIndicators/students/{studentId}/profile?caseId={caseAcademicId} [PLANNED - Member C, through Member B's IAccessGuardService with the case category's purpose]
    Auth: {academicAdvisorToken}
-   Expect: only the assigned advisor for the matching case can read; Member B's access guard checks each data attribute using the case category's consent purpose before any value is decrypted. Permitted values include provenance and missing/erased state; denied attributes show only their indicator/term and whether a value exists. One ACCESSLOGS row is written per permitted indicator value; ciphertext and HMAC are never returned.
+   Expect: GPA and Attendance rate values with provenanceNote (from WF5); Accommodation status and Financial difficulty shown as "exists, not shared"; missing indicators flagged; one ACCESSLOGS row per attribute read
 5.3. If more data is needed, the advisor sends a consent request -> see EX7
 6. Advisor and student meet
 6.1. They decide when and how to meet, outside the app [NO API]
@@ -361,7 +360,7 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    Expect: status = returned; case back to the sender
 3. Welfare Officer works with the student
 3.1. Logs each intervention
-   POST /api/Interventions [IMPLEMENTED - Member C C-05]
+   POST /api/Interventions [PLANNED - Member C]
    Auth: {welfareOfficerToken}
    Body:
    {
@@ -371,17 +370,12 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
      "interventionType": "financialAid",
      "status": "inProgress"
    }
-   Expect: 200, isClosed = false, officerId is the signed-in Welfare Officer
+   Expect: 200, isClosed = false, officerId = welfare officer
    Save: interventionId -> {interventionId}
-   PUT /api/Interventions/{interventionId} [IMPLEMENTED - Member C C-05]
-   Auth: {welfareOfficerToken}
+   PUT /api/Interventions/{interventionId} [PLANNED - Member C]
    Body: { "interventionDate": "2026-10-23T02:00:00Z", "notes": "Application sent to the finance office on 2026-10-24.", "interventionType": "financialAid", "status": "inProgress" }
-   Expect: updated intervention; only its creating officer can update it, and completed interventions return 409
-   GET /api/Interventions/search?studentId={studentId} [IMPLEMENTED - Member C C-05]
-   Auth: {welfareOfficerToken}
-   Expect: that student's interventions, newest first; search also accepts caseId and an optional status
 3.2. Records any support grant issued
-   POST /api/SupportGrants [IMPLEMENTED - Member C C-05]
+   POST /api/SupportGrants [PLANNED - Member C]
    Auth: {welfareOfficerToken}
    Body:
    {
@@ -390,43 +384,24 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
      "grantType": "Tuition reduction",
      "issuedAt": "2026-10-28T03:00:00Z"
    }
-   Expect: status = issued; grant can only be added to an open intervention owned by the signed-in Welfare Officer
+   Expect: status = issued
    Save: supportGrantId -> {supportGrantId}
-   GET /api/SupportGrants/search?interventionId={interventionId} [IMPLEMENTED - Member C C-05]
-   Auth: {welfareOfficerToken}
-   Expect: grants recorded under that officer's intervention
 3.3. Records the outcome
-   PUT /api/Interventions/{interventionId}/outcome [IMPLEMENTED - Member C C-05]
-   Auth: {welfareOfficerToken}
+   PUT /api/Interventions/{interventionId}/outcome [PLANNED - Member C]
    Body: { "outcome": "Tuition reduction granted; student can stay enrolled this term." }
 4. If an outside service is needed
-4.1. Welfare Officer finds an active external service
-   GET /api/ExternalServices/search?isActive=true [IMPLEMENTED - Member C C-01]
-   Auth: {welfareOfficerToken}
-   Expect: active services, ordered by service name
-   GET /api/ExternalServices/{externalServiceId} [IMPLEMENTED - Member C C-01]
-   Expect: the selected service, or 404 if it does not exist
-   GET /api/ExternalServices?page=1&pageSize=20 [IMPLEMENTED - Member C C-01]
-   Expect: first page of services, ordered by service name
-   Runtime validation: current build returned the fixture rows in sorted order; page 1/page 2 returned 2/1 rows, and service-name, type, active/inactive, combined, and no-match filters passed. Unknown ID returned 404, invalid page returned 400, anonymous access returned 401, and Student-role read access returned 200. The three synthetic services were removed afterward.
-4.1.1. If a service is not listed, the System Administrator adds it to the catalogue
-   POST /api/ExternalServices [IMPLEMENTED - Member C C-02]
-   Auth: {adminToken}
+4.1. Welfare Officer records the external referral with an expected follow-up date
+   GET /api/ExternalServices/search?isActive=true [PLANNED - Member C]
+   POST /api/ExternalServices [PLANNED - Member C] (if the service is not in the list yet)
    Body:
    {
      "contactInfo": "Hotline 1900 1234, studentloan@examplebank.vn",
      "serviceName": "Example Bank Student Loan Desk",
-     "serviceType": "Bank"
+     "serviceType": "Bank",
+     "isActive": true
    }
-   Expect: 200, active service with a new externalServiceId; a Welfare Officer calling POST receives 403
    Save: externalServiceId -> {externalServiceId}
-   PUT /api/ExternalServices/{externalServiceId} [IMPLEMENTED - Member C C-02]
-   Auth: {adminToken}
-   Body: { "contactInfo": "Hotline 1900 1234", "serviceName": "Example Bank Student Loan Desk", "serviceType": "Bank", "isActive": true }
-   Expect: 200, updated service; a Welfare Officer calling PUT receives 403
-   Runtime validation: current build created and updated a synthetic service as System Administrator; normalized fields and persisted inactive-state read-back passed. Welfare Officer writes returned 403, anonymous create returned 401, invalid inputs returned 400, and unknown update returned 404. The synthetic service was removed afterward.
-4.1.2. Welfare Officer records the external referral with an expected follow-up date
-   POST /api/ExternalReferrals [IMPLEMENTED - Member C C-03]
+   POST /api/ExternalReferrals [PLANNED - Member C]
    Auth: {welfareOfficerToken}
    Body:
    {
@@ -434,26 +409,22 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
      "externalServiceId": "{externalServiceId}",
      "followUpDueAt": "2026-11-15T00:00:00Z"
    }
-   Expect: status = sent, isOverdue = false, referredBy is the signed-in Welfare Officer; the service must be active and the case must exist
+   Expect: status = sent, isOverdue = false
    Save: externalReferralId -> {externalReferralId}
 4.2. System flags it as overdue if the date passes without an outcome (background check)
-   Test: create a second referral with "followUpDueAt": "2026-10-01T00:00:00Z" (already past), then
-   GET /api/ExternalReferrals/search?isOverdue=true [IMPLEMENTED - Member C C-03]
-   Auth: {welfareOfficerToken}
-   Expect: that referral has isOverdue = true immediately in search results; the background service persists the flag on the database within 5 minutes
+   Test: create a second referral with "followUpDueAt": "2026-10-01T00:00:00Z" (already past), wait for the background check (or restart the API), then
+   GET /api/ExternalReferrals/search?isOverdue=true [PLANNED - Member C]
+   Expect: that referral has isOverdue = true
 4.3. Welfare Officer logs the follow-up outcome
-   PUT /api/ExternalReferrals/{externalReferralId}/follow-up [IMPLEMENTED - Member C C-03]
-   Auth: {welfareOfficerToken}
+   PUT /api/ExternalReferrals/{externalReferralId}/follow-up [PLANNED - Member C]
    Body: { "followUpOutcome": "Bank approved a student loan of 20,000,000 VND for the remaining tuition." }
-   Expect: status = followedUp, isOverdue = false; a second follow-up update returns 409
-   Runtime validation: current build created future- and past-due referrals; search filters and persisted overdue marking passed. Follow-up changed status to followedUp, cleared overdue, and a second update returned 409. Inactive service returned 400, unknown case/service 404, anonymous access 401, and Student role 403. All synthetic referral/case/service/category/purpose rows were removed.
+   Expect: status = followedUp, isOverdue = false
 5. If the case goes beyond the Welfare Officer's authority -> see EX5
 6. Welfare Officer closes the intervention; the case goes back to the advisor
-   PUT /api/Interventions/{interventionId}/close [IMPLEMENTED - Member C C-05]
+   PUT /api/Interventions/{interventionId}/close [PLANNED - Member C]
    Auth: {welfareOfficerToken}
    Body: { "outcome": "Tuition reduced and bank loan approved. Handing back to the wellbeing advisor." }
-   Expect: isClosed = true, status = completed; the case's assigned advisor is notified when assigned; further intervention edits return 409
-   Runtime validation: current build created/updated an intervention, recorded a support grant, persisted outcome, and closed it as completed. Offset dates normalized to UTC; grant search and advisor in-app notification passed. Closed intervention mutations/grant creation returned 409; invalid inputs returned 400, unknown case 404, and Student/anonymous access 403/401. The synthetic grant/intervention/case/category/purpose, notification, and temporary email safeguard were removed.
+   Expect: isClosed = true, status = completed; the wellbeing advisor is notified
    Then the wellbeing advisor continues with WF2 step 9 on {caseWellbeingId}
 
 WF3: Steward sets up consent
@@ -572,9 +543,9 @@ WF5: Admin imports student indicator data
    POST /api/Auth/login [EXISTS] with admin@gmail.com / 123456 -> {adminToken}
 2. Admin uploads an Excel/CSV file or provides a Google Sheet
 3. Admin maps file columns to indicators
-   POST /api/StudentIndicators/import/preview [IMPLEMENTED - Member C C-06a]
+   POST /api/StudentIndicators/import/preview [PLANNED - Member C]
    Auth: {adminToken}
-   Form (multipart/form-data): file = indicators_fall2026.xlsx (or .csv)
+   Form (multipart/form-data): file = indicators_fall2026.xlsx
    Expect: the header row and the first rows, so the web app can show the column mapping
    indicators_fall2026.xlsx:
    Student email      | Indicator            | Value     | Term      | Valid from
@@ -584,16 +555,13 @@ WF5: Admin imports student indicator data
    student@gmail.com  | Financial difficulty | true      | Fall 2026 | 2026-10-01
    (no rows for student01: every expected indicator becomes missing for them)
    Google Sheet variant: POST /api/StudentIndicators/import-google-sheet [PLANNED - Member C], body { "sheetUrl": "https://docs.google.com/spreadsheets/d/...", "termId": "{termFall2026Id}", "columnMapping": { ... } } (needs the Google setup)
-4. System validates the whole file without persisting rows
-   POST /api/StudentIndicators/import/validate [IMPLEMENTED - Member C C-06a]
+4. System validates the whole file
+   POST /api/StudentIndicators/import [PLANNED - Member C]
    Auth: {adminToken}
    Form (multipart/form-data):
    file = indicators_fall2026.xlsx
    columnMapping = { "studentIdentifier": "Student email", "indicator": "Indicator", "value": "Value", "term": "Term", "validFrom": "Valid from" }
-   Student identifier may be a unique studentCode, email or username; studentCode resolution is implemented in C-06b2.
-   Expect: isValid = true, validRowCount = 4, errors = []; this validation endpoint does not create STUDENTINDICATORS rows
 4.1. If any row is invalid, nothing is imported
-   POST /api/StudentIndicators/import/validate [IMPLEMENTED - Member C C-06a]
    Form: file = indicators_invalid.xlsx (same mapping)
    indicators_invalid.xlsx:
    Student email          | Indicator       | Value | Term      | Valid from
@@ -607,22 +575,15 @@ WF5: Admin imports student indicator data
    Form: file = indicators_fall2026.xlsx
    Expect: isSuccess = true, insertedCount = 4; each row has dataSourceId = null, status = original, provenanceNote like "Imported from indicators_fall2026.xlsx on 2026-10-21"; values are stored encrypted as v1:{attributeKeyId}:{payload} (Member C calls IAttributeKeyService.EncryptValuesAsync; the student's key for each attribute is created on the first value)
    Check: GET /api/AttributeKeys/search?studentId={studentId} [EXISTS] with {stewardToken} -> one active key per imported attribute (the key itself is never returned)
-   Expect: isValid = false, the 4 invalid rows with their reasons, validRowCount = 0; no STUDENTINDICATORS rows are added
-   Runtime validation: current build previewed CSV and XLSX files, validated six valid CSV rows and two valid XLSX rows, and reported an unknown student plus a nonnumeric value as invalid with validRowCount=0. Unsupported extension returned 400; Student and anonymous requests returned 403/401. STUDENTINDICATORS, ATTRIBUTEKEYS, and ACTIVITYLOGS counts did not change; the import endpoint was not called.
-4.2. If all rows are valid, every value will be inserted as a new row; existing history is never updated
-   POST /api/StudentIndicators/import [IMPLEMENTED - Member C C-06b2]
-   Form: file = indicators_fall2026.xlsx (same mapping)
-   Expect: isSuccess = true; insertedCount = 4; missingCount reports generated missing rows. Each value row has dataSourceId = null, status = original, provenanceNote with file name/import date, and ciphertext/HMAC from the student's per-attribute key. Profiles, keys, indicator rows, and the activity log commit together.
-   Runtime validation: an invalid mixed-row CSV returned errors without writing indicator, key, profile, or import-log rows. A valid two-row CSV matched one student by studentCode and one by email, inserted two encrypted values with two wrapped keys, provisioned the missing StudentProfile, generated one missing row for the other active Student account, and wrote the indicatorsImported activity log. All synthetic rows and Vault keys were removed; only authentication audit events were retained.
    For EX13, import indicators_fall2026_update.xlsx afterwards (new rows, never updates):
    student@gmail.com | GPA             | 7.5 | Fall 2026 | 2026-11-20
    student@gmail.com | Attendance rate | 85  | Fall 2026 | 2026-11-20
-5. For each distinct imported indicator/term pair, an isMissing row is inserted for every active Student-role account with no value row in this import. This is global school scope, including students with no rows in the file; missing-row validFrom uses the term start date.
-   GET /api/StudentIndicators/search?termId={termFall2026Id}&isMissing=true [PLANNED - Member C C-07a]
+5. Expected indicators missing for a student are flagged
+   GET /api/StudentIndicators/search?termId={termFall2026Id}&isMissing=true [PLANNED - Member C]
    Auth: {adminToken}
    Expect: rows with isMissing = true for every student without values (e.g. student01)
 6. Admin views the import result and the import history
-   GET /api/ActivityLogs/search?activityType=indicatorsImported [EXISTS endpoint; one log entry is written per successful C-06b2 import]
+   GET /api/ActivityLogs/search?activityType=indicatorsImported [EXISTS endpoint; the indicatorsImported log is written by Member C]
    Auth: {adminToken}
    Expect: one entry per successful import with the file name and row count
 7. Scheduled automatic ingestion is future (FU1) [NO API]
@@ -786,7 +747,7 @@ EX4: Referral between advisors
 
 EX5: Escalation to the Programme Head
 1. Welfare Officer marks the case for escalation and writes the reason
-   POST /api/Escalations [IMPLEMENTED - Member C C-04]
+   POST /api/Escalations [PLANNED - Member C]
    Auth: {welfareOfficerToken}
    Body:
    {
@@ -794,23 +755,20 @@ EX5: Escalation to the Programme Head
      "escalatedTo": "{programmeHeadId}",
      "reason": "The student needs a tuition deadline extension, which only the Programme Head can approve."
    }
-   Expect: status = pending; selected account must be an active Programme Head, and an in-app notification is sent
+   Expect: status = pending
    Save: escalationId -> {escalationId}
 2. Programme Head gets a notification
    GET /api/Notifications/me [EXISTS]
-   GET /api/Escalations/search?status=pending [IMPLEMENTED - Member C C-04]
+   GET /api/Escalations/search?status=pending [PLANNED - Member C]
    Auth: {programmeHeadToken}
-   Expect: only pending escalations addressed to the signed-in Programme Head
 3. Programme Head records a response/decision
-   PUT /api/Escalations/{escalationId}/respond [IMPLEMENTED - Member C C-04]
+   PUT /api/Escalations/{escalationId}/respond [PLANNED - Member C]
    Auth: {programmeHeadToken}
    Body: { "response": "Approved: tuition deadline extended to 2026-12-15." }
    Expect: status = responded; the Welfare Officer is notified
 4. Welfare Officer sees the response and continues the case
-   GET /api/Escalations/{escalationId} [IMPLEMENTED - Member C C-04]
+   GET /api/Escalations/{escalationId} [PLANNED - Member C]
    Auth: {welfareOfficerToken}
-   Expect: escalation details only for the Welfare Officer who raised it or the Programme Head it was addressed to
-   Runtime validation: current build created a pending escalation, delivered the in-app notifications to the intended accounts, and allowed only the involved parties to search/read it. Programme Head response persisted as responded; repeated response returned 409. Invalid recipient/response returned 400, unknown case/escalation 404, Welfare Officer response 403, Admin/Student search 403, and anonymous access 401. Test emails were disabled temporarily; all synthetic records/preferences were removed.
 
 EX6: Advisor assignment change
 1. Advisor requests a change of the assigned advisor
@@ -903,13 +861,11 @@ EX8: Student manages consent and erasure
    Expect: Attendance rate -> "exists, not shared" (unless still granted under another purpose the advisor's role has a policy for)
 4.2. An erasure request is queued (automatic, only when the attribute is no longer granted under any purpose and the student has an active key for it)
    Note: keys are created when Member C's import stores the student's values (WF5); a student with no stored value for the attribute has no key, so nothing is queued
-   Note: C-06b1 provides Vault key creation and authenticated encryption; C-06b2 must persist the key and indicator before that imported value can be erased through this workflow
 4.3. Steward verifies the withdrawal and executes the erasure
    GET /api/ErasureRequests/search?status=pending [EXISTS]
    PUT /api/ErasureRequests/{erasureRequestId}/execute [EXISTS]
    Auth: {stewardToken}
    Expect: status = completed, executedAt and executedBy set; GET /api/AttributeKeys/{attributeKeyId} [EXISTS] -> status = destroyed, destroyedAt set; executing again -> 409; executing after the student shared the attribute again -> 409
-   Expect: SQL first removes live ciphertext/HMAC and marks pendingKeyDestruction; the API deletes the Vault Transit key and only then confirms status = completed, executedAt and executedBy set, and ATTRIBUTEKEYS.status = destroyed; a retry resumes pendingKeyDestruction
 4.4. The values become unreadable; the audit trail stays
    Expect: the student's own profile and every staff view show the erased values as erased (IAttributeKeyService.DecryptValuesAsync returns isErased = true); consents, consent history and access log rows are still there
    Re-share test: grant the attribute again and import a new value -> a new active key; old rows stay erased, the new value is readable
@@ -1060,53 +1016,47 @@ EX13: Point-in-time reconstruction ("way back machine")
 1. Advisor opens a student and clicks "View as of date"
 2. Advisor picks the date
 3. System rebuilds the record as it was on that date
-   GET /api/StudentIndicators/students/{studentId}/as-of?date=2026-10-31&caseId={caseAcademicId} [IMPLEMENTED - Member C C-07b; termId is optional]
+   GET /api/StudentIndicators/students/{studentId}/as-of?date=2026-10-31 [PLANNED - Member C]
    Auth: {academicAdvisorToken}
-   Expect: GPA 6.8, Attendance rate 72; returns the latest row per indicator/term recorded by the system through 23:59:59.999 UTC on the requested date. Permitted values include provenance/missing metadata; denied attributes disclose only indicator/term and whether a value exists.
-   GET /api/StudentIndicators/students/{studentId}/as-of?date=2026-11-30&caseId={caseAcademicId}
-   Expect: GPA 7.5, Attendance rate 85; each permitted value read is logged.
+   Expect: GPA 6.8, Attendance rate 72
+   GET /api/StudentIndicators/students/{studentId}/as-of?date=2026-11-30
+   Expect: GPA 7.5, Attendance rate 85
 4. Advisor can compare two dates; the access is logged
-   GET /api/StudentIndicators/students/{studentId}/compare?dateA=2026-10-31&dateB=2026-11-30&caseId={caseAcademicId} [IMPLEMENTED - Member C C-07b; termId is optional]
-   Expect: both snapshots side by side per indicator/term, including null for a row absent from one snapshot; each permitted value in each snapshot is logged.
+   GET /api/StudentIndicators/students/{studentId}/compare?dateA=2026-10-31&dateB=2026-11-30 [PLANNED - Member C]
+   Expect: both values side by side per indicator; ACCESSLOGS rows for the read
 
 EX14: Student exports own record
 1. Student opens account settings and chooses "Export my data"
-2. Student may view their own profile without case assignment or consent
-   GET /api/StudentIndicators/me/profile [IMPLEMENTED - Member C C-07c; optional termId]
+2. System builds a JSON file with the student's record and access log
+3. Student downloads it; the export is logged
+   GET /api/StudentIndicators/me/export [PLANNED - Member C]
    Auth: {studentToken}
-   Expect: only the authenticated student's own values; student self-reads do not create ACCESSLOGS rows.
-3. System builds a JSON file with the student's identity, current indicator profile, own cases and own access log
-   GET /api/StudentIndicators/me/export [IMPLEMENTED - Member C C-07c]
-   Auth: {studentToken}
-   Expect: an application/json file download with profile, decrypted own indicator values, cases and own access log; an ACTIVITYLOGS entry with activityType = dataExported
+   Expect: a .json file download with profile, indicator values (decryptable ones), cases and own access log; activity log dataExported
 
-EX15: Correction request
+EX15: Correction request (pending review)
 1. Student selects a value believed to be wrong and explains why
-   POST /api/CorrectionRequests [IMPLEMENTED - Member C C-08]
+   POST /api/CorrectionRequests [PLANNED - Member C]
    Auth: {studentToken}
    Body:
    {
-     "studentIndicatorId": "{attendanceIndicatorRowId}",
-     "proposedValue": "80",
-     "explanation": "I was marked absent on 2026-10-05 and 2026-10-12 although I attended; my lecturer confirmed it by email."
+     "currentValue": "72",
+     "explanation": "I was marked absent on 2026-10-05 and 2026-10-12 although I attended; my lecturer confirmed it by email.",
+     "fieldName": "Attendance rate",
+     "proposedValue": "80"
    }
-   Expect: 201 with {correctionRequestId}; current value and indicator name are derived from the selected row, not trusted from the client, and both values are encrypted at rest.
-   GET /api/CorrectionRequests/me/{correctionRequestId} [IMPLEMENTED - Member C C-08] with {studentToken} -> own status/details only
-   Withdraw test (on a second request): PUT /api/CorrectionRequests/{id}/withdraw [IMPLEMENTED - Member C C-08] -> 204; only the owning student can withdraw a pending request
+   Save: -> {correctionRequestId}
+   Withdraw test (on a second request): PUT /api/CorrectionRequests/{id}/withdraw -> status = withdrawn
 2. Advisor reviews it against its source
-   GET /api/CorrectionRequests/search?status=pending [IMPLEMENTED - Member C C-08]
+   GET /api/CorrectionRequests/search?status=pending [PLANNED - Member C]
    Auth: {academicAdvisorToken}
-   Expect: requests for actively assigned students; current/proposed values and explanation are disclosed only when Member B's access guard allows the attribute, with one access-log row per request read.
 3. Approved or rejected
-   PUT /api/CorrectionRequests/{correctionRequestId}/approve [IMPLEMENTED - Member C C-08]
+   PUT /api/CorrectionRequests/{correctionRequestId}/approve [PLANNED - Member C]
    Body: { "decisionNotes": "Checked with the lecturer's attendance sheet; corrected." }
-   Expect: status = approved; a new STUDENTINDICATORS row with status = correction and value 80; the old row stays. The operation is rejected if the source is no longer the latest value.
-   PUT /api/CorrectionRequests/{id}/reject [IMPLEMENTED - Member C C-08]
+   Expect: status = approved; a new STUDENTINDICATORS row with status = correction and value 80; the old row stays
+   PUT /api/CorrectionRequests/{id}/reject [PLANNED - Member C]
    Body: { "decisionNotes": "The attendance sheet confirms the absences." }
 4. Student is notified
-   GET /api/Notifications/me [EXISTS] with {studentToken}; approval/rejection creates an in-app notification.
-
-Runtime verification evidence (2026-10-25): approval, rejection, and withdrawal passed against the local development database; all three correction requests retained encrypted current/proposed values and HMACs. The test fixture is `C08-RUNTIME-8dd625bac0-*`; do not use the development fixture or Vault dev credentials in production. See [Member C changes and runtime validation](./Member_C_Changes_and_Runtime_Validation.md) for run steps, evidence, and scoped cleanup.
+   GET /api/Notifications/me [EXISTS] with {studentToken}
 
 EX16: Notifications, language and settings
 1. User views notifications, marks them read, clicks through and clears old ones
@@ -1148,37 +1098,6 @@ EX16: Notifications, language and settings
    Expect: the new avatarUrl
    Negative: avatar_too_big.png -> 400; avatar.bmp -> 400
 
-EX17: Welfare Officer views anonymised welfare statistics
-1. View statistics for one academic term
-   GET /api/WelfareStatistics?termId={termId} [IMPLEMENTED - Member C C-09]
-   Auth: {welfareOfficerToken}
-   Expect: JSON rows with categoryName, caseCount, and studentCount; categories with fewer than five distinct students are omitted. No individual student data or overall total is returned.
-2. View statistics for a complete UTC calendar-date range
-   GET /api/WelfareStatistics?fromDate=2026-01-01&toDate=2026-06-30 [IMPLEMENTED - Member C C-09]
-   Expect: cases are selected by CASES.openedAt, including both calendar dates.
-3. Export the same summary as CSV
-   GET /api/WelfareStatistics/export?termId={termId} [IMPLEMENTED - Member C C-09]
-   GET /api/WelfareStatistics/export?fromDate=2026-01-01&toDate=2026-06-30 [IMPLEMENTED - Member C C-09]
-   Expect: generated CSV attachment; export is recorded in ACTIVITYLOGS.
-   Negative: missing either date, reversed dates, or combining termId with dates -> 400; unknown termId -> 404; another role -> 403.
-   Runtime validation: current build passed on port 5168. Term returned 7 cases from 6 students; 2026-09-10 through 2026-09-15 returned 6 cases from 5 students, including both boundary dates. The 4-student category was suppressed; CSV matched the date-range result and produced one retained export activity record. Missing filters, partial dates, reversed dates, and term/date combinations returned 400; unknown term returned 404; anonymous access returned 401.
-
-EX18: Staff views anonymised cohort indicators
-1. Configure the active Cohort Analytics purpose and role policies; students explicitly grant consent for the attributes being analyzed
-2. View by academic term
-   GET /api/CohortIndicators?termId={termFall2026Id} [IMPLEMENTED - Member C C-10]
-   Auth: {authorizedStaffToken}
-   Expect: rows contain indicatorId, indicatorName, dataType, termId, termName, categoryValue, meanValue, and studentCount. Numeric indicators return meanValue and studentCount; categorical/boolean indicators return categoryValue and studentCount. Cells with fewer than ten distinct students are omitted; no student identifiers or individual values are returned.
-3. View by faculty, retaining a separate result for each term
-   GET /api/CohortIndicators?facultyId={facultySeId} [IMPLEMENTED - Member C C-10]
-4. View by both term and faculty
-   GET /api/CohortIndicators?termId={termFall2026Id}&facultyId={facultySeId} [IMPLEMENTED - Member C C-10]
-5. Export the same summary as CSV
-   GET /api/CohortIndicators/export?termId={termFall2026Id}&facultyId={facultySeId} [IMPLEMENTED - Member C C-10]
-   Expect: generated CSV attachment; export is recorded in ACTIVITYLOGS.
-   Negative: no filters -> 400; unknown term or faculty -> 404; Student role -> 403; values without the active purpose policy and explicit student consent are excluded. Faculty filtering uses the student's current programme, not historical faculty-at-term.
-   Runtime validation: a ten-student positive control released mean 5.5 (n=10). Removing one consent or withdrawing one consent suppressed the cell; each request logged only the nine permitted reads. Revoking the Academic Advisor policy returned an empty summary without access logs; deactivating the purpose returned 409 without access logs. Test fixtures were removed.
-
 ==========
 NOTES
 ==========
@@ -1186,10 +1105,6 @@ NOTES
 - All [PLANNED] routes are proposals: the member who builds the controller may rename them; update this file when they do
 - Member B's routes are built and tagged [EXISTS]; Members C and D call IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync), then IAttributeKeyService.DecryptValuesAsync and LogAccessAsync before showing or exporting any indicator value; Member C's import encrypts with IAttributeKeyService.EncryptValuesAsync
 - The API needs Encryption:MasterKey (32 random bytes in base64) in appsettings.json, or the environment variable Encryption__MasterKey on MonsterASP; it refuses to start without it. Every environment that shares a database must use the same master key
-- Member B's routes are built and tagged [EXISTS]; Members C and D call IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync, then LogAccessAsync) before showing or exporting any indicator value. C-07a's assigned-advisor profile read is implemented at GET /api/StudentIndicators/students/{studentId}/profile?caseId={caseId}[&termId={termId}]. C-07b's as-of and compare reads require the same case assignment and consent checks. C-07c permits a Student-role account to read only its own profile; ordinary self-reads intentionally skip access-log rows, while C-10 logs each source value used in the cohort aggregate under its explicit purpose. JSON exports write a dataExported activity log.
-- STUDENTINDICATORS.indicatorValue is binary ciphertext linked to ATTRIBUTEKEYS.attributeKeyId; missing rows have no key or payload. The API must encrypt before insert and must never return ciphertext as a user-facing value.
-- Erasure uses Vault Transit: configure `VaultTransit:Address`, `VaultTransit:MountPath`, and `VaultTransit:KeyNamePrefix`; provide `VaultTransit:Token` through environment/user secrets, never source control. Each key must have Vault `deletion_allowed=true`; the API does not report completion until external deletion and SQL confirmation both succeed.
-- CASES.requestReasonVisibility and CASENOTES.visibility default to caseTeam and allow assignedAdvisor; API enforcement is still required before case text is returned, referred or exported.
 - EX1, EX2 step 4, WF1 step 4.2 and EX16 avatar need Google, Gmail and Supabase values in appsettings.json; until then they return errors from the outside service
 - Notifications sent by other features (WF2 step 4, EX4, EX5, EX6, EX7, EX8, EX15) depend on NotificationService.NotifyAsync being called by Members B, C and D
 - Open questions for the owners of the planned endpoints:
@@ -1199,5 +1114,3 @@ NOTES
   - WF2b 6: after the welfare referral is accepted, does the case's advisorId change to the Welfare Officer, or stay with the wellbeing advisor?
   - EX6 3.2: ASSIGNMENTCHANGEREQUESTS has no column for the rejection reason (reason holds the requester's reason)
   - EX15 1: is fieldName the indicator name, or should CORRECTIONREQUESTS point to the STUDENTINDICATORS row?
-  - EX10 3: ACCESSLOGS.consentPurposeId is required, but an emergency read has no purpose (make it nullable, null = emergency access?)
-  - EX10 2: "Reject a request with a reason" (Functional Requirements) has no column in EMERGENCYACCESSREQUESTS
