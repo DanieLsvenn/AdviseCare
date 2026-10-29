@@ -1,4 +1,4 @@
-namespace AdviseCare.Application.Contracts.Responses.AccessLog
+﻿namespace AdviseCare.Application.Contracts.Responses.AccessLog
 {
     public class GetAllAccessLogResponse
     {
@@ -6,6 +6,7 @@ namespace AdviseCare.Application.Contracts.Responses.AccessLog
         public Guid AccessorId { get; set; } = Guid.Empty;
         public Guid? ConsentPurposeId { get; set; }
         public Guid RecordedUserId { get; set; } = Guid.Empty;
+        public Guid? StudentDataId { get; set; }
         public string AccessorFullName { get; set; } = string.Empty;
         public string PurposeName { get; set; } = string.Empty;
         public string RecordedUserFullName { get; set; } = string.Empty;
@@ -21,6 +22,7 @@ namespace AdviseCare.Application.Contracts.Responses.AccessLog
         public Guid AccessorId { get; set; } = Guid.Empty;
         public Guid? ConsentPurposeId { get; set; }
         public Guid RecordedUserId { get; set; } = Guid.Empty;
+        public Guid? StudentDataId { get; set; }
         public string AccessorFullName { get; set; } = string.Empty;
         public string PurposeName { get; set; } = string.Empty;
         public string RecordedUserFullName { get; set; } = string.Empty;
@@ -36,6 +38,7 @@ namespace AdviseCare.Application.Contracts.Responses.AccessLog
         public Guid AccessorId { get; set; } = Guid.Empty;
         public Guid? ConsentPurposeId { get; set; }
         public Guid RecordedUserId { get; set; } = Guid.Empty;
+        public Guid? StudentDataId { get; set; }
         public string AccessorFullName { get; set; } = string.Empty;
         public string PurposeName { get; set; } = string.Empty;
         public string RecordedUserFullName { get; set; } = string.Empty;
@@ -51,6 +54,7 @@ namespace AdviseCare.Application.Contracts.Responses.AccessLog
         public Guid AccessorId { get; set; } = Guid.Empty;
         public Guid? ConsentPurposeId { get; set; }
         public Guid RecordedUserId { get; set; } = Guid.Empty;
+        public Guid? StudentDataId { get; set; }
         public string AccessorFullName { get; set; } = string.Empty;
         public string PurposeName { get; set; } = string.Empty;
         public string RecordedUserFullName { get; set; } = string.Empty;
@@ -64,6 +68,7 @@ namespace AdviseCare.Application.Contracts.Responses.AccessLog
     {
         public Guid AccessLogId { get; set; } = Guid.Empty;
         public Guid? ConsentPurposeId { get; set; }
+        public Guid? StudentDataId { get; set; }
         public string AccessorFullName { get; set; } = string.Empty;
         public List<string> AccessorRoleNames { get; set; } = new();
         public string PurposeName { get; set; } = string.Empty;

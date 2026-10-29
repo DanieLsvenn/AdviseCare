@@ -36,13 +36,13 @@ Setting up the basic calendar and the shared lookup lists the rest of the system
 + Set a term's status (upcoming/current/past); only one term can be current, so setting a new current term moves the old one to past
 + Create/edit/archive support categories (name, description, academic or wellbeing, governing consent purpose)
 
-- Import student indicator data:
+- Import student data:
 
-Since the school has no data source or API to connect to, indicator data (attendance, grades, ...) comes in as files that the admin uploads. The import is all-or-nothing: if one row is invalid, nothing is imported.
+Since the school has no data source or API to connect to, student data (attendance, grades, ...) comes in as files that the admin uploads. The import is all-or-nothing: if one row is invalid, nothing is imported. Rows of an archived data attribute are the only exception: they are left out and listed, and the other rows are still imported.
 
-+ Upload an Excel/CSV file or a Google Sheet of indicator values
-+ Map file columns to indicators
-+ Validate the whole file before saving (all-or-nothing); valid values go straight into the student indicator history
++ Upload an Excel/CSV file of student data values (a Google Sheet is future)
++ Preview the file and map its columns (student identifier, data attribute, value, term, valid-from date)
++ Validate the whole file before saving (all-or-nothing); valid values are encrypted and go straight into the student data history, and every enrolled student without a value gets a missing-data notice
 + View the import result and the list of invalid rows when it fails
 + View import history (who imported what, when; kept in the admin's activity log)
 
@@ -50,7 +50,7 @@ Since the school has no data source or API to connect to, indicator data (attend
 
 Kept in the ERD for later, when a real data source exists.
 
-+ Add a data source (database, API endpoint) for one indicator (one data source per type of data)
++ Add a data source (database, API endpoint) for one data attribute (one data source per type of data)
 + Set ingestion schedule (time of day, frequency, on-failure policy)
 + Pause/Disconnect a data source
 + View failed ingestion jobs and retry them
@@ -71,7 +71,7 @@ An admin control panel for values that are fixed in code for now. It is kept out
 + Set how long the account-linking link (current: 7 days) and the password-reset link (current: 1 hour) stay valid
 + Set the default notification channels for new accounts (current: email and in-app both on) and which events also send an email
 + Set the avatar upload limits (current: PNG/JPEG/WEBP/GIF, up to 2 MB)
-+ Set the import limits (maximum rows and file size for account and indicator imports)
++ Set the import limits (maximum rows and file size for account and student data imports)
 + Set the longest consent duration a student can choose, and the default expiry offered on the consent page (current: none)
 + Set the longest emergency access window a Steward can approve (current: no limit)
 + Set the default and maximum page size of paged lists
@@ -79,14 +79,14 @@ An admin control panel for values that are fixed in code for now. It is kept out
 
 Data Protection Steward
 
-- Define indicators and shareable data attributes:
+- Define data attributes:
 
-Deciding which pieces of student data exist in the system and can be shared. Each indicator has exactly one matching data attribute, and only these attributes can be offered to students when they share data with a case.
+Deciding which pieces of student data exist in the system and can be shared (e.g. GPA, attendance rate, accommodation status). Only these attributes are imported, offered to students when they share data with a case, and covered by consent.
 
-+ Create an indicator together with its data attribute (name, description, data type)
-+ Edit the description shown to students
-+ Archive an indicator/attribute that is no longer used (one-way; it can no longer be attached, granted or requested, but existing values and consents are kept)
-+ View the list of indicators and attributes
++ Create a data attribute (name, description, data type: numeric/categorical/boolean)
++ Edit the description shown to students and staff
++ Archive a data attribute that is no longer used (one-way; it can no longer be attached, granted, requested or imported, but existing values and consents are kept)
++ View the list of data attributes
 
 - Define consent purposes and the attributes each purpose covers:
 
@@ -141,7 +141,7 @@ Academic Advisor and Wellbeing Advisor (shared requirements)
 
 The two advisor roles use the same case tools. The Academic Advisor handles study matters (subjects, FLM / FAP / LMS resources) and may be specialised in some subjects. The Wellbeing Advisor handles personal life matters (psychological issues, accommodation, family, everyday money advice, paperwork such as student certificates or military exemption); anything involving borrowing money or financial support goes to the Student Welfare Officer.
 
-Every staff role, every advisor included, can always see a student's directory data (email, full name, username, faculty, student code, academic status) without consent and without an access log entry; everything else that describes the student is an indicator and needs consent, and every indicator read is logged.
+Every staff role, every advisor included, can always see a student's directory data (email, full name, username, faculty, student code, academic status) without consent and without an access log entry; everything else that describes the student is a data attribute and needs consent, and every read of a data attribute value is logged (case records follow the case's own rules and are not logged).
 
 - View assigned cases:
 
@@ -152,11 +152,11 @@ Their homepage: the cases the Programme Head matched to them, plus cases they op
 + See count of new/unread cases
 + Open a case's full detail (reason, category, subject, shared data)
 
-- Reach out to students based on indicators:
+- Reach out to students based on their data:
 
-Advisors can also start a case themselves when a student's indicators (merits, attendance, grades...) suggest the student needs help. There is no automatic case opening.
+Advisors can also start a case themselves when a student's data (merits, attendance, grades...) suggests the student needs help. There is no automatic case opening.
 
-+ View indicators of the students assigned to them (only what consent allows: "if you consent, we serve", attributes not shared are left out of the list)
++ View a student's data outside a case (only what consent allows under a purpose the advisor's role has a policy for: "if you consent, we serve"; attributes not shared show as "exists, not shared"), or through an approved emergency access
 + Open a case for a student with a reason
 + Get the student notified that the advisor wants to meet
 
@@ -196,14 +196,14 @@ The happy case is one advisor per student, but when needed the advisor can refer
 + Create a referral (receiver, reason, priority)
 + View referral status (pending/accepted/returned)
 + Accept or return a referral received from someone else
-+ Request a change of the assigned advisor (goes to the Programme Head)
++ Request a change of advisor for a case (goes to the Programme Head)
 
 - Reconstruct any advisee record as it stood on a past date:
 
 Like a "way back machine": only when the advisor clicks, the system rebuilds what the student's record looked like on a chosen date.
 
 + Select a student and a target date
-+ View the record exactly as it existed then
++ View the record as the system knew it then (system time), or as it was really true then by today's knowledge, corrections included (valid time)
 + Compare two points in time side by side
 + See which changes occurred between the two dates
 
@@ -268,10 +268,10 @@ The main entry point: the student asks for help, picks the kind of help, explain
 + Receive the matched advisor's contact information by email and in-app notification
 + View own cases, their stages and history
 
-- View own profile, indicators and the sources behind them:
+- View own profile, data and the sources behind them:
 
 + View own consolidated profile (including own student code and academic status)
-+ View own indicators and their sources
++ View own data and its sources
 + See notice where data about them is missing
 + View own consent status per section
 
@@ -316,12 +316,12 @@ For now matching is manual; an automated/AI matching mode is a future plan.
 + Assign a case to an advisor (familiar advisor-student pairs suggested first: quality-of-life add-on, optional)
 + Reassign a case directly if needed
 
-- Approve advisor assignment changes:
+- Approve case advisor changes:
 
-+ View pending assignment change requests
++ View pending case change requests (from the student of the case or its current advisor)
 + View reason and proposed advisor
-+ Approve or reject the change
-+ View history of past assignment changes
++ Approve or reject the change (approving moves the case to the proposed advisor)
++ View history of past case changes
 
 - Receive and respond to escalations:
 

@@ -19,5 +19,5 @@ public partial class Academicterm
 
     public virtual ICollection<Report> Reports { get; set; } = new List<Report>();
 
-    public virtual ICollection<Studentindicator> Studentindicators { get; set; } = new List<Studentindicator>();
+    public virtual ICollection<Studentdata> Studentdata { get; set; } = new List<Studentdata>();
 }

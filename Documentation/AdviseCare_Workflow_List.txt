@@ -50,14 +50,14 @@ WF2: Student requests support and gets advised
 3.2. Programme Head picks a suitable advisor
 3.2.1. Academic case: an academic advisor specialised in that subject, or a general academic advisor of the student's faculty
 3.2.2. Wellbeing case: a wellbeing advisor
-3.2.3. If the student already has an assigned advisor of that type, that advisor is preferred (quality-of-life add-on, optional: familiar advisor-student pairs first)
-3.3. System sets the case's advisor, records the advisor assignment and moves the case to stage = assigned
+3.2.3. If the student had an earlier case with an advisor of that type, that advisor is preferred (quality-of-life add-on, optional: familiar advisor-student pairs first)
+3.3. System sets the case's advisor and moves the case to stage = assigned
 4. System notifies both sides
 4.1. Student receives the advisor's contact information by email and in-app notification
 4.2. Advisor receives a notification of the new case
 5. Advisor reviews the case
 5.1. Opens the case: reason, category, subject
-5.2. Opens the student profile: only consented data is shown, with its source and missing-data notices
+5.2. Opens the student's profile (email, full name, username, faculty, student code, academic status: always visible, not logged) and the student's data: only consented data attributes are shown, with their source and missing-data notices, and every value shown is logged
 5.3. If more data is needed, the advisor sends a consent request (see EX7)
 6. Advisor and student meet
 6.1. They decide by themselves when and how to meet (online, offline, external messaging app); the app has no scheduling system for now
@@ -89,8 +89,8 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
 WF3: Steward sets up consent
 1. Steward signs in
 2. Steward defines the shareable data
-2.1. Creates an indicator together with its data attribute (name, description shown to students, data type)
-2.2. Archives indicators/attributes that are no longer used (one-way; existing values and consents are kept)
+2.1. Creates the data attributes (name, description shown to students and staff, data type numeric/categorical/boolean)
+2.2. Archives data attributes that are no longer used (one-way; existing values and consents are kept)
 3. Steward defines consent purposes
 3.1. Creates a purpose (e.g. Academic advising, Wellbeing support, Financial support); it starts inactive
 3.2. Attaches the data attributes the purpose covers (an attribute can belong to several purposes)
@@ -112,14 +112,15 @@ WF4: Programme Head lists, reports and exports
 4.3. Average time to close a case per advisor
 5. Exports the list/report (Excel/CSV/PDF)
 
-WF5: Admin imports student indicator data
-1. Admin signs in and opens "Import indicator data"
-2. Admin uploads an Excel/CSV file or provides a Google Sheet
-3. Admin maps file columns to indicators (student identifier, indicator, value, term, date)
-4. System validates the whole file
+WF5: Admin imports student data
+1. Admin signs in and opens "Import student data"
+2. Admin uploads an .xlsx/.csv file (Google Sheet import is future, see FU6) and previews its header and first rows
+3. Admin maps the file columns (student identifier: email, username or student code; data attribute; value; term; valid-from date)
+4. System validates the whole file (it can also be validated alone, without saving)
 4.1. If any row is invalid, nothing is imported and the system lists the invalid rows (all-or-nothing)
-4.2. If all rows are valid, the system writes each value straight into STUDENTINDICATORS as a new row (dataSourceId stays null), encrypted with the student's key for that attribute (created on the first value), with the file name and import date kept as its source note (provenanceNote)
-5. Expected indicators that are missing for a student are flagged as missing
+4.2. Rows of an archived data attribute are not imported; they are listed separately and the other rows still go in
+4.3. Otherwise the system writes each value straight into STUDENTDATA as a new row (dataSourceId stays null), encrypted with the student's key for that attribute (created on the first value), with the file name and import date kept as its source note (provenanceNote)
+5. Every enrolled student without a value for an imported attribute and term gets a missing row (missing-data notice)
 6. Admin views the import result and the import history
 7. Note: scheduled automatic ingestion (data sources, schedules, jobs) is kept in the ERD but not in the current version (see AdviseCare_Future_List.txt)
 
@@ -151,8 +152,8 @@ EX2: Sign in, forgot password and sessions
 5. User sets or changes the password in Settings (the old password is asked only if one already exists); the other sessions are logged out
 6. User views active sessions and logs out of other sessions
 
-EX3: Advisor reaches out based on indicators
-1. Advisor views indicators of the students assigned to them (only consented data: "if you consent, we serve", attributes a student has not shared are left out)
+EX3: Advisor reaches out based on student data
+1. Advisor views a student's data outside a case (only data attributes consented under a purpose the advisor's role has a policy for: "if you consent, we serve"; attributes not shared show as "exists, not shared"; every value shown is logged)
 2. Advisor notices a student who needs help (merits, attendance, grades...)
 3. Advisor opens a case for that student with a reason and category
 4. System notifies the student that the advisor wants to meet, with the advisor's contact information
@@ -171,11 +172,11 @@ EX5: Escalation to the Programme Head
 3. Programme Head records a response/decision
 4. Welfare Officer sees the response and continues the case
 
-EX6: Advisor assignment change
-1. Advisor (or student through the advisor) requests a change of the assigned advisor, proposing a new advisor and a reason
+EX6: Case advisor change
+1. The student of a case, or its current advisor, requests that the case move to another advisor, proposing the advisor and a reason (CASECHANGEREQUESTS)
 2. Programme Head reviews the request
 3. Programme Head approves or rejects it
-3.1. Approved: the old assignment is revoked and a new one is created for the proposed advisor
+3.1. Approved: the case's advisor becomes the proposed advisor
 3.2. Rejected: the reason is recorded
 4. Both advisors and the student are notified
 5. Programme Head can also reassign directly without a request
@@ -195,8 +196,8 @@ EX8: Student manages consent and erasure
 4. On withdrawal
 4.1. Access is blocked immediately
 4.2. An erasure request is queued (when the attribute is no longer shared under any purpose and values are stored)
-4.3. Steward verifies the withdrawal and executes the erasure (destroys the attribute key)
-4.4. The values become unreadable; the audit trail stays
+4.3. Steward verifies the withdrawal and executes the erasure: the attribute key is destroyed and every value it protected is cleared, in one step
+4.4. The values become unreadable; the audit trail stays (the rows stay, marked as erased)
 4.5. Student is notified
 
 EX9: Access log review
@@ -225,9 +226,11 @@ EX12: Account management
 
 EX13: Point-in-time reconstruction ("way back machine")
 1. Advisor opens a student and clicks "View as of date"
-2. Advisor picks the date
-3. System rebuilds the record as it was on that date (only computed on request)
-4. Advisor can compare two dates; the access is logged
+2. Advisor picks the date and the time axis
+2.1. System time: what AdviseCare knew on that date (the latest value recorded by then), e.g. to see what an advisor saw when acting
+2.2. Valid time: what was really true on that date by today's knowledge (corrections recorded later included)
+3. System rebuilds the record (only computed on request); the same consent rules apply
+4. Advisor can compare two dates on the same time axis; every value shown is logged with its exact row
 
 EX14: Student exports own record
 1. Student opens account settings and chooses "Export my data"
@@ -261,5 +264,5 @@ FU8: In-app chat between advisor and student (possible stretch goal if the scope
 FU9: Accounts without a Google account on file, created with a one-time activation code
 FU10: Account import that also updates existing accounts (matched by studentCode; a new studentCode creates the account as today)
 FU11: Each student's programme (only needed once there is more than one programme / Programme Head)
-FU12: Anonymised welfare statistics (case counts per support category for a term or date range, small groups hidden)
-FU13: Anonymised cohort indicators (indicator averages/frequencies for a term or faculty, from consented values only, small groups hidden)
+FU12: Anonymised statistics (counts and summaries of cases, welfare, consents, imports and other activity for a period, small groups hidden)
+FU13: Anonymised cohort data (averages/frequencies of student data for a term or faculty, from consented values only, small groups hidden)

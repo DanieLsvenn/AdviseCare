@@ -1,4 +1,4 @@
-using AdviseCare.Application.Contracts.Requests.Account;
+﻿using AdviseCare.Application.Contracts.Requests.Account;
 using AdviseCare.Application.Contracts.Responses.Account;
 
 namespace AdviseCare.Application.Interfaces.Services
@@ -32,6 +32,5 @@ namespace AdviseCare.Application.Interfaces.Services
         Task<List<SearchAccountRoleResponse>> SearchAccountRoleAsync(SearchAccountRoleRequest request);
         Task<CreateAccountRoleResponse> CreateAccountRoleAsync(CreateAccountRoleRequest request);
         Task<bool> DeleteAccountRoleAsync(Guid AccountId, Guid RoleId);
-        Task<UpdateStudentProfileResponse> UpdateStudentProfileAsync(Guid AccountId, UpdateStudentProfileRequest request);
     }
 }

@@ -1,4 +1,4 @@
-using AdviseCare.Application.DTOs;
+﻿using AdviseCare.Application.DTOs;
 using AdviseCare.Application.Interfaces.Repository;
 using AdviseCare.Application.Interfaces.Services;
 using AdviseCare.Domain.Models;
@@ -42,24 +42,41 @@ namespace AdviseCare.Application.Services
             return await DecideAsync(AccessorId, StudentIds, DataAttributeIds, null);
         }
 
-        // Write one access log row (one row per data attribute read; consentPurposeId = null for an emergency access read; students reading their own data are not logged)
-        public async Task LogAccessAsync(Guid AccessorId, Guid StudentId, Guid? ConsentPurposeId, string AccessedResource)
+        // Write one access log row for one value shown (studentDataId = the exact STUDENTDATA row; consentPurposeId = null for an emergency access read;
+        // students reading their own data are not logged)
+        public async Task LogAccessAsync(Guid AccessorId, Guid StudentId, Guid? StudentDataId, Guid? ConsentPurposeId, string AccessedResource)
         {
-            if (AccessorId == StudentId)
+            await LogAccessBatchAsync(AccessorId, new List<AccessLogEntry>
+            {
+                new AccessLogEntry { StudentId = StudentId, StudentDataId = StudentDataId, ConsentPurposeId = ConsentPurposeId, AccessedResource = AccessedResource }
+            });
+        }
+
+        // Write the access log rows of one request in a single save (one row per value shown; students reading their own data are not logged)
+        public async Task LogAccessBatchAsync(Guid AccessorId, List<AccessLogEntry> Entries)
+        {
+            var now = DateTime.UtcNow;
+            var entries = Entries.Where(e => e.StudentId != AccessorId).ToList();
+            if (entries.Count == 0)
                 return;
 
-            var accessedResource = AccessedResource.Trim();
-            await _accessLogRepository.CreateAsync(new Accesslog
+            foreach (var entry in entries)
             {
-                AccessLogId = Guid.NewGuid(),
-                AccessorId = AccessorId,
-                ConsentPurposeId = ConsentPurposeId,
-                RecordedUserId = StudentId,
-                AccessedResource = accessedResource.Length > 255 ? accessedResource[..255] : accessedResource,
-                AccessedAt = DateTime.UtcNow,
-                IsFlagged = false,
-                Status = null
-            });
+                var accessedResource = entry.AccessedResource.Trim();
+                _accessLogRepository.PrepareCreate(new Accesslog
+                {
+                    AccessLogId = Guid.NewGuid(),
+                    AccessorId = AccessorId,
+                    ConsentPurposeId = entry.ConsentPurposeId,
+                    RecordedUserId = entry.StudentId,
+                    StudentDataId = entry.StudentDataId,
+                    AccessedResource = accessedResource.Length > 255 ? accessedResource[..255] : accessedResource,
+                    AccessedAt = now,
+                    IsFlagged = false,
+                    Status = null
+                });
+            }
+            await _accessLogRepository.SaveAsync();
         }
 
         // Helper: access is allowed when the student has a granted, unexpired consent on the attribute under a purpose that is active,

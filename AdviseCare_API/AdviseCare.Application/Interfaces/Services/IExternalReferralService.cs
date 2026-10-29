@@ -5,8 +5,12 @@ namespace AdviseCare.Application.Interfaces.Services
 {
     public interface IExternalReferralService
     {
-        Task<ExternalReferralResponse> CreateAsync(Guid referredBy, CreateExternalReferralRequest request);
-        Task<List<ExternalReferralResponse>> SearchAsync(SearchExternalReferralRequest request);
-        Task<ExternalReferralResponse> RecordFollowUpAsync(Guid externalReferralId, RecordExternalReferralFollowUpRequest request);
+        Task<IEnumerable<GetAllExternalReferralResponse>> GetAll();
+        Task<IEnumerable<GetAllExternalReferralWithPaginationResponse>> GetAllWithPaginationAsync(int page, int pageSize);
+        Task<GetExternalReferralByIdResponse> GetByIdAsync(Guid ExternalReferralId);
+        Task<List<SearchExternalReferralResponse>> SearchAsync(SearchExternalReferralRequest request);
+        Task<CreateExternalReferralResponse> CreateAsync(Guid CreatorId, CreateExternalReferralRequest request);
+        Task<UpdateExternalReferralResponse> UpdateAsync(Guid ExternalReferralId, UpdateExternalReferralRequest request);
+        Task<CloseExternalReferralResponse> CloseAsync(Guid ExternalReferralId);
     }
 }

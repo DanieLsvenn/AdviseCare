@@ -53,7 +53,7 @@ Master data (created in EX11)
 - Subjects: PRN212 - Basic Cross-Platform Application Programming With .NET (SE) -> {subjectPrn212Id}; SWP391 - Software Development Project (SE) -> {subjectSwp391Id}; MKT101 - Marketing Principles (BA) -> {subjectMkt101Id}
 
 Consent data (created in WF3)
-- Indicators/attributes: GPA (numeric) -> {indGpaId}/{attrGpaId}; Attendance rate (numeric) -> {indAttendanceId}/{attrAttendanceId}; Accommodation status (categorical) -> {indAccommodationId}/{attrAccommodationId}; Financial difficulty (boolean) -> {indFinancialId}/{attrFinancialId}
+- Data attributes: GPA (numeric) -> {attrGpaId}; Attendance rate (numeric) -> {attrAttendanceId}; Accommodation status (categorical) -> {attrAccommodationId}; Financial difficulty (boolean) -> {attrFinancialId}
 - Purposes: Academic advising (GPA, Attendance rate) -> {purposeAcademicId}; Wellbeing support (Attendance rate, Accommodation status) -> {purposeWellbeingId}; Financial support (Financial difficulty, Accommodation status) -> {purposeFinancialId}
 - Access policies (all active): Academic Advisor - Academic advising; Wellbeing Advisor - Wellbeing support; Wellbeing Advisor - Financial support; Student Welfare Officer - Financial support
 
@@ -65,7 +65,7 @@ Support categories (created in EX11 step 4)
 
 Files to prepare (keep them in a TestFiles folder next to this file)
 - accounts_valid.xlsx, accounts_invalid.xlsx (WF1)
-- indicators_fall2026.xlsx, indicators_fall2026_update.xlsx, indicators_invalid.xlsx (WF5)
+- studentdata_fall2026.xlsx, studentdata_fall2026_update.xlsx, studentdata_invalid.xlsx, studentdata_archived.xlsx (WF5)
 - avatar.png (under 2 MB), avatar_too_big.png (over 2 MB), avatar.bmp (EX16)
 
 ==========
@@ -245,9 +245,9 @@ WF2: Student requests support and gets advised
    Auth: {programmeHeadToken}
    Expect (3.2.1): academicadvisor first (linked to PRN212 in EX11 step 3), then general academic advisors of faculty SE (advisor01, staff01); each with current caseload
    Expect (3.2.2): for {caseWellbeingId} -> wellbeingadvisor
-   Expect (3.2.3, optional): an advisor who already has an active assignment with this student is listed first
-   GET /api/AdvisorAssignments/search?studentId={studentId}&status=active [PLANNED - Member D]
-3.3. System sets the case's advisor, records the assignment and moves the case to assigned
+   Expect (3.2.3, optional): an advisor who already handles another open case of this student is listed first
+   GET /api/Cases/search?studentId={studentId}&currentStage=assigned [PLANNED - Member D]
+3.3. System sets the case's advisor and moves the case to assigned
    PUT /api/Cases/{caseAcademicId}/assign [PLANNED - Member D]
    Auth: {programmeHeadToken}
    Body:
@@ -255,8 +255,7 @@ WF2: Student requests support and gets advised
      "advisorId": "{academicAdvisorId}",
      "reason": "Specialised in PRN212"
    }
-   Expect: 200, advisorId set, currentStage = assigned; an active ADVISORASSIGNMENTS row (advisor + student) is created or kept; stage history pending -> assigned
-   Save: advisorAssignmentId -> {assignmentAcademicId}
+   Expect: 200, advisorId set, currentStage = assigned; stage history pending -> assigned (the advisor of a case is the case's advisorId, there is no separate assignment record)
    Repeat for {caseWellbeingId} with "advisorId": "{wellbeingAdvisorId}", "reason": "Financial worry, wellbeing advisor first"
    Negative: assign a wellbeing advisor to the academic case -> 400; assign an already assigned case -> 400 (use EX6 to change it)
 4. System notifies both sides
@@ -277,10 +276,12 @@ WF2: Student requests support and gets advised
    GET /api/Cases/{caseAcademicId} [PLANNED - Member D]
    Auth: {academicAdvisorToken}
    Expect: the case with requestReason, category Course content question, subject PRN212
-5.2. Opens the student profile: only consented data, with source and missing-data notices
-   GET /api/StudentIndicators/students/{studentId}/profile?caseId={caseAcademicId} [PLANNED - Member C, through Member B's IAccessGuardService with the case category's purpose]
+5.2. Opens the student profile and the student's data: only consented data, with source and missing-data notices
+   GET /api/StudentProfiles/{studentId} [EXISTS] (directory data: name, student code, programme, contact; open to all staff, not logged)
+   GET /api/StudentData/students/{studentId}?caseId={caseAcademicId} [EXISTS] (through Member B's IAccessGuardService with the case category's purpose; only the case's advisor)
    Auth: {academicAdvisorToken}
-   Expect: GPA and Attendance rate values with provenanceNote (from WF5); Accommodation status and Financial difficulty shown as "exists, not shared"; missing indicators flagged; one ACCESSLOGS row per attribute read
+   Expect: GPA and Attendance rate with value and provenanceNote (from WF5), isShared = true; Accommodation status and Financial difficulty with isShared = false and value = null ("exists, not shared"); missing values flagged with isMissing = true; one ACCESSLOGS row per value shown, with studentDataId and the purpose
+   Negative: another advisor (not the case's advisor) with ?caseId={caseAcademicId} -> 403
 5.3. If more data is needed, the advisor sends a consent request -> see EX7
 6. Advisor and student meet
 6.1. They decide when and how to meet, outside the app [NO API]
@@ -368,7 +369,7 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    Expect: status = returned; case back to the sender
 3. Welfare Officer works with the student
 3.1. Logs each intervention
-   POST /api/Interventions [PLANNED - Member C]
+   POST /api/Interventions [EXISTS]
    Auth: {welfareOfficerToken}
    Body:
    {
@@ -380,10 +381,10 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    }
    Expect: 200, isClosed = false, officerId = welfare officer
    Save: interventionId -> {interventionId}
-   PUT /api/Interventions/{interventionId} [PLANNED - Member C]
-   Body: { "interventionDate": "2026-10-23T02:00:00Z", "notes": "Application sent to the finance office on 2026-10-24.", "interventionType": "financialAid", "status": "inProgress" }
+   PUT /api/Interventions/{interventionId} [EXISTS]
+   Body: { "interventionDate": "2026-10-23T02:00:00Z", "notes": "Application sent to the finance office on 2026-10-24.", "outcome": "", "interventionType": "financialAid", "status": "inProgress" }
 3.2. Records any support grant issued
-   POST /api/SupportGrants [PLANNED - Member C]
+   POST /api/SupportGrants [EXISTS]
    Auth: {welfareOfficerToken}
    Body:
    {
@@ -394,22 +395,23 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    }
    Expect: status = issued
    Save: supportGrantId -> {supportGrantId}
+   Revoke test (on a second grant): PUT /api/SupportGrants/{id}/revoke [EXISTS] -> status = revoked
 3.3. Records the outcome
-   PUT /api/Interventions/{interventionId}/outcome [PLANNED - Member C]
-   Body: { "outcome": "Tuition reduction granted; student can stay enrolled this term." }
+   PUT /api/Interventions/{interventionId} [EXISTS] (the outcome is part of the update)
+   Body: { "interventionDate": "2026-10-23T02:00:00Z", "notes": "Application sent to the finance office on 2026-10-24.", "outcome": "Tuition reduction granted; student can stay enrolled this term.", "interventionType": "financialAid", "status": "inProgress" }
 4. If an outside service is needed
 4.1. Welfare Officer records the external referral with an expected follow-up date
-   GET /api/ExternalServices/search?isActive=true [PLANNED - Member C]
-   POST /api/ExternalServices [PLANNED - Member C] (if the service is not in the list yet)
+   GET /api/ExternalServices/search?isActive=true [EXISTS]
+   POST /api/ExternalServices [EXISTS] (if the service is not in the list yet)
    Body:
    {
      "contactInfo": "Hotline 1900 1234, studentloan@examplebank.vn",
      "serviceName": "Example Bank Student Loan Desk",
-     "serviceType": "Bank",
-     "isActive": true
+     "serviceType": "Bank"
    }
+   Expect: isActive = true (deactivate later with PUT /api/ExternalServices/{id} [EXISTS] and "isActive": false)
    Save: externalServiceId -> {externalServiceId}
-   POST /api/ExternalReferrals [PLANNED - Member C]
+   POST /api/ExternalReferrals [EXISTS]
    Auth: {welfareOfficerToken}
    Body:
    {
@@ -421,15 +423,16 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    Save: externalReferralId -> {externalReferralId}
 4.2. System flags it as overdue if the date passes without an outcome (background check)
    Test: create a second referral with "followUpDueAt": "2026-10-01T00:00:00Z" (already past), wait for the background check (or restart the API), then
-   GET /api/ExternalReferrals/search?isOverdue=true [PLANNED - Member C]
+   GET /api/ExternalReferrals/search?isOverdue=true [EXISTS]
    Expect: that referral has isOverdue = true
 4.3. Welfare Officer logs the follow-up outcome
-   PUT /api/ExternalReferrals/{externalReferralId}/follow-up [PLANNED - Member C]
+   PUT /api/ExternalReferrals/{externalReferralId} [EXISTS] (the update is the follow-up)
    Body: { "followUpOutcome": "Bank approved a student loan of 20,000,000 VND for the remaining tuition." }
    Expect: status = followedUp, isOverdue = false
+   Close it once nothing more is expected: PUT /api/ExternalReferrals/{externalReferralId}/close [EXISTS] -> status = closed
 5. If the case goes beyond the Welfare Officer's authority -> see EX5
 6. Welfare Officer closes the intervention; the case goes back to the advisor
-   PUT /api/Interventions/{interventionId}/close [PLANNED - Member C]
+   PUT /api/Interventions/{interventionId}/close [EXISTS]
    Auth: {welfareOfficerToken}
    Body: { "outcome": "Tuition reduced and bank loan approved. Handing back to the wellbeing advisor." }
    Expect: isClosed = true, status = completed; the wellbeing advisor is notified
@@ -441,31 +444,30 @@ WF3: Steward sets up consent
    Body: { "identifier": "steward@gmail.com", "password": "123456", "deviceInfo": "Chrome 141 on Windows 11" }
    Save: token -> {stewardToken}
 2. Steward defines the shareable data
-2.1. Creates an indicator together with its data attribute
-   POST /api/Indicators [EXISTS]
+2.1. Creates a data attribute (a piece of student data that is only shown with consent)
+   POST /api/DataAttributes [EXISTS]
    Auth: {stewardToken}
-   Body (one call per indicator):
+   Body (one call per data attribute):
    {
-     "attributeDescription": "Your cumulative grade point average for the term",
+     "attributeDescription": "Your cumulative grade point average for the term, on a 10-point scale",
      "attributeName": "GPA",
-     "description": "Cumulative GPA on a 10-point scale",
-     "indicatorName": "GPA",
      "dataType": "numeric"
    }
-   Expect: 200, indicatorId and dataAttributeId (1:1), status = active
-   Save: -> {indGpaId}, {attrGpaId}
+   Expect: 200, dataAttributeId, status = active
+   Save: -> {attrGpaId}
    Other three:
-   { "attributeDescription": "How often you attended your classes this term", "attributeName": "Attendance rate", "description": "Percentage of attended slots (0-100)", "indicatorName": "Attendance rate", "dataType": "numeric" } -> {indAttendanceId}, {attrAttendanceId}
-   { "attributeDescription": "Where you are living this term", "attributeName": "Accommodation status", "description": "dormitory / rented / family / other", "indicatorName": "Accommodation status", "dataType": "categorical" } -> {indAccommodationId}, {attrAccommodationId}
-   { "attributeDescription": "Whether you have reported financial difficulty", "attributeName": "Financial difficulty", "description": "true when the student has reported financial difficulty", "indicatorName": "Financial difficulty", "dataType": "boolean" } -> {indFinancialId}, {attrFinancialId}
-   Negative: "dataType": "text" -> 400; the same indicatorName or attributeName again -> 409; called with {academicAdvisorToken} -> 403
-   Edit: PUT /api/Indicators/{indGpaId} [EXISTS]
-   Body: { "attributeDescription": "Your cumulative GPA (10-point scale) for the current term", "description": "Cumulative GPA on a 10-point scale" }
-   Lists: GET /api/Indicators, GET /api/Indicators/search?status=active [EXISTS] (open to every signed-in role)
-2.2. Archives indicators/attributes that are no longer used
-   POST /api/Indicators [EXISTS] with "indicatorName": "Old test indicator", "attributeName": "Old test attribute", "dataType": "boolean" -> {indOldId}, {attrOldId}
-   PUT /api/Indicators/{indOldId}/archive [EXISTS]
-   Expect: true; the indicator and its attribute have status = archived; archiving it again -> 409; PUT /api/Indicators/{indOldId} -> 409; attaching {attrOldId} to a purpose (3.2) -> 409
+   { "attributeDescription": "How often you attended your classes this term (percentage of attended slots, 0-100)", "attributeName": "Attendance rate", "dataType": "numeric" } -> {attrAttendanceId}
+   { "attributeDescription": "Where you are living this term (dormitory / rented / family / other)", "attributeName": "Accommodation status", "dataType": "categorical" } -> {attrAccommodationId}
+   { "attributeDescription": "Whether you have reported financial difficulty", "attributeName": "Financial difficulty", "dataType": "boolean" } -> {attrFinancialId}
+   Negative: "dataType": "text" -> 400; the same attributeName again -> 409; called with {academicAdvisorToken} -> 403
+   Edit: PUT /api/DataAttributes/{attrGpaId} [EXISTS]
+   Body: { "attributeDescription": "Your cumulative GPA (10-point scale) for the current term" }
+   Lists: GET /api/DataAttributes, GET /api/DataAttributes/search?status=active [EXISTS] (open to every signed-in role)
+   Activity log: dataAttributeCreated, dataAttributeUpdated
+2.2. Archives data attributes that are no longer used
+   POST /api/DataAttributes [EXISTS] with "attributeName": "Old test attribute", "dataType": "boolean" -> {attrOldId}
+   PUT /api/DataAttributes/{attrOldId}/archive [EXISTS]
+   Expect: true, status = archived, activity log dataAttributeArchived; archiving it again -> 409; PUT /api/DataAttributes/{attrOldId} -> 409; attaching {attrOldId} to a purpose (3.2) -> 409; its rows in an import are left out (WF5 4.3)
 3. Steward defines consent purposes
 3.1. Creates a purpose
    POST /api/ConsentPurposes [EXISTS]
@@ -546,54 +548,62 @@ WF4: Programme Head lists, reports and exports
    Expect: a file download (xlsx / csv / pdf), generated on the fly, nothing stored
    Negative: "to" before "from" -> 400; "format=docx" -> 400
 
-WF5: Admin imports student indicator data
-1. Admin signs in and opens "Import indicator data"
+WF5: Admin imports student data
+1. Admin signs in and opens "Import student data"
    POST /api/Auth/login [EXISTS] with admin@gmail.com / 123456 -> {adminToken}
-2. Admin uploads an Excel/CSV file or provides a Google Sheet
-3. Admin maps file columns to indicators
-   POST /api/StudentIndicators/import/preview [PLANNED - Member C]
+2. Admin uploads an Excel/CSV file
+3. Admin maps file columns to data attributes
+   POST /api/StudentData/import/preview [EXISTS]
    Auth: {adminToken}
-   Form (multipart/form-data): file = indicators_fall2026.xlsx
-   Expect: the header row and the first rows, so the web app can show the column mapping
-   indicators_fall2026.xlsx:
-   Student email      | Indicator            | Value     | Term      | Valid from
+   Form (multipart/form-data): file = studentdata_fall2026.xlsx
+   Expect: the header row and up to five sample rows, so the web app can show the column mapping; nothing is written
+   studentdata_fall2026.xlsx:
+   Student email      | Data attribute       | Value     | Term      | Valid from
    student@gmail.com  | GPA                  | 6.8       | Fall 2026 | 2026-10-15
    student@gmail.com  | Attendance rate      | 72        | Fall 2026 | 2026-10-15
    student@gmail.com  | Accommodation status | rented    | Fall 2026 | 2026-09-07
    student@gmail.com  | Financial difficulty | true      | Fall 2026 | 2026-10-01
-   (no rows for student01: every expected indicator becomes missing for them)
-   Google Sheet variant: POST /api/StudentIndicators/import-google-sheet [PLANNED - Member C], body { "sheetUrl": "https://docs.google.com/spreadsheets/d/...", "termId": "{termFall2026Id}", "columnMapping": { ... } } (needs the Google setup)
+   (no rows for student01: every imported data attribute becomes missing for them)
+   The student column accepts an email, a username or a student code
+   Google Sheet import is not built yet (needs the Google setup)
 4. System validates the whole file
-   POST /api/StudentIndicators/import [PLANNED - Member C]
+   Dry run: POST /api/StudentData/import/validate [EXISTS] with the same form -> validRowCount, rejectedRows, errors, isValid; nothing is written
+   POST /api/StudentData/import [EXISTS]
    Auth: {adminToken}
    Form (multipart/form-data):
-   file = indicators_fall2026.xlsx
-   columnMapping = { "studentIdentifier": "Student email", "indicator": "Indicator", "value": "Value", "term": "Term", "validFrom": "Valid from" }
+   file = studentdata_fall2026.xlsx
+   columnMapping = { "studentIdentifier": "Student email", "dataAttribute": "Data attribute", "value": "Value", "term": "Term", "validFrom": "Valid from" }
 4.1. If any row is invalid, nothing is imported
-   Form: file = indicators_invalid.xlsx (same mapping)
-   indicators_invalid.xlsx:
-   Student email          | Indicator       | Value | Term      | Valid from
+   Form: file = studentdata_invalid.xlsx (same mapping)
+   studentdata_invalid.xlsx:
+   Student email          | Data attribute  | Value | Term      | Valid from
    student@gmail.com      | GPA             | 7.2   | Fall 2026 | 2026-10-20     (valid row)
    nobody@gmail.com       | GPA             | 5.0   | Fall 2026 | 2026-10-20     (student does not exist)
-   student@gmail.com      | Height          | 170   | Fall 2026 | 2026-10-20     (indicator does not exist)
+   student@gmail.com      | Height          | 170   | Fall 2026 | 2026-10-20     (data attribute does not exist)
    student@gmail.com      | GPA             | abc   | Fall 2026 | 2026-10-20     (not numeric)
    student@gmail.com      | Attendance rate | 80    | Winter 99 | 2026-10-20     (term does not exist)
-   Expect: isSuccess = false, the 4 invalid rows with their reasons, no STUDENTINDICATORS rows added (not even the valid one); activity log indicatorImportFailed
+   Expect: isSuccess = false, the 4 invalid rows with their reasons in errors, no STUDENTDATA rows added (not even the valid one); activity log studentDataImportFailed
 4.2. If all rows are valid, every value is inserted as a new row
-   Form: file = indicators_fall2026.xlsx
-   Expect: isSuccess = true, insertedCount = 4; each row has dataSourceId = null, status = original, provenanceNote like "Imported from indicators_fall2026.xlsx on 2026-10-21"; values are stored encrypted as v1:{attributeKeyId}:{payload} (Member C calls IAttributeKeyService.EncryptValuesAsync; the student's key for each attribute is created on the first value)
-   Check: GET /api/AttributeKeys/search?studentId={studentId} [EXISTS] with {stewardToken} -> one active key per imported attribute (the key itself is never returned)
-   For EX13, import indicators_fall2026_update.xlsx afterwards (new rows, never updates):
+   Form: file = studentdata_fall2026.xlsx
+   Expect: isSuccess = true, insertedCount = 4, missingCount = one per data attribute for every other enrolled, active student (e.g. student01); each row has dataSourceId = null, status = original, provenanceNote like "Imported from studentdata_fall2026.xlsx on 2026-10-21"; activity log studentDataImported
+   Values are stored encrypted in STUDENTDATA.dataValue (VARBINARY, AES-256-GCM with the student's key for that attribute; the key is created on the first value). Member C calls IAttributeKeyService.EncryptValuesAsync
+   Check: GET /api/AttributeKeys/search?studentId={studentId} [EXISTS] with {stewardToken} -> one active key per imported attribute, with masterKeyVersion (the key itself is never returned)
+   For EX13, import studentdata_fall2026_update.xlsx afterwards (new rows, never updates):
    student@gmail.com | GPA             | 7.5 | Fall 2026 | 2026-11-20
    student@gmail.com | Attendance rate | 85  | Fall 2026 | 2026-11-20
-5. Expected indicators missing for a student are flagged
-   GET /api/StudentIndicators/search?termId={termFall2026Id}&isMissing=true [PLANNED - Member C]
+4.3. Rows of an archived data attribute are left out, the rest is imported
+   Form: file = studentdata_archived.xlsx
+   student@gmail.com | GPA                | 7.0  | Fall 2026 | 2026-10-25
+   student@gmail.com | Old test attribute | true | Fall 2026 | 2026-10-25     ({attrOldId}, archived in WF3 2.2)
+   Expect: isSuccess = true, insertedCount = 1, rejectedRows lists row 2 with "data attribute 'Old test attribute' is archived, so this row was not imported"; the activity log message mentions the left-out rows
+5. Data missing for a student is flagged
+   GET /api/StudentData/search?termId={termFall2026Id}&isMissing=true [EXISTS]
    Auth: {adminToken}
-   Expect: rows with isMissing = true for every student without values (e.g. student01)
+   Expect: rows with isMissing = true for every enrolled student without a value (e.g. student01); values are never returned by these admin lists
 6. Admin views the import result and the import history
-   GET /api/ActivityLogs/search?activityType=indicatorsImported [EXISTS endpoint; the indicatorsImported log is written by Member C]
+   GET /api/ActivityLogs/search?activityType=studentDataImported [EXISTS]
    Auth: {adminToken}
-   Expect: one entry per successful import with the file name and row count
+   Expect: one entry per successful import with the file name and the row counts
 7. Scheduled automatic ingestion is future (FU1) [NO API]
 
 ==========
@@ -700,13 +710,13 @@ EX2: Sign in, forgot password and sessions
    Auth: {sessionAToken}
    Expect: after logout, GET /api/Auth/me with {sessionAToken} -> 401
 
-EX3: Advisor reaches out based on indicators
-1. Advisor views indicators of the students assigned to them (only consented data)
-   GET /api/AdvisorAssignments/me/students [PLANNED - Member D]
+EX3: Advisor reaches out based on student data
+1. Advisor finds a student and views their data (only consented data)
+   GET /api/StudentProfiles/search?fullName=Student [EXISTS] (directory data, not logged)
    Auth: {academicAdvisorToken}
-   Expect: student (from WF2 3.3)
-   GET /api/StudentIndicators/students/{studentId}/profile [PLANNED - Member C]
-   Expect: GPA 6.8 and Attendance rate 72 (consented in WF2), the rest "exists, not shared"
+   Expect: student
+   GET /api/StudentData/students/{studentId} [EXISTS] (no caseId: any purpose the Academic Advisor role has a policy for counts)
+   Expect: GPA 6.8 and Attendance rate 72 (consented in WF2), the rest isShared = false; ACCESSLOGS rows with studentDataId
 2. Advisor notices a student who needs help [NO API]
 3. Advisor opens a case for that student
    POST /api/Cases [PLANNED - Member D]
@@ -755,7 +765,7 @@ EX4: Referral between advisors
 
 EX5: Escalation to the Programme Head
 1. Welfare Officer marks the case for escalation and writes the reason
-   POST /api/Escalations [PLANNED - Member C]
+   POST /api/Escalations [EXISTS]
    Auth: {welfareOfficerToken}
    Body:
    {
@@ -767,45 +777,44 @@ EX5: Escalation to the Programme Head
    Save: escalationId -> {escalationId}
 2. Programme Head gets a notification
    GET /api/Notifications/me [EXISTS]
-   GET /api/Escalations/search?status=pending [PLANNED - Member C]
+   GET /api/Escalations/search?status=pending [EXISTS]
    Auth: {programmeHeadToken}
 3. Programme Head records a response/decision
-   PUT /api/Escalations/{escalationId}/respond [PLANNED - Member C]
+   PUT /api/Escalations/{escalationId}/respond [EXISTS]
    Auth: {programmeHeadToken}
    Body: { "response": "Approved: tuition deadline extended to 2026-12-15." }
    Expect: status = responded; the Welfare Officer is notified
 4. Welfare Officer sees the response and continues the case
-   GET /api/Escalations/{escalationId} [PLANNED - Member C]
+   GET /api/Escalations/{escalationId} [EXISTS]
    Auth: {welfareOfficerToken}
 
-EX6: Advisor assignment change
-1. Advisor requests a change of the assigned advisor
-   POST /api/AssignmentChangeRequests [PLANNED - Member D]
+EX6: Case advisor change
+1. The case's advisor (or its student) requests another advisor for the case
+   POST /api/CaseChangeRequests [PLANNED - Member D]
    Auth: {academicAdvisorToken}
    Body:
    {
-     "advisorAssignmentId": "{assignmentAcademicId}",
+     "caseId": "{caseAcademicId}",
      "proposedAdvisorId": "{advisor01Id}",
      "reason": "I am on leave from November; advisor01 also teaches PRN212."
    }
-   Expect: status = pending, programmeHeadId set (the Programme Head who will review)
-   Save: assignmentChangeRequestId -> {changeRequestId}
+   Expect: status = pending, programmeHeadId = null (set to the Programme Head who decides)
+   Save: caseChangeRequestId -> {changeRequestId}
 2. Programme Head reviews the request
-   GET /api/AssignmentChangeRequests/search?status=pending [PLANNED - Member D]
+   GET /api/CaseChangeRequests/search?status=pending [PLANNED - Member D]
    Auth: {programmeHeadToken}
 3. Programme Head approves or rejects it
 3.1. Approved
-   PUT /api/AssignmentChangeRequests/{changeRequestId}/approve [PLANNED - Member D]
+   PUT /api/CaseChangeRequests/{changeRequestId}/approve [PLANNED - Member D]
    Auth: {programmeHeadToken}
-   Expect: status = approved; old assignment status = revoked with revokedAt; a new active assignment for advisor01 and the student; open cases of that pair move to advisor01
+   Expect: status = approved, decidedAt and programmeHeadId set; CASES.advisorId of {caseAcademicId} = advisor01; a stage history row records the change
 3.2. Rejected (on a second request)
-   PUT /api/AssignmentChangeRequests/{id}/reject [PLANNED - Member D]
-   Body: { "reason": "advisor01 already has too many cases this term" }
+   PUT /api/CaseChangeRequests/{id}/reject [PLANNED - Member D]
    Expect: status = rejected, decidedAt set
 4. Both advisors and the student are notified
    GET /api/Notifications/me [EXISTS] with each of the 3 tokens
-5. Programme Head can also reassign directly
-   PUT /api/AdvisorAssignments/{assignmentId}/reassign [PLANNED - Member D]
+5. Programme Head can also reassign the case directly
+   PUT /api/Cases/{caseAcademicId}/reassign [PLANNED - Member D]
    Auth: {programmeHeadToken}
    Body: { "advisorId": "{academicAdvisorId}", "reason": "Advisor is back from leave" }
 
@@ -865,8 +874,8 @@ EX8: Student manages consent and erasure
    Expect: null -> granted, then granted -> withdrawn, changedBy = student
 4. On withdrawal
 4.1. Access is blocked immediately
-   GET /api/StudentIndicators/students/{studentId}/profile [PLANNED - Member C] with {wellbeingAdvisorToken}
-   Expect: Attendance rate -> "exists, not shared" (unless still granted under another purpose the advisor's role has a policy for)
+   GET /api/StudentData/students/{studentId} [EXISTS] with {wellbeingAdvisorToken}
+   Expect: Attendance rate -> isShared = false, value = null (unless still granted under another purpose the advisor's role has a policy for)
 4.2. An erasure request is queued (automatic, only when the attribute is no longer granted under any purpose and the student has an active key for it)
    Note: keys are created when Member C's import stores the student's values (WF5); a student with no stored value for the attribute has no key, so nothing is queued
 4.3. Steward verifies the withdrawal and executes the erasure
@@ -1009,7 +1018,7 @@ EX12: Account management
    DELETE /api/Accounts/{advisor01Id}/roles/{roleProgrammeHeadId} [EXISTS]
    Negative: GET /api/Roles/search?roleName=System Administrator -> {roleAdminId}; DELETE /api/Accounts/{adminId}/roles/{roleAdminId} while admin is the only System Administrator -> 400; the same role twice -> 400
 3.1. Admin edits a Student account's student profile
-   PUT /api/Accounts/{student03Id}/student-profile [EXISTS]
+   PUT /api/StudentProfiles/{student03Id} [EXISTS] (by studentId; staff read it with GET /api/StudentProfiles/{studentId})
    Auth: {adminToken}
    Body: { "studentCode": "BA180103", "academicStatus": "enrolled" }
    Expect: 200, academicStatus = enrolled (student03 came back from leave); activity log studentProfileUpdated
@@ -1029,47 +1038,58 @@ EX12: Account management
 EX13: Point-in-time reconstruction ("way back machine")
 (Needs both WF5 imports.)
 1. Advisor opens a student and clicks "View as of date"
-2. Advisor picks the date
+2. Advisor picks the date and the time axis
+   timeAxis = system: what AdviseCare knew on that date (latest transactionFrom up to the end of the date)
+   timeAxis = valid: what was true on that date by today's knowledge (latest validFrom up to the end of the date, a later recording winning on ties)
 3. System rebuilds the record as it was on that date
-   GET /api/StudentIndicators/students/{studentId}/as-of?date=2026-10-31 [PLANNED - Member C]
+   GET /api/StudentData/students/{studentId}/as-of?date=2026-10-31&timeAxis=system [EXISTS]
    Auth: {academicAdvisorToken}
    Expect: GPA 6.8, Attendance rate 72
-   GET /api/StudentIndicators/students/{studentId}/as-of?date=2026-11-30
+   GET /api/StudentData/students/{studentId}/as-of?date=2026-11-30&timeAxis=system
    Expect: GPA 7.5, Attendance rate 85
+   Valid time test: after the EX15 correction (approved on, say, 2026-11-05 with validFrom 2026-10-15), as-of 2026-10-31 with timeAxis=valid -> Attendance rate 80, with timeAxis=system -> 72
+   Negative: "timeAxis": "other" -> 400
 4. Advisor can compare two dates; the access is logged
-   GET /api/StudentIndicators/students/{studentId}/compare?dateA=2026-10-31&dateB=2026-11-30 [PLANNED - Member C]
-   Expect: both values side by side per indicator; ACCESSLOGS rows for the read
+   GET /api/StudentData/students/{studentId}/compare?dateA=2026-10-31&dateB=2026-11-30&timeAxis=system [EXISTS]
+   Expect: both values side by side per data attribute and term; ACCESSLOGS rows for each date read
 
 EX14: Student exports own record
 1. Student opens account settings and chooses "Export my data"
 2. System builds a JSON file with the student's record and access log
 3. Student downloads it; the export is logged
-   GET /api/StudentIndicators/me/export [PLANNED - Member C]
+   GET /api/StudentData/me/export [EXISTS]
    Auth: {studentToken}
-   Expect: a .json file download with profile, indicator values (decryptable ones), cases and own access log; activity log dataExported
+   Expect: a .json file download with profile, current data values (erased ones shown as erased), cases and own access log; activity log dataExported
+   Own data without a download: GET /api/StudentData/me [EXISTS] and GET /api/StudentProfiles/me [EXISTS] (not logged)
 
 EX15: Correction request (pending review)
 1. Student selects a value believed to be wrong and explains why
-   POST /api/CorrectionRequests [PLANNED - Member C]
+   GET /api/StudentData/me [EXISTS] -> pick the Attendance rate value, keep its studentDataId -> {studentDataAttendanceId}
+   POST /api/CorrectionRequests [EXISTS]
    Auth: {studentToken}
    Body:
    {
-     "currentValue": "72",
+     "studentDataId": "{studentDataAttendanceId}",
      "explanation": "I was marked absent on 2026-10-05 and 2026-10-12 although I attended; my lecturer confirmed it by email.",
-     "fieldName": "Attendance rate",
      "proposedValue": "80"
    }
+   Expect: status = pending; currentValue is copied from the row (both values stored encrypted); activity log correctionRequested
    Save: -> {correctionRequestId}
-   Withdraw test (on a second request): PUT /api/CorrectionRequests/{id}/withdraw -> status = withdrawn
+   Negative: "proposedValue": "abc" (Attendance rate is numeric) -> 400; another student's studentDataId -> 404; a second pending request for the same row -> 409
+   Own list: GET /api/CorrectionRequests/me, GET /api/CorrectionRequests/me/{correctionRequestId} [EXISTS]
+   Withdraw test (on a second request): PUT /api/CorrectionRequests/{id}/withdraw [EXISTS] -> status = withdrawn, activity log correctionRequestWithdrawn
 2. Advisor reviews it against its source
-   GET /api/CorrectionRequests/search?status=pending [PLANNED - Member C]
+   Reviewer = the advisor of one of the student's open cases
+   GET /api/CorrectionRequests/search?status=pending [EXISTS]
    Auth: {academicAdvisorToken}
+   Expect: the request; the values are only shown when the advisor may read the attribute (consent or emergency access), and that read is logged
 3. Approved or rejected
-   PUT /api/CorrectionRequests/{correctionRequestId}/approve [PLANNED - Member C]
+   PUT /api/CorrectionRequests/{correctionRequestId}/approve [EXISTS]
    Body: { "decisionNotes": "Checked with the lecturer's attendance sheet; corrected." }
-   Expect: status = approved; a new STUDENTINDICATORS row with status = correction and value 80; the old row stays
-   PUT /api/CorrectionRequests/{id}/reject [PLANNED - Member C]
+   Expect: status = approved, reviewedBy set; a new STUDENTDATA row with status = correction, value 80 and the old row's validFrom; the old row stays; activity log correctionReviewed
+   PUT /api/CorrectionRequests/{id}/reject [EXISTS]
    Body: { "decisionNotes": "The attendance sheet confirms the absences." }
+   Negative: an advisor without an open case of this student -> 403
 4. Student is notified
    GET /api/Notifications/me [EXISTS] with {studentToken}
 
@@ -1118,8 +1138,10 @@ NOTES
 ==========
 
 - All [PLANNED] routes are proposals: the member who builds the controller may rename them; update this file when they do
-- Member B's routes are built and tagged [EXISTS]; Members C and D call IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync), then IAttributeKeyService.DecryptValuesAsync and LogAccessAsync before showing or exporting any indicator value; Member C's import encrypts with IAttributeKeyService.EncryptValuesAsync
-- The API needs Encryption:MasterKey (32 random bytes in base64) in appsettings.json, or the environment variable Encryption__MasterKey on MonsterASP; it refuses to start without it. Every environment that shares a database must use the same master key
+- Members A, B and C's routes are built and tagged [EXISTS]; Member D calls IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync), then IAttributeKeyService.DecryptValuesAsync and LogAccessAsync / LogAccessBatchAsync before showing or exporting any data attribute value; the StudentData import encrypts with IAttributeKeyService.EncryptValuesAsync
+- Student profile (directory) data is open to all staff and not logged; data attribute values need consent (or emergency access) and every value shown to staff is logged with its studentDataId; the student's own reads are not logged
+- The API needs Encryption:MasterKeys (numbered versions of 32 random bytes in base64, e.g. "1": "...") and Encryption:CurrentVersion in appsettings.json, or the environment variables Encryption__MasterKeys__1 and Encryption__CurrentVersion on MonsterASP; it refuses to start without them. Every environment that shares a database must use the same master keys
+- Master key rotation: add version 2 next to version 1, set CurrentVersion = 2, restart, then PUT /api/AttributeKeys/rewrap [EXISTS] (Steward) until no key uses version 1; only then remove version 1
 - EX1, EX2 step 4, WF1 step 4.2 and EX16 avatar need Google, Gmail and Supabase values in appsettings.json; until then they return errors from the outside service
 - Notifications sent by other features (WF2 step 4, EX4, EX5, EX6, EX7, EX8, EX15) depend on NotificationService.NotifyAsync being called by Members B, C and D
 - Open questions for the owners of the planned endpoints:
@@ -1127,5 +1149,4 @@ NOTES
   - WF2b 2.2: is the priority set on the case or on the referral?
   - WF2b 2.3 and EX4 step 4: REFERRALS has no column for the return reason (store it in the stage history reason?)
   - WF2b 6: after the welfare referral is accepted, does the case's advisorId change to the Welfare Officer, or stay with the wellbeing advisor?
-  - EX6 3.2: ASSIGNMENTCHANGEREQUESTS has no column for the rejection reason (reason holds the requester's reason)
-  - EX15 1: is fieldName the indicator name, or should CORRECTIONREQUESTS point to the STUDENTINDICATORS row?
+  - EX6 3.2: CASECHANGEREQUESTS has no column for the rejection reason (reason holds the requester's reason)

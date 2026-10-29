@@ -5,9 +5,11 @@ namespace AdviseCare.Application.Interfaces.Services
 {
     public interface IEscalationService
     {
-        Task<EscalationResponse> CreateAsync(Guid escalatedBy, CreateEscalationRequest request);
-        Task<List<EscalationResponse>> SearchAsync(Guid accountId, bool isProgrammeHead, SearchEscalationRequest request);
-        Task<EscalationResponse> GetByIdAsync(Guid accountId, Guid escalationId);
-        Task<EscalationResponse> RespondAsync(Guid programmeHeadId, Guid escalationId, RespondToEscalationRequest request);
+        Task<IEnumerable<GetAllEscalationResponse>> GetAll(Guid AccountId);
+        Task<IEnumerable<GetAllEscalationWithPaginationResponse>> GetAllWithPaginationAsync(Guid AccountId, int page, int pageSize);
+        Task<GetEscalationByIdResponse> GetByIdAsync(Guid AccountId, Guid EscalationId);
+        Task<List<SearchEscalationResponse>> SearchAsync(Guid AccountId, SearchEscalationRequest request);
+        Task<CreateEscalationResponse> CreateAsync(Guid CreatorId, CreateEscalationRequest request);
+        Task<RespondEscalationResponse> RespondAsync(Guid ProgrammeHeadId, Guid EscalationId, RespondEscalationRequest request);
     }
 }

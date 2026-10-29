@@ -1,5 +1,4 @@
 using AdviseCare.Application.Contracts.Requests.ExternalService;
-using AdviseCare.Application.Contracts.Responses.ExternalService;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,48 +13,62 @@ namespace AdviseCare.API.Controllers
     {
         private readonly IExternalServiceService _externalServiceService = externalServiceService;
 
+        // Get all External services, with optional pagination
         [HttpGet]
-        [SwaggerOperation(Summary = "[All roles] Get external services with optional pagination",
-            Description = "Retrieves external services ordered by name. Pass page and pageSize together to page the results.")]
+        [SwaggerOperation(Summary = "[All roles] Get all external services with optional pagination",
+            Description = "Retrieves the catalogue of outside services (banks, lending services...) ordered by name, active and inactive. Pass page and pageSize together to page the results.")]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
             if (page.HasValue && pageSize.HasValue)
-                return Ok(await _externalServiceService.GetAllWithPaginationAsync(page.Value, pageSize.Value));
+            {
+                return Ok(await _externalServiceService.GetAllWithPaginationAsync(
+                    page.Value,
+                    pageSize.Value));
+            }
 
             return Ok(await _externalServiceService.GetAll());
         }
 
-        [HttpGet("{id:guid}")]
-        [SwaggerOperation(Summary = "[All roles] Get external service by Id")]
+        // Get an External service by Id
+        [HttpGet("{id}")]
+        [SwaggerOperation(Summary = "[All roles] Get external service by Id",
+            Description = "Retrieves one external service with its contact information.")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
-            return Ok(await _externalServiceService.GetByIdAsync(id));
+            var response = await _externalServiceService.GetByIdAsync(id);
+            return Ok(response);
         }
 
+        // Search External services
         [HttpGet("search")]
-        [SwaggerOperation(Summary = "[All roles] Search external services",
-            Description = "Filters by service name, service type, and active state. Empty filters are ignored.")]
+        [SwaggerOperation(Summary = "[All roles] Search/Filter external services",
+            Description = "Filters external services by name or type (contains) and active state, e.g. isActive=true for the services a new referral can go to. Empty fields are ignored.")]
         public async Task<IActionResult> Search([FromQuery] SearchExternalServiceRequest request)
         {
-            return Ok(await _externalServiceService.SearchAsync(request));
+            var response = await _externalServiceService.SearchAsync(request);
+            return Ok(response);
         }
 
+        // Create an External service
         [HttpPost]
         [Authorize(Roles = "System Administrator")]
-        [SwaggerOperation(Summary = "[System Administrator] Add an external service",
-            Description = "Adds an active external service to the catalogue. Welfare Officers can read the catalogue but cannot create or update entries.")]
+        [SwaggerOperation(Summary = "[System Administrator] Create external service",
+            Description = "Adds an active service (name, type, contact information) to the catalogue. Welfare Officers read the catalogue but cannot change it.")]
         public async Task<IActionResult> Create([FromBody] CreateExternalServiceRequest request)
         {
-            return Ok(await _externalServiceService.CreateAsync(request));
+            var response = await _externalServiceService.CreateAsync(request);
+            return Ok(response);
         }
 
-        [HttpPut("{id:guid}")]
+        // Update an External service
+        [HttpPut("{id}")]
         [Authorize(Roles = "System Administrator")]
-        [SwaggerOperation(Summary = "[System Administrator] Update an external service",
-            Description = "Updates an external service's name, type, contact information, and active state. Inactive services remain available for existing referral history.")]
+        [SwaggerOperation(Summary = "[System Administrator] Update external service",
+            Description = "Edits a service's name, type, contact information and active state. An inactive service stays in old referrals but cannot receive new ones.")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateExternalServiceRequest request)
         {
-            return Ok(await _externalServiceService.UpdateAsync(id, request));
+            var response = await _externalServiceService.UpdateAsync(id, request);
+            return Ok(response);
         }
     }
 }

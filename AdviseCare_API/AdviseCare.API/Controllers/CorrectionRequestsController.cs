@@ -5,119 +5,132 @@ using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Security.Claims;
 
-namespace AdviseCare.API.Controllers;
-
-[Route("api/[controller]")]
-[ApiController]
-[Authorize]
-public sealed class CorrectionRequestsController(ICorrectionRequestService correctionRequestService) : ControllerBase
+namespace AdviseCare.API.Controllers
 {
-    private readonly ICorrectionRequestService _correctionRequestService = correctionRequestService;
-
-    [HttpPost]
-    [Authorize(Roles = "Student")]
-    [SwaggerOperation(Summary = "[Student] Request a correction to your current indicator value",
-        Description = "Ties the request to an exact student-indicator row. The API derives and encrypts the current value; the submitted proposed value is encrypted before storage.")]
-    public async Task<IActionResult> Create(
-        [FromBody] CreateCorrectionRequest request,
-        CancellationToken cancellationToken)
+    [Route("api/[controller]")]
+    [ApiController]
+    [Authorize]
+    public class CorrectionRequestsController(ICorrectionRequestService correctionRequestService) : ControllerBase
     {
-        if (!TryGetCurrentAccountId(out var studentId))
+        private const string AdvisorRoles = "Academic Advisor,Wellbeing Advisor";
+        private readonly ICorrectionRequestService _correctionRequestService = correctionRequestService;
+
+        // Get all Correction requests of the advisor's case students, with optional pagination
+        [HttpGet]
+        [Authorize(Roles = AdvisorRoles)]
+        [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor] Get all correction requests with optional pagination",
+            Description = "Lists the correction requests of the students the advisor has an open case with, newest first. The value on record and the proposed value are shown only when the access guard allows the data attribute (consent or emergency access); each request shown with its values is written to the access log. " +
+                "Pass page and pageSize together to page the results.")]
+        public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
-            return Unauthorized();
+            var advisorId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            if (page.HasValue && pageSize.HasValue)
+            {
+                return Ok(await _correctionRequestService.GetAllWithPaginationAsync(
+                    advisorId,
+                    page.Value,
+                    pageSize.Value));
+            }
+
+            return Ok(await _correctionRequestService.GetAll(advisorId));
         }
 
-        var response = await _correctionRequestService.CreateAsync(studentId, request, cancellationToken);
-        return CreatedAtRoute("GetMyCorrectionRequest", new { correctionRequestId = response.CorrectionRequestId }, response);
-    }
-
-    [HttpGet("me/{correctionRequestId:guid}", Name = "GetMyCorrectionRequest")]
-    [Authorize(Roles = "Student")]
-    [SwaggerOperation(Summary = "[Student] Read the status of your correction request")]
-    public async Task<IActionResult> GetMine(Guid correctionRequestId, CancellationToken cancellationToken)
-    {
-        if (!TryGetCurrentAccountId(out var studentId))
+        // Get all of the signed-in student's own Correction requests
+        [HttpGet("me")]
+        [Authorize(Roles = "Student")]
+        [SwaggerOperation(Summary = "[Student] Get own correction requests",
+            Description = "Lists the signed-in student's own correction requests, newest first, with their values and the advisor's decision.")]
+        public async Task<IActionResult> GetMyAll()
         {
-            return Unauthorized();
+            var studentId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _correctionRequestService.GetMyAllAsync(studentId);
+            return Ok(response);
         }
 
-        return Ok(await _correctionRequestService.GetMineAsync(studentId, correctionRequestId, cancellationToken));
-    }
-
-    [HttpGet("search")]
-    [Authorize(Roles = "Academic Advisor,Wellbeing Advisor")]
-    [SwaggerOperation(Summary = "[Advisor] Search correction requests for assigned students",
-        Description = "Only returns requests for students with an active advisor assignment. Consent and data-attribute access are checked before encrypted values are disclosed.")]
-    public async Task<IActionResult> Search(
-        [FromQuery] string status = "pending",
-        CancellationToken cancellationToken = default)
-    {
-        if (!TryGetCurrentAccountId(out var advisorId))
+        // Get one of the signed-in student's own Correction requests
+        [HttpGet("me/{id}")]
+        [Authorize(Roles = "Student")]
+        [SwaggerOperation(Summary = "[Student] Get own correction request by Id",
+            Description = "Retrieves one of the signed-in student's own correction requests with its status and the advisor's decision notes.")]
+        public async Task<IActionResult> GetMyById([FromRoute] Guid id)
         {
-            return Unauthorized();
+            var studentId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _correctionRequestService.GetMyByIdAsync(studentId, id);
+            return Ok(response);
         }
 
-        return Ok(await _correctionRequestService.SearchForAdvisorAsync(advisorId, status, cancellationToken));
-    }
-
-    [HttpPut("{correctionRequestId:guid}/approve")]
-    [Authorize(Roles = "Academic Advisor,Wellbeing Advisor")]
-    [SwaggerOperation(Summary = "[Advisor] Approve a correction request",
-        Description = "Creates a new correction-version student-indicator row and updates the request in one database save. The original row remains unchanged.")]
-    public async Task<IActionResult> Approve(
-        Guid correctionRequestId,
-        [FromBody] CorrectionDecisionRequest request,
-        CancellationToken cancellationToken)
-    {
-        if (!TryGetCurrentAccountId(out var advisorId))
+        // Get a Correction request by Id
+        [HttpGet("{id}")]
+        [Authorize(Roles = AdvisorRoles)]
+        [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor] Get correction request by Id",
+            Description = "Retrieves one correction request of a student the advisor has an open case with (values shown only when the access guard allows, and logged).")]
+        public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
-            return Unauthorized();
+            var advisorId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _correctionRequestService.GetByIdAsync(advisorId, id);
+            return Ok(response);
         }
 
-        return Ok(await _correctionRequestService.ApproveAsync(
-            advisorId,
-            correctionRequestId,
-            request,
-            cancellationToken));
-    }
-
-    [HttpPut("{correctionRequestId:guid}/reject")]
-    [Authorize(Roles = "Academic Advisor,Wellbeing Advisor")]
-    [SwaggerOperation(Summary = "[Advisor] Reject a correction request",
-        Description = "Records the reviewer and decision notes, then notifies the student.")]
-    public async Task<IActionResult> Reject(
-        Guid correctionRequestId,
-        [FromBody] CorrectionDecisionRequest request,
-        CancellationToken cancellationToken)
-    {
-        if (!TryGetCurrentAccountId(out var advisorId))
+        // Search Correction requests
+        [HttpGet("search")]
+        [Authorize(Roles = AdvisorRoles)]
+        [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor] Search/Filter correction requests",
+            Description = "Filters the correction requests of the advisor's case students by student and status (pending/approved/rejected/withdrawn). Empty fields are ignored.")]
+        public async Task<IActionResult> Search([FromQuery] SearchCorrectionRequestRequest request)
         {
-            return Unauthorized();
+            var advisorId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _correctionRequestService.SearchAsync(advisorId, request);
+            return Ok(response);
         }
 
-        return Ok(await _correctionRequestService.RejectAsync(
-            advisorId,
-            correctionRequestId,
-            request,
-            cancellationToken));
-    }
-
-    [HttpPut("{correctionRequestId:guid}/withdraw")]
-    [Authorize(Roles = "Student")]
-    [SwaggerOperation(Summary = "[Student] Withdraw a pending correction request")]
-    public async Task<IActionResult> Withdraw(
-        Guid correctionRequestId,
-        CancellationToken cancellationToken)
-    {
-        if (!TryGetCurrentAccountId(out var studentId))
+        // Create a Correction request
+        [HttpPost]
+        [Authorize(Roles = "Student")]
+        [SwaggerOperation(Summary = "[Student] Request a correction",
+            Description = "Disputes one of the student's current values (studentDataId) with an explanation and the proposed value, which must fit the data attribute's data type. " +
+                "Only the latest value of an attribute and term can be disputed, and only one pending request per value is allowed. The value on record and the proposed value are stored encrypted.")]
+        public async Task<IActionResult> Create([FromBody] CreateCorrectionRequestRequest request)
         {
-            return Unauthorized();
+            var studentId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _correctionRequestService.CreateAsync(studentId, request);
+            return Ok(response);
         }
 
-        await _correctionRequestService.WithdrawAsync(studentId, correctionRequestId, cancellationToken);
-        return NoContent();
-    }
+        // Approve a Correction request
+        [HttpPut("{id}/approve")]
+        [Authorize(Roles = AdvisorRoles)]
+        [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor] Approve a correction request",
+            Description = "Inserts a new 'correction' student data row with the proposed value and the original's valid-from date; the original row stays as history. " +
+                "Only the advisor of one of the student's open cases may review, and the student must have shared the attribute with them. The student is notified.")]
+        public async Task<IActionResult> Approve([FromRoute] Guid id, [FromBody] ReviewCorrectionRequestRequest request)
+        {
+            var advisorId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _correctionRequestService.ApproveAsync(advisorId, id, request);
+            return Ok(response);
+        }
 
-    private bool TryGetCurrentAccountId(out Guid accountId) =>
-        Guid.TryParse(User.FindFirstValue(ClaimTypes.Sid), out accountId);
+        // Reject a Correction request
+        [HttpPut("{id}/reject")]
+        [Authorize(Roles = AdvisorRoles)]
+        [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor] Reject a correction request",
+            Description = "Records the reviewer and the decision notes (required), and notifies the student.")]
+        public async Task<IActionResult> Reject([FromRoute] Guid id, [FromBody] ReviewCorrectionRequestRequest request)
+        {
+            var advisorId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _correctionRequestService.RejectAsync(advisorId, id, request);
+            return Ok(response);
+        }
+
+        // Withdraw a Correction request
+        [HttpPut("{id}/withdraw")]
+        [Authorize(Roles = "Student")]
+        [SwaggerOperation(Summary = "[Student] Withdraw a correction request",
+            Description = "Cancels one of the student's own pending correction requests.")]
+        public async Task<IActionResult> Withdraw([FromRoute] Guid id)
+        {
+            var studentId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _correctionRequestService.WithdrawAsync(studentId, id);
+            return Ok(response);
+        }
+    }
 }

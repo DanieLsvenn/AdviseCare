@@ -1,4 +1,4 @@
-using AdviseCare.Application.Exceptions;
+﻿using AdviseCare.Application.Exceptions;
 using AdviseCare.Application.Interfaces.Email;
 using AdviseCare.Application.Interfaces.Excel;
 using AdviseCare.Application.Interfaces.Repository;
@@ -41,7 +41,9 @@ builder.Services.AddCors(opt =>
 });
 
 // --- Application services ---
+// Member A
 builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IStudentProfileService, StudentProfileService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
@@ -51,19 +53,9 @@ builder.Services.AddScoped<IFacultyService, FacultyService>();
 builder.Services.AddScoped<IProgrammeService, ProgrammeService>();
 builder.Services.AddScoped<IAcademicTermService, AcademicTermService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
-builder.Services.AddScoped<IExternalServiceService, ExternalServiceService>();
-builder.Services.AddScoped<IExternalReferralService, ExternalReferralService>();
-builder.Services.AddScoped<IEscalationService, EscalationService>();
-builder.Services.AddScoped<IInterventionService, InterventionService>();
-builder.Services.AddScoped<ISupportGrantService, SupportGrantService>();
-builder.Services.AddScoped<IStudentIndicatorImportService, StudentIndicatorImportService>();
-builder.Services.AddScoped<IStudentIndicatorProfileService, StudentIndicatorProfileService>();
-builder.Services.AddScoped<IStudentDataExportService, StudentDataExportService>();
-builder.Services.AddScoped<ICorrectionRequestService, CorrectionRequestService>();
-builder.Services.AddScoped<IAuthenticatedEnvelopeEncryptionService, AuthenticatedEnvelopeEncryptionService>();
 
 // Member B
-builder.Services.AddScoped<IIndicatorService, IndicatorService>();
+builder.Services.AddScoped<IDataAttributeService, DataAttributeService>();
 builder.Services.AddScoped<IConsentPurposeService, ConsentPurposeService>();
 builder.Services.AddScoped<IAccessPolicyService, AccessPolicyService>();
 builder.Services.AddScoped<IAccessGuardService, AccessGuardService>();
@@ -74,10 +66,18 @@ builder.Services.AddScoped<IErasureRequestService, ErasureRequestService>();
 builder.Services.AddScoped<IEmergencyAccessRequestService, EmergencyAccessRequestService>();
 builder.Services.AddScoped<IAttributeKeyService, AttributeKeyService>();
 
+// Member C
+builder.Services.AddScoped<IStudentDataService, StudentDataService>();
+builder.Services.AddScoped<ICorrectionRequestService, CorrectionRequestService>();
+builder.Services.AddScoped<IExternalServiceService, ExternalServiceService>();
+builder.Services.AddScoped<IExternalReferralService, ExternalReferralService>();
+builder.Services.AddScoped<IInterventionService, InterventionService>();
+builder.Services.AddScoped<ISupportGrantService, SupportGrantService>();
+builder.Services.AddScoped<IEscalationService, EscalationService>();
+
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-builder.Services.AddScoped<IErasureWorkflowRepository, ErasureWorkflowRepository>();
 
 // --- Security ---
 builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
@@ -85,21 +85,18 @@ builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
 // --- Encryption of student data (envelope encryption, AES-256-GCM) ---
-// The API refuses to start when Encryption:MasterKey is missing or not 32 bytes of base64
+// The API refuses to start unless Encryption:MasterKeys holds numbered versions of 32 random bytes in base64 and Encryption:CurrentVersion is one of them
 builder.Services.AddOptions<EncryptionSettings>()
     .Bind(builder.Configuration.GetSection("Encryption"))
-    .Validate(settings => EncryptionSettings.IsValidMasterKey(settings.MasterKey), "Encryption:MasterKey must be 32 random bytes in base64.")
+    .Validate(settings => EncryptionSettings.IsValid(settings), "Encryption:MasterKeys must hold numbered versions of 32 random bytes in base64, and Encryption:CurrentVersion must be one of them.")
     .ValidateOnStart();
 builder.Services.AddScoped<IDataEncryptor, AesGcmDataEncryptor>();
 
 // --- Email (Gmail SMTP), storage (Supabase) and Excel import/export ---
 builder.Services.Configure<GmailSettings>(builder.Configuration.GetSection("Gmail"));
 builder.Services.Configure<SupabaseSettings>(builder.Configuration.GetSection("Supabase"));
-builder.Services.Configure<VaultTransitSettings>(builder.Configuration.GetSection("VaultTransit"));
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHttpClient<IStorageService, SupabaseStorageService>();
-builder.Services.AddHttpClient<IKeyManagementService, VaultTransitKeyManagementService>()
-    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 builder.Services.AddScoped<IExcelReader, ExcelReader>();
 builder.Services.AddScoped<ICsvReader, CsvReader>();
 builder.Services.AddScoped<IExcelWriter, ExcelWriter>();

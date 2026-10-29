@@ -49,17 +49,11 @@ public partial class Account
 
     public virtual ICollection<Activitylog> Activitylogs { get; set; } = new List<Activitylog>();
 
-    public virtual ICollection<Advisorassignment> AdvisorassignmentAdvisors { get; set; } = new List<Advisorassignment>();
+    public virtual ICollection<Casechangerequest> CasechangerequestProgrammeHeads { get; set; } = new List<Casechangerequest>();
 
-    public virtual ICollection<Advisorassignment> AdvisorassignmentAssignedByNavigations { get; set; } = new List<Advisorassignment>();
+    public virtual ICollection<Casechangerequest> CasechangerequestProposedAdvisors { get; set; } = new List<Casechangerequest>();
 
-    public virtual ICollection<Advisorassignment> AdvisorassignmentStudents { get; set; } = new List<Advisorassignment>();
-
-    public virtual ICollection<Assignmentchangerequest> AssignmentchangerequestProgrammeHeads { get; set; } = new List<Assignmentchangerequest>();
-
-    public virtual ICollection<Assignmentchangerequest> AssignmentchangerequestProposedAdvisors { get; set; } = new List<Assignmentchangerequest>();
-
-    public virtual ICollection<Assignmentchangerequest> AssignmentchangerequestRequestedByNavigations { get; set; } = new List<Assignmentchangerequest>();
+    public virtual ICollection<Casechangerequest> CasechangerequestRequestedByNavigations { get; set; } = new List<Casechangerequest>();
 
     public virtual ICollection<Attributekey> Attributekeys { get; set; } = new List<Attributekey>();
 
@@ -123,7 +117,7 @@ public partial class Account
 
     public virtual ICollection<Session> Sessions { get; set; } = new List<Session>();
 
-    public virtual ICollection<Studentindicator> Studentindicators { get; set; } = new List<Studentindicator>();
+    public virtual ICollection<Studentdata> Studentdata { get; set; } = new List<Studentdata>();
 
     public virtual Studentprofile Studentprofile { get; set; }
 

@@ -2,30 +2,55 @@ namespace AdviseCare.Application.Contracts.Responses.ExternalService
 {
     public class GetAllExternalServiceResponse
     {
-        public Guid ExternalServiceId { get; set; }
+        public Guid ExternalServiceId { get; set; } = Guid.Empty;
         public string ContactInfo { get; set; } = string.Empty;
         public string ServiceName { get; set; } = string.Empty;
         public string ServiceType { get; set; } = string.Empty;
-        public bool IsActive { get; set; }
+        public bool IsActive { get; set; } = true;
     }
 
-    public class GetAllExternalServiceWithPaginationResponse : GetAllExternalServiceResponse
+    public class GetAllExternalServiceWithPaginationResponse
     {
+        public Guid ExternalServiceId { get; set; } = Guid.Empty;
+        public string ContactInfo { get; set; } = string.Empty;
+        public string ServiceName { get; set; } = string.Empty;
+        public string ServiceType { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
     }
 
-    public class GetExternalServiceByIdResponse : GetAllExternalServiceResponse
+    public class GetExternalServiceByIdResponse
     {
+        public Guid ExternalServiceId { get; set; } = Guid.Empty;
+        public string ContactInfo { get; set; } = string.Empty;
+        public string ServiceName { get; set; } = string.Empty;
+        public string ServiceType { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
     }
 
-    public class SearchExternalServiceResponse : GetAllExternalServiceResponse
+    public class SearchExternalServiceResponse
     {
+        public Guid ExternalServiceId { get; set; } = Guid.Empty;
+        public string ContactInfo { get; set; } = string.Empty;
+        public string ServiceName { get; set; } = string.Empty;
+        public string ServiceType { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
     }
 
-    public class CreateExternalServiceResponse : GetAllExternalServiceResponse
+    public class CreateExternalServiceResponse
     {
+        public Guid ExternalServiceId { get; set; } = Guid.Empty;
+        public string ContactInfo { get; set; } = string.Empty;
+        public string ServiceName { get; set; } = string.Empty;
+        public string ServiceType { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
     }
 
-    public class UpdateExternalServiceResponse : GetAllExternalServiceResponse
+    public class UpdateExternalServiceResponse
     {
+        public Guid ExternalServiceId { get; set; } = Guid.Empty;
+        public string ContactInfo { get; set; } = string.Empty;
+        public string ServiceName { get; set; } = string.Empty;
+        public string ServiceType { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
     }
 }

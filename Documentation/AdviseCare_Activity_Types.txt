@@ -6,7 +6,7 @@ Values stored in ACTIVITYLOGS.activityType (string, camelCase).
 - Logged: actions a user wants to see in "View own activity history" and that the admin needs for accountability.
 - Not logged here: reading/viewing data (student data access goes to ACCESSLOGS, owned by Member B), and failed sign-ins.
 - Format of each line: activityType - who does it - when it is written (owner member).
-- Items marked (now) are written by the current code (Member A and Member B); the rest are drafts for the other members to use when they build their part.
+- Items marked (now) are written by the current code (Members A, B and C); the rest are drafts for Member D to use when they build their part.
 
 ==========
 1. SIGN-IN AND OWN ACCOUNT (all users)
@@ -22,7 +22,7 @@ passwordReset - any user - set a new password through the "forgot password" emai
 profileUpdated - any user - changed own username or preferred language (A, now)
 avatarUpdated - any user - uploaded a new avatar (A, now)
 notificationPreferencesUpdated - any user - turned the email or in-app channel on/off (A, now)
-dataExported - Student - downloaded the JSON export of own record (C)
+dataExported - Student - downloaded the JSON export of own record (C, now)
 
 ==========
 2. ACCOUNT MANAGEMENT (System Administrator)
@@ -59,19 +59,19 @@ supportCategoryCreated - Admin - created a support category (D)
 supportCategoryUpdated - Admin - edited or archived a support category (D)
 
 ==========
-4. INDICATOR DATA IMPORT (System Administrator)
+4. STUDENT DATA IMPORT (System Administrator)
 ==========
 
-indicatorsImported - Admin - imported indicator values from a file; detail has the file name and row count (C)
-indicatorImportFailed - Admin - an import was refused because of invalid rows; detail has the file name and invalid row count (C)
+studentDataImported - Admin - imported data attribute values from a file; detail has the file name, the inserted and missing counts and the rows left out for archived data attributes (C, now)
+studentDataImportFailed - Admin - an import was refused because of invalid rows; detail has the file name and invalid row count (C, now)
 
 ==========
 5. CONSENT AND DATA PROTECTION
 ==========
 
-indicatorCreated - Steward - created an indicator with its data attribute (B, now)
-indicatorUpdated - Steward - edited an indicator's description (B, now)
-indicatorArchived - Steward - archived an indicator/attribute (B, now)
+dataAttributeCreated - Steward - created a data attribute (B, now)
+dataAttributeUpdated - Steward - edited a data attribute's description (B, now)
+dataAttributeArchived - Steward - archived a data attribute (B, now)
 consentPurposeCreated - Steward - created a consent purpose (B, now)
 consentPurposeUpdated - Steward - edited, activated or deactivated a purpose, or changed its attributes (B, now)
 consentPurposeRetired - Steward - retired a purpose (B, now)
@@ -83,6 +83,7 @@ accessLogReviewed - Steward - reviewed a flagged access log entry (B, now)
 accessLogEntryFlagged - Student/Steward - flagged an access log entry for review (B, now)
 processingRecordExported - Steward - exported a processing record (B, now)
 erasureExecuted - Steward - executed an erasure request (B, now)
+attributeKeysRewrapped - Steward - rewrapped attribute keys with the current master key version after a rotation; detail has the count (B, now)
 emergencyAccessRequested - staff - requested emergency access (B, now, pending review)
 emergencyAccessRequestUpdated - staff - edited the justification of a pending emergency access request (B, now, pending review)
 emergencyAccessDecided - Steward - approved or rejected (with the reason) emergency access (B, now, pending review)
@@ -99,11 +100,11 @@ consentRequestAnswered - Student - granted or denied a consent request (B, now)
 ==========
 
 supportRequested - Student - created a support request (new case) (D)
-assignmentChangeRequested - Student/advisor - asked for a different advisor (D)
-caseOpened - advisor - opened a case for a student based on indicators (D)
+caseChangeRequested - Student/advisor - asked for a different advisor for one case (D)
+caseOpened - advisor - opened a case for a student based on their data (D)
 caseAssigned - Programme Head - matched a case to an advisor (D)
 caseReassigned - Programme Head - moved a case to another advisor (D)
-assignmentChangeDecided - Programme Head - approved or rejected an advisor change request (D)
+caseChangeDecided - Programme Head - approved or rejected a case change request (D)
 caseNoteFinalized - advisor - finalized a case note (D)
 caseStageChanged - advisor - moved a case to another stage (D)
 caseClosed - advisor - closed a case (D)
@@ -111,17 +112,21 @@ caseReopened - advisor - reopened a case (D)
 referralSent - advisor - referred a case to another advisor or the welfare officer (D)
 referralAnswered - advisor/officer - accepted or returned a referral (D)
 reportExported - Programme Head - exported a case report (D)
-correctionRequested - Student - asked to correct an indicator value (C, pending review)
-correctionReviewed - advisor - approved or rejected a correction request (C, pending review)
+correctionRequested - Student - asked to correct one of their data values (C, now, pending review)
+correctionRequestWithdrawn - Student - withdrew a pending correction request (C, now, pending review)
+correctionReviewed - advisor - approved or rejected a correction request (C, now, pending review)
 
 ==========
 7. WELFARE (Student Welfare Officer)
 ==========
 
-interventionLogged - Welfare Officer - logged an intervention (C)
-interventionUpdated - Welfare Officer - updated or closed an intervention (C)
-supportGrantRecorded - Welfare Officer - recorded a support grant (C)
-externalReferralCreated - Welfare Officer - referred a student to an external service (C)
-externalReferralUpdated - Welfare Officer - recorded a follow-up or outcome of an external referral (C)
-escalationRaised - Welfare Officer - escalated a case to the Programme Head (C)
-escalationResponded - Programme Head - responded to or closed an escalation (C)
+interventionLogged - Welfare Officer - logged an intervention (C, now)
+interventionUpdated - Welfare Officer - updated (including the outcome) or closed an intervention (C, now)
+supportGrantRecorded - Welfare Officer - recorded a support grant (C, now)
+supportGrantRevoked - Welfare Officer - revoked a support grant (C, now)
+externalServiceCreated - Welfare Officer - added an external service to the list (C, now)
+externalServiceUpdated - Welfare Officer - edited, deactivated or activated an external service (C, now)
+externalReferralCreated - Welfare Officer - referred a student to an external service (C, now)
+externalReferralUpdated - Welfare Officer - recorded a follow-up outcome of an external referral, or closed it (C, now)
+escalationRaised - Welfare Officer - escalated a case to the Programme Head (C, now)
+escalationResponded - Programme Head - responded to an escalation (C, now)

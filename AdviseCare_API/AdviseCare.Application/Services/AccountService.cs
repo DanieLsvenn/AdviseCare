@@ -1,4 +1,4 @@
-using AdviseCare.Application.Contracts.Requests.Account;
+﻿using AdviseCare.Application.Contracts.Requests.Account;
 using AdviseCare.Application.Contracts.Responses.Account;
 using AdviseCare.Application.DTOs;
 using AdviseCare.Application.Exceptions;
@@ -898,41 +898,6 @@ namespace AdviseCare.Application.Services
 
             await _activityLogService.LogCurrentAccountAsync("accountRolesChanged", detail);
             return true;
-        }
-
-        // Update a Student Account's student profile (STUDENTPROFILES): student code and academic status
-        public async Task<UpdateStudentProfileResponse> UpdateStudentProfileAsync(Guid AccountId, UpdateStudentProfileRequest request)
-        {
-            var account = await _accountRepository.GetByIdAsyncInclude(AccountId, a => a.Studentprofile)
-                ?? throw new NotFoundException("Account not found.");
-            var profile = account.Studentprofile
-                ?? throw new NotFoundException("This account has no student profile (only Student accounts have one).");
-
-            var studentCode = request.StudentCode.Trim();
-            if (await _studentProfileRepository.ExistsAsync(p => p.StudentCode == studentCode && p.StudentProfileId != profile.StudentProfileId))
-                throw new ConflictException($"A student with student code '{studentCode}' already exists.");
-
-            var changes = new List<string>();
-            if (profile.StudentCode != studentCode)
-                changes.Add($"student code {profile.StudentCode} -> {studentCode}");
-            if (profile.AcademicStatus != request.AcademicStatus)
-                changes.Add($"academic status {profile.AcademicStatus} -> {request.AcademicStatus}");
-
-            profile.StudentCode = studentCode;
-            profile.AcademicStatus = request.AcademicStatus;
-            await _studentProfileRepository.UpdateAsync(profile);
-
-            if (changes.Count > 0)
-                await _activityLogService.LogCurrentAccountAsync("studentProfileUpdated", $"Updated the student profile of {account.Email}: {string.Join(", ", changes)}");
-
-            return new UpdateStudentProfileResponse
-            {
-                StudentProfileId = profile.StudentProfileId,
-                StudentId = profile.StudentId,
-                FullName = account.FullName,
-                StudentCode = profile.StudentCode,
-                AcademicStatus = profile.AcademicStatus
-            };
         }
 
         // Helper: opens a Session for an Account that passed sign-in, saves it together with the Account's changes, logs it and issues the JWT

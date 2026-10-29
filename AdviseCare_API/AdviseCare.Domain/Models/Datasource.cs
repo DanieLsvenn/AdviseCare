@@ -11,7 +11,7 @@ public partial class Datasource
 
     public Guid? CreatedBy { get; set; }
 
-    public Guid IndicatorId { get; set; }
+    public Guid DataAttributeId { get; set; }
 
     public string ConnectionConfig { get; set; }
 
@@ -25,9 +25,9 @@ public partial class Datasource
 
     public virtual Account CreatedByNavigation { get; set; }
 
-    public virtual Indicator Indicator { get; set; }
+    public virtual Dataattribute DataAttribute { get; set; }
 
     public virtual ICollection<Ingestionschedule> Ingestionschedules { get; set; } = new List<Ingestionschedule>();
 
-    public virtual ICollection<Studentindicator> Studentindicators { get; set; } = new List<Studentindicator>();
+    public virtual ICollection<Studentdata> Studentdata { get; set; } = new List<Studentdata>();
 }

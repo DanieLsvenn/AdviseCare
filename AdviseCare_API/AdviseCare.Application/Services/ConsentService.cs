@@ -1,4 +1,4 @@
-using AdviseCare.Application.Contracts.Requests.Consent;
+﻿using AdviseCare.Application.Contracts.Requests.Consent;
 using AdviseCare.Application.Contracts.Responses.Consent;
 using AdviseCare.Application.Exceptions;
 using AdviseCare.Application.Interfaces.Repository;
@@ -512,8 +512,6 @@ namespace AdviseCare.Application.Services
                     ErasureRequestId = Guid.NewGuid(),
                     AttributeKeyId = key.AttributeKeyId,
                     ConsentId = consent.ConsentId,
-                    StudentId = consent.StudentId,
-                    DataAttributeId = consent.DataAttributeId,
                     RequestedAt = DateTime.UtcNow,
                     Status = "pending"
                 });

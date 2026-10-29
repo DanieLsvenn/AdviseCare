@@ -32,15 +32,13 @@ public partial class AdviseCareContext : DbContext
 
     public virtual DbSet<Activitylog> Activitylogs { get; set; }
 
-    public virtual DbSet<Advisorassignment> Advisorassignments { get; set; }
-
-    public virtual DbSet<Assignmentchangerequest> Assignmentchangerequests { get; set; }
-
     public virtual DbSet<Attributekey> Attributekeys { get; set; }
 
     public virtual DbSet<Backup> Backups { get; set; }
 
     public virtual DbSet<Case> Cases { get; set; }
+
+    public virtual DbSet<Casechangerequest> Casechangerequests { get; set; }
 
     public virtual DbSet<Casenote> Casenotes { get; set; }
 
@@ -72,8 +70,6 @@ public partial class AdviseCareContext : DbContext
 
     public virtual DbSet<Faculty> Faculties { get; set; }
 
-    public virtual DbSet<Indicator> Indicators { get; set; }
-
     public virtual DbSet<Ingestionjob> Ingestionjobs { get; set; }
 
     public virtual DbSet<Ingestionschedule> Ingestionschedules { get; set; }
@@ -96,7 +92,7 @@ public partial class AdviseCareContext : DbContext
 
     public virtual DbSet<Session> Sessions { get; set; }
 
-    public virtual DbSet<Studentindicator> Studentindicators { get; set; }
+    public virtual DbSet<Studentdata> Studentdata { get; set; }
 
     public virtual DbSet<Studentprofile> Studentprofiles { get; set; }
 
@@ -171,6 +167,7 @@ public partial class AdviseCareContext : DbContext
             entity.Property(e => e.ConsentPurposeId).HasColumnName("consentPurposeId");
             entity.Property(e => e.IsFlagged).HasColumnName("isFlagged");
             entity.Property(e => e.RecordedUserId).HasColumnName("recordedUserId");
+            entity.Property(e => e.StudentDataId).HasColumnName("studentDataId");
             entity.Property(e => e.Status)
                 .HasMaxLength(30)
                 .HasColumnName("status");
@@ -188,6 +185,10 @@ public partial class AdviseCareContext : DbContext
                 .HasForeignKey(d => d.RecordedUserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ACCESSLOGS_recordedUserId");
+
+            entity.HasOne(d => d.StudentData).WithMany(p => p.Accesslogs)
+                .HasForeignKey(d => d.StudentDataId)
+                .HasConstraintName("FK_ACCESSLOGS_studentDataId");
         });
 
         modelBuilder.Entity<Accesspolicy>(entity =>
@@ -367,98 +368,9 @@ public partial class AdviseCareContext : DbContext
                 .HasConstraintName("FK_ACTIVITYLOGS_accountId");
         });
 
-        modelBuilder.Entity<Advisorassignment>(entity =>
-        {
-            entity.ToTable("ADVISORASSIGNMENTS");
-
-            entity.Property(e => e.AdvisorAssignmentId)
-                .HasDefaultValueSql("(newsequentialid())")
-                .HasColumnName("advisorAssignmentId");
-            entity.Property(e => e.AdvisorId).HasColumnName("advisorId");
-            entity.Property(e => e.AssignedAt)
-                .HasPrecision(3)
-                .HasDefaultValueSql("(sysutcdatetime())")
-                .HasColumnName("assignedAt");
-            entity.Property(e => e.AssignedBy).HasColumnName("assignedBy");
-            entity.Property(e => e.RevokedAt)
-                .HasPrecision(3)
-                .HasColumnName("revokedAt");
-            entity.Property(e => e.Status)
-                .IsRequired()
-                .HasMaxLength(30)
-                .HasDefaultValue("active")
-                .HasColumnName("status");
-            entity.Property(e => e.StudentId).HasColumnName("studentId");
-
-            entity.HasOne(d => d.Advisor).WithMany(p => p.AdvisorassignmentAdvisors)
-                .HasForeignKey(d => d.AdvisorId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ADVISORASSIGNMENTS_advisorId");
-
-            entity.HasOne(d => d.AssignedByNavigation).WithMany(p => p.AdvisorassignmentAssignedByNavigations)
-                .HasForeignKey(d => d.AssignedBy)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ADVISORASSIGNMENTS_assignedBy");
-
-            entity.HasOne(d => d.Student).WithMany(p => p.AdvisorassignmentStudents)
-                .HasForeignKey(d => d.StudentId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ADVISORASSIGNMENTS_studentId");
-        });
-
-        modelBuilder.Entity<Assignmentchangerequest>(entity =>
-        {
-            entity.ToTable("ASSIGNMENTCHANGEREQUESTS");
-
-            entity.Property(e => e.AssignmentChangeRequestId)
-                .HasDefaultValueSql("(newsequentialid())")
-                .HasColumnName("assignmentChangeRequestId");
-            entity.Property(e => e.AdvisorAssignmentId).HasColumnName("advisorAssignmentId");
-            entity.Property(e => e.DecidedAt)
-                .HasPrecision(3)
-                .HasColumnName("decidedAt");
-            entity.Property(e => e.ProgrammeHeadId).HasColumnName("programmeHeadId");
-            entity.Property(e => e.ProposedAdvisorId).HasColumnName("proposedAdvisorId");
-            entity.Property(e => e.Reason)
-                .IsRequired()
-                .HasColumnName("reason");
-            entity.Property(e => e.RequestedAt)
-                .HasPrecision(3)
-                .HasDefaultValueSql("(sysutcdatetime())")
-                .HasColumnName("requestedAt");
-            entity.Property(e => e.RequestedBy).HasColumnName("requestedBy");
-            entity.Property(e => e.Status)
-                .IsRequired()
-                .HasMaxLength(30)
-                .HasDefaultValue("pending")
-                .HasColumnName("status");
-
-            entity.HasOne(d => d.AdvisorAssignment).WithMany(p => p.Assignmentchangerequests)
-                .HasForeignKey(d => d.AdvisorAssignmentId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ASSIGNMENTCHANGEREQUESTS_advisorAssignmentId");
-
-            entity.HasOne(d => d.ProgrammeHead).WithMany(p => p.AssignmentchangerequestProgrammeHeads)
-                .HasForeignKey(d => d.ProgrammeHeadId)
-                .HasConstraintName("FK_ASSIGNMENTCHANGEREQUESTS_programmeHeadId");
-
-            entity.HasOne(d => d.ProposedAdvisor).WithMany(p => p.AssignmentchangerequestProposedAdvisors)
-                .HasForeignKey(d => d.ProposedAdvisorId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ASSIGNMENTCHANGEREQUESTS_proposedAdvisorId");
-
-            entity.HasOne(d => d.RequestedByNavigation).WithMany(p => p.AssignmentchangerequestRequestedByNavigations)
-                .HasForeignKey(d => d.RequestedBy)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ASSIGNMENTCHANGEREQUESTS_requestedBy");
-        });
-
         modelBuilder.Entity<Attributekey>(entity =>
         {
             entity.ToTable("ATTRIBUTEKEYS");
-
-            entity.HasAlternateKey(e => new { e.AttributeKeyId, e.StudentId, e.DataAttributeId })
-                .HasName("UQ_ATTRIBUTEKEYS_key_student_attribute");
 
             entity.HasIndex(e => new { e.StudentId, e.DataAttributeId }, "UX_ATTRIBUTEKEYS_student_attribute_active")
                 .IsUnique()
@@ -472,13 +384,10 @@ public partial class AdviseCareContext : DbContext
                 .HasDefaultValueSql("(sysutcdatetime())")
                 .HasColumnName("createdAt");
             entity.Property(e => e.DataAttributeId).HasColumnName("dataAttributeId");
+            entity.Property(e => e.MasterKeyVersion).HasColumnName("masterKeyVersion");
             entity.Property(e => e.DestroyedAt)
                 .HasPrecision(3)
                 .HasColumnName("destroyedAt");
-            entity.Property(e => e.KeyManagementKeyId)
-                .IsRequired()
-                .HasMaxLength(255)
-                .HasColumnName("keyManagementKeyId");
             entity.Property(e => e.Status)
                 .IsRequired()
                 .HasMaxLength(30)
@@ -486,7 +395,7 @@ public partial class AdviseCareContext : DbContext
                 .HasColumnName("status");
             entity.Property(e => e.StudentId).HasColumnName("studentId");
             entity.Property(e => e.WrappedKey)
-                .IsRequired(false)
+                .HasMaxLength(255)
                 .HasColumnName("wrappedKey");
 
             entity.HasOne(d => d.DataAttribute).WithMany(p => p.Attributekeys)
@@ -586,6 +495,53 @@ public partial class AdviseCareContext : DbContext
                 .HasConstraintName("FK_CASES_supportCategoryId");
         });
 
+        modelBuilder.Entity<Casechangerequest>(entity =>
+        {
+            entity.ToTable("CASECHANGEREQUESTS");
+
+            entity.Property(e => e.CaseChangeRequestId)
+                .HasDefaultValueSql("(newsequentialid())")
+                .HasColumnName("caseChangeRequestId");
+            entity.Property(e => e.CaseId).HasColumnName("caseId");
+            entity.Property(e => e.DecidedAt)
+                .HasPrecision(3)
+                .HasColumnName("decidedAt");
+            entity.Property(e => e.ProgrammeHeadId).HasColumnName("programmeHeadId");
+            entity.Property(e => e.ProposedAdvisorId).HasColumnName("proposedAdvisorId");
+            entity.Property(e => e.Reason)
+                .IsRequired()
+                .HasColumnName("reason");
+            entity.Property(e => e.RequestedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("requestedAt");
+            entity.Property(e => e.RequestedBy).HasColumnName("requestedBy");
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(30)
+                .HasDefaultValue("pending")
+                .HasColumnName("status");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.Casechangerequests)
+                .HasForeignKey(d => d.CaseId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CASECHANGEREQUESTS_caseId");
+
+            entity.HasOne(d => d.ProgrammeHead).WithMany(p => p.CasechangerequestProgrammeHeads)
+                .HasForeignKey(d => d.ProgrammeHeadId)
+                .HasConstraintName("FK_CASECHANGEREQUESTS_programmeHeadId");
+
+            entity.HasOne(d => d.ProposedAdvisor).WithMany(p => p.CasechangerequestProposedAdvisors)
+                .HasForeignKey(d => d.ProposedAdvisorId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CASECHANGEREQUESTS_proposedAdvisorId");
+
+            entity.HasOne(d => d.RequestedByNavigation).WithMany(p => p.CasechangerequestRequestedByNavigations)
+                .HasForeignKey(d => d.RequestedBy)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CASECHANGEREQUESTS_requestedBy");
+        });
+
         modelBuilder.Entity<Casenote>(entity =>
         {
             entity.ToTable("CASENOTES");
@@ -659,9 +615,6 @@ public partial class AdviseCareContext : DbContext
         modelBuilder.Entity<Consent>(entity =>
         {
             entity.ToTable("CONSENTS");
-
-            entity.HasAlternateKey(e => new { e.ConsentId, e.StudentId, e.DataAttributeId })
-                .HasName("UQ_CONSENTS_consentId_studentId_dataAttributeId");
 
             entity.HasIndex(e => new { e.StudentId, e.ConsentPurposeId, e.DataAttributeId }, "UX_CONSENTS_student_purpose_attribute_granted")
                 .IsUnique()
@@ -835,30 +788,10 @@ public partial class AdviseCareContext : DbContext
         {
             entity.ToTable("CORRECTIONREQUESTS");
 
-            entity.HasIndex(e => e.StudentIndicatorId, "UX_CORRECTIONREQUESTS_pending_source")
-                .IsUnique()
-                .HasFilter("[status] = N'pending'");
-            entity.HasIndex(e => new { e.StudentId, e.Status, e.SubmittedAt }, "IX_CORRECTIONREQUESTS_student_status_submittedAt");
-
-            entity.HasOne(d => d.AttributeKey).WithMany()
-                .HasForeignKey(d => new { d.AttributeKeyId, d.StudentId, d.DataAttributeId })
-                .HasPrincipalKey(p => new { p.AttributeKeyId, p.StudentId, p.DataAttributeId })
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_CORRECTIONREQUESTS_key_student_attribute");
-
-            entity.HasOne(d => d.StudentIndicator).WithMany()
-                .HasForeignKey(d => new { d.StudentIndicatorId, d.StudentId, d.DataAttributeId })
-                .HasPrincipalKey(p => new { p.StudentIndicatorId, p.StudentId, p.DataAttributeId })
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_CORRECTIONREQUESTS_indicator_student_attribute");
-
             entity.Property(e => e.CorrectionRequestId)
                 .HasDefaultValueSql("(newsequentialid())")
                 .HasColumnName("correctionRequestId");
-            entity.Property(e => e.AttributeKeyId).HasColumnName("attributeKeyId");
             entity.Property(e => e.CurrentValue).HasColumnName("currentValue");
-            entity.Property(e => e.CurrentValueHmac).HasColumnName("currentValueHmac");
-            entity.Property(e => e.DataAttributeId).HasColumnName("dataAttributeId");
             entity.Property(e => e.DecidedAt)
                 .HasPrecision(3)
                 .HasColumnName("decidedAt");
@@ -866,38 +799,28 @@ public partial class AdviseCareContext : DbContext
             entity.Property(e => e.Explanation)
                 .IsRequired()
                 .HasColumnName("explanation");
-            entity.Property(e => e.FieldName)
-                .IsRequired()
-                .HasMaxLength(255)
-                .HasColumnName("fieldName");
             entity.Property(e => e.ProposedValue).HasColumnName("proposedValue");
             entity.Property(e => e.ReviewedBy).HasColumnName("reviewedBy");
-            entity.Property(e => e.StudentIndicatorId).HasColumnName("studentIndicatorId");
             entity.Property(e => e.Status)
                 .IsRequired()
                 .HasMaxLength(30)
                 .HasDefaultValue("pending")
                 .HasColumnName("status");
+            entity.Property(e => e.StudentDataId).HasColumnName("studentDataId");
             entity.Property(e => e.StudentId).HasColumnName("studentId");
             entity.Property(e => e.SubmittedAt)
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())")
                 .HasColumnName("submittedAt");
-            entity.Property(e => e.TextVisibility)
-                .IsRequired()
-                .HasMaxLength(30)
-                .HasDefaultValue("studentAndReviewer")
-                .HasColumnName("textVisibility");
-            entity.Property(e => e.ProposedValueHmac).HasColumnName("proposedValueHmac");
 
             entity.HasOne(d => d.ReviewedByNavigation).WithMany(p => p.CorrectionrequestReviewedByNavigations)
                 .HasForeignKey(d => d.ReviewedBy)
                 .HasConstraintName("FK_CORRECTIONREQUESTS_reviewedBy");
 
-            entity.HasOne(d => d.DataAttribute).WithMany()
-                .HasForeignKey(d => d.DataAttributeId)
+            entity.HasOne(d => d.StudentData).WithMany(p => p.Correctionrequests)
+                .HasForeignKey(d => d.StudentDataId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_CORRECTIONREQUESTS_dataAttributeId");
+                .HasConstraintName("FK_CORRECTIONREQUESTS_studentDataId");
 
             entity.HasOne(d => d.Student).WithMany(p => p.CorrectionrequestStudents)
                 .HasForeignKey(d => d.StudentId)
@@ -919,6 +842,11 @@ public partial class AdviseCareContext : DbContext
                 .IsRequired()
                 .HasMaxLength(255)
                 .HasColumnName("attributeName");
+            entity.Property(e => e.DataType)
+                .IsRequired()
+                .HasMaxLength(30)
+                .HasDefaultValue("numeric")
+                .HasColumnName("dataType");
             entity.Property(e => e.Status)
                 .IsRequired()
                 .HasMaxLength(30)
@@ -930,15 +858,15 @@ public partial class AdviseCareContext : DbContext
         {
             entity.ToTable("DATASOURCES");
 
-            entity.HasIndex(e => e.IndicatorId, "UQ_DATASOURCES_indicatorId").IsUnique();
+            entity.HasIndex(e => e.DataAttributeId, "UQ_DATASOURCES_dataAttributeId").IsUnique();
 
             entity.Property(e => e.DataSourceId)
                 .HasDefaultValueSql("(newsequentialid())")
                 .HasColumnName("dataSourceId");
             entity.Property(e => e.ConnectionConfig).HasColumnName("connectionConfig");
             entity.Property(e => e.CreatedBy).HasColumnName("createdBy");
+            entity.Property(e => e.DataAttributeId).HasColumnName("dataAttributeId");
             entity.Property(e => e.FieldMapping).HasColumnName("fieldMapping");
-            entity.Property(e => e.IndicatorId).HasColumnName("indicatorId");
             entity.Property(e => e.SourceName)
                 .IsRequired()
                 .HasMaxLength(255)
@@ -958,10 +886,10 @@ public partial class AdviseCareContext : DbContext
                 .HasForeignKey(d => d.CreatedBy)
                 .HasConstraintName("FK_DATASOURCES_createdBy");
 
-            entity.HasOne(d => d.Indicator).WithOne(p => p.Datasource)
-                .HasForeignKey<Datasource>(d => d.IndicatorId)
+            entity.HasOne(d => d.DataAttribute).WithOne(p => p.Datasource)
+                .HasForeignKey<Datasource>(d => d.DataAttributeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_DATASOURCES_indicatorId");
+                .HasConstraintName("FK_DATASOURCES_dataAttributeId");
         });
 
         modelBuilder.Entity<Emergencyaccessrequest>(entity =>
@@ -1013,24 +941,11 @@ public partial class AdviseCareContext : DbContext
         {
             entity.ToTable("ERASUREREQUESTS");
 
-            entity.HasOne(d => d.AttributeKey).WithMany(p => p.Erasurerequests)
-                .HasForeignKey(d => new { d.AttributeKeyId, d.StudentId, d.DataAttributeId })
-                .HasPrincipalKey(p => new { p.AttributeKeyId, p.StudentId, p.DataAttributeId })
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ERASUREREQUESTS_key_student_attribute");
-
-            entity.HasOne(d => d.Consent).WithMany(p => p.Erasurerequests)
-                .HasForeignKey(d => new { d.ConsentId, d.StudentId, d.DataAttributeId })
-                .HasPrincipalKey(p => new { p.ConsentId, p.StudentId, p.DataAttributeId })
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ERASUREREQUESTS_consent_student_attribute");
-
             entity.Property(e => e.ErasureRequestId)
                 .HasDefaultValueSql("(newsequentialid())")
                 .HasColumnName("erasureRequestId");
             entity.Property(e => e.AttributeKeyId).HasColumnName("attributeKeyId");
             entity.Property(e => e.ConsentId).HasColumnName("consentId");
-            entity.Property(e => e.DataAttributeId).HasColumnName("dataAttributeId");
             entity.Property(e => e.ExecutedAt)
                 .HasPrecision(3)
                 .HasColumnName("executedAt");
@@ -1044,7 +959,16 @@ public partial class AdviseCareContext : DbContext
                 .HasMaxLength(30)
                 .HasDefaultValue("pending")
                 .HasColumnName("status");
-            entity.Property(e => e.StudentId).HasColumnName("studentId");
+
+            entity.HasOne(d => d.AttributeKey).WithMany(p => p.Erasurerequests)
+                .HasForeignKey(d => d.AttributeKeyId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ERASUREREQUESTS_attributeKeyId");
+
+            entity.HasOne(d => d.Consent).WithMany(p => p.Erasurerequests)
+                .HasForeignKey(d => d.ConsentId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ERASUREREQUESTS_consentId");
 
             entity.HasOne(d => d.ExecutedByNavigation).WithMany(p => p.Erasurerequests)
                 .HasForeignKey(d => d.ExecutedBy)
@@ -1174,43 +1098,6 @@ public partial class AdviseCareContext : DbContext
                 .HasMaxLength(30)
                 .HasDefaultValue("active")
                 .HasColumnName("status");
-        });
-
-        modelBuilder.Entity<Indicator>(entity =>
-        {
-            entity.ToTable("INDICATORS");
-
-            entity.HasAlternateKey(e => new { e.IndicatorId, e.DataAttributeId })
-                .HasName("UQ_INDICATORS_indicatorId_dataAttributeId");
-
-            entity.HasIndex(e => e.DataAttributeId, "UQ_INDICATORS_dataAttributeId").IsUnique();
-
-            entity.HasIndex(e => e.IndicatorName, "UQ_INDICATORS_indicatorName").IsUnique();
-
-            entity.Property(e => e.IndicatorId)
-                .HasDefaultValueSql("(newsequentialid())")
-                .HasColumnName("indicatorId");
-            entity.Property(e => e.DataAttributeId).HasColumnName("dataAttributeId");
-            entity.Property(e => e.DataType)
-                .IsRequired()
-                .HasMaxLength(30)
-                .HasDefaultValue("numeric")
-                .HasColumnName("dataType");
-            entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.IndicatorName)
-                .IsRequired()
-                .HasMaxLength(255)
-                .HasColumnName("indicatorName");
-            entity.Property(e => e.Status)
-                .IsRequired()
-                .HasMaxLength(30)
-                .HasDefaultValue("active")
-                .HasColumnName("status");
-
-            entity.HasOne(d => d.DataAttribute).WithOne(p => p.Indicator)
-                .HasForeignKey<Indicator>(d => d.DataAttributeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_INDICATORS_dataAttributeId");
         });
 
         modelBuilder.Entity<Ingestionjob>(entity =>
@@ -1548,30 +1435,26 @@ public partial class AdviseCareContext : DbContext
                 .HasConstraintName("FK_SESSIONS_accountId");
         });
 
-        modelBuilder.Entity<Studentindicator>(entity =>
+        modelBuilder.Entity<Studentdata>(entity =>
         {
-            entity.ToTable("STUDENTINDICATORS");
+            entity.ToTable("STUDENTDATA");
 
-            entity.HasIndex(e => new { e.StudentId, e.IndicatorId, e.TransactionFrom, e.ValidFrom }, "IX_STUDENTINDICATORS_student_indicator_time");
-            entity.HasAlternateKey(e => new { e.StudentIndicatorId, e.StudentId, e.DataAttributeId })
-                .HasName("UQ_STUDENTINDICATORS_id_student_attribute");
+            entity.HasIndex(e => e.AttributeKeyId, "IX_STUDENTDATA_attributeKeyId").HasFilter("([attributeKeyId] IS NOT NULL)");
 
-            entity.Property(e => e.StudentIndicatorId)
+            entity.HasIndex(e => new { e.StudentId, e.DataAttributeId, e.TermId, e.TransactionFrom, e.ValidFrom }, "IX_STUDENTDATA_student_attribute_time");
+
+            entity.Property(e => e.StudentDataId)
                 .HasDefaultValueSql("(newsequentialid())")
-                .HasColumnName("studentIndicatorId");
-            entity.Property(e => e.DataSourceId).HasColumnName("dataSourceId");
-            entity.Property(e => e.DataAttributeId).HasColumnName("dataAttributeId");
-            entity.Property(e => e.IndicatorId).HasColumnName("indicatorId");
+                .HasColumnName("studentDataId");
             entity.Property(e => e.AttributeKeyId).HasColumnName("attributeKeyId");
-            entity.Property(e => e.IndicatorValue)
-                .IsRequired(false)
-                .HasColumnName("indicatorValue");
-            entity.Property(e => e.IsMissing).HasColumnName("isMissing");
-            entity.Property(e => e.ProvenanceNote).HasColumnName("provenanceNote");
-            entity.Property(e => e.ValueHmac).HasColumnName("valueHmac");
+            entity.Property(e => e.DataAttributeId).HasColumnName("dataAttributeId");
+            entity.Property(e => e.DataSourceId).HasColumnName("dataSourceId");
+            entity.Property(e => e.DataValue).HasColumnName("dataValue");
             entity.Property(e => e.ErasedAt)
                 .HasPrecision(3)
                 .HasColumnName("erasedAt");
+            entity.Property(e => e.IsMissing).HasColumnName("isMissing");
+            entity.Property(e => e.ProvenanceNote).HasColumnName("provenanceNote");
             entity.Property(e => e.Status)
                 .IsRequired()
                 .HasMaxLength(30)
@@ -1587,32 +1470,28 @@ public partial class AdviseCareContext : DbContext
                 .HasPrecision(3)
                 .HasColumnName("validFrom");
 
-            entity.HasOne(d => d.DataSource).WithMany(p => p.Studentindicators)
+            entity.HasOne(d => d.AttributeKey).WithMany(p => p.Studentdata)
+                .HasForeignKey(d => d.AttributeKeyId)
+                .HasConstraintName("FK_STUDENTDATA_attributeKeyId");
+
+            entity.HasOne(d => d.DataAttribute).WithMany(p => p.Studentdata)
+                .HasForeignKey(d => d.DataAttributeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_STUDENTDATA_dataAttributeId");
+
+            entity.HasOne(d => d.DataSource).WithMany(p => p.Studentdata)
                 .HasForeignKey(d => d.DataSourceId)
-                .HasConstraintName("FK_STUDENTINDICATORS_dataSourceId");
+                .HasConstraintName("FK_STUDENTDATA_dataSourceId");
 
-            entity.HasOne(d => d.Indicator).WithMany(p => p.Studentindicators)
-                .HasForeignKey(d => new { d.IndicatorId, d.DataAttributeId })
-                .HasPrincipalKey(p => new { p.IndicatorId, p.DataAttributeId })
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_STUDENTINDICATORS_indicatorId_dataAttributeId");
-
-            entity.HasOne(d => d.AttributeKey).WithMany(p => p.Studentindicators)
-                .HasForeignKey(d => new { d.AttributeKeyId, d.StudentId, d.DataAttributeId })
-                .HasPrincipalKey(p => new { p.AttributeKeyId, p.StudentId, p.DataAttributeId })
-                .IsRequired(false)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_STUDENTINDICATORS_key_student_attribute");
-
-            entity.HasOne(d => d.Student).WithMany(p => p.Studentindicators)
+            entity.HasOne(d => d.Student).WithMany(p => p.Studentdata)
                 .HasForeignKey(d => d.StudentId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_STUDENTINDICATORS_studentId");
+                .HasConstraintName("FK_STUDENTDATA_studentId");
 
-            entity.HasOne(d => d.Term).WithMany(p => p.Studentindicators)
+            entity.HasOne(d => d.Term).WithMany(p => p.Studentdata)
                 .HasForeignKey(d => d.TermId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_STUDENTINDICATORS_termId");
+                .HasConstraintName("FK_STUDENTDATA_termId");
         });
 
         modelBuilder.Entity<Studentprofile>(entity =>

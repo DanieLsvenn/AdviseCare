@@ -8,8 +8,8 @@ Same numbering as the FUTURE section of AdviseCare_Workflow_List.txt.
 ==========
 
 FU1: Scheduled data ingestion / live integration with FAP, FLM, LMS
-- What it is: connect to a real data source (database, API) and pull indicator data automatically on a schedule, instead of the admin uploading Excel/CSV/Google Sheet files
-- Already in the ERD: DATASOURCES (one data source per indicator), INGESTIONSCHEDULES, INGESTIONJOBS, and STUDENTINDICATORS.dataSourceId (null for file imports in the current version)
+- What it is: connect to a real data source (database, API) and pull student data automatically on a schedule, instead of the admin uploading Excel/CSV/Google Sheet files
+- Already in the ERD: DATASOURCES (one data source per data attribute), INGESTIONSCHEDULES, INGESTIONJOBS, and STUDENTDATA.dataSourceId (null for file imports in the current version)
 - Rules already decided: one upcoming job per schedule, minimum frequency daily, start time works like an alarm, on failure warn/skip/retry, every job is all-or-nothing
 - Why future: the school offers no data source or API for FAP, FLM or LMS
 
@@ -25,7 +25,7 @@ FU3: Backup and restore with integrity check
 
 FU4: Automated / AI case matching
 - What it is: the system suggests or picks the advisor for a new case, replacing the Programme Head's manual matching
-- Already in the ERD: no extra table needed; it would use CASES, ADVISORASSIGNMENTS, ACCOUNT_SUBJECT and SUBJECTS
+- Already in the ERD: no extra table needed; it would use CASES (incl. the student's earlier cases for familiar advisor-student pairs), ACCOUNT_SUBJECT and SUBJECTS
 - Includes: prioritising a familiar advisor-student pair (quality-of-life add-on, can also be added to manual matching earlier if time allows)
 
 FU5: Advising effectiveness analysis
@@ -44,25 +44,31 @@ FU10: Account import that also updates existing accounts
 - Already in the ERD: no extra table needed; it updates ACCOUNTS and STUDENTPROFILES
 - Current version instead: the import only creates accounts, and the admin edits a student's profile one by one (PUT /api/Accounts/{id}/student-profile)
 
-FU12: Anonymised welfare statistics
-- What it is: a summary page for the Student Welfare Officer showing how many support cases were opened in each support category over one academic term or a chosen date range, e.g. "Fall 2026 - Money: 23 cases from 19 students; Accommodation: 11 cases from 10 students", with a CSV export. It shows counts only: no names, no student codes, no case text
-- Why "anonymised": counts alone can still point at a person. If a category had only 1 or 2 students in a term, anyone who knows who asked for help could tell what it was about, so every category with fewer than 5 different students is hidden from the result (small-group suppression); an overall total is also left out, so a hidden category cannot be worked out by subtracting
-- Already in the ERD: no extra table needed; it counts CASES (openedAt, studentId, supportCategoryId) grouped by SUPPORTCATEGORIES, using ACADEMICTERMS for the term's dates; REPORTS.reportType already has "welfareStatistics" for when generated reports are stored (FU2)
-- Questions to settle before building it: count every support category or only the wellbeing/financial ones the Welfare Officer works with; who may see it (Welfare Officer only, or also the Programme Head); count by the date a case was opened or by the cases that were active in the period; the suppression threshold (5 students); whether interventions and support grants should be counted too
-- Why future: it reads only data produced by the case workflow (Member D), it is not one of the 5 core workflows, and it was left "pending review" in the requirements
-- Earlier prototype: Member C built a version of it (commit 274023e on the C branch; described in Documentation/C), removed from the current code
+FU12: Anonymised statistics
+- What it is: summary pages, with a CSV export, that count what happens in the app over one academic term or a chosen date range, without ever showing who it was about. One screen per kind of statistic, for the role that needs it:
+  + Cases (Programme Head): cases opened/closed per support category, per support type (academic/wellbeing), per faculty, per stage; average time to first contact and to closure
+  + Welfare (Student Welfare Officer): referred cases per category, interventions per type and outcome, support grants per type, external referrals per service (incl. overdue), escalations
+  + Consent (Data Protection Steward): consents granted/withdrawn per purpose and per data attribute, consent requests granted/denied, erasures executed, emergency access requests approved/rejected, flagged access log entries
+  + Imports (System Administrator): student data imported per term and data attribute, missing values per attribute, correction requests approved/rejected
+  + Accounts (System Administrator): accounts per role, faculty, academic status and link status
+- Why "anonymised": a count can still point at a person. If only 1 or 2 students are behind a number (e.g. "Family issues, faculty BA, Fall 2026: 1 case"), anyone who knows who asked for help can tell what it was about. So every cell (one category, one faculty, one period...) counted from fewer than 5 different students is hidden (small-group suppression), and totals that would let a hidden cell be worked out by subtraction are left out. Statistics that are not about students (e.g. accounts per role, imports per term) do not need suppression
+- Already in the ERD: no extra table needed; it only counts existing rows (CASES, SUPPORTCATEGORIES, CASESTAGEHISTORIES, REFERRALS, INTERVENTIONS, SUPPORTGRANTS, EXTERNALREFERRALS, ESCALATIONS, CONSENTS, CONSENTHISTORIES, CONSENTREQUESTS, ERASUREREQUESTS, EMERGENCYACCESSREQUESTS, ACCESSLOGS, STUDENTDATA, CORRECTIONREQUESTS, ACCOUNTS, STUDENTPROFILES), using ACADEMICTERMS for a term's dates; REPORTS.reportType already has "welfareStatistics" for when generated reports are stored (FU2), and more report types would be added there
+- Counts only, never values: none of these statistics decrypts a student data value; averages of student data values are FU13
+- Questions to settle before building it: which statistics each role really needs; the suppression threshold (5 students); count by the date something was created or by what was active during the period
+- Why future: it reads data produced by the core workflows, it is not one of the 5 core workflows, and it was left "pending review" in the requirements
+- Earlier prototype: Member C built the welfare part (commit 274023e on the C branch), removed from the current code
 
-FU13: Anonymised cohort indicators
-- What it is: a summary of student indicators for a group of students (a cohort): one term, one faculty, or both. A numeric indicator shows its average and the number of students behind it (e.g. "Fall 2026, faculty SE: average attendance rate 82%, 134 students"); a categorical or boolean indicator shows how many students fall in each value (e.g. "Accommodation status: dormitory 61, rented 52, family 21"). Staff can export the same summary as CSV. No single student's value or identity is ever shown
+FU13: Anonymised cohort data
+- What it is: a summary of student data for a group of students (a cohort): one term, one faculty, or both. A numeric data attribute shows its average and the number of students behind it (e.g. "Fall 2026, faculty SE: average attendance rate 82%, 134 students"); a categorical or boolean data attribute shows how many students fall in each value (e.g. "Accommodation status: dormitory 61, rented 52, family 21"). Staff can export the same summary as CSV. No single student's value or identity is ever shown
 - Why it is harder than it looks: an average is still built from each student's personal, encrypted value, so the "if you consent, we serve" rule still applies to every value that goes into it:
   + the student must have consented to that attribute under a purpose meant for statistics (e.g. a "Cohort Analytics" consent purpose created by the Steward), and the reader's role must have an active access policy for that purpose; values shared only for advising do not count
   + each value is decrypted only after the access guard allows it, and every value read is written to ACCESSLOGS (one statistic can mean hundreds of log rows)
-  + only the latest value per student, indicator and term is used; missing, erased and archived-indicator values are left out
+  + only the latest value per student, data attribute and term is used; missing, erased and archived-attribute values are left out
   + every result cell with fewer than 10 different students is hidden, so nobody can recover one student's value from a small group
   + emergency access never counts here, since it is meant for one student in an urgent situation, not for statistics
-- Already in the ERD: no extra table needed; it reads STUDENTINDICATORS, INDICATORS, ACADEMICTERMS, ACCOUNTS.facultyId and the consent tables (CONSENTPURPOSES, CONSENTS, ACCESSPOLICIES, ACCESSLOGS); it only needs a consent purpose for statistics set up by the Steward
+- Already in the ERD: no extra table needed; it reads STUDENTDATA, DATAATTRIBUTES, ACADEMICTERMS, ACCOUNTS.facultyId and the consent tables (CONSENTPURPOSES, CONSENTS, ACCESSPOLICIES, ACCESSLOGS); it only needs a consent purpose for statistics set up by the Steward
 - Questions to settle before building it: which roles may use it; how the system recognises the statistics purpose (a configuration value or a flag on CONSENTPURPOSES, not the purpose's name); the threshold (10 students); whether a statistic should write one access log row per value or one summary row
-- Why future: it depends on the indicator import, consent and encryption all being finished (the key system choice is still open), it is not one of the 5 core workflows, and it was left "pending review" in the requirements
+- Why future: it decrypts every value it counts, so it depends on the student data import, consent and encryption all being finished, it is not one of the 5 core workflows, and it was left "pending review" in the requirements
 - Earlier prototype: Member C built a version of it (commit 2ab7f75 on the C branch; described in Documentation/C), removed from the current code
 
 ==========
