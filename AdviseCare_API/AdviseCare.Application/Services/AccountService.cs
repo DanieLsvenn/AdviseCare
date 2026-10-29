@@ -21,6 +21,8 @@ namespace AdviseCare.Application.Services
         private const int ResetTokenLifetimeHours = 1;
         private const long MaxAvatarBytes = 2 * 1024 * 1024;
         private const string SystemAdministratorRole = "System Administrator";
+        private const string StudentRole = "Student";
+        private static readonly string[] AcademicStatuses = { "enrolled", "onLeave", "withdrawn", "graduated" };
 
         private readonly IGenericRepository<Account> _accountRepository;
         private readonly IGenericRepository<Role> _roleRepository;
@@ -69,7 +71,7 @@ namespace AdviseCare.Application.Services
         // Get all Accounts
         public async Task<IEnumerable<GetAllAccountResponse>> GetAll()
         {
-            var accounts = await _accountRepository.GetAllAsyncOrderBy(a => a.CreatedAt, false);
+            var accounts = await _accountRepository.GetAllAsyncIncludeOrderBy(a => a.CreatedAt, false, a => a.Studentprofile);
             var roleLookup = await GetRoleNamesLookupAsync();
 
             return accounts.Select(a => new GetAllAccountResponse
@@ -80,9 +82,11 @@ namespace AdviseCare.Application.Services
                 Email = a.Email,
                 FullName = a.FullName,
                 AuthProvider = a.AuthProvider ?? string.Empty,
+                StudentCode = a.Studentprofile?.StudentCode ?? string.Empty,
                 UserName = a.UserName,
                 CreatedAt = a.CreatedAt,
                 HasPassword = !string.IsNullOrEmpty(a.PasswordHash),
+                AcademicStatus = a.Studentprofile?.AcademicStatus ?? string.Empty,
                 LinkStatus = a.LinkStatus,
                 PreferredLanguage = a.PreferredLanguage,
                 Status = a.Status,
@@ -96,7 +100,7 @@ namespace AdviseCare.Application.Services
             if (page < 1 || pageSize < 1)
                 throw new ValidationException("Page and page size must be at least 1.");
 
-            var accounts = await _accountRepository.GetAllAsyncOrderBy(a => a.CreatedAt, false);
+            var accounts = await _accountRepository.GetAllAsyncIncludeOrderBy(a => a.CreatedAt, false, a => a.Studentprofile);
             var roleLookup = await GetRoleNamesLookupAsync();
 
             return accounts
@@ -110,9 +114,11 @@ namespace AdviseCare.Application.Services
                     Email = a.Email,
                     FullName = a.FullName,
                     AuthProvider = a.AuthProvider ?? string.Empty,
+                    StudentCode = a.Studentprofile?.StudentCode ?? string.Empty,
                     UserName = a.UserName,
                     CreatedAt = a.CreatedAt,
                     HasPassword = !string.IsNullOrEmpty(a.PasswordHash),
+                    AcademicStatus = a.Studentprofile?.AcademicStatus ?? string.Empty,
                     LinkStatus = a.LinkStatus,
                     PreferredLanguage = a.PreferredLanguage,
                     Status = a.Status,
@@ -123,7 +129,7 @@ namespace AdviseCare.Application.Services
         // Get Account by Id
         public async Task<GetAccountByIdResponse> GetByIdAsync(Guid AccountId)
         {
-            var account = await _accountRepository.GetByIdAsync(AccountId)
+            var account = await _accountRepository.GetByIdAsyncInclude(AccountId, a => a.Studentprofile)
                 ?? throw new NotFoundException("Account not found.");
 
             return new GetAccountByIdResponse
@@ -134,9 +140,11 @@ namespace AdviseCare.Application.Services
                 Email = account.Email,
                 FullName = account.FullName,
                 AuthProvider = account.AuthProvider ?? string.Empty,
+                StudentCode = account.Studentprofile?.StudentCode ?? string.Empty,
                 UserName = account.UserName,
                 CreatedAt = account.CreatedAt,
                 HasPassword = !string.IsNullOrEmpty(account.PasswordHash),
+                AcademicStatus = account.Studentprofile?.AcademicStatus ?? string.Empty,
                 LinkStatus = account.LinkStatus,
                 PreferredLanguage = account.PreferredLanguage,
                 Status = account.Status,
@@ -144,18 +152,20 @@ namespace AdviseCare.Application.Services
             };
         }
 
-        // Search Accounts by email, full name, username (contains), faculty, role, link status or account status
+        // Search Accounts by email, full name, username, student code (contains), faculty, role, academic status, link status or account status
         public async Task<List<SearchAccountResponse>> SearchAsync(SearchAccountRequest request)
         {
-            var accounts = await _accountRepository.SearchAsyncOrderBy(a =>
+            var accounts = await _accountRepository.SearchAsyncIncludeOrderBy(a =>
                 (string.IsNullOrWhiteSpace(request.Email) || a.Email.Contains(request.Email)) &&
                 (string.IsNullOrWhiteSpace(request.FullName) || a.FullName.Contains(request.FullName)) &&
                 (string.IsNullOrWhiteSpace(request.UserName) || a.UserName.Contains(request.UserName)) &&
+                (string.IsNullOrWhiteSpace(request.StudentCode) || (a.Studentprofile != null && a.Studentprofile.StudentCode.Contains(request.StudentCode))) &&
                 (request.FacultyId == null || a.FacultyId == request.FacultyId) &&
                 (string.IsNullOrWhiteSpace(request.RoleName) || a.AccountRoles.Any(ar => ar.Role.RoleName == request.RoleName)) &&
+                (string.IsNullOrWhiteSpace(request.AcademicStatus) || (a.Studentprofile != null && a.Studentprofile.AcademicStatus == request.AcademicStatus)) &&
                 (string.IsNullOrWhiteSpace(request.LinkStatus) || a.LinkStatus == request.LinkStatus) &&
                 (string.IsNullOrWhiteSpace(request.Status) || a.Status == request.Status),
-                a => a.CreatedAt, false);
+                a => a.CreatedAt, false, a => a.Studentprofile);
             var roleLookup = await GetRoleNamesLookupAsync();
 
             return accounts.Select(a => new SearchAccountResponse
@@ -166,9 +176,11 @@ namespace AdviseCare.Application.Services
                 Email = a.Email,
                 FullName = a.FullName,
                 AuthProvider = a.AuthProvider ?? string.Empty,
+                StudentCode = a.Studentprofile?.StudentCode ?? string.Empty,
                 UserName = a.UserName,
                 CreatedAt = a.CreatedAt,
                 HasPassword = !string.IsNullOrEmpty(a.PasswordHash),
+                AcademicStatus = a.Studentprofile?.AcademicStatus ?? string.Empty,
                 LinkStatus = a.LinkStatus,
                 PreferredLanguage = a.PreferredLanguage,
                 Status = a.Status,
@@ -190,6 +202,12 @@ namespace AdviseCare.Application.Services
                 await EnsureActiveFacultyAsync(request.FacultyId.Value);
 
             var roles = await ResolveRolesAsync(request.RoleNames);
+            var studentCode = request.StudentCode.Trim();
+            var studentErrors = ValidateStudentFields(roles.Any(r => r.RoleName == StudentRole), studentCode, request.AcademicStatus.Trim());
+            if (studentErrors.Count > 0)
+                throw new ValidationException(string.Join("; ", studentErrors) + ".");
+            if (!string.IsNullOrEmpty(studentCode) && await _studentProfileRepository.ExistsAsync(p => p.StudentCode == studentCode))
+                throw new ConflictException($"A student with student code '{studentCode}' already exists.");
 
             var account = new Account
             {
@@ -203,19 +221,13 @@ namespace AdviseCare.Application.Services
                 PreferredLanguage = "vi",
                 Status = "active"
             };
+            if (!string.IsNullOrEmpty(studentCode))
+                account.Studentprofile = NewStudentProfile(account.AccountId, studentCode, request.AcademicStatus.Trim());
 
-            // Staged so the account and its roles commit together
+            // Staged so the account, its roles and its student profile commit together
             _accountRepository.PrepareCreate(account);
             foreach (var role in roles)
                 _accountRoleRepository.PrepareCreate(new AccountRole { AccountId = account.AccountId, RoleId = role.RoleId, AssignedAt = DateTime.UtcNow });
-            if (roles.Any(role => role.RoleName == "Student"))
-            {
-                _studentProfileRepository.PrepareCreate(new Studentprofile
-                {
-                    StudentId = account.AccountId,
-                    AcademicStatus = "unknown"
-                });
-            }
             await _accountRepository.SaveAsync();
 
             await _activityLogService.LogCurrentAccountAsync("accountCreated", $"Created account {account.Email} ({string.Join(", ", roles.Select(r => r.RoleName))})");
@@ -228,9 +240,11 @@ namespace AdviseCare.Application.Services
                 Email = account.Email,
                 FullName = account.FullName,
                 AuthProvider = account.AuthProvider ?? string.Empty,
+                StudentCode = account.Studentprofile?.StudentCode ?? string.Empty,
                 UserName = account.UserName,
                 CreatedAt = account.CreatedAt,
                 HasPassword = false,
+                AcademicStatus = account.Studentprofile?.AcademicStatus ?? string.Empty,
                 LinkStatus = account.LinkStatus,
                 PreferredLanguage = account.PreferredLanguage,
                 Status = account.Status,
@@ -241,7 +255,7 @@ namespace AdviseCare.Application.Services
         // Update an Account's details; changing the email unlinks its Google account, so the linking email must be sent again
         public async Task<UpdateAccountResponse> UpdateAsync(Guid AccountId, UpdateAccountRequest request)
         {
-            var account = await _accountRepository.GetByIdAsync(AccountId)
+            var account = await _accountRepository.GetByIdAsyncInclude(AccountId, a => a.Studentprofile)
                 ?? throw new NotFoundException("Account not found.");
 
             var email = request.Email.Trim().ToLowerInvariant();
@@ -278,9 +292,11 @@ namespace AdviseCare.Application.Services
                 Email = account.Email,
                 FullName = account.FullName,
                 AuthProvider = account.AuthProvider ?? string.Empty,
+                StudentCode = account.Studentprofile?.StudentCode ?? string.Empty,
                 UserName = account.UserName,
                 CreatedAt = account.CreatedAt,
                 HasPassword = !string.IsNullOrEmpty(account.PasswordHash),
+                AcademicStatus = account.Studentprofile?.AcademicStatus ?? string.Empty,
                 LinkStatus = account.LinkStatus,
                 PreferredLanguage = account.PreferredLanguage,
                 Status = account.Status,
@@ -288,7 +304,7 @@ namespace AdviseCare.Application.Services
             };
         }
 
-        // Import Accounts from an Excel file (columns: email, fullName, userName, facultyCode, role).
+        // Import Accounts from an Excel file (columns: email, fullName, userName, facultyCode, role, and for Student rows also studentCode, academicStatus).
         // All-or-nothing: if any row is invalid nothing is created and every invalid row is returned.
         public async Task<ImportAccountResponse> ImportAsync(ImportAccountRequest request)
         {
@@ -323,10 +339,12 @@ namespace AdviseCare.Application.Services
             var existingAccounts = await _accountRepository.GetAllAsync();
             var existingEmails = existingAccounts.Select(a => a.Email).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var existingUserNames = existingAccounts.Select(a => a.UserName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var existingStudentCodes = (await _studentProfileRepository.GetAllAsync()).Select(p => p.StudentCode).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var faculties = (await _facultyRepository.GetAllAsync()).ToDictionary(f => f.FacultyCode, StringComparer.OrdinalIgnoreCase);
             var roles = (await _roleRepository.GetAllAsync()).ToDictionary(r => r.RoleName, StringComparer.OrdinalIgnoreCase);
             var fileEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var fileUserNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var fileStudentCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var emailValidator = new System.ComponentModel.DataAnnotations.EmailAddressAttribute();
 
             var accounts = new List<(Account Account, List<Role> Roles)>();
@@ -338,6 +356,8 @@ namespace AdviseCare.Application.Services
                 var facultyCode = row.Values.GetValueOrDefault("facultyCode", string.Empty).Trim();
                 var roleNames = row.Values.GetValueOrDefault("role", string.Empty)
                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                var studentCode = row.Values.GetValueOrDefault("studentCode", string.Empty).Trim();
+                var academicStatus = row.Values.GetValueOrDefault("academicStatus", string.Empty).Trim();
 
                 var rowErrors = new List<string>();
                 if (string.IsNullOrEmpty(email)) rowErrors.Add("email is empty");
@@ -366,13 +386,22 @@ namespace AdviseCare.Application.Services
                     else rowErrors.Add($"role '{roleName}' does not exist");
                 }
 
+                // Student rows have 7 fields (+ studentCode, academicStatus), every other row has 5
+                var isStudent = rowRoles.Any(r => r.RoleName == StudentRole);
+                rowErrors.AddRange(ValidateStudentFields(isStudent, studentCode, academicStatus));
+                if (isStudent && !string.IsNullOrEmpty(studentCode))
+                {
+                    if (existingStudentCodes.Contains(studentCode)) rowErrors.Add($"studentCode '{studentCode}' is already used by a student");
+                    else if (!fileStudentCodes.Add(studentCode)) rowErrors.Add($"studentCode '{studentCode}' appears more than once in the file");
+                }
+
                 if (rowErrors.Count > 0)
                 {
                     errors.Add(new ImportAccountErrorResponse { RowNumber = row.RowNumber, Message = string.Join("; ", rowErrors) + "." });
                     continue;
                 }
 
-                accounts.Add((new Account
+                var account = new Account
                 {
                     AccountId = Guid.NewGuid(),
                     FacultyId = faculty!.FacultyId,
@@ -383,26 +412,21 @@ namespace AdviseCare.Application.Services
                     LinkStatus = "notLinked",
                     PreferredLanguage = "vi",
                     Status = "active"
-                }, rowRoles));
+                };
+                if (isStudent)
+                    account.Studentprofile = NewStudentProfile(account.AccountId, studentCode, academicStatus);
+                accounts.Add((account, rowRoles));
             }
 
             if (errors.Count > 0)
                 return new ImportAccountResponse { IsSuccess = false, Errors = errors };
 
-            // Staged so every account and role commits in one save
+            // Staged so every account, role and student profile commits in one save
             foreach (var (account, accountRoles) in accounts)
             {
                 _accountRepository.PrepareCreate(account);
                 foreach (var role in accountRoles)
                     _accountRoleRepository.PrepareCreate(new AccountRole { AccountId = account.AccountId, RoleId = role.RoleId, AssignedAt = DateTime.UtcNow });
-                if (accountRoles.Any(role => role.RoleName == "Student"))
-                {
-                    _studentProfileRepository.PrepareCreate(new Studentprofile
-                    {
-                        StudentId = account.AccountId,
-                        AcademicStatus = "unknown"
-                    });
-                }
             }
             await _accountRepository.SaveAsync();
 
@@ -656,7 +680,7 @@ namespace AdviseCare.Application.Services
         // Get the profile of the signed-in Account
         public async Task<GetMyProfileResponse> GetMyProfileAsync(Guid AccountId)
         {
-            var account = await _accountRepository.GetByIdAsync(AccountId)
+            var account = await _accountRepository.GetByIdAsyncInclude(AccountId, a => a.Studentprofile)
                 ?? throw new NotFoundException("Account not found.");
 
             return new GetMyProfileResponse
@@ -667,9 +691,11 @@ namespace AdviseCare.Application.Services
                 Email = account.Email,
                 FullName = account.FullName,
                 AuthProvider = account.AuthProvider ?? string.Empty,
+                StudentCode = account.Studentprofile?.StudentCode ?? string.Empty,
                 UserName = account.UserName,
                 CreatedAt = account.CreatedAt,
                 HasPassword = !string.IsNullOrEmpty(account.PasswordHash),
+                AcademicStatus = account.Studentprofile?.AcademicStatus ?? string.Empty,
                 LinkStatus = account.LinkStatus,
                 PreferredLanguage = account.PreferredLanguage,
                 Status = account.Status,
@@ -680,7 +706,7 @@ namespace AdviseCare.Application.Services
         // Update the signed-in Account's own settings: username and preferred language (the full name is set by the admin)
         public async Task<UpdateMyProfileResponse> UpdateMyProfileAsync(Guid AccountId, UpdateMyProfileRequest request)
         {
-            var account = await _accountRepository.GetByIdAsync(AccountId)
+            var account = await _accountRepository.GetByIdAsyncInclude(AccountId, a => a.Studentprofile)
                 ?? throw new NotFoundException("Account not found.");
 
             var userName = request.UserName.Trim();
@@ -701,9 +727,11 @@ namespace AdviseCare.Application.Services
                 Email = account.Email,
                 FullName = account.FullName,
                 AuthProvider = account.AuthProvider ?? string.Empty,
+                StudentCode = account.Studentprofile?.StudentCode ?? string.Empty,
                 UserName = account.UserName,
                 CreatedAt = account.CreatedAt,
                 HasPassword = !string.IsNullOrEmpty(account.PasswordHash),
+                AcademicStatus = account.Studentprofile?.AcademicStatus ?? string.Empty,
                 LinkStatus = account.LinkStatus,
                 PreferredLanguage = account.PreferredLanguage,
                 Status = account.Status,
@@ -830,14 +858,17 @@ namespace AdviseCare.Application.Services
                 AssignedAt = DateTime.UtcNow
             };
             _accountRoleRepository.PrepareCreate(accountRole);
-            if (role.RoleName == "Student" &&
-                !await _studentProfileRepository.ExistsAsync(profile => profile.StudentId == account.AccountId))
+
+            // The Student role needs a student profile; one kept from an earlier Student role is reused
+            if (role.RoleName == StudentRole && !await _studentProfileRepository.ExistsAsync(p => p.StudentId == account.AccountId))
             {
-                _studentProfileRepository.PrepareCreate(new Studentprofile
-                {
-                    StudentId = account.AccountId,
-                    AcademicStatus = "unknown"
-                });
+                var studentCode = request.StudentCode.Trim();
+                var studentErrors = ValidateStudentFields(true, studentCode, request.AcademicStatus.Trim());
+                if (studentErrors.Count > 0)
+                    throw new ValidationException(string.Join("; ", studentErrors) + ".");
+                if (await _studentProfileRepository.ExistsAsync(p => p.StudentCode == studentCode))
+                    throw new ConflictException($"A student with student code '{studentCode}' already exists.");
+                _studentProfileRepository.PrepareCreate(NewStudentProfile(account.AccountId, studentCode, request.AcademicStatus.Trim()));
             }
             await _accountRoleRepository.SaveAsync();
 
@@ -867,6 +898,41 @@ namespace AdviseCare.Application.Services
 
             await _activityLogService.LogCurrentAccountAsync("accountRolesChanged", detail);
             return true;
+        }
+
+        // Update a Student Account's student profile (STUDENTPROFILES): student code and academic status
+        public async Task<UpdateStudentProfileResponse> UpdateStudentProfileAsync(Guid AccountId, UpdateStudentProfileRequest request)
+        {
+            var account = await _accountRepository.GetByIdAsyncInclude(AccountId, a => a.Studentprofile)
+                ?? throw new NotFoundException("Account not found.");
+            var profile = account.Studentprofile
+                ?? throw new NotFoundException("This account has no student profile (only Student accounts have one).");
+
+            var studentCode = request.StudentCode.Trim();
+            if (await _studentProfileRepository.ExistsAsync(p => p.StudentCode == studentCode && p.StudentProfileId != profile.StudentProfileId))
+                throw new ConflictException($"A student with student code '{studentCode}' already exists.");
+
+            var changes = new List<string>();
+            if (profile.StudentCode != studentCode)
+                changes.Add($"student code {profile.StudentCode} -> {studentCode}");
+            if (profile.AcademicStatus != request.AcademicStatus)
+                changes.Add($"academic status {profile.AcademicStatus} -> {request.AcademicStatus}");
+
+            profile.StudentCode = studentCode;
+            profile.AcademicStatus = request.AcademicStatus;
+            await _studentProfileRepository.UpdateAsync(profile);
+
+            if (changes.Count > 0)
+                await _activityLogService.LogCurrentAccountAsync("studentProfileUpdated", $"Updated the student profile of {account.Email}: {string.Join(", ", changes)}");
+
+            return new UpdateStudentProfileResponse
+            {
+                StudentProfileId = profile.StudentProfileId,
+                StudentId = profile.StudentId,
+                FullName = account.FullName,
+                StudentCode = profile.StudentCode,
+                AcademicStatus = profile.AcademicStatus
+            };
         }
 
         // Helper: opens a Session for an Account that passed sign-in, saves it together with the Account's changes, logs it and issues the JWT
@@ -956,6 +1022,36 @@ namespace AdviseCare.Application.Services
             }
 
             return resolvedRoles;
+        }
+
+        // Helper: Student accounts must have a student code and an academic status, every other account must leave both empty
+        private static List<string> ValidateStudentFields(bool isStudent, string studentCode, string academicStatus)
+        {
+            var errors = new List<string>();
+            if (isStudent)
+            {
+                if (string.IsNullOrEmpty(studentCode)) errors.Add("studentCode is empty");
+                else if (studentCode.Length > 50) errors.Add("studentCode is longer than 50 characters");
+                if (string.IsNullOrEmpty(academicStatus)) errors.Add("academicStatus is empty");
+                else if (!AcademicStatuses.Contains(academicStatus)) errors.Add($"academicStatus '{academicStatus}' must be enrolled, onLeave, withdrawn or graduated");
+            }
+            else if (!string.IsNullOrEmpty(studentCode) || !string.IsNullOrEmpty(academicStatus))
+            {
+                errors.Add("studentCode and academicStatus must be empty for accounts without the Student role");
+            }
+            return errors;
+        }
+
+        // Helper: a new student profile for a Student account
+        private static Studentprofile NewStudentProfile(Guid studentId, string studentCode, string academicStatus)
+        {
+            return new Studentprofile
+            {
+                StudentProfileId = Guid.NewGuid(),
+                StudentId = studentId,
+                StudentCode = studentCode,
+                AcademicStatus = academicStatus
+            };
         }
 
         // Helper: role names currently assigned to a single Account

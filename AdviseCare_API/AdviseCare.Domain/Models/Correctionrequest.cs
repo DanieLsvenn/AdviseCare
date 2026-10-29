@@ -47,7 +47,7 @@ public partial class Correctionrequest
 
     public virtual Dataattribute DataAttribute { get; set; }
 
-    public virtual Studentprofile Student { get; set; }
+    public virtual Account Student { get; set; }
 
     public virtual Studentindicator StudentIndicator { get; set; }
 }

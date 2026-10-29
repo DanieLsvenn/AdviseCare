@@ -43,7 +43,7 @@ public partial class Studentindicator
 
     public virtual Attributekey AttributeKey { get; set; }
 
-    public virtual Studentprofile Student { get; set; }
+    public virtual Account Student { get; set; }
 
     public virtual Academicterm Term { get; set; }
 }

@@ -494,7 +494,7 @@ public partial class AdviseCareContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ATTRIBUTEKEYS_dataAttributeId");
 
-            entity.HasOne(d => d.Student).WithMany()
+            entity.HasOne(d => d.Student).WithMany(p => p.Attributekeys)
                 .HasForeignKey(d => d.StudentId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ATTRIBUTEKEYS_studentId");
@@ -698,7 +698,7 @@ public partial class AdviseCareContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_CONSENTS_dataAttributeId");
 
-            entity.HasOne(d => d.Student).WithMany()
+            entity.HasOne(d => d.Student).WithMany(p => p.Consents)
                 .HasForeignKey(d => d.StudentId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_CONSENTS_studentId");
@@ -899,7 +899,7 @@ public partial class AdviseCareContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_CORRECTIONREQUESTS_dataAttributeId");
 
-            entity.HasOne(d => d.Student).WithMany()
+            entity.HasOne(d => d.Student).WithMany(p => p.CorrectionrequestStudents)
                 .HasForeignKey(d => d.StudentId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_CORRECTIONREQUESTS_studentId");
@@ -1604,7 +1604,7 @@ public partial class AdviseCareContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_STUDENTINDICATORS_key_student_attribute");
 
-            entity.HasOne(d => d.Student).WithMany()
+            entity.HasOne(d => d.Student).WithMany(p => p.Studentindicators)
                 .HasForeignKey(d => d.StudentId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_STUDENTINDICATORS_studentId");
@@ -1618,33 +1618,29 @@ public partial class AdviseCareContext : DbContext
         modelBuilder.Entity<Studentprofile>(entity =>
         {
             entity.ToTable("STUDENTPROFILES");
-            entity.HasKey(e => e.StudentId);
 
-            entity.HasIndex(e => e.StudentCode, "UX_STUDENTPROFILES_studentCode")
-                .IsUnique()
-                .HasFilter("([studentCode] IS NOT NULL)");
+            entity.HasIndex(e => e.StudentCode, "UQ_STUDENTPROFILES_studentCode").IsUnique();
 
-            entity.Property(e => e.StudentId).HasColumnName("studentId");
-            entity.Property(e => e.StudentCode)
-                .HasMaxLength(50)
-                .HasColumnName("studentCode");
-            entity.Property(e => e.ProgrammeId).HasColumnName("programmeId");
+            entity.HasIndex(e => e.StudentId, "UQ_STUDENTPROFILES_studentId").IsUnique();
+
+            entity.Property(e => e.StudentProfileId)
+                .HasDefaultValueSql("(newsequentialid())")
+                .HasColumnName("studentProfileId");
             entity.Property(e => e.AcademicStatus)
                 .IsRequired()
                 .HasMaxLength(30)
-                .HasDefaultValue("unknown")
+                .HasDefaultValue("enrolled")
                 .HasColumnName("academicStatus");
+            entity.Property(e => e.StudentCode)
+                .IsRequired()
+                .HasMaxLength(50)
+                .HasColumnName("studentCode");
+            entity.Property(e => e.StudentId).HasColumnName("studentId");
 
-            entity.HasOne(e => e.Account)
-                .WithOne()
-                .HasForeignKey<Studentprofile>(e => e.StudentId)
+            entity.HasOne(d => d.Student).WithOne(p => p.Studentprofile)
+                .HasForeignKey<Studentprofile>(d => d.StudentId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_STUDENTPROFILES_studentId");
-
-            entity.HasOne<Programme>()
-                .WithMany()
-                .HasForeignKey(e => e.ProgrammeId)
-                .HasConstraintName("FK_STUDENTPROFILES_programmeId");
         });
 
         modelBuilder.Entity<Subject>(entity =>

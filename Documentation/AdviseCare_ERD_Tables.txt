@@ -17,52 +17,61 @@ linkStatus - enum - Google account linking state (notLinked/emailSent/linked), s
 preferredLanguage - enum - drives "Switch interface language between Vietnamese and English"
 status - enum - full lifecycle state (active/deactivated/banned) used by "Ban/Unban an account"
 
-1 ACCOUNTS - 8 FACULTIES: many to one (facultyId)
-1 ACCOUNTS - 3 ROLES: many to many => 1 ACCOUNTS - 2 ACCOUNT_ROLE - 3 ROLES
-1 ACCOUNTS - 12 SUBJECTS: many to many => 1 ACCOUNTS - 18 ACCOUNT_SUBJECT - 12 SUBJECTS
-1 ACCOUNTS - 4 SESSIONS: one to many (accountId)
-1 ACCOUNTS - 5 NOTIFICATIONS: one to many (accountId)
-1 ACCOUNTS - 6 NOTIFICATIONPREFERENCES: one to many (accountId)
-1 ACCOUNTS - 7 ACTIVITYLOGS: one to many (accountId)
-1 ACCOUNTS - 14 DATASOURCES: one to many (createdBy)
-1 ACCOUNTS - 17 STUDENTINDICATORS: one to many (studentId)
-1 ACCOUNTS - 19 SUPPORTCATEGORIES: one to many (createdBy)
-1 ACCOUNTS - 20 ADVISORASSIGNMENTS: one to many (advisorId), one to many (assignedBy), one to many (studentId)
-1 ACCOUNTS - 21 ASSIGNMENTCHANGEREQUESTS: one to many (programmeHeadId), one to many (proposedAdvisorId), one to many (requestedBy)
-1 ACCOUNTS - 22 CASES: one to many (advisorId), one to many (openedBy), one to many (studentId)
-1 ACCOUNTS - 23 CASENOTES: one to many (authorId)
-1 ACCOUNTS - 24 CASESTAGEHISTORIES: one to many (changedBy)
-1 ACCOUNTS - 25 REFERRALS: one to many (fromAccountId), one to many (toAccountId)
-1 ACCOUNTS - 26 CORRECTIONREQUESTS: one to many (reviewedBy), one to many (studentId)
-1 ACCOUNTS - 27 INTERVENTIONS: one to many (officerId)
-1 ACCOUNTS - 30 EXTERNALREFERRALS: one to many (referredBy)
-1 ACCOUNTS - 31 ESCALATIONS: one to many (escalatedBy), one to many (escalatedTo)
-1 ACCOUNTS - 32 CONSENTPURPOSES: one to many (createdBy)
-1 ACCOUNTS - 34 CONSENTS: one to many (studentId)
-1 ACCOUNTS - 35 CONSENTHISTORIES: one to many (changedBy)
-1 ACCOUNTS - 36 CONSENTREQUESTS: one to many (advisorId), one to many (studentId)
-1 ACCOUNTS - 37 ACCESSPOLICIES: one to many (createdBy)
-1 ACCOUNTS - 38 ACCESSLOGS: one to many (accessorId), one to many (recordedUserId)
-1 ACCOUNTS - 39 EMERGENCYACCESSREQUESTS: one to many (requestedBy), one to many (stewardId), one to many (studentId)
-1 ACCOUNTS - 40 ERASUREREQUESTS: one to many (executedBy)
-1 ACCOUNTS - 41 ATTRIBUTEKEYS: one to many (studentId)
-1 ACCOUNTS - 42 REPORTS: one to many (generatedBy)
-1 ACCOUNTS - 43 BACKUPS: one to many (createdBy)
-1 ACCOUNTS - 44 RESTOREOPERATIONS: one to many (executedBy)
+1 ACCOUNTS - 2 STUDENTPROFILES: one to one (studentId)
+1 ACCOUNTS - 9 FACULTIES: many to one (facultyId)
+1 ACCOUNTS - 4 ROLES: many to many => 1 ACCOUNTS - 3 ACCOUNT_ROLE - 4 ROLES
+1 ACCOUNTS - 13 SUBJECTS: many to many => 1 ACCOUNTS - 19 ACCOUNT_SUBJECT - 13 SUBJECTS
+1 ACCOUNTS - 5 SESSIONS: one to many (accountId)
+1 ACCOUNTS - 6 NOTIFICATIONS: one to many (accountId)
+1 ACCOUNTS - 7 NOTIFICATIONPREFERENCES: one to many (accountId)
+1 ACCOUNTS - 8 ACTIVITYLOGS: one to many (accountId)
+1 ACCOUNTS - 15 DATASOURCES: one to many (createdBy)
+1 ACCOUNTS - 18 STUDENTINDICATORS: one to many (studentId)
+1 ACCOUNTS - 20 SUPPORTCATEGORIES: one to many (createdBy)
+1 ACCOUNTS - 21 ADVISORASSIGNMENTS: one to many (advisorId), one to many (assignedBy), one to many (studentId)
+1 ACCOUNTS - 22 ASSIGNMENTCHANGEREQUESTS: one to many (programmeHeadId), one to many (proposedAdvisorId), one to many (requestedBy)
+1 ACCOUNTS - 23 CASES: one to many (advisorId), one to many (openedBy), one to many (studentId)
+1 ACCOUNTS - 24 CASENOTES: one to many (authorId)
+1 ACCOUNTS - 25 CASESTAGEHISTORIES: one to many (changedBy)
+1 ACCOUNTS - 26 REFERRALS: one to many (fromAccountId), one to many (toAccountId)
+1 ACCOUNTS - 27 CORRECTIONREQUESTS: one to many (reviewedBy), one to many (studentId)
+1 ACCOUNTS - 28 INTERVENTIONS: one to many (officerId)
+1 ACCOUNTS - 31 EXTERNALREFERRALS: one to many (referredBy)
+1 ACCOUNTS - 32 ESCALATIONS: one to many (escalatedBy), one to many (escalatedTo)
+1 ACCOUNTS - 33 CONSENTPURPOSES: one to many (createdBy)
+1 ACCOUNTS - 35 CONSENTS: one to many (studentId)
+1 ACCOUNTS - 36 CONSENTHISTORIES: one to many (changedBy)
+1 ACCOUNTS - 37 CONSENTREQUESTS: one to many (advisorId), one to many (studentId)
+1 ACCOUNTS - 38 ACCESSPOLICIES: one to many (createdBy)
+1 ACCOUNTS - 39 ACCESSLOGS: one to many (accessorId), one to many (recordedUserId)
+1 ACCOUNTS - 40 EMERGENCYACCESSREQUESTS: one to many (requestedBy), one to many (stewardId), one to many (studentId)
+1 ACCOUNTS - 41 ERASUREREQUESTS: one to many (executedBy)
+1 ACCOUNTS - 42 ATTRIBUTEKEYS: one to many (studentId)
+1 ACCOUNTS - 43 REPORTS: one to many (generatedBy)
+1 ACCOUNTS - 44 BACKUPS: one to many (createdBy)
+1 ACCOUNTS - 45 RESTOREOPERATIONS: one to many (executedBy)
 
-2. ACCOUNT_ROLE
+2. STUDENTPROFILES
+studentProfileId (PK) - uuid - unique identifier for one student's school record, created together with the Student account (single create, account import, or giving an account the Student role)
+studentId (FK) - uuid - the Student account this profile belongs to; unique, so a Student account has exactly one profile and staff accounts have none
+studentCode - string - the student code issued by the school (e.g. SE180001), unique; taken from the studentCode column of the account import sheet and used to match students in indicator imports
+academicStatus - enum - the student's academic status (enrolled/onLeave/withdrawn/graduated), taken from the academicStatus column of the account import sheet and updated by the admin; separate from the account status (active/deactivated/banned), which only controls sign-in
+
+2 STUDENTPROFILES - 1 ACCOUNTS: one to one (studentId)
+
+3. ACCOUNT_ROLE
 accountId (FK) - uuid - which account is being granted a role
 roleId (FK) - uuid - which role is being granted
 assignedAt - date - when the role was assigned, needed for "Adjust roles for each staff" history/audit
 
-3. ROLES
+4. ROLES
 roleId (PK) - uuid - unique identifier for each system role (System Administrator, Data Protection Steward, Academic Advisor, Wellbeing Advisor, Student Welfare Officer, Student, Programme Head)
 roleName - string - human-readable role label shown in admin screens and access policy configuration
 
-3 ROLES - 1 ACCOUNTS: many to many => 1 ACCOUNTS - 2 ACCOUNT_ROLE - 3 ROLES
-3 ROLES - 37 ACCESSPOLICIES: one to many (roleId)
+4 ROLES - 1 ACCOUNTS: many to many => 1 ACCOUNTS - 3 ACCOUNT_ROLE - 4 ROLES
+4 ROLES - 38 ACCESSPOLICIES: one to many (roleId)
 
-4. SESSIONS
+5. SESSIONS
 sessionId (PK) - uuid - unique identifier for one login session
 accountId (FK) - uuid - which account this session belongs to
 deviceInfo - string - identifies the device/browser, so a user can recognize and "log out of other sessions"
@@ -70,9 +79,9 @@ loginAt - date - when the session started; the session ends on its own 1 month a
 logoutAt - date - when the session ended (or was force-ended)
 isActive - bool - whether this session is still live (false after logout, after 1 month, after a password change/reset, or when the account is deactivated/banned), so "other sessions" can be listed and killed
 
-4 SESSIONS - 1 ACCOUNTS: many to one (accountId)
+5 SESSIONS - 1 ACCOUNTS: many to one (accountId)
 
-5. NOTIFICATIONS
+6. NOTIFICATIONS
 notificationId (PK) - uuid - unique identifier for one notification
 accountId (FK) - uuid - who the notification was sent to
 message - string - the notification body text
@@ -81,58 +90,58 @@ title - string - short headline shown in the notification list
 createdAt - date - when the notification was generated, used for sorting and "clear old notifications"
 isRead - bool - whether the user has seen it, drives the unread badge/count
 
-5 NOTIFICATIONS - 1 ACCOUNTS: many to one (accountId)
+6 NOTIFICATIONS - 1 ACCOUNTS: many to one (accountId)
 
-6. NOTIFICATIONPREFERENCES
+7. NOTIFICATIONPREFERENCES
 notificationPreferenceId (PK) - uuid - unique identifier for one preference row
 accountId (FK) - uuid - which account this preference belongs to
 channel - enum - which delivery channel (email vs in-app) the preference applies to
 isEnabled - bool - whether that channel is turned on for that account
 
-6 NOTIFICATIONPREFERENCES - 1 ACCOUNTS: many to one (accountId)
+7 NOTIFICATIONPREFERENCES - 1 ACCOUNTS: many to one (accountId)
 
-7. ACTIVITYLOGS
+8. ACTIVITYLOGS
 activityLogId (PK) - uuid - unique identifier for one logged activity
 accountId (FK) - uuid - whose activity this is, for "view own activity history"
 activityDetail - string - free-text detail of what happened (e.g. "updated profile email")
 activityType - string - category of the activity, used for filtering the history view
 occurredAt - date - when the activity happened, used for sorting the timeline
 
-7 ACTIVITYLOGS - 1 ACCOUNTS: many to one (accountId)
+8 ACTIVITYLOGS - 1 ACCOUNTS: many to one (accountId)
 
 
 REFERENCE / MASTER DATA
 
-8. FACULTIES
+9. FACULTIES
 facultyId (PK) - uuid - unique identifier for a faculty/department
 facultyCode - string - short code used in tables/reports where full names would be too long
 facultyName - string - full display name of the faculty
 status - enum - lifecycle state (active/archived) so a discontinued faculty can be retired without deleting its history
 
-8 FACULTIES - 1 ACCOUNTS: one to many (facultyId)
-8 FACULTIES - 9 PROGRAMMES: one to many (facultyId)
-8 FACULTIES - 12 SUBJECTS: one to many (facultyId)
+9 FACULTIES - 1 ACCOUNTS: one to many (facultyId)
+9 FACULTIES - 10 PROGRAMMES: one to many (facultyId)
+9 FACULTIES - 13 SUBJECTS: one to many (facultyId)
 
-9. PROGRAMMES
+10. PROGRAMMES
 programmeId (PK) - uuid - unique identifier for an academic programme
 facultyId (FK) - uuid - which faculty the programme belongs to
 programmeCode - string - short code for the programme, used in reports and filters
 programmeName - string - full display name of the programme
 status - enum - lifecycle state (active/archived) matching the same non-destructive pattern as faculties
 
-9 PROGRAMMES - 8 FACULTIES: many to one (facultyId)
+10 PROGRAMMES - 9 FACULTIES: many to one (facultyId)
 
-10. ACADEMICTERMS
+11. ACADEMICTERMS
 termId (PK) - uuid - unique identifier for an academic term, used to scope time-bound records (indicators, reports)
 endDate - date - when the term ends, used for date-range validation and reporting boundaries
 startDate - date - when the term starts, same reason
 termName - string - human-readable label (e.g. "Fall 2026") shown throughout the UI
 status - enum - lifecycle state (upcoming/current/past), drives what's selectable when logging new data; only one term can be current, and new records default into it
 
-10 ACADEMICTERMS - 17 STUDENTINDICATORS: one to many (termId)
-10 ACADEMICTERMS - 42 REPORTS: one to many (termId)
+11 ACADEMICTERMS - 18 STUDENTINDICATORS: one to many (termId)
+11 ACADEMICTERMS - 43 REPORTS: one to many (termId)
 
-11. INDICATORS
+12. INDICATORS
 indicatorId (PK) - uuid - unique identifier for a type of student indicator (e.g. attendance rate, GPA trend), created by the Data Protection Steward
 dataAttributeId (FK) - uuid - the data attribute this indicator belongs to (one to one), so the student's consent on that attribute decides who may see this indicator's values
 description - string - explains what the indicator measures, shown to students when they choose what to share and to advisors reading the profile
@@ -140,37 +149,37 @@ indicatorName - string - display label for the indicator
 dataType - enum - what shape the indicator's value takes (numeric/categorical/boolean), used to validate imported data
 status - enum - lifecycle state (active/archived), archived together with its data attribute; archiving is one-way, and the values already recorded stay
 
-11 INDICATORS - 13 DATAATTRIBUTES: one to one (dataAttributeId)
-11 INDICATORS - 14 DATASOURCES: one to one (indicatorId)
-11 INDICATORS - 17 STUDENTINDICATORS: one to many (indicatorId)
+12 INDICATORS - 14 DATAATTRIBUTES: one to one (dataAttributeId)
+12 INDICATORS - 15 DATASOURCES: one to one (indicatorId)
+12 INDICATORS - 18 STUDENTINDICATORS: one to many (indicatorId)
 
-12. SUBJECTS
+13. SUBJECTS
 subjectId (PK) - uuid - unique identifier for one subject (course), used to match academic support requests to specialised advisors
 facultyId (FK) - uuid - the faculty this subject belongs to
 subjectCode - string - official subject code (e.g. PRN212), shown in dropdowns and reports
 subjectName - string - full display name of the subject
 status - enum - lifecycle state (active/archived), so a retired subject disappears from the request form without breaking old cases
 
-12 SUBJECTS - 8 FACULTIES: many to one (facultyId)
-12 SUBJECTS - 1 ACCOUNTS: many to many => 1 ACCOUNTS - 18 ACCOUNT_SUBJECT - 12 SUBJECTS
-12 SUBJECTS - 22 CASES: one to many (subjectId)
+13 SUBJECTS - 9 FACULTIES: many to one (facultyId)
+13 SUBJECTS - 1 ACCOUNTS: many to many => 1 ACCOUNTS - 19 ACCOUNT_SUBJECT - 13 SUBJECTS
+13 SUBJECTS - 23 CASES: one to many (subjectId)
 
-13. DATAATTRIBUTES
+14. DATAATTRIBUTES
 dataAttributeId (PK) - uuid - unique identifier for one shareable piece of student data that consent can be scoped to (e.g. "attendance record", "GPA"); defined by the Data Protection Steward together with its indicator
 attributeDescription - string - plain-language description of what the attribute contains, shown to students reviewing consent
 attributeName - string - short label for the attribute
 status - enum - lifecycle state (active/archived), kept in sync with its indicator; an archived attribute can no longer be attached to a purpose, granted or requested, but the consents already given on it are kept and still apply
 
-13 DATAATTRIBUTES - 32 CONSENTPURPOSES: many to many => 32 CONSENTPURPOSES - 33 PURPOSE_ATTRIBUTE - 13 DATAATTRIBUTES
-13 DATAATTRIBUTES - 11 INDICATORS: one to one (dataAttributeId)
-13 DATAATTRIBUTES - 34 CONSENTS: one to many (dataAttributeId)
-13 DATAATTRIBUTES - 36 CONSENTREQUESTS: one to many (dataAttributeId)
-13 DATAATTRIBUTES - 41 ATTRIBUTEKEYS: one to many (dataAttributeId)
+14 DATAATTRIBUTES - 33 CONSENTPURPOSES: many to many => 33 CONSENTPURPOSES - 34 PURPOSE_ATTRIBUTE - 14 DATAATTRIBUTES
+14 DATAATTRIBUTES - 12 INDICATORS: one to one (dataAttributeId)
+14 DATAATTRIBUTES - 35 CONSENTS: one to many (dataAttributeId)
+14 DATAATTRIBUTES - 37 CONSENTREQUESTS: one to many (dataAttributeId)
+14 DATAATTRIBUTES - 42 ATTRIBUTEKEYS: one to many (dataAttributeId)
 
 
 DATA INGESTION
 
-14. DATASOURCES
+15. DATASOURCES
 dataSourceId (PK) - uuid - unique identifier for one configured data source connection
 createdBy (FK) - uuid - which admin configured this source, for accountability
 indicatorId (FK) - uuid - the single indicator this source supplies (one to one: one data source per type of data, e.g. GPA)
@@ -180,12 +189,12 @@ sourceName - string - display label for the source
 sourceType - enum - what kind of source it is (file upload for the current version; database/API kept for the future scheduled-ingestion feature)
 status - enum - lifecycle/health state of the source (active/paused/disconnected), surfaced on the monitoring screen; only an active source is pulled on schedule
 
-14 DATASOURCES - 1 ACCOUNTS: many to one (createdBy)
-14 DATASOURCES - 11 INDICATORS: one to one (indicatorId)
-14 DATASOURCES - 15 INGESTIONSCHEDULES: one to many (dataSourceId)
-14 DATASOURCES - 17 STUDENTINDICATORS: one to many (dataSourceId)
+15 DATASOURCES - 1 ACCOUNTS: many to one (createdBy)
+15 DATASOURCES - 12 INDICATORS: one to one (indicatorId)
+15 DATASOURCES - 16 INGESTIONSCHEDULES: one to many (dataSourceId)
+15 DATASOURCES - 18 STUDENTINDICATORS: one to many (dataSourceId)
 
-15. INGESTIONSCHEDULES
+16. INGESTIONSCHEDULES
 ingestionScheduleId (PK) - uuid - unique identifier for one ingestion schedule
 dataSourceId (FK) - uuid - which source this schedule pulled from
 scheduledStartTime - timeOnly - the time of the day this schedule is set, used to set the expected start time of each job of this schedule
@@ -198,10 +207,10 @@ failureRetryInterval - int - the time in between retries (in seconds), only exis
 numberOfRetries - int - as the name can tell, number of retries, only exist if onFailure is 'retry', otherwise null
 status - enum - status of the schedule (active/paused/archived)
 
-15 INGESTIONSCHEDULES - 14 DATASOURCES: many to one (dataSourceId)
-15 INGESTIONSCHEDULES - 16 INGESTIONJOBS: one to many (ingestionScheduleId)
+16 INGESTIONSCHEDULES - 15 DATASOURCES: many to one (dataSourceId)
+16 INGESTIONSCHEDULES - 17 INGESTIONJOBS: one to many (ingestionScheduleId)
 
-16. INGESTIONJOBS
+17. INGESTIONJOBS
 ingestionJobId (PK) - uuid - unique identifier for one run of an ingestion job
 ingestionScheduleId (FK) - uuid - the ingestion schedule this job is created from
 expectedStartTime - date - the expected start time of this job, taken from schedule's scheduledStartTime and current and tomorrow date
@@ -209,9 +218,9 @@ completedAt - date - the completed time of this job, even if this job is resulte
 errorDetails - string - captures why a job failed (which rows/fields were invalid), shown to the admin
 status - enum - outcome of the run (success/failed); imports are all-or-nothing: a single invalid row fails the whole job and nothing is written
 
-16 INGESTIONJOBS - 15 INGESTIONSCHEDULES: many to one (ingestionScheduleId)
+17 INGESTIONJOBS - 16 INGESTIONSCHEDULES: many to one (ingestionScheduleId)
 
-17. STUDENTINDICATORS (bitemporal advising ledger)
+18. STUDENTINDICATORS (bitemporal advising ledger)
 studentIndicatorId (PK) - uuid - unique identifier for one recorded indicator value for one student
 dataSourceId (FK) - uuid - the data source the value was ingested from (future scheduled ingestion); null for values imported from an Excel/CSV file or Google Sheet, which go straight into this table
 indicatorId (FK) - uuid - which kind of indicator this value represents
@@ -224,20 +233,20 @@ validFrom - date - bitemporal field: when this value became true in the real wor
 isMissing - bool - flags that this indicator is expected but absent for this student, satisfying the "missing-data notice" requirement
 status - enum - what kind of row this is when inserted (e.g. original/correction); never changed afterwards since rows are insert-only, and whether the value has been erased is read from the student's ATTRIBUTEKEYS row for that attribute
 
-17 STUDENTINDICATORS - 14 DATASOURCES: many to one (dataSourceId)
-17 STUDENTINDICATORS - 11 INDICATORS: many to one (indicatorId)
-17 STUDENTINDICATORS - 1 ACCOUNTS: many to one (studentId)
-17 STUDENTINDICATORS - 10 ACADEMICTERMS: many to one (termId)
+18 STUDENTINDICATORS - 15 DATASOURCES: many to one (dataSourceId)
+18 STUDENTINDICATORS - 12 INDICATORS: many to one (indicatorId)
+18 STUDENTINDICATORS - 1 ACCOUNTS: many to one (studentId)
+18 STUDENTINDICATORS - 11 ACADEMICTERMS: many to one (termId)
 
 
 ADVISOR MATCHING SETUP
 
-18. ACCOUNT_SUBJECT
+19. ACCOUNT_SUBJECT
 accountId (FK) - uuid - the academic advisor who covers the subject
 subjectId (FK) - uuid - the subject the advisor is specialised in; an academic advisor with no rows here is a general academic advisor
 assignedAt - date - when the advisor was linked to the subject
 
-19. SUPPORTCATEGORIES
+20. SUPPORTCATEGORIES
 supportCategoryId (PK) - uuid - unique identifier for one support category a student can pick when creating a case (e.g. "Course content question", "Mental health", "Accommodation", "Money")
 consentPurposeId (FK) - uuid - the consent purpose that governs data sharing for this category; the purpose's attributes are the ones the student may choose to share (a purpose can include attributes also used by other categories)
 createdBy (FK) - uuid - which admin created the category, for accountability
@@ -246,14 +255,14 @@ description - string - explains what the category covers, so students pick the r
 supportType - enum - academic/wellbeing, decides which kind of advisor the case is matched to
 status - enum - active/archived, so a retired category leaves the dropdown without breaking old cases
 
-19 SUPPORTCATEGORIES - 32 CONSENTPURPOSES: many to one (consentPurposeId)
-19 SUPPORTCATEGORIES - 1 ACCOUNTS: many to one (createdBy)
-19 SUPPORTCATEGORIES - 22 CASES: one to many (supportCategoryId)
+20 SUPPORTCATEGORIES - 33 CONSENTPURPOSES: many to one (consentPurposeId)
+20 SUPPORTCATEGORIES - 1 ACCOUNTS: many to one (createdBy)
+20 SUPPORTCATEGORIES - 23 CASES: one to many (supportCategoryId)
 
 
 ADVISING / CASE MANAGEMENT
 
-20. ADVISORASSIGNMENTS
+21. ADVISORASSIGNMENTS
 advisorAssignmentId (PK) - uuid - unique identifier for one advisor-to-student assignment, giving it its own record so it can be revoked/reassigned without losing history
 advisorId (FK) - uuid - which advisor (academic or wellbeing) is assigned
 assignedBy (FK) - uuid - who made the assignment (the Programme Head when matching a case), for accountability
@@ -262,10 +271,10 @@ assignedAt - date - when the assignment was made
 revokedAt - date - when the assignment ended, null if still active
 status - enum - active/revoked, so caseload queries can filter to current assignments only
 
-20 ADVISORASSIGNMENTS - 1 ACCOUNTS: many to one (advisorId), many to one (assignedBy), many to one (studentId)
-20 ADVISORASSIGNMENTS - 21 ASSIGNMENTCHANGEREQUESTS: one to many (advisorAssignmentId)
+21 ADVISORASSIGNMENTS - 1 ACCOUNTS: many to one (advisorId), many to one (assignedBy), many to one (studentId)
+21 ADVISORASSIGNMENTS - 22 ASSIGNMENTCHANGEREQUESTS: one to many (advisorAssignmentId)
 
-21. ASSIGNMENTCHANGEREQUESTS
+22. ASSIGNMENTCHANGEREQUESTS
 assignmentChangeRequestId (PK) - uuid - unique identifier for one requested change to an advisor assignment
 advisorAssignmentId (FK) - uuid - which assignment the change applies to
 programmeHeadId (FK) - uuid - the Programme Head who reviews/approves the change
@@ -276,10 +285,10 @@ decidedAt - date - when the programme head made their decision
 requestedAt - date - when the request was submitted
 status - enum - pending/approved/rejected, drives the approval queue
 
-21 ASSIGNMENTCHANGEREQUESTS - 20 ADVISORASSIGNMENTS: many to one (advisorAssignmentId)
-21 ASSIGNMENTCHANGEREQUESTS - 1 ACCOUNTS: many to one (programmeHeadId), many to one (proposedAdvisorId), many to one (requestedBy)
+22 ASSIGNMENTCHANGEREQUESTS - 21 ADVISORASSIGNMENTS: many to one (advisorAssignmentId)
+22 ASSIGNMENTCHANGEREQUESTS - 1 ACCOUNTS: many to one (programmeHeadId), many to one (proposedAdvisorId), many to one (requestedBy)
 
-22. CASES
+23. CASES
 caseId (PK) - uuid - unique identifier for one support case, the central record that notes/history/referrals/interventions all hang off of
 advisorId (FK) - uuid - which advisor currently handles the case; null while the case waits for the Programme Head to match it
 openedBy (FK) - uuid - who opened the case: the student (support request) or an advisor (reaching out based on indicators)
@@ -293,17 +302,17 @@ currentStage - enum - where the case currently sits (pending/assigned/contacted/
 priority - enum - urgency level, used to order the Programme Head's matching queue and the advisor's case list
 status - enum - overall case state (open/closed/reopened)
 
-22 CASES - 1 ACCOUNTS: many to one (advisorId), many to one (openedBy), many to one (studentId)
-22 CASES - 12 SUBJECTS: many to one (subjectId)
-22 CASES - 19 SUPPORTCATEGORIES: many to one (supportCategoryId)
-22 CASES - 23 CASENOTES: one to many (caseId)
-22 CASES - 24 CASESTAGEHISTORIES: one to many (caseId)
-22 CASES - 25 REFERRALS: one to many (caseId)
-22 CASES - 27 INTERVENTIONS: one to many (caseId)
-22 CASES - 30 EXTERNALREFERRALS: one to many (caseId)
-22 CASES - 31 ESCALATIONS: one to many (caseId)
+23 CASES - 1 ACCOUNTS: many to one (advisorId), many to one (openedBy), many to one (studentId)
+23 CASES - 13 SUBJECTS: many to one (subjectId)
+23 CASES - 20 SUPPORTCATEGORIES: many to one (supportCategoryId)
+23 CASES - 24 CASENOTES: one to many (caseId)
+23 CASES - 25 CASESTAGEHISTORIES: one to many (caseId)
+23 CASES - 26 REFERRALS: one to many (caseId)
+23 CASES - 28 INTERVENTIONS: one to many (caseId)
+23 CASES - 31 EXTERNALREFERRALS: one to many (caseId)
+23 CASES - 32 ESCALATIONS: one to many (caseId)
 
-23. CASENOTES
+24. CASENOTES
 caseNoteId (PK) - uuid - unique identifier for one advising note
 authorId (FK) - uuid - who wrote the note, for accountability
 caseId (FK) - uuid - which case the note belongs to
@@ -312,10 +321,10 @@ createdAt - date - when the note was first written
 editedAt - date - when the note was last edited, null if never edited
 isFinalized - bool - whether the note is locked from further edits, distinguishing draft from finalized entries
 
-23 CASENOTES - 1 ACCOUNTS: many to one (authorId)
-23 CASENOTES - 22 CASES: many to one (caseId)
+24 CASENOTES - 1 ACCOUNTS: many to one (authorId)
+24 CASENOTES - 23 CASES: many to one (caseId)
 
-24. CASESTAGEHISTORIES
+25. CASESTAGEHISTORIES
 caseStageHistoryId (PK) - uuid - unique identifier for one stage transition, giving the case timeline its own queryable record
 caseId (FK) - uuid - which case this transition belongs to
 changedBy (FK) - uuid - who advanced the case
@@ -324,10 +333,10 @@ changedAt - date - when the transition happened
 fromStage - enum - the stage the case was leaving
 toStage - enum - the stage the case entered, together giving the full stage-by-stage timeline
 
-24 CASESTAGEHISTORIES - 22 CASES: many to one (caseId)
-24 CASESTAGEHISTORIES - 1 ACCOUNTS: many to one (changedBy)
+25 CASESTAGEHISTORIES - 23 CASES: many to one (caseId)
+25 CASESTAGEHISTORIES - 1 ACCOUNTS: many to one (changedBy)
 
-25. REFERRALS
+26. REFERRALS
 referralId (PK) - uuid - unique identifier for one referral of a case from one staff member to another (advisor to advisor of the same or the other type, or wellbeing advisor to welfare officer for money matters)
 caseId (FK) - uuid - which case the referral is attached to
 fromAccountId (FK) - uuid - who raised the referral
@@ -338,10 +347,10 @@ createdAt - date - when the referral was raised
 priority - enum - urgency set by the sender
 status - enum - pending/accepted/returned, drives the receiver's referral queue
 
-25 REFERRALS - 22 CASES: many to one (caseId)
-25 REFERRALS - 1 ACCOUNTS: many to one (fromAccountId), many to one (toAccountId)
+26 REFERRALS - 23 CASES: many to one (caseId)
+26 REFERRALS - 1 ACCOUNTS: many to one (fromAccountId), many to one (toAccountId)
 
-26. CORRECTIONREQUESTS
+27. CORRECTIONREQUESTS
 correctionRequestId (PK) - uuid - unique identifier for one student-submitted correction request
 reviewedBy (FK) - uuid - which advisor reviewed the request
 studentId (FK) - uuid - which student submitted the request
@@ -354,12 +363,12 @@ decidedAt - date - when the advisor made a decision
 submittedAt - date - when the student submitted the request
 status - enum - pending/approved/rejected, drives the tracking view for the student
 
-26 CORRECTIONREQUESTS - 1 ACCOUNTS: many to one (reviewedBy), many to one (studentId)
+27 CORRECTIONREQUESTS - 1 ACCOUNTS: many to one (reviewedBy), many to one (studentId)
 
 
 WELFARE
 
-27. INTERVENTIONS
+28. INTERVENTIONS
 interventionId (PK) - uuid - unique identifier for one welfare intervention
 caseId (FK) - uuid - which case the intervention is logged against
 officerId (FK) - uuid - which welfare officer performed the intervention
@@ -370,11 +379,11 @@ interventionType - enum - category of support handled (e.g. loan arrangement, fi
 isClosed - bool - whether this specific intervention is considered complete
 status - enum - broader lifecycle state, distinct from isClosed to allow states like "scheduled" or "cancelled"
 
-27 INTERVENTIONS - 22 CASES: many to one (caseId)
-27 INTERVENTIONS - 1 ACCOUNTS: many to one (officerId)
-27 INTERVENTIONS - 28 SUPPORTGRANTS: one to many (interventionId)
+28 INTERVENTIONS - 23 CASES: many to one (caseId)
+28 INTERVENTIONS - 1 ACCOUNTS: many to one (officerId)
+28 INTERVENTIONS - 29 SUPPORTGRANTS: one to many (interventionId)
 
-28. SUPPORTGRANTS
+29. SUPPORTGRANTS
 supportGrantId (PK) - uuid - unique identifier for one support grant issued during an intervention
 interventionId (FK) - uuid - which intervention this grant was issued under
 grantDescription - string - details of what was granted
@@ -382,18 +391,18 @@ grantType - string - category of the grant issued
 issuedAt - date - when the grant was issued
 status - enum - lifecycle state of the grant (e.g. issued/revoked)
 
-28 SUPPORTGRANTS - 27 INTERVENTIONS: many to one (interventionId)
+29 SUPPORTGRANTS - 28 INTERVENTIONS: many to one (interventionId)
 
-29. EXTERNALSERVICES
+30. EXTERNALSERVICES
 externalServiceId (PK) - uuid - unique identifier for one external service the welfare officer can refer a student to (e.g. a money-lending service, bank, counselling centre)
 contactInfo - string - how to reach the service, needed when sending referral details
 serviceName - string - display name of the service
 serviceType - string - category of service offered, helps officers pick the right one
 isActive - bool - whether the service is currently available to refer to
 
-29 EXTERNALSERVICES - 30 EXTERNALREFERRALS: one to many (externalServiceId)
+30 EXTERNALSERVICES - 31 EXTERNALREFERRALS: one to many (externalServiceId)
 
-30. EXTERNALREFERRALS
+31. EXTERNALREFERRALS
 externalReferralId (PK) - uuid - unique identifier for one referral to an external service
 caseId (FK) - uuid - which case the referral relates to
 externalServiceId (FK) - uuid - which external service the student was referred to
@@ -404,11 +413,11 @@ referredAt - date - when the referral was sent
 isOverdue - bool - quick flag for follow-ups past their due date, surfaced on the officer's dashboard
 status - enum - lifecycle state of the referral (sent/followed-up/closed)
 
-30 EXTERNALREFERRALS - 22 CASES: many to one (caseId)
-30 EXTERNALREFERRALS - 29 EXTERNALSERVICES: many to one (externalServiceId)
-30 EXTERNALREFERRALS - 1 ACCOUNTS: many to one (referredBy)
+31 EXTERNALREFERRALS - 23 CASES: many to one (caseId)
+31 EXTERNALREFERRALS - 30 EXTERNALSERVICES: many to one (externalServiceId)
+31 EXTERNALREFERRALS - 1 ACCOUNTS: many to one (referredBy)
 
-31. ESCALATIONS
+32. ESCALATIONS
 escalationId (PK) - uuid - unique identifier for one escalation from a welfare officer to the Programme Head, when a case goes beyond the officer's authority
 caseId (FK) - uuid - which case is being escalated
 escalatedBy (FK) - uuid - who raised the escalation
@@ -418,32 +427,32 @@ response - string - the Programme Head's recorded response
 escalatedAt - date - when the escalation was raised
 status - enum - pending/responded, drives the escalation tracking view
 
-31 ESCALATIONS - 22 CASES: many to one (caseId)
-31 ESCALATIONS - 1 ACCOUNTS: many to one (escalatedBy), many to one (escalatedTo)
+32 ESCALATIONS - 23 CASES: many to one (caseId)
+32 ESCALATIONS - 1 ACCOUNTS: many to one (escalatedBy), many to one (escalatedTo)
 
 
 CONSENT & DATA PROTECTION
 
-32. CONSENTPURPOSES
+33. CONSENTPURPOSES
 consentPurposeId (PK) - uuid - unique identifier for one consent purpose (the "why" data can be accessed)
 createdBy (FK) - uuid - which steward defined the purpose
 description - string - explains the purpose in plain language, shown to students when granting consent
 purposeName - string - display label for the purpose
 status - enum - inactive/active/retired; a new purpose starts inactive and is activated once its attributes are attached; retiring is one-way, so a purpose can stop being offered without deleting historical consents tied to it
 
-32 CONSENTPURPOSES - 1 ACCOUNTS: many to one (createdBy)
-32 CONSENTPURPOSES - 13 DATAATTRIBUTES: many to many => 32 CONSENTPURPOSES - 33 PURPOSE_ATTRIBUTE - 13 DATAATTRIBUTES
-32 CONSENTPURPOSES - 19 SUPPORTCATEGORIES: one to many (consentPurposeId)
-32 CONSENTPURPOSES - 34 CONSENTS: one to many (consentPurposeId)
-32 CONSENTPURPOSES - 36 CONSENTREQUESTS: one to many (consentPurposeId)
-32 CONSENTPURPOSES - 37 ACCESSPOLICIES: one to many (consentPurposeId)
-32 CONSENTPURPOSES - 38 ACCESSLOGS: one to many (consentPurposeId)
+33 CONSENTPURPOSES - 1 ACCOUNTS: many to one (createdBy)
+33 CONSENTPURPOSES - 14 DATAATTRIBUTES: many to many => 33 CONSENTPURPOSES - 34 PURPOSE_ATTRIBUTE - 14 DATAATTRIBUTES
+33 CONSENTPURPOSES - 20 SUPPORTCATEGORIES: one to many (consentPurposeId)
+33 CONSENTPURPOSES - 35 CONSENTS: one to many (consentPurposeId)
+33 CONSENTPURPOSES - 37 CONSENTREQUESTS: one to many (consentPurposeId)
+33 CONSENTPURPOSES - 38 ACCESSPOLICIES: one to many (consentPurposeId)
+33 CONSENTPURPOSES - 39 ACCESSLOGS: one to many (consentPurposeId)
 
-33. PURPOSE_ATTRIBUTE
+34. PURPOSE_ATTRIBUTE
 consentPurposeId (FK) - uuid - which purpose this row belongs to
 dataAttributeId (FK) - uuid - which data attribute is covered by that purpose
 
-34. CONSENTS
+35. CONSENTS
 consentId (PK) - uuid - unique identifier for one student's consent grant covering a purpose/attribute combination
 consentPurposeId (FK) - uuid - which purpose this consent applies to
 dataAttributeId (FK) - uuid - which specific attribute this consent covers (one row per student, purpose and attribute, so a student can share only some of a purpose's attributes)
@@ -453,13 +462,13 @@ grantedAt - date - when the consent was first given
 withdrawnAt - date - when the student withdrew it, null if still active
 status - enum - granted/withdrawn, the current effective state consulted by the access guard; a granted consent past expiresAt counts as not granted
 
-34 CONSENTS - 32 CONSENTPURPOSES: many to one (consentPurposeId)
-34 CONSENTS - 13 DATAATTRIBUTES: many to one (dataAttributeId)
-34 CONSENTS - 1 ACCOUNTS: many to one (studentId)
-34 CONSENTS - 35 CONSENTHISTORIES: one to many (consentId)
-34 CONSENTS - 40 ERASUREREQUESTS: one to many (consentId)
+35 CONSENTS - 33 CONSENTPURPOSES: many to one (consentPurposeId)
+35 CONSENTS - 14 DATAATTRIBUTES: many to one (dataAttributeId)
+35 CONSENTS - 1 ACCOUNTS: many to one (studentId)
+35 CONSENTS - 36 CONSENTHISTORIES: one to many (consentId)
+35 CONSENTS - 41 ERASUREREQUESTS: one to many (consentId)
 
-35. CONSENTHISTORIES
+36. CONSENTHISTORIES
 consentHistoryId (PK) - uuid - unique identifier for one change event on a consent record, giving the "consent change history" its own queryable trail
 changedBy (FK) - uuid - who made the change (usually the student themself)
 consentId (FK) - uuid - which consent record changed
@@ -467,10 +476,10 @@ changedAt - date - when the change occurred
 newStatus - enum - the state the consent moved to (granted/withdrawn)
 previousStatus - enum - the state the consent moved from (granted/withdrawn), null for the first grant
 
-35 CONSENTHISTORIES - 1 ACCOUNTS: many to one (changedBy)
-35 CONSENTHISTORIES - 34 CONSENTS: many to one (consentId)
+36 CONSENTHISTORIES - 1 ACCOUNTS: many to one (changedBy)
+36 CONSENTHISTORIES - 35 CONSENTS: many to one (consentId)
 
-36. CONSENTREQUESTS
+37. CONSENTREQUESTS
 consentRequestId (PK) - uuid - unique identifier for one advisor request for additional consent scope
 advisorId (FK) - uuid - which advisor made the request
 consentPurposeId (FK) - uuid - the purpose the attribute is requested under; when the student grants the request, the consent is created under this purpose (it must cover the attribute, and one of the advisor's roles needs an active access policy for it)
@@ -481,22 +490,22 @@ requestedAt - date - when the request was sent
 respondedAt - date - when the student responded, null if still pending
 status - enum - pending/granted/denied/withdrawn, drives both the advisor's tracking view and the student's inbox
 
-36 CONSENTREQUESTS - 1 ACCOUNTS: many to one (advisorId), many to one (studentId)
-36 CONSENTREQUESTS - 13 DATAATTRIBUTES: many to one (dataAttributeId)
-36 CONSENTREQUESTS - 32 CONSENTPURPOSES: many to one (consentPurposeId)
+37 CONSENTREQUESTS - 1 ACCOUNTS: many to one (advisorId), many to one (studentId)
+37 CONSENTREQUESTS - 14 DATAATTRIBUTES: many to one (dataAttributeId)
+37 CONSENTREQUESTS - 33 CONSENTPURPOSES: many to one (consentPurposeId)
 
-37. ACCESSPOLICIES
+38. ACCESSPOLICIES
 accessPolicyId (PK) - uuid - unique identifier for one access policy binding a role to a purpose (the student's consent on that purpose must be granted)
 consentPurposeId (FK) - uuid - which purpose this policy governs access for
 createdBy (FK) - uuid - which steward configured the policy
 roleId (FK) - uuid - which role this policy applies to
 status - enum - draft/active/revoked; only an active policy is enforced, policies are revoked rather than edited or deleted, and a role has at most one draft/active policy per purpose
 
-37 ACCESSPOLICIES - 32 CONSENTPURPOSES: many to one (consentPurposeId)
-37 ACCESSPOLICIES - 1 ACCOUNTS: many to one (createdBy)
-37 ACCESSPOLICIES - 3 ROLES: many to one (roleId)
+38 ACCESSPOLICIES - 33 CONSENTPURPOSES: many to one (consentPurposeId)
+38 ACCESSPOLICIES - 1 ACCOUNTS: many to one (createdBy)
+38 ACCESSPOLICIES - 4 ROLES: many to one (roleId)
 
-38. ACCESSLOGS
+39. ACCESSLOGS
 accessLogId (PK) - uuid - unique identifier for one logged access event
 accessorId (FK) - uuid - who accessed the data
 consentPurposeId (FK) - uuid - under what stated purpose the access occurred; null when the read was allowed through an approved emergency access instead of a consent
@@ -506,10 +515,10 @@ accessedAt - date - when the access occurred
 isFlagged - bool - whether a student or steward has flagged this entry as suspicious
 status - enum - review state of a flagged entry (e.g. unreviewed/cleared/confirmed-issue)
 
-38 ACCESSLOGS - 1 ACCOUNTS: many to one (accessorId), many to one (recordedUserId)
-38 ACCESSLOGS - 32 CONSENTPURPOSES: many to one (consentPurposeId)
+39 ACCESSLOGS - 1 ACCOUNTS: many to one (accessorId), many to one (recordedUserId)
+39 ACCESSLOGS - 33 CONSENTPURPOSES: many to one (consentPurposeId)
 
-39. EMERGENCYACCESSREQUESTS
+40. EMERGENCYACCESSREQUESTS
 emergencyAccessRequestId (PK) - uuid - unique identifier for one out-of-scope emergency access request
 requestedBy (FK) - uuid - who requested emergency access
 stewardId (FK) - uuid - the steward who decided the request; stewards share one pool of requests and the first one to approve or reject is recorded here, null while pending
@@ -521,9 +530,9 @@ decidedAt - date - when the steward decided
 scopeExpiresAt - date - when the granted emergency access automatically lapses, limiting its blast radius
 status - enum - pending/approved/rejected
 
-39 EMERGENCYACCESSREQUESTS - 1 ACCOUNTS: many to one (requestedBy), many to one (stewardId), many to one (studentId)
+40 EMERGENCYACCESSREQUESTS - 1 ACCOUNTS: many to one (requestedBy), many to one (stewardId), many to one (studentId)
 
-40. ERASUREREQUESTS
+41. ERASUREREQUESTS
 erasureRequestId (PK) - uuid - unique identifier for one cryptographic erasure action
 attributeKeyId (FK) - uuid - the key destroyed by this erasure
 consentId (FK) - uuid - which withdrawn consent this erasure is executing against
@@ -532,11 +541,11 @@ executedAt - date - when the erasure was carried out, null if still pending
 requestedAt - date - when the erasure was queued (i.e. when the withdrawal that triggers it was confirmed)
 status - enum - pending/completed, drives the steward's erasure queue
 
-40 ERASUREREQUESTS - 41 ATTRIBUTEKEYS: many to one (attributeKeyId)
-40 ERASUREREQUESTS - 34 CONSENTS: many to one (consentId)
-40 ERASUREREQUESTS - 1 ACCOUNTS: many to one (executedBy)
+41 ERASUREREQUESTS - 42 ATTRIBUTEKEYS: many to one (attributeKeyId)
+41 ERASUREREQUESTS - 35 CONSENTS: many to one (consentId)
+41 ERASUREREQUESTS - 1 ACCOUNTS: many to one (executedBy)
 
-41. ATTRIBUTEKEYS
+42. ATTRIBUTEKEYS
 attributeKeyId (PK) - uuid - unique identifier for one encryption key protecting one data attribute of one student
 dataAttributeId (FK) - uuid - which data attribute the key protects
 studentId (FK) - uuid - whose data the key protects
@@ -545,14 +554,14 @@ createdAt - date - when the key was generated (when the student's first value fo
 destroyedAt - date - when the key was destroyed by an erasure, null while active
 status - enum - active/destroyed
 
-41 ATTRIBUTEKEYS - 13 DATAATTRIBUTES: many to one (dataAttributeId)
-41 ATTRIBUTEKEYS - 1 ACCOUNTS: many to one (studentId)
-41 ATTRIBUTEKEYS - 40 ERASUREREQUESTS: one to many (attributeKeyId)
+42 ATTRIBUTEKEYS - 14 DATAATTRIBUTES: many to one (dataAttributeId)
+42 ATTRIBUTEKEYS - 1 ACCOUNTS: many to one (studentId)
+42 ATTRIBUTEKEYS - 41 ERASUREREQUESTS: one to many (attributeKeyId)
 
 
 REPORTING / SYSTEM OPS (kept for the future, not in the current version of the app)
 
-42. REPORTS
+43. REPORTS
 reportId (PK) - uuid - unique identifier for one generated/exported report
 generatedBy (FK) - uuid - who generated the report
 termId (FK) - uuid - which term the report covers
@@ -561,20 +570,20 @@ reportType - enum - what kind of report this is (cases/consultations in a time r
 generatedAt - date - when the report was produced
 status - enum - lifecycle state (e.g. generating/ready/failed)
 
-42 REPORTS - 1 ACCOUNTS: many to one (generatedBy)
-42 REPORTS - 10 ACADEMICTERMS: many to one (termId)
+43 REPORTS - 1 ACCOUNTS: many to one (generatedBy)
+43 REPORTS - 11 ACADEMICTERMS: many to one (termId)
 
-43. BACKUPS
+44. BACKUPS
 backupId (PK) - uuid - unique identifier for one system backup
 createdBy (FK) - uuid - which admin triggered the backup (or system, if automated)
 backupTimestamp - date - when the backup was taken, used to select a restore point
 sizeBytes - int - size of the backup, shown in the admin backup list
 status - enum - lifecycle state of the backup (e.g. completed/failed)
 
-43 BACKUPS - 1 ACCOUNTS: many to one (createdBy)
-43 BACKUPS - 44 RESTOREOPERATIONS: one to many (backupId)
+44 BACKUPS - 1 ACCOUNTS: many to one (createdBy)
+44 BACKUPS - 45 RESTOREOPERATIONS: one to many (backupId)
 
-44. RESTOREOPERATIONS
+45. RESTOREOPERATIONS
 restoreOperationId (PK) - uuid - unique identifier for one restore action
 backupId (FK) - uuid - which backup point was restored from
 executedBy (FK) - uuid - which admin performed the restore
@@ -582,8 +591,8 @@ integrityCheckResult - string - outcome of the post-restore integrity verificati
 executedAt - date - when the restore was carried out
 status - enum - lifecycle state of the restore (e.g. running/verified/failed)
 
-44 RESTOREOPERATIONS - 43 BACKUPS: many to one (backupId)
-44 RESTOREOPERATIONS - 1 ACCOUNTS: many to one (executedBy)
+45 RESTOREOPERATIONS - 44 BACKUPS: many to one (backupId)
+45 RESTOREOPERATIONS - 1 ACCOUNTS: many to one (executedBy)
 
 
 NOTES (current version)
@@ -600,6 +609,8 @@ NOTES (current version)
   + In-app chat between advisor and student (possible stretch goal)
   + Backups and erasure: a backup taken before an erasure still holds the old wrapped key, so restoring it must re-apply completed erasures (destroy those keys again)
   + Master key rotation: re-wrap every attribute key with a new master key (the v1 prefix of each value leaves room for a new format)
+  + Account import that also updates existing accounts: a row whose studentCode already exists updates that student (e.g. academicStatus), a new studentCode creates the account like today; until then the admin edits a student's profile one by one
+  + Programme of each student: only needed once there is more than one programme / Programme Head; the faculty on ACCOUNTS is used for now
   + Admin configuration panel (not officially registered in docs): a SYSTEMSETTINGS key/value table (settingKey, settingValue, updatedBy, updatedAt) holding the settings listed in AdviseCare_Functional_Requirements.txt; until then the values are fixed in code/appsettings.json
 - Imports and ingestion jobs are all-or-nothing: one invalid row fails the whole import and nothing is written.
 - STUDENTINDICATORS has no transactionTo/validTo: each row's end time is the transactionFrom/validFrom of the next row for the same student and indicator.
@@ -612,4 +623,9 @@ NOTES (current version)
 - Erasure: ATTRIBUTEKEYS holds one key per student per attribute, so withdrawing a consent queues an ERASUREREQUESTS row only when the attribute is no longer granted under any purpose and the student has an active key for it; the Steward executes it by destroying the key (wrappedKey wiped, status = destroyed).
 - Emergency access: Stewards share one pool of requests; the first Steward to approve or reject is stored in stewardId (a rejection needs a rejectionReason). While approved and before scopeExpiresAt, the requester may read every attribute of that student through the access guard; each read is logged with consentPurposeId = null. The access ends on its own at scopeExpiresAt.
 - Encryption (envelope encryption, AES-256-GCM): the master key lives only in server configuration (Encryption:MasterKey); each student/attribute key in ATTRIBUTEKEYS is stored wrapped by it, and each value in STUDENTINDICATORS is stored as v1:{attributeKeyId}:{payload}, tied to its student and attribute. Users never receive a key: the server decrypts in memory only after the access guard allows the read, and API responses are sent with Cache-Control: no-store. Withdrawing a consent stops access at the guard at once; erasure is the later step that makes the stored values unreadable to everyone. Losing the master key makes every value unreadable, so it must be kept safe and shared only with the deployment.
+- Student data comes in three kinds, each with its own access rule:
+  + Directory data: email, fullName, userName, faculty (ACCOUNTS) and studentCode, academicStatus (STUDENTPROFILES). Supplied by the school through the account import; every staff role (including every advisor) may read it at any time, with no consent and no access log, since the app cannot route or handle a case without it.
+  + Indicators (STUDENTINDICATORS, through DATAATTRIBUTES/INDICATORS): everything else that describes or measures the student. Readable only through the access guard (consent), and every read is logged in ACCESSLOGS, even when consent was given.
+  + Case records (CASES, CASENOTES, CASESTAGEHISTORIES, REFERRALS, INTERVENTIONS, SUPPORTGRANTS, EXTERNALREFERRALS, ESCALATIONS): visible to the people working on the case; not consent-based and not written to ACCESSLOGS.
+- STUDENTPROFILES exists only for Student accounts; it is created in the same save as the account (account import, single create, or giving the Student role) and only the admin edits it. The account import sheet always has 5 filled columns for staff rows (email, fullName, userName, facultyCode, role) and 7 for Student rows (+ studentCode, academicStatus), never anything in between.
 - Usually one Programme Head for the whole app (the manager), but the system allows more. PROGRAMMES is kept but not used by other tables for now.

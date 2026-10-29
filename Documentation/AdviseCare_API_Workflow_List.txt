@@ -38,7 +38,7 @@ Seed accounts (AdviseCare_Database_Script.sql, password 123456 for all)
 - academicadvisor@gmail.com / academicadvisor - Academic Advisor -> {academicAdvisorToken}, {academicAdvisorId}
 - wellbeingadvisor@gmail.com / wellbeingadvisor - Wellbeing Advisor -> {wellbeingAdvisorToken}, {wellbeingAdvisorId}
 - welfareofficer@gmail.com / welfareofficer - Student Welfare Officer -> {welfareOfficerToken}, {welfareOfficerId}
-- student@gmail.com / student - Student -> {studentToken}, {studentId}
+- student@gmail.com / student - Student (student profile: studentCode SE180001, academicStatus enrolled) -> {studentToken}, {studentId}
 - programmehead@gmail.com / programmehead - Programme Head -> {programmeHeadToken}, {programmeHeadId}
 The seed has no faculties, programmes, terms or subjects: create them in EX11 first.
 
@@ -104,34 +104,39 @@ WF1: Admin creates accounts
    POST /api/Accounts/import [EXISTS]
    Auth: {adminToken}
    Form (multipart/form-data): file = accounts_valid.xlsx
-   accounts_valid.xlsx (first sheet, row 1 = header):
-   email                          | fullName           | userName  | facultyCode | role
-   yourgmail+student01@gmail.com  | Nguyen Van An      | student01 | SE          | Student
-   yourgmail+student02@gmail.com  | Tran Thi Binh      | student02 | SE          | Student
-   yourgmail+student03@gmail.com  | Le Hoang Cuong     | student03 | BA          | Student
-   yourgmail+advisor01@gmail.com  | Pham Minh Duc      | advisor01 | SE          | Academic Advisor
-   yourgmail+staff01@gmail.com    | Vo Thi Em          | staff01   | SE          | Academic Advisor, Programme Head
+   accounts_valid.xlsx (first sheet, row 1 = header; Student rows fill all 7 columns, staff rows only the first 5):
+   email                          | fullName           | userName  | facultyCode | role                             | studentCode | academicStatus
+   yourgmail+student01@gmail.com  | Nguyen Van An      | student01 | SE          | Student                          | SE180101    | enrolled
+   yourgmail+student02@gmail.com  | Tran Thi Binh      | student02 | SE          | Student                          | SE180102    | enrolled
+   yourgmail+student03@gmail.com  | Le Hoang Cuong     | student03 | BA          | Student                          | BA180103    | onLeave
+   yourgmail+advisor01@gmail.com  | Pham Minh Duc      | advisor01 | SE          | Academic Advisor                 |             |
+   yourgmail+staff01@gmail.com    | Vo Thi Em          | staff01   | SE          | Academic Advisor, Programme Head |             |
 3.1.2. System validates every row (no separate call, part of the import)
 3.1.3. If any row is invalid, nothing is created
    POST /api/Accounts/import [EXISTS]
    Auth: {adminToken}
    Form: file = accounts_invalid.xlsx
    accounts_invalid.xlsx:
-   email                          | fullName        | userName  | facultyCode | role
-   yourgmail+student04@gmail.com  | Hoang Van Phuc  | student04 | SE          | Student            (valid row)
-   not-an-email                   | Bad Email       | bademail  | SE          | Student            (email format)
-   student@gmail.com              | Duplicate       | dupuser   | SE          | Student            (email already in the system)
-   yourgmail+student05@gmail.com  | Unknown Faculty | student05 | XX          | Student            (faculty code does not exist)
-   yourgmail+student06@gmail.com  | Unknown Role    | student06 | SE          | Teacher            (role does not exist)
-   yourgmail+student07@gmail.com  |                 | student04 | SE          | Student            (missing fullName, username repeated in the file)
+   email                          | fullName        | userName  | facultyCode | role             | studentCode | academicStatus
+   yourgmail+student04@gmail.com  | Hoang Van Phuc  | student04 | SE          | Student          | SE180104    | enrolled     (valid row)
+   not-an-email                   | Bad Email       | bademail  | SE          | Student          | SE180105    | enrolled     (email format)
+   student@gmail.com              | Duplicate       | dupuser   | SE          | Student          | SE180106    | enrolled     (email already in the system)
+   yourgmail+student05@gmail.com  | Unknown Faculty | student05 | XX          | Student          | SE180107    | enrolled     (faculty code does not exist)
+   yourgmail+student06@gmail.com  | Unknown Role    | student06 | SE          | Teacher          |             |              (role does not exist)
+   yourgmail+student07@gmail.com  |                 | student04 | SE          | Student          | SE180108    | enrolled     (missing fullName, username repeated in the file)
+   yourgmail+student08@gmail.com  | No Code         | student08 | SE          | Student          |             | enrolled     (Student row without studentCode)
+   yourgmail+student09@gmail.com  | Used Code       | student09 | SE          | Student          | SE180001    | enrolled     (studentCode of the seed student)
+   yourgmail+student10@gmail.com  | Bad Status      | student10 | SE          | Student          | SE180110    | studying     (academicStatus not enrolled/onLeave/withdrawn/graduated)
+   yourgmail+advisor02@gmail.com  | Staff With Code | advisor02 | SE          | Academic Advisor | SE180111    |              (staff row with a studentCode)
    Expect: 200, isSuccess = false, createdCount = 0, one error per invalid row with its row number; student04 is not created either
 3.1.4. If all rows are valid, the accounts are created
    Use the accounts_valid.xlsx call from 3.1.1
    Expect: 200, isSuccess = true, createdCount = 5, createdAccountIds has 5 ids; each account has linkStatus = notLinked, hasPassword = false
-   Save: createdAccountIds -> {importedAccountIds}; the id of student01 -> {student01Id}, advisor01 -> {advisor01Id}
+   Check: GET /api/Accounts/search?roleName=Student [EXISTS] -> student01-03 have their studentCode and academicStatus; advisor01 and staff01 have both empty (no student profile)
+   Save: createdAccountIds -> {importedAccountIds}; the id of student01 -> {student01Id}, student03 -> {student03Id}, advisor01 -> {advisor01Id}
 3.2. Single account
 3.2.1. Used for special cases (e.g. late enrolment, staff)
-3.2.2. Admin fills in email, fullName, userName, faculty and role
+3.2.2. Admin fills in email, fullName, userName, faculty and role, plus studentCode and academicStatus for a Student account
 3.2.3. System creates the account
    POST /api/Accounts [EXISTS]
    Auth: {adminToken}
@@ -141,11 +146,13 @@ WF1: Admin creates accounts
      "fullName": "Dang Thi Giang",
      "userName": "latestudent",
      "facultyId": "{facultySeId}",
-     "roleNames": ["Student"]
+     "roleNames": ["Student"],
+     "studentCode": "SE180120",
+     "academicStatus": "enrolled"
    }
-   Expect: 200, linkStatus = notLinked, status = active
+   Expect: 200, linkStatus = notLinked, status = active, studentCode = SE180120, academicStatus = enrolled
    Save: accountId -> {lateStudentId}
-   Negative: same email again -> 409/400 duplicate; "roleNames": [] -> 400; facultyId of an archived faculty -> 400
+   Negative: same email again -> 409/400 duplicate; "roleNames": [] -> 400; facultyId of an archived faculty -> 400; a Student without studentCode or academicStatus -> 400; "studentCode": "SE180001" (seed student) -> 409; a staff account ("roleNames": ["Academic Advisor"]) with a studentCode -> 400
 4. System prompts the Admin to send account-linking emails
 4.1. Admin confirms (web app dialog) [NO API]
 4.2. System emails each account a one-time linking link
@@ -166,6 +173,7 @@ WF1: Admin creates accounts
    GET /api/Accounts/search?roleName=Student&linkStatus=emailSent [EXISTS]
    GET /api/Accounts/search?facultyId={facultySeId}&status=active [EXISTS]
    GET /api/Accounts/search?fullName=nguyen [EXISTS]
+   GET /api/Accounts/search?studentCode=SE1801&academicStatus=enrolled [EXISTS]
    Auth: {adminToken}
    Expect: only the matching accounts (sorting is done by the web app)
 6.2. Resend the linking email to accounts still in emailSent
@@ -996,9 +1004,16 @@ EX12: Account management
    POST /api/Accounts/roles [EXISTS]
    Body: { "accountId": "{advisor01Id}", "roleId": "{roleProgrammeHeadId}" }
    Expect: advisor01 has Academic Advisor and Programme Head (the new role is in the JWT from the next sign-in)
+   Student role for an account without a student profile: GET /api/Roles/search?roleName=Student [EXISTS] -> {roleStudentId}; POST /api/Accounts/roles [EXISTS], body { "accountId": "{advisor01Id}", "roleId": "{roleStudentId}", "studentCode": "SE180130", "academicStatus": "enrolled" } -> the profile is created with the role; the same call without studentCode/academicStatus -> 400
    GET /api/Accounts/roles/search?roleId={roleProgrammeHeadId} [EXISTS] -> programmehead, staff01, advisor01
    DELETE /api/Accounts/{advisor01Id}/roles/{roleProgrammeHeadId} [EXISTS]
    Negative: GET /api/Roles/search?roleName=System Administrator -> {roleAdminId}; DELETE /api/Accounts/{adminId}/roles/{roleAdminId} while admin is the only System Administrator -> 400; the same role twice -> 400
+3.1. Admin edits a Student account's student profile
+   PUT /api/Accounts/{student03Id}/student-profile [EXISTS]
+   Auth: {adminToken}
+   Body: { "studentCode": "BA180103", "academicStatus": "enrolled" }
+   Expect: 200, academicStatus = enrolled (student03 came back from leave); activity log studentProfileUpdated
+   Negative: the studentCode of another student -> 409; "academicStatus": "studying" -> 400; a staff account (e.g. {academicAdvisorId}) -> 404 (no student profile)
 4. Admin deactivates/activates or bans/unbans the account
    PUT /api/Accounts/{student01Id}/deactivate [EXISTS] -> status = deactivated
    PUT /api/Accounts/{student01Id}/activate [EXISTS] -> status = active

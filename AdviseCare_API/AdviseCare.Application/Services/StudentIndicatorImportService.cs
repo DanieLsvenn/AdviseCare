@@ -279,24 +279,6 @@ namespace AdviseCare.Application.Services
             var activeStudentAccounts = accounts
                 .Where(account => account.Status == "active" && studentAccountIds.Contains(account.AccountId))
                 .ToList();
-            var existingProfileIds = studentProfiles.Select(profile => profile.StudentId).ToHashSet();
-            var accountsNeedingProfiles = activeStudentAccounts
-                .Concat(importedRows.Select(importedRow => importedRow.Student))
-                .GroupBy(account => account.AccountId)
-                .Select(group => group.First());
-
-            foreach (var account in accountsNeedingProfiles)
-            {
-                if (existingProfileIds.Add(account.AccountId))
-                {
-                    _studentProfileRepository.PrepareCreate(new Studentprofile
-                    {
-                        StudentId = account.AccountId,
-                        AcademicStatus = "unknown"
-                    });
-                }
-            }
-
             var studentIds = importedRows.Select(row => row.Student.AccountId).Distinct().ToHashSet();
             var dataAttributeIds = importedRows.Select(row => row.Indicator.DataAttributeId).Distinct().ToHashSet();
             var relevantKeys = await _attributeKeyRepository.SearchAsync(key =>

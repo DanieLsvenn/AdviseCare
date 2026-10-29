@@ -29,5 +29,5 @@ public partial class Attributekey
 
     public virtual ICollection<Studentindicator> Studentindicators { get; set; } = new List<Studentindicator>();
 
-    public virtual Studentprofile Student { get; set; }
+    public virtual Account Student { get; set; }
 }

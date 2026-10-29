@@ -56,7 +56,7 @@ namespace AdviseCare.Application.Services
                 StudentId = c.StudentId,
                 AttributeName = c.DataAttribute.AttributeName,
                 PurposeName = c.ConsentPurpose.PurposeName,
-                StudentFullName = c.Student.Account.FullName,
+                StudentFullName = c.Student.FullName,
                 ExpiresAt = c.ExpiresAt,
                 GrantedAt = c.GrantedAt,
                 WithdrawnAt = c.WithdrawnAt,
@@ -85,7 +85,7 @@ namespace AdviseCare.Application.Services
                     StudentId = c.StudentId,
                     AttributeName = c.DataAttribute.AttributeName,
                     PurposeName = c.ConsentPurpose.PurposeName,
-                    StudentFullName = c.Student.Account.FullName,
+                    StudentFullName = c.Student.FullName,
                     ExpiresAt = c.ExpiresAt,
                     GrantedAt = c.GrantedAt,
                     WithdrawnAt = c.WithdrawnAt,
@@ -97,7 +97,7 @@ namespace AdviseCare.Application.Services
         // Get Consent by Id
         public async Task<GetConsentByIdResponse> GetByIdAsync(Guid ConsentId)
         {
-            var consent = await _consentRepository.GetByIdAsyncInclude(ConsentId, c => c.ConsentPurpose, c => c.DataAttribute, c => c.Student.Account)
+            var consent = await _consentRepository.GetByIdAsyncInclude(ConsentId, c => c.ConsentPurpose, c => c.DataAttribute, c => c.Student)
                 ?? throw new NotFoundException("Consent not found.");
 
             return new GetConsentByIdResponse
@@ -108,7 +108,7 @@ namespace AdviseCare.Application.Services
                 StudentId = consent.StudentId,
                 AttributeName = consent.DataAttribute.AttributeName,
                 PurposeName = consent.ConsentPurpose.PurposeName,
-                StudentFullName = consent.Student.Account.FullName,
+                StudentFullName = consent.Student.FullName,
                 ExpiresAt = consent.ExpiresAt,
                 GrantedAt = consent.GrantedAt,
                 WithdrawnAt = consent.WithdrawnAt,
@@ -135,7 +135,7 @@ namespace AdviseCare.Application.Services
                 StudentId = c.StudentId,
                 AttributeName = c.DataAttribute.AttributeName,
                 PurposeName = c.ConsentPurpose.PurposeName,
-                StudentFullName = c.Student.Account.FullName,
+                StudentFullName = c.Student.FullName,
                 ExpiresAt = c.ExpiresAt,
                 GrantedAt = c.GrantedAt,
                 WithdrawnAt = c.WithdrawnAt,
@@ -227,7 +227,7 @@ namespace AdviseCare.Application.Services
         // Update Consent (the student changes the expiry date of an own granted consent)
         public async Task<UpdateConsentResponse> UpdateAsync(Guid StudentId, Guid ConsentId, UpdateConsentRequest request)
         {
-            var consent = await _consentRepository.GetByIdAsyncInclude(ConsentId, c => c.ConsentPurpose, c => c.DataAttribute, c => c.Student.Account);
+            var consent = await _consentRepository.GetByIdAsyncInclude(ConsentId, c => c.ConsentPurpose, c => c.DataAttribute, c => c.Student);
             if (consent == null || consent.StudentId != StudentId)
                 throw new NotFoundException("Consent not found.");
             if (consent.Status != "granted")
@@ -251,7 +251,7 @@ namespace AdviseCare.Application.Services
                 StudentId = consent.StudentId,
                 AttributeName = consent.DataAttribute.AttributeName,
                 PurposeName = consent.ConsentPurpose.PurposeName,
-                StudentFullName = consent.Student.Account.FullName,
+                StudentFullName = consent.Student.FullName,
                 ExpiresAt = consent.ExpiresAt,
                 GrantedAt = consent.GrantedAt,
                 WithdrawnAt = consent.WithdrawnAt,
@@ -536,7 +536,7 @@ namespace AdviseCare.Application.Services
         private async Task<List<Consent>> GetConsentsAsync(Expression<Func<Consent, bool>> predicate)
         {
             return await _consentRepository.SearchAsyncIncludeOrderBy(predicate, c => c.GrantedAt, false,
-                c => c.ConsentPurpose, c => c.DataAttribute, c => c.Student.Account);
+                c => c.ConsentPurpose, c => c.DataAttribute, c => c.Student);
         }
 
         // Helper: load Consent histories with the consent's purpose and attribute and who changed it, newest first

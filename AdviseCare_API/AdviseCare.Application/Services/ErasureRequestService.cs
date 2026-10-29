@@ -49,7 +49,7 @@ namespace AdviseCare.Application.Services
                 AttributeName = e.Consent.DataAttribute.AttributeName,
                 ExecutedByFullName = e.ExecutedByNavigation?.FullName ?? string.Empty,
                 PurposeName = e.Consent.ConsentPurpose.PurposeName,
-                StudentFullName = e.Consent.Student.Account.FullName,
+                StudentFullName = e.Consent.Student.FullName,
                 ExecutedAt = e.ExecutedAt,
                 RequestedAt = e.RequestedAt,
                 KeyStatus = e.AttributeKey.Status,
@@ -78,7 +78,7 @@ namespace AdviseCare.Application.Services
                     AttributeName = e.Consent.DataAttribute.AttributeName,
                     ExecutedByFullName = e.ExecutedByNavigation?.FullName ?? string.Empty,
                     PurposeName = e.Consent.ConsentPurpose.PurposeName,
-                    StudentFullName = e.Consent.Student.Account.FullName,
+                    StudentFullName = e.Consent.Student.FullName,
                     ExecutedAt = e.ExecutedAt,
                     RequestedAt = e.RequestedAt,
                     KeyStatus = e.AttributeKey.Status,
@@ -102,7 +102,7 @@ namespace AdviseCare.Application.Services
                 AttributeName = request.Consent.DataAttribute.AttributeName,
                 ExecutedByFullName = request.ExecutedByNavigation?.FullName ?? string.Empty,
                 PurposeName = request.Consent.ConsentPurpose.PurposeName,
-                StudentFullName = request.Consent.Student.Account.FullName,
+                StudentFullName = request.Consent.Student.FullName,
                 ExecutedAt = request.ExecutedAt,
                 RequestedAt = request.RequestedAt,
                 KeyStatus = request.AttributeKey.Status,
@@ -129,7 +129,7 @@ namespace AdviseCare.Application.Services
                 AttributeName = e.Consent.DataAttribute.AttributeName,
                 ExecutedByFullName = e.ExecutedByNavigation?.FullName ?? string.Empty,
                 PurposeName = e.Consent.ConsentPurpose.PurposeName,
-                StudentFullName = e.Consent.Student.Account.FullName,
+                StudentFullName = e.Consent.Student.FullName,
                 ExecutedAt = e.ExecutedAt,
                 RequestedAt = e.RequestedAt,
                 KeyStatus = e.AttributeKey.Status,
@@ -179,7 +179,7 @@ namespace AdviseCare.Application.Services
             await _notificationService.NotifyAsync(request.Consent.StudentId, "Your data has been erased",
                 $"Your {request.Consent.DataAttribute.AttributeName} values can no longer be read. The record that they existed and were withdrawn is kept for audit.", "/consents");
             await _activityLogService.LogCurrentAccountAsync("erasureExecuted",
-                $"Erasure completed for {request.Consent.Student.Account.FullName}'s {request.Consent.DataAttribute.AttributeName} after Vault key destruction.");
+                $"Erasure completed for {request.Consent.Student.FullName}'s {request.Consent.DataAttribute.AttributeName} after Vault key destruction.");
             return true;
         }
 
@@ -187,7 +187,7 @@ namespace AdviseCare.Application.Services
         private async Task<List<Erasurerequest>> GetRequestsAsync(Expression<Func<Erasurerequest, bool>> predicate)
         {
             return await _erasureRequestRepository.SearchAsyncIncludeOrderBy(predicate, e => e.RequestedAt, false,
-                e => e.AttributeKey, e => e.Consent.ConsentPurpose, e => e.Consent.DataAttribute, e => e.Consent.Student.Account, e => e.ExecutedByNavigation);
+                e => e.AttributeKey, e => e.Consent.ConsentPurpose, e => e.Consent.DataAttribute, e => e.Consent.Student, e => e.ExecutedByNavigation);
         }
     }
 }

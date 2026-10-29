@@ -202,7 +202,7 @@ public sealed class CorrectionRequestService(
 
         var correctionRequests = await _correctionRequestRepository.SearchAsyncInclude(
             record => studentIds.Contains(record.StudentId) && record.Status == status,
-            record => record.Student,
+            record => record.Student.Studentprofile,
             record => record.AttributeKey);
         var responses = new List<CorrectionRequestReviewResponse>(correctionRequests.Count);
         foreach (var correctionRequest in correctionRequests.OrderByDescending(record => record.SubmittedAt))
@@ -356,7 +356,7 @@ public sealed class CorrectionRequestService(
     {
         var correctionRequest = await _correctionRequestRepository.GetByIdAsyncInclude(
             correctionRequestId,
-            record => record.Student,
+            record => record.Student.Studentprofile,
             record => record.AttributeKey)
             ?? throw new NotFoundException("Correction request not found.");
         if (correctionRequest.Status != PendingStatus)
@@ -542,7 +542,7 @@ public sealed class CorrectionRequestService(
         {
             CorrectionRequestId = correctionRequest.CorrectionRequestId,
             StudentId = correctionRequest.StudentId,
-            StudentCode = correctionRequest.Student?.StudentCode ?? string.Empty,
+            StudentCode = correctionRequest.Student?.Studentprofile?.StudentCode ?? string.Empty,
             StudentIndicatorId = source.StudentIndicatorId,
             IndicatorId = source.IndicatorId,
             TermId = source.TermId,

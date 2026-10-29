@@ -20,7 +20,7 @@ public sealed record StudentDataExportIdentity(
     string FullName,
     string Email,
     string UserName,
-    Guid? ProgrammeId,
+    Guid? FacultyId,
     string AcademicStatus);
 
 public sealed record StudentCaseExportResponse(

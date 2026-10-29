@@ -8,14 +8,15 @@ System Administrator
 
 Creating accounts for students and staff (one by one or in bulk from an import file), getting every account linked to its owner's personal Google account, and deciding which role each staff account plays.
 
-+ Create a single account (email, full name, username, faculty, roles)
-+ Bulk import accounts from an Excel file (email, full name, username, faculty code, role); importing from a Google Sheet is future (see AdviseCare_Future_List.txt)
++ Create a single account (email, full name, username, faculty, roles); a Student account also gets its student profile (student code, academic status)
++ Bulk import accounts from an Excel file (email, full name, username, faculty code, role, plus student code and academic status on Student rows only: 7 filled columns for a student, 5 for staff); importing from a Google Sheet is future (see AdviseCare_Future_List.txt)
 + Send account-linking emails to newly created accounts
 + Track each account's link status (not linked / email sent / linked) and resend the linking email
 + Edit account details (email, full name, username, faculty); changing the email unlinks the Google account, so the linking email has to be sent again
++ Edit a student's profile (student code, academic status: enrolled / on leave / withdrawn / graduated), e.g. when the student goes on leave or graduates; updating existing accounts through the import is future
 + Activate/Deactivate or Ban/Unban an account (not the admin's own account; deactivating or banning ends all of the account's sessions)
 + Adjust roles for each account (the last System Administrator role cannot be removed)
-+ View the account dashboard, sorted/filtered by role, faculty, link status or account status
++ View the account dashboard, sorted/filtered by role, faculty, student code, academic status, link status or account status
 
 - Manage faculties, subjects and advisor specialisations:
 
@@ -139,6 +140,8 @@ When a student withdraws consent, the Steward triggers the destruction of the en
 Academic Advisor and Wellbeing Advisor (shared requirements)
 
 The two advisor roles use the same case tools. The Academic Advisor handles study matters (subjects, FLM / FAP / LMS resources) and may be specialised in some subjects. The Wellbeing Advisor handles personal life matters (psychological issues, accommodation, family, everyday money advice, paperwork such as student certificates or military exemption); anything involving borrowing money or financial support goes to the Student Welfare Officer.
+
+Every staff role, every advisor included, can always see a student's directory data (email, full name, username, faculty, student code, academic status) without consent and without an access log entry; everything else that describes the student is an indicator and needs consent, and every indicator read is logged.
 
 - View assigned cases:
 
@@ -273,7 +276,7 @@ The main entry point: the student asks for help, picks the kind of help, explain
 
 - View own profile, indicators and the sources behind them:
 
-+ View own consolidated profile
++ View own consolidated profile (including own student code and academic status)
 + View own indicators and their sources
 + See notice where data about them is missing
 + View own consent status per section

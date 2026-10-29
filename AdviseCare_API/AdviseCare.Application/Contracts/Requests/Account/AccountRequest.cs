@@ -8,8 +8,10 @@ namespace AdviseCare.Application.Contracts.Requests.Account
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
         public Guid? FacultyId { get; set; }
         public string RoleName { get; set; } = string.Empty;
+        public string AcademicStatus { get; set; } = string.Empty;
         public string LinkStatus { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
     }
@@ -29,6 +31,12 @@ namespace AdviseCare.Application.Contracts.Requests.Account
         [Required(ErrorMessage = "At least one role is required."), MinLength(1,
             ErrorMessage = "At least one role is required.")]
         public List<string> RoleNames { get; set; } = new();
+        // Student accounts only (required when RoleNames contains Student, must stay empty otherwise)
+        [MaxLength(50, ErrorMessage = "Student code must be under 50 characters.")]
+        public string StudentCode { get; set; } = string.Empty;
+        [RegularExpression("^(enrolled|onLeave|withdrawn|graduated)?$",
+            ErrorMessage = "Academic status must be enrolled, onLeave, withdrawn or graduated.")]
+        public string AcademicStatus { get; set; } = string.Empty;
     }
 
     public class UpdateAccountRequest
@@ -142,5 +150,21 @@ namespace AdviseCare.Application.Contracts.Requests.Account
         public Guid AccountId { get; set; } = Guid.Empty;
         [Required(ErrorMessage = "Role Id is required.")]
         public Guid RoleId { get; set; } = Guid.Empty;
+        // Only when giving the Student role to an account that has no student profile yet
+        [MaxLength(50, ErrorMessage = "Student code must be under 50 characters.")]
+        public string StudentCode { get; set; } = string.Empty;
+        [RegularExpression("^(enrolled|onLeave|withdrawn|graduated)?$",
+            ErrorMessage = "Academic status must be enrolled, onLeave, withdrawn or graduated.")]
+        public string AcademicStatus { get; set; } = string.Empty;
+    }
+
+    public class UpdateStudentProfileRequest
+    {
+        [Required(ErrorMessage = "Student code is required."), MaxLength(50,
+            ErrorMessage = "Student code must be under 50 characters.")]
+        public string StudentCode { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Academic status is required."), RegularExpression("^(enrolled|onLeave|withdrawn|graduated)$",
+            ErrorMessage = "Academic status must be enrolled, onLeave, withdrawn or graduated.")]
+        public string AcademicStatus { get; set; } = "enrolled";
     }
 }

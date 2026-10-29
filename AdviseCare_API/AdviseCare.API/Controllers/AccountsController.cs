@@ -44,7 +44,7 @@ namespace AdviseCare.API.Controllers
         // Search Accounts for the account dashboard
         [HttpGet("search")]
         [SwaggerOperation(Summary = "[System Administrator] Search/Filter accounts",
-            Description = "Filters the account dashboard by email, full name or username (contains), by faculty, by role name, by link status (notLinked/emailSent/linked) and by account status (active/deactivated/banned). Empty fields are ignored; sorting is done by the web app.")]
+            Description = "Filters the account dashboard by email, full name, username or student code (contains), by faculty, by role name, by academic status (enrolled/onLeave/withdrawn/graduated), by link status (notLinked/emailSent/linked) and by account status (active/deactivated/banned). Empty fields are ignored; sorting is done by the web app.")]
         public async Task<IActionResult> Search([FromQuery] SearchAccountRequest request)
         {
             var response = await _accountService.SearchAsync(request);
@@ -55,6 +55,7 @@ namespace AdviseCare.API.Controllers
         [HttpPost]
         [SwaggerOperation(Summary = "[System Administrator] Create account",
             Description = "Creates one account (email, full name, username, optional faculty, one or more role names) for special cases such as late enrolment or staff. " +
+                "A Student account also needs a unique studentCode and an academicStatus (enrolled/onLeave/withdrawn/graduated), which create its student profile; other accounts must leave both empty. " +
                 "The account has no password and linkStatus = notLinked; send it the account-linking email afterwards. Email and username must be unique and the faculty must be active.")]
         public async Task<IActionResult> Create([FromBody] CreateAccountRequest request)
         {
@@ -77,8 +78,9 @@ namespace AdviseCare.API.Controllers
         [HttpPost("import")]
         [Consumes("multipart/form-data")]
         [SwaggerOperation(Summary = "[System Administrator] Import accounts from Excel",
-            Description = "Uploads an .xlsx file whose first sheet has the header row email, fullName, userName, facultyCode, role (role may hold several role names separated by commas). " +
-                "Every row is validated (required fields, email format, duplicate email/username in the file or the system, faculty code exists and is active, role exists). " +
+            Description = "Uploads an .xlsx file whose first sheet has the header row email, fullName, userName, facultyCode, role, studentCode, academicStatus (role may hold several role names separated by commas). " +
+                "Student rows fill all 7 columns (studentCode unique, academicStatus enrolled/onLeave/withdrawn/graduated) and get a student profile; every other row fills only the first 5 and leaves studentCode and academicStatus empty. " +
+                "Every row is validated (required fields, email format, duplicate email/username/studentCode in the file or the system, faculty code exists and is active, role exists, student fields filled only for Student rows). " +
                 "All-or-nothing: if any row is invalid nothing is created and isSuccess = false with the list of invalid rows; otherwise every account is created and their ids are returned, ready for sending the linking emails.")]
         public async Task<IActionResult> Import([FromForm] ImportAccountRequest request)
         {
@@ -178,7 +180,8 @@ namespace AdviseCare.API.Controllers
         // Give an Account a role (ACCOUNT_ROLE)
         [HttpPost("roles")]
         [SwaggerOperation(Summary = "[System Administrator] Add a role to an account",
-            Description = "Gives an account one more role. An account can hold several roles; the same role cannot be added twice. The new role is in the JWT from the account's next sign-in.")]
+            Description = "Gives an account one more role. An account can hold several roles; the same role cannot be added twice. The new role is in the JWT from the account's next sign-in. " +
+                "Giving the Student role to an account without a student profile also needs studentCode and academicStatus, which create the profile.")]
         public async Task<IActionResult> CreateAccountRole([FromBody] CreateAccountRoleRequest request)
         {
             var response = await _accountService.CreateAccountRoleAsync(request);
@@ -192,6 +195,17 @@ namespace AdviseCare.API.Controllers
         public async Task<IActionResult> DeleteAccountRole([FromRoute] Guid accountId, [FromRoute] Guid roleId)
         {
             var response = await _accountService.DeleteAccountRoleAsync(accountId, roleId);
+            return Ok(response);
+        }
+
+        // Update a Student Account's student profile (STUDENTPROFILES)
+        [HttpPut("{id}/student-profile")]
+        [SwaggerOperation(Summary = "[System Administrator] Update a student's profile",
+            Description = "Updates the student code and academic status (enrolled/onLeave/withdrawn/graduated) of a Student account, e.g. when the student goes on leave or graduates. " +
+                "The student code must stay unique. Returns 404 when the account has no student profile (staff accounts have none). The profile itself is created with the account (single create, import or giving the Student role).")]
+        public async Task<IActionResult> UpdateStudentProfile([FromRoute] Guid id, [FromBody] UpdateStudentProfileRequest request)
+        {
+            var response = await _accountService.UpdateStudentProfileAsync(id, request);
             return Ok(response);
         }
     }

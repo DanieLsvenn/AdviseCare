@@ -39,6 +39,11 @@ FU6: Importing accounts from a Google Sheet
 - Why future: kept simple for now, the admin can download the sheet as an Excel file and upload that
 - Ways to do it later: a sheet shared as "anyone with the link can view" read through its CSV export link (no API key), or a Google service account for private sheets
 
+FU10: Account import that also updates existing accounts
+- What it is: the same Excel import, but a Student row whose studentCode already exists updates that student (e.g. academicStatus enrolled -> onLeave, a new faculty) instead of being refused; a row with a new studentCode creates the account exactly like today
+- Already in the ERD: no extra table needed; it updates ACCOUNTS and STUDENTPROFILES
+- Current version instead: the import only creates accounts, and the admin edits a student's profile one by one (PUT /api/Accounts/{id}/student-profile)
+
 ==========
 2. FUTURE, NOT IN THE ERD
 (would need new tables or changes to existing ones)
@@ -59,6 +64,11 @@ FU9: Accounts without a Google account on file (activation code)
 - Missing in the ERD: no new table, but ACCOUNTS.email must allow null (the unique index has to ignore nulls), and the code can reuse resetToken and resetTokenExpiresAt
 - Why future: the current version expects every student to have an email and a Google account, so this is only a fallback for students who cannot or will not share one
 - Open points: how notifications and "forgot password" work for an account with no email; the code is shown only on the admin screen, never sent by email
+
+FU11: Each student's programme
+- What it is: record which programme each student belongs to, so cases and statistics can be split per programme and routed to that programme's head
+- Missing in the ERD: STUDENTPROFILES.programmeId (FK to PROGRAMMES)
+- Why future: there is only one programme / Programme Head for now; the faculty on ACCOUNTS is enough to group students
 
 ==========
 NOT FUTURE, BUT PENDING REVIEW

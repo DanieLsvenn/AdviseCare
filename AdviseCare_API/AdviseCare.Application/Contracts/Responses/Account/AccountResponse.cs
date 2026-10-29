@@ -8,9 +8,11 @@ namespace AdviseCare.Application.Contracts.Responses.Account
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string AuthProvider { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool HasPassword { get; set; } = false;
+        public string AcademicStatus { get; set; } = string.Empty;
         public string LinkStatus { get; set; } = "notLinked";
         public string PreferredLanguage { get; set; } = "vi";
         public string Status { get; set; } = "active";
@@ -25,9 +27,11 @@ namespace AdviseCare.Application.Contracts.Responses.Account
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string AuthProvider { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool HasPassword { get; set; } = false;
+        public string AcademicStatus { get; set; } = string.Empty;
         public string LinkStatus { get; set; } = "notLinked";
         public string PreferredLanguage { get; set; } = "vi";
         public string Status { get; set; } = "active";
@@ -42,9 +46,11 @@ namespace AdviseCare.Application.Contracts.Responses.Account
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string AuthProvider { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool HasPassword { get; set; } = false;
+        public string AcademicStatus { get; set; } = string.Empty;
         public string LinkStatus { get; set; } = "notLinked";
         public string PreferredLanguage { get; set; } = "vi";
         public string Status { get; set; } = "active";
@@ -59,9 +65,11 @@ namespace AdviseCare.Application.Contracts.Responses.Account
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string AuthProvider { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool HasPassword { get; set; } = false;
+        public string AcademicStatus { get; set; } = string.Empty;
         public string LinkStatus { get; set; } = "notLinked";
         public string PreferredLanguage { get; set; } = "vi";
         public string Status { get; set; } = "active";
@@ -76,9 +84,11 @@ namespace AdviseCare.Application.Contracts.Responses.Account
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string AuthProvider { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool HasPassword { get; set; } = false;
+        public string AcademicStatus { get; set; } = string.Empty;
         public string LinkStatus { get; set; } = "notLinked";
         public string PreferredLanguage { get; set; } = "vi";
         public string Status { get; set; } = "active";
@@ -93,9 +103,11 @@ namespace AdviseCare.Application.Contracts.Responses.Account
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string AuthProvider { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool HasPassword { get; set; } = false;
+        public string AcademicStatus { get; set; } = string.Empty;
         public string LinkStatus { get; set; } = "notLinked";
         public string PreferredLanguage { get; set; } = "vi";
         public string Status { get; set; } = "active";
@@ -161,9 +173,11 @@ namespace AdviseCare.Application.Contracts.Responses.Account
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string AuthProvider { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool HasPassword { get; set; } = false;
+        public string AcademicStatus { get; set; } = string.Empty;
         public string LinkStatus { get; set; } = "notLinked";
         public string PreferredLanguage { get; set; } = "vi";
         public string Status { get; set; } = "active";
@@ -178,9 +192,11 @@ namespace AdviseCare.Application.Contracts.Responses.Account
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string AuthProvider { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool HasPassword { get; set; } = false;
+        public string AcademicStatus { get; set; } = string.Empty;
         public string LinkStatus { get; set; } = "notLinked";
         public string PreferredLanguage { get; set; } = "vi";
         public string Status { get; set; } = "active";
@@ -235,5 +251,14 @@ namespace AdviseCare.Application.Contracts.Responses.Account
         public string FullName { get; set; } = string.Empty;
         public string RoleName { get; set; } = string.Empty;
         public DateTime AssignedAt { get; set; }
+    }
+
+    public class UpdateStudentProfileResponse
+    {
+        public Guid StudentProfileId { get; set; } = Guid.Empty;
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
+        public string AcademicStatus { get; set; } = "enrolled";
     }
 }

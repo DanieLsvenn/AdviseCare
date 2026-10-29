@@ -61,6 +61,8 @@ public partial class Account
 
     public virtual ICollection<Assignmentchangerequest> AssignmentchangerequestRequestedByNavigations { get; set; } = new List<Assignmentchangerequest>();
 
+    public virtual ICollection<Attributekey> Attributekeys { get; set; } = new List<Attributekey>();
+
     public virtual ICollection<Backup> Backups { get; set; } = new List<Backup>();
 
     public virtual ICollection<Case> CaseAdvisors { get; set; } = new List<Case>();
@@ -73,6 +75,8 @@ public partial class Account
 
     public virtual ICollection<Casestagehistory> Casestagehistories { get; set; } = new List<Casestagehistory>();
 
+    public virtual ICollection<Consent> Consents { get; set; } = new List<Consent>();
+
     public virtual ICollection<Consenthistory> Consenthistories { get; set; } = new List<Consenthistory>();
 
     public virtual ICollection<Consentpurpose> Consentpurposes { get; set; } = new List<Consentpurpose>();
@@ -82,6 +86,8 @@ public partial class Account
     public virtual ICollection<Consentrequest> ConsentrequestStudents { get; set; } = new List<Consentrequest>();
 
     public virtual ICollection<Correctionrequest> CorrectionrequestReviewedByNavigations { get; set; } = new List<Correctionrequest>();
+
+    public virtual ICollection<Correctionrequest> CorrectionrequestStudents { get; set; } = new List<Correctionrequest>();
 
     public virtual ICollection<Datasource> Datasources { get; set; } = new List<Datasource>();
 
@@ -116,6 +122,10 @@ public partial class Account
     public virtual ICollection<Restoreoperation> Restoreoperations { get; set; } = new List<Restoreoperation>();
 
     public virtual ICollection<Session> Sessions { get; set; } = new List<Session>();
+
+    public virtual ICollection<Studentindicator> Studentindicators { get; set; } = new List<Studentindicator>();
+
+    public virtual Studentprofile Studentprofile { get; set; }
 
     public virtual ICollection<Supportcategory> Supportcategories { get; set; } = new List<Supportcategory>();
 }

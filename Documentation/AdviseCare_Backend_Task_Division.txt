@@ -11,7 +11,7 @@
 
 ==========
 MEMBER A - IDENTITY, ACCOUNTS, MASTER DATA, NOTIFICATIONS
-Tables owned: ACCOUNTS, ROLES, ACCOUNT_ROLE, SESSIONS, ACTIVITYLOGS, NOTIFICATIONS, NOTIFICATIONPREFERENCES, FACULTIES, PROGRAMMES, ACADEMICTERMS, SUBJECTS, ACCOUNT_SUBJECT
+Tables owned: ACCOUNTS, STUDENTPROFILES, ROLES, ACCOUNT_ROLE, SESSIONS, ACTIVITYLOGS, NOTIFICATIONS, NOTIFICATIONPREFERENCES, FACULTIES, PROGRAMMES, ACADEMICTERMS, SUBJECTS, ACCOUNT_SUBJECT
 ==========
 
 A1. Authentication and sessions (AuthController; AccountService + SessionService)
@@ -23,11 +23,12 @@ A1.5. Forgot password / reset by email (Gmail SMTP): linked accounts only, token
 A1.6. Set or change password with one endpoint: the old password is asked only when one already exists; the other sessions are logged out. The password step after linking can be skipped
 A1.7. Sessions: record device, list own sessions, log out, log out of other sessions, automatic end after 1 month
 A2. Account management (Admin; AccountsController, RolesController)
-A2.1. Account CRUD: get all (paged), get by id, search/filter (role, faculty, link status, account status), create a single account (email, fullName, userName, faculty, roles), update details (changing the email unlinks the Google account)
-A2.2. Bulk import from an Excel file (email, fullName, userName, facultyCode, role); validate all rows, all-or-nothing (Google Sheet import is future, FU6)
+A2.1. Account CRUD: get all (paged), get by id, search/filter (role, faculty, student code, academic status, link status, account status), create a single account (email, fullName, userName, faculty, roles, plus studentCode and academicStatus for a Student), update details (changing the email unlinks the Google account)
+A2.2. Bulk import from an Excel file (email, fullName, userName, facultyCode, role, studentCode, academicStatus): 5 filled columns for staff rows, 7 for Student rows; validate all rows, all-or-nothing (Google Sheet import is future, FU6; updating existing accounts through the import is future, FU10)
 A2.3. Send / resend account-linking emails, linkStatus notLinked -> emailSent
 A2.4. Roles CRUD and account roles (ACCOUNT_ROLE); the last System Administrator role cannot be removed
 A2.5. Activate/deactivate, ban/unban (never on the admin's own account; ends all active sessions)
+A2.6. Student profiles (STUDENTPROFILES): created in the same save as a Student account (single create, import, or giving the Student role, which then needs studentCode and academicStatus); the admin edits studentCode and academicStatus (PUT /api/Accounts/{id}/student-profile); shown in the account responses and the student's own profile
 A3. Master data (Admin)
 A3.1. Faculties, programmes and academic terms CRUD; only one term can be current, setting a new current term moves the old one to past
 A3.2. Subjects under a faculty CRUD; link academic advisors to subjects (ACCOUNT_SUBJECT)

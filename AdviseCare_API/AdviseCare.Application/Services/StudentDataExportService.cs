@@ -25,9 +25,9 @@ public sealed class StudentDataExportService(
         Guid studentId,
         CancellationToken cancellationToken)
     {
-        var studentProfile = await _studentProfileRepository.GetByIdAsyncInclude(
-            studentId,
-            profile => profile.Account)
+        var studentProfile = await _studentProfileRepository.FirstOrDefaultAsync(
+            profile => profile.StudentId == studentId,
+            profile => profile.Student)
             ?? throw new InvalidDataException("The student's profile has not been provisioned.");
 
         var profile = await _profileService.GetOwnProfileAsync(studentId, null, cancellationToken);
@@ -41,10 +41,10 @@ public sealed class StudentDataExportService(
             new StudentDataExportIdentity(
                 studentProfile.StudentId,
                 studentProfile.StudentCode,
-                studentProfile.Account.FullName,
-                studentProfile.Account.Email,
-                studentProfile.Account.UserName,
-                studentProfile.ProgrammeId,
+                studentProfile.Student.FullName,
+                studentProfile.Student.Email,
+                studentProfile.Student.UserName,
+                studentProfile.Student.FacultyId,
                 studentProfile.AcademicStatus),
             profile,
             cases

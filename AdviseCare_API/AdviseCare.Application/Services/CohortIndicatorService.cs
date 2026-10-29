@@ -13,8 +13,6 @@ namespace AdviseCare.Application.Services;
 
 public sealed class CohortIndicatorService(
     IGenericRepository<Studentindicator> studentIndicatorRepository,
-    IGenericRepository<Studentprofile> studentProfileRepository,
-    IGenericRepository<Programme> programmeRepository,
     IGenericRepository<Academicterm> academicTermRepository,
     IGenericRepository<Faculty> facultyRepository,
     IGenericRepository<Consentpurpose> consentPurposeRepository,
@@ -25,8 +23,6 @@ public sealed class CohortIndicatorService(
     private const string CohortAnalyticsPurposeName = "Cohort Analytics";
     private const int MinimumStudentsPerReleasedCell = 10;
     private readonly IGenericRepository<Studentindicator> _studentIndicatorRepository = studentIndicatorRepository;
-    private readonly IGenericRepository<Studentprofile> _studentProfileRepository = studentProfileRepository;
-    private readonly IGenericRepository<Programme> _programmeRepository = programmeRepository;
     private readonly IGenericRepository<Academicterm> _academicTermRepository = academicTermRepository;
     private readonly IGenericRepository<Faculty> _facultyRepository = facultyRepository;
     private readonly IGenericRepository<Consentpurpose> _consentPurposeRepository = consentPurposeRepository;
@@ -164,20 +160,9 @@ public sealed class CohortIndicatorService(
         if (request.TermId.HasValue)
             query = query.Where(row => row.TermId == request.TermId.Value);
 
+        // The student's faculty is the one on their account (ACCOUNTS.facultyId, from the account import)
         if (request.FacultyId.HasValue)
-        {
-            var studentIdsInFaculty = _studentProfileRepository.GetQueryable()
-                .Where(profile => profile.ProgrammeId.HasValue)
-                .Join(
-                    _programmeRepository.GetQueryable(),
-                    profile => profile.ProgrammeId!.Value,
-                    programme => programme.ProgrammeId,
-                    (profile, programme) => new { profile.StudentId, programme.FacultyId })
-                .Where(student => student.FacultyId == request.FacultyId.Value)
-                .Select(student => student.StudentId);
-
-            query = query.Where(row => studentIdsInFaculty.Contains(row.StudentId));
-        }
+            query = query.Where(row => row.Student.FacultyId == request.FacultyId.Value);
 
         var latestRowIds = query
             .GroupBy(row => new { row.StudentId, row.IndicatorId, row.TermId })
