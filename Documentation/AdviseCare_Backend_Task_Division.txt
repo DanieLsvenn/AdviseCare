@@ -88,7 +88,6 @@ C3.1. Interventions: log, update until closed, outcome, history per student
 C3.2. Support grants under an intervention
 C3.3. External services list; external referrals with follow-up due date, outcome, overdue flag (background check)
 C3.4. Escalations: officer raises, Programme Head responds, status tracking
-C3.5. Anonymised welfare statistics (pending review)
 Note: welfare works on existing CASES rows (from the seed data), so it does not wait for Member D's case APIs
 
 ==========

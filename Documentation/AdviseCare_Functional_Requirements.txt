@@ -254,12 +254,6 @@ When a case goes beyond what the officer is allowed to decide, it is escalated t
 + View status of an escalated case
 + View the Programme Head's response
 
-- View anonymised welfare statistics (pending review):
-
-+ Select a term/date range
-+ View anonymised summary statistics by category
-+ Export the statistics
-
 Student
 
 - Request support (create a case):
@@ -340,12 +334,6 @@ For now matching is manual; an automated/AI matching mode is a future plan.
 + List cases/consultations in a time range (filter by advisor, type, category, stage)
 + Review advisor caseload volume and case closure times
 + Export the list/report (Excel/CSV/PDF)
-
-- View anonymised cohort indicators (pending review):
-
-+ View cohort-level indicator summary
-+ Filter by term or faculty
-+ Export cohort summary
 
 All authenticated users
 

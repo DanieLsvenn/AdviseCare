@@ -261,3 +261,5 @@ FU8: In-app chat between advisor and student (possible stretch goal if the scope
 FU9: Accounts without a Google account on file, created with a one-time activation code
 FU10: Account import that also updates existing accounts (matched by studentCode; a new studentCode creates the account as today)
 FU11: Each student's programme (only needed once there is more than one programme / Programme Head)
+FU12: Anonymised welfare statistics (case counts per support category for a term or date range, small groups hidden)
+FU13: Anonymised cohort indicators (indicator averages/frequencies for a term or faculty, from consented values only, small groups hidden)

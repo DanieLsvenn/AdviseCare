@@ -44,6 +44,27 @@ FU10: Account import that also updates existing accounts
 - Already in the ERD: no extra table needed; it updates ACCOUNTS and STUDENTPROFILES
 - Current version instead: the import only creates accounts, and the admin edits a student's profile one by one (PUT /api/Accounts/{id}/student-profile)
 
+FU12: Anonymised welfare statistics
+- What it is: a summary page for the Student Welfare Officer showing how many support cases were opened in each support category over one academic term or a chosen date range, e.g. "Fall 2026 - Money: 23 cases from 19 students; Accommodation: 11 cases from 10 students", with a CSV export. It shows counts only: no names, no student codes, no case text
+- Why "anonymised": counts alone can still point at a person. If a category had only 1 or 2 students in a term, anyone who knows who asked for help could tell what it was about, so every category with fewer than 5 different students is hidden from the result (small-group suppression); an overall total is also left out, so a hidden category cannot be worked out by subtracting
+- Already in the ERD: no extra table needed; it counts CASES (openedAt, studentId, supportCategoryId) grouped by SUPPORTCATEGORIES, using ACADEMICTERMS for the term's dates; REPORTS.reportType already has "welfareStatistics" for when generated reports are stored (FU2)
+- Questions to settle before building it: count every support category or only the wellbeing/financial ones the Welfare Officer works with; who may see it (Welfare Officer only, or also the Programme Head); count by the date a case was opened or by the cases that were active in the period; the suppression threshold (5 students); whether interventions and support grants should be counted too
+- Why future: it reads only data produced by the case workflow (Member D), it is not one of the 5 core workflows, and it was left "pending review" in the requirements
+- Earlier prototype: Member C built a version of it (commit 274023e on the C branch; described in Documentation/C), removed from the current code
+
+FU13: Anonymised cohort indicators
+- What it is: a summary of student indicators for a group of students (a cohort): one term, one faculty, or both. A numeric indicator shows its average and the number of students behind it (e.g. "Fall 2026, faculty SE: average attendance rate 82%, 134 students"); a categorical or boolean indicator shows how many students fall in each value (e.g. "Accommodation status: dormitory 61, rented 52, family 21"). Staff can export the same summary as CSV. No single student's value or identity is ever shown
+- Why it is harder than it looks: an average is still built from each student's personal, encrypted value, so the "if you consent, we serve" rule still applies to every value that goes into it:
+  + the student must have consented to that attribute under a purpose meant for statistics (e.g. a "Cohort Analytics" consent purpose created by the Steward), and the reader's role must have an active access policy for that purpose; values shared only for advising do not count
+  + each value is decrypted only after the access guard allows it, and every value read is written to ACCESSLOGS (one statistic can mean hundreds of log rows)
+  + only the latest value per student, indicator and term is used; missing, erased and archived-indicator values are left out
+  + every result cell with fewer than 10 different students is hidden, so nobody can recover one student's value from a small group
+  + emergency access never counts here, since it is meant for one student in an urgent situation, not for statistics
+- Already in the ERD: no extra table needed; it reads STUDENTINDICATORS, INDICATORS, ACADEMICTERMS, ACCOUNTS.facultyId and the consent tables (CONSENTPURPOSES, CONSENTS, ACCESSPOLICIES, ACCESSLOGS); it only needs a consent purpose for statistics set up by the Steward
+- Questions to settle before building it: which roles may use it; how the system recognises the statistics purpose (a configuration value or a flag on CONSENTPURPOSES, not the purpose's name); the threshold (10 students); whether a statistic should write one access log row per value or one summary row
+- Why future: it depends on the indicator import, consent and encryption all being finished (the key system choice is still open), it is not one of the 5 core workflows, and it was left "pending review" in the requirements
+- Earlier prototype: Member C built a version of it (commit 2ab7f75 on the C branch; described in Documentation/C), removed from the current code
+
 ==========
 2. FUTURE, NOT IN THE ERD
 (would need new tables or changes to existing ones)
@@ -77,5 +98,3 @@ NOT FUTURE, BUT PENDING REVIEW
 
 - Emergency access (EMERGENCYACCESSREQUESTS)
 - Correction requests (CORRECTIONREQUESTS)
-- Anonymised welfare statistics
-- Anonymised cohort indicators
