@@ -42,7 +42,7 @@ FU6: Importing accounts from a Google Sheet
 FU10: Account import that also updates existing accounts
 - What it is: the same Excel import, but a Student row whose studentCode already exists updates that student (e.g. academicStatus enrolled -> onLeave, a new faculty) instead of being refused; a row with a new studentCode creates the account exactly like today
 - Already in the ERD: no extra table needed; it updates ACCOUNTS and STUDENTPROFILES
-- Current version instead: the import only creates accounts, and the admin edits a student's profile one by one (PUT /api/Accounts/{id}/student-profile)
+- Current version instead: the import only creates accounts, and the admin edits a student's profile one by one (PUT /api/StudentProfiles/{studentId})
 
 FU12: Anonymised statistics
 - What it is: summary pages, with a CSV export, that count what happens in the app over one academic term or a chosen date range, without ever showing who it was about. One screen per kind of statistic, for the role that needs it:

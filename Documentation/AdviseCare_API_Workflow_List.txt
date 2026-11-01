@@ -40,7 +40,10 @@ Seed accounts (AdviseCare_Database_Script.sql, password 123456 for all)
 - welfareofficer@gmail.com / welfareofficer - Student Welfare Officer -> {welfareOfficerToken}, {welfareOfficerId}
 - student@gmail.com / student - Student (student profile: studentCode SE180001, academicStatus enrolled) -> {studentToken}, {studentId}
 - programmehead@gmail.com / programmehead - Programme Head -> {programmeHeadToken}, {programmeHeadId}
-The seed has no faculties, programmes, terms or subjects: create them in EX11 first.
+The seed also has mock data for every table (see AdviseCareTempFolder\AdviseCare_Mock_Data\AdviseCare_Mock_Data_Guide.txt): 12 mock staff and 49 mock students (@example.com),
+faculties SE/BA, programme BSE, the 4 terms, 12 subjects, 25 data attributes, the purposes, policies and support categories below, cases, consents and welfare records.
+The 7 accounts above are kept clean (no cases, consents or logs), so the workflows below still start from zero for them.
+Master data already seeded: the create steps of EX11 and WF3 return 409 for these names; save the ids with the GET/search routes instead, or create with a new name.
 
 Accounts created during testing
 - Emails use Gmail plus-addressing so every test email reaches one inbox you own: replace yourgmail with your own Gmail name (yourgmail+student01@gmail.com is delivered to yourgmail@gmail.com)

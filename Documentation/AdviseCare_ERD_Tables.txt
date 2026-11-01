@@ -595,8 +595,6 @@ NOTES (current version)
 - FUTURE, not in this ERD (would need new tables):
   + In-app meeting scheduling: advisor time slots, student booking, advisors swapping meetings
   + In-app chat between advisor and student (possible stretch goal)
-  + Backups and erasure: a backup taken before an erasure still holds the old wrapped key, so restoring it must re-apply completed erasures (destroy those keys again)
-  + Master key rotation: re-wrap every attribute key with a new master key (the v1 prefix of each value leaves room for a new format)
   + Account import that also updates existing accounts: a row whose studentCode already exists updates that student (e.g. academicStatus), a new studentCode creates the account like today; until then the admin edits a student's profile one by one
   + Programme of each student: only needed once there is more than one programme / Programme Head; the faculty on ACCOUNTS is used for now
   + Admin configuration panel (not officially registered in docs): a SYSTEMSETTINGS key/value table (settingKey, settingValue, updatedBy, updatedAt) holding the settings listed in AdviseCare_Functional_Requirements.txt; until then the values are fixed in code/appsettings.json
