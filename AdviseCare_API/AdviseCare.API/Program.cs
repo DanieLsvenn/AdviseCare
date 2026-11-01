@@ -74,6 +74,16 @@ builder.Services.AddScoped<IErasureRequestService, ErasureRequestService>();
 builder.Services.AddScoped<IEmergencyAccessRequestService, EmergencyAccessRequestService>();
 builder.Services.AddScoped<IAttributeKeyService, AttributeKeyService>();
 
+// Member D
+builder.Services.AddScoped<CaseWorkflowHelper>();
+builder.Services.AddScoped<ISupportCategoryService, SupportCategoryService>();
+builder.Services.AddScoped<ICaseService, CaseService>();
+builder.Services.AddScoped<ICaseNoteService, CaseNoteService>();
+builder.Services.AddScoped<IReferralService, ReferralService>();
+builder.Services.AddScoped<IAdvisorAssignmentService, AdvisorAssignmentService>();
+builder.Services.AddScoped<IAssignmentChangeRequestService, AssignmentChangeRequestService>();
+builder.Services.AddScoped<ICaseReportService, CaseReportService>();
+
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -103,6 +113,7 @@ builder.Services.AddHttpClient<IKeyManagementService, VaultTransitKeyManagementS
 builder.Services.AddScoped<IExcelReader, ExcelReader>();
 builder.Services.AddScoped<ICsvReader, CsvReader>();
 builder.Services.AddScoped<IExcelWriter, ExcelWriter>();
+builder.Services.AddScoped<IPdfWriter, SimplePdfWriter>();
 
 // -- HttpContextAccessor ---
 builder.Services.AddHttpContextAccessor();

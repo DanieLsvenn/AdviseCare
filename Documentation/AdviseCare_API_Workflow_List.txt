@@ -9,6 +9,7 @@ HOW TO READ THIS FILE
 
 Endpoint tags
 - [EXISTS] - the endpoint is in the backend now (Member A)
+- [EXISTS - Member D] - built by Member D (support requests, cases, matching, referrals, assignments, reports); extra Member D endpoints are listed in the MEMBER D EXTRA ENDPOINTS section at the end
 - [PLANNED - Member B/C/D] - not built yet; the route and body are a proposal following the same conventions, to be confirmed by the member who owns it (see AdviseCare_Backend_Task_Division.txt)
 - [NO API] - the step happens outside the backend (web app page, email inbox, Google)
 
@@ -193,8 +194,8 @@ WF2: Student requests support and gets advised
 2. Student opens "Request support" and creates a new case
 2.1. Chooses the support type: academic or wellbeing (web app choice) [NO API]
 2.2. Chooses the category
-   GET /api/SupportCategories/search?supportType=academic&status=active [PLANNED - Member D]
-   GET /api/SupportCategories/search?supportType=wellbeing&status=active [PLANNED - Member D]
+   GET /api/SupportCategories/search?supportType=academic&status=active [EXISTS - Member D]
+   GET /api/SupportCategories/search?supportType=wellbeing&status=active [EXISTS - Member D]
    Auth: {studentToken}
    Expect: academic -> Course content question, Study plan; wellbeing -> Accommodation, Money
 2.2.1. Academic: the subject (dropdown) and the topic
@@ -205,14 +206,14 @@ WF2: Student requests support and gets advised
 2.3. Writes the reason (part of the body in 2.5)
 2.4. Chooses which data attributes to share
 2.4.1. Only the attributes of the category's consent purpose are offered
-   GET /api/SupportCategories/{catCourseContentId} [PLANNED - Member D] -> its consentPurposeId
+   GET /api/SupportCategories/{catCourseContentId} [EXISTS - Member D] -> its consentPurposeId
    GET /api/ConsentPurposes/{purposeAcademicId} [EXISTS]
    Auth: {studentToken}
    Expect: dataAttributes = GPA and Attendance rate (the attributes of Academic advising); only active ones are offered
 2.4.2. The student may leave it empty (sharedAttributeIds = [])
 2.4.3. Each chosen attribute is recorded as consent for that purpose (done by the server in 2.5, through IConsentService.CreateAsync)
 2.5. Submits; the case is created with stage = pending
-   POST /api/Cases [PLANNED - Member D]
+   POST /api/Cases [EXISTS - Member D]
    Auth: {studentToken}
    Body (academic case):
    {
@@ -237,18 +238,18 @@ WF2: Student requests support and gets advised
    Body: { "identifier": "programmehead@gmail.com", "password": "123456", "deviceInfo": "Edge 141 on Windows 11" }
    Save: token -> {programmeHeadToken}
 3.1. Programme Head sees the case in the matching queue
-   GET /api/Cases/matching-queue [PLANNED - Member D]
+   GET /api/Cases/matching-queue [EXISTS - Member D]
    Auth: {programmeHeadToken}
    Expect: both cases with currentStage = pending, ordered by priority then openedAt
 3.2. Programme Head picks a suitable advisor
-   GET /api/Cases/{caseAcademicId}/suggested-advisors [PLANNED - Member D]
+   GET /api/Cases/{caseAcademicId}/suggested-advisors [EXISTS - Member D]
    Auth: {programmeHeadToken}
    Expect (3.2.1): academicadvisor first (linked to PRN212 in EX11 step 3), then general academic advisors of faculty SE (advisor01, staff01); each with current caseload
    Expect (3.2.2): for {caseWellbeingId} -> wellbeingadvisor
    Expect (3.2.3, optional): an advisor who already has an active assignment with this student is listed first
-   GET /api/AdvisorAssignments/search?studentId={studentId}&status=active [PLANNED - Member D]
+   GET /api/AdvisorAssignments/search?studentId={studentId}&status=active [EXISTS - Member D]
 3.3. System sets the case's advisor, records the assignment and moves the case to assigned
-   PUT /api/Cases/{caseAcademicId}/assign [PLANNED - Member D]
+   PUT /api/Cases/{caseAcademicId}/assign [EXISTS - Member D]
    Auth: {programmeHeadToken}
    Body:
    {
@@ -273,8 +274,8 @@ WF2: Student requests support and gets advised
    Expect: count >= 1
 5. Advisor reviews the case
 5.1. Opens the case: reason, category, subject
-   GET /api/Cases/assigned?currentStage=assigned [PLANNED - Member D]
-   GET /api/Cases/{caseAcademicId} [PLANNED - Member D]
+   GET /api/Cases/assigned?currentStage=assigned [EXISTS - Member D]
+   GET /api/Cases/{caseAcademicId} [EXISTS - Member D]
    Auth: {academicAdvisorToken}
    Expect: the case with requestReason, category Course content question, subject PRN212
 5.2. Opens the student profile: only consented data, with source and missing-data notices
@@ -285,7 +286,7 @@ WF2: Student requests support and gets advised
 6. Advisor and student meet
 6.1. They decide when and how to meet, outside the app [NO API]
 6.2. Advisor moves the case to stage = contacted
-   PUT /api/Cases/{caseAcademicId}/stage [PLANNED - Member D]
+   PUT /api/Cases/{caseAcademicId}/stage [EXISTS - Member D]
    Auth: {academicAdvisorToken}
    Body:
    {
@@ -295,7 +296,7 @@ WF2: Student requests support and gets advised
    Expect: 200, currentStage = contacted; stage history assigned -> contacted
    Negative: "toStage": "pending" -> 400 (not allowed to go back to pending)
 7. Advisor records case notes and finalizes them
-   POST /api/CaseNotes [PLANNED - Member D]
+   POST /api/CaseNotes [EXISTS - Member D]
    Auth: {academicAdvisorToken}
    Body:
    {
@@ -304,10 +305,10 @@ WF2: Student requests support and gets advised
    }
    Expect: 200, isFinalized = false
    Save: caseNoteId -> {caseNoteId}
-   PUT /api/CaseNotes/{caseNoteId} [PLANNED - Member D]
+   PUT /api/CaseNotes/{caseNoteId} [EXISTS - Member D]
    Body: { "noteText": "Went through constructor injection and service lifetimes (AddScoped vs AddSingleton). Student will redo lab 3 and send it by 2026-10-29." }
    Expect: editedAt is set
-   PUT /api/CaseNotes/{caseNoteId}/finalize [PLANNED - Member D]
+   PUT /api/CaseNotes/{caseNoteId}/finalize [EXISTS - Member D]
    Expect: isFinalized = true
    Negative: PUT /api/CaseNotes/{caseNoteId} after finalizing -> 400
 8. If the case needs someone else
@@ -316,7 +317,7 @@ WF2: Student requests support and gets advised
    POST /api/Auth/login [EXISTS]
    Body: { "identifier": "wellbeingadvisor@gmail.com", "password": "123456", "deviceInfo": "Chrome 141 on macOS" }
    Save: token -> {wellbeingAdvisorToken}
-   POST /api/Referrals [PLANNED - Member D]
+   POST /api/Referrals [EXISTS - Member D]
    Auth: {wellbeingAdvisorToken}
    Body:
    {
@@ -328,16 +329,16 @@ WF2: Student requests support and gets advised
    Expect: 200, status = pending; case currentStage = referred; the Welfare Officer is notified
    Save: referralId -> {referralWelfareId} -> continue in WF2b
 9. Advisor follows up and closes the case
-   PUT /api/Cases/{caseAcademicId}/stage [PLANNED - Member D]
+   PUT /api/Cases/{caseAcademicId}/stage [EXISTS - Member D]
    Auth: {academicAdvisorToken}
    Body: { "toStage": "followUp", "reason": "Checking lab 3 resubmission" }
    Then: { "toStage": "closed", "reason": "Lab 3 passed, student is confident for the final exam" }
    Expect: currentStage = closed, status = closed, closedAt set
-   Reopen test: PUT /api/Cases/{caseAcademicId}/reopen [PLANNED - Member D]
+   Reopen test: PUT /api/Cases/{caseAcademicId}/reopen [EXISTS - Member D]
    Body: { "reason": "Student failed the final exam and asks for a study plan" }
    Expect: status = reopened, currentStage = assigned
 10. Every stage change is recorded in the case's stage history
-   GET /api/CaseStageHistories/search?caseId={caseAcademicId} [PLANNED - Member D]
+   GET /api/CaseStageHistories/search?caseId={caseAcademicId} [EXISTS - Member D]
    Auth: {academicAdvisorToken} (also {studentToken} for own cases)
    Expect: pending -> assigned -> contacted -> followUp -> closed (-> assigned on reopen), each with changedBy, reason and changedAt
 
@@ -346,24 +347,24 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    POST /api/Auth/login [EXISTS]
    Body: { "identifier": "welfareofficer@gmail.com", "password": "123456", "deviceInfo": "Chrome 141 on Windows 11" }
    Save: token -> {welfareOfficerToken}
-   GET /api/Referrals/me/incoming?status=pending [PLANNED - Member D]
+   GET /api/Referrals/me/incoming?status=pending [EXISTS - Member D]
    Auth: {welfareOfficerToken}
    Expect: {referralWelfareId} with the case, the sender and priority high
 2. Welfare Officer triages it
 2.1. Opens the referral and the advisor's notes
-   GET /api/Referrals/{referralWelfareId} [PLANNED - Member D]
-   GET /api/CaseNotes/search?caseId={caseWellbeingId} [PLANNED - Member D]
+   GET /api/Referrals/{referralWelfareId} [EXISTS - Member D]
+   GET /api/CaseNotes/search?caseId={caseWellbeingId} [EXISTS - Member D]
    Auth: {welfareOfficerToken}
 2.2. Sets the priority
-   PUT /api/Cases/{caseWellbeingId}/priority [PLANNED - Member D]
+   PUT /api/Cases/{caseWellbeingId}/priority [EXISTS - Member D]
    Auth: {welfareOfficerToken}
    Body: { "priority": "urgent" }
    Expect: case priority = urgent
 2.3. Accepts it, or returns it with a reason
-   PUT /api/Referrals/{referralWelfareId}/accept [PLANNED - Member D]
+   PUT /api/Referrals/{referralWelfareId}/accept [EXISTS - Member D]
    Auth: {welfareOfficerToken}
    Expect: status = accepted, acceptedAt set; the wellbeing advisor is notified
-   Return test (on a second referral): PUT /api/Referrals/{id}/return [PLANNED - Member D]
+   Return test (on a second referral): PUT /api/Referrals/{id}/return [EXISTS - Member D]
    Body: { "reason": "Not a financial matter, the student needs accommodation support" }
    Expect: status = returned; case back to the sender
 3. Welfare Officer works with the student
@@ -530,18 +531,18 @@ WF4: Programme Head lists, reports and exports
 3. Filters by advisor, support type, category, subject or stage
 4. Views the result
 4.1. List of cases in the range
-   GET /api/Reports/cases?from=2026-09-07&to=2026-12-27 [PLANNED - Member D]
-   GET /api/Reports/cases?from=2026-09-07&to=2026-12-27&advisorId={academicAdvisorId}&supportType=academic&subjectId={subjectPrn212Id}&currentStage=closed [PLANNED - Member D]
+   GET /api/Reports/cases?from=2026-09-07&to=2026-12-27 [EXISTS - Member D]
+   GET /api/Reports/cases?from=2026-09-07&to=2026-12-27&advisorId={academicAdvisorId}&supportType=academic&subjectId={subjectPrn212Id}&currentStage=closed [EXISTS - Member D]
    Auth: {programmeHeadToken}
    Expect: the cases from WF2/EX3 that match
 4.2. Caseload volume per advisor
 4.3. Average time to close a case per advisor
-   GET /api/Reports/caseload-closure?from=2026-09-07&to=2026-12-27 [PLANNED - Member D]
+   GET /api/Reports/caseload-closure?from=2026-09-07&to=2026-12-27 [EXISTS - Member D]
    Auth: {programmeHeadToken}
    Expect: per advisor: open cases, closed cases, average days to close (closed cases only)
 5. Exports the list/report
-   GET /api/Reports/cases/export?from=2026-09-07&to=2026-12-27&format=xlsx [PLANNED - Member D]
-   GET /api/Reports/caseload-closure/export?from=2026-09-07&to=2026-12-27&format=pdf [PLANNED - Member D]
+   GET /api/Reports/cases/export?from=2026-09-07&to=2026-12-27&format=xlsx [EXISTS - Member D]
+   GET /api/Reports/caseload-closure/export?from=2026-09-07&to=2026-12-27&format=pdf [EXISTS - Member D]
    Auth: {programmeHeadToken}
    Expect: a file download (xlsx / csv / pdf), generated on the fly, nothing stored
    Negative: "to" before "from" -> 400; "format=docx" -> 400
@@ -702,14 +703,14 @@ EX2: Sign in, forgot password and sessions
 
 EX3: Advisor reaches out based on indicators
 1. Advisor views indicators of the students assigned to them (only consented data)
-   GET /api/AdvisorAssignments/me/students [PLANNED - Member D]
+   GET /api/AdvisorAssignments/me/students [EXISTS - Member D]
    Auth: {academicAdvisorToken}
    Expect: student (from WF2 3.3)
    GET /api/StudentIndicators/students/{studentId}/profile [PLANNED - Member C]
    Expect: GPA 6.8 and Attendance rate 72 (consented in WF2), the rest "exists, not shared"
 2. Advisor notices a student who needs help [NO API]
 3. Advisor opens a case for that student
-   POST /api/Cases [PLANNED - Member D]
+   POST /api/Cases [EXISTS - Member D]
    Auth: {academicAdvisorToken}
    Body:
    {
@@ -729,7 +730,7 @@ EX3: Advisor reaches out based on indicators
 EX4: Referral between advisors
 1. Advisor opens the case and chooses "Refer"
 2. Advisor picks the receiver and writes the reason and priority
-   POST /api/Referrals [PLANNED - Member D]
+   POST /api/Referrals [EXISTS - Member D]
    Auth: {academicAdvisorToken}
    Body:
    {
@@ -742,15 +743,15 @@ EX4: Referral between advisors
    Save: referralId -> {referralAdvisorId}
 3. Receiver gets a notification
    GET /api/Notifications/me [EXISTS]
-   GET /api/Referrals/me/incoming?status=pending [PLANNED - Member D]
+   GET /api/Referrals/me/incoming?status=pending [EXISTS - Member D]
    Auth: {wellbeingAdvisorToken}
 4. Receiver accepts or returns the referral
-   PUT /api/Referrals/{referralAdvisorId}/accept [PLANNED - Member D]
+   PUT /api/Referrals/{referralAdvisorId}/accept [EXISTS - Member D]
    Auth: {wellbeingAdvisorToken}
    Expect: status = accepted; case advisorId = wellbeing advisor; currentStage back to assigned
    Return test (on another referral): PUT /api/Referrals/{id}/return, body { "reason": "The student only needs help with the subject" }
 5. Case stage history records the hand-over
-   GET /api/CaseStageHistories/search?caseId={caseOutreachId} [PLANNED - Member D]
+   GET /api/CaseStageHistories/search?caseId={caseOutreachId} [EXISTS - Member D]
    Expect: assigned -> referred -> assigned with the referral reason
 
 EX5: Escalation to the Programme Head
@@ -780,7 +781,7 @@ EX5: Escalation to the Programme Head
 
 EX6: Advisor assignment change
 1. Advisor requests a change of the assigned advisor
-   POST /api/AssignmentChangeRequests [PLANNED - Member D]
+   POST /api/AssignmentChangeRequests [EXISTS - Member D]
    Auth: {academicAdvisorToken}
    Body:
    {
@@ -791,21 +792,21 @@ EX6: Advisor assignment change
    Expect: status = pending, programmeHeadId set (the Programme Head who will review)
    Save: assignmentChangeRequestId -> {changeRequestId}
 2. Programme Head reviews the request
-   GET /api/AssignmentChangeRequests/search?status=pending [PLANNED - Member D]
+   GET /api/AssignmentChangeRequests/search?status=pending [EXISTS - Member D]
    Auth: {programmeHeadToken}
 3. Programme Head approves or rejects it
 3.1. Approved
-   PUT /api/AssignmentChangeRequests/{changeRequestId}/approve [PLANNED - Member D]
+   PUT /api/AssignmentChangeRequests/{changeRequestId}/approve [EXISTS - Member D]
    Auth: {programmeHeadToken}
    Expect: status = approved; old assignment status = revoked with revokedAt; a new active assignment for advisor01 and the student; open cases of that pair move to advisor01
 3.2. Rejected (on a second request)
-   PUT /api/AssignmentChangeRequests/{id}/reject [PLANNED - Member D]
+   PUT /api/AssignmentChangeRequests/{id}/reject [EXISTS - Member D]
    Body: { "reason": "advisor01 already has too many cases this term" }
    Expect: status = rejected, decidedAt set
 4. Both advisors and the student are notified
    GET /api/Notifications/me [EXISTS] with each of the 3 tokens
 5. Programme Head can also reassign directly
-   PUT /api/AdvisorAssignments/{assignmentId}/reassign [PLANNED - Member D]
+   PUT /api/AdvisorAssignments/{assignmentId}/reassign [EXISTS - Member D]
    Auth: {programmeHeadToken}
    Body: { "advisorId": "{academicAdvisorId}", "reason": "Advisor is back from leave" }
 
@@ -967,7 +968,7 @@ EX11: Master data setup
    DELETE /api/Subjects/account-subjects/{academicAdvisorId}/{subjectSwp391Id} [EXISTS], then add it back
    Negative: link a Student account -> 400; the same pair twice -> 400
 4. Admin manages support categories (after WF3)
-   POST /api/SupportCategories [PLANNED - Member D]
+   POST /api/SupportCategories [EXISTS - Member D]
    Auth: {adminToken}
    Body:
    {
@@ -980,7 +981,7 @@ EX11: Master data setup
    { "consentPurposeId": "{purposeAcademicId}", "categoryName": "Study plan", "description": "Planning which subjects to take or retake", "supportType": "academic" } -> {catStudyPlanId}
    { "consentPurposeId": "{purposeWellbeingId}", "categoryName": "Accommodation", "description": "Problems with the dormitory or renting", "supportType": "wellbeing" } -> {catAccommodationId}
    { "consentPurposeId": "{purposeFinancialId}", "categoryName": "Money", "description": "Tuition, loans or other money problems", "supportType": "wellbeing" } -> {catMoneyId}
-   PUT /api/SupportCategories/{id} [PLANNED - Member D] (edit or "status": "archived")
+   PUT /api/SupportCategories/{id} [EXISTS - Member D] (edit or "status": "archived")
 
 EX12: Account management
 1. Admin opens an account from the dashboard
@@ -1129,3 +1130,25 @@ NOTES
   - WF2b 6: after the welfare referral is accepted, does the case's advisorId change to the Welfare Officer, or stay with the wellbeing advisor?
   - EX6 3.2: ASSIGNMENTCHANGEREQUESTS has no column for the rejection reason (reason holds the requester's reason)
   - EX15 1: is fieldName the indicator name, or should CORRECTIONREQUESTS point to the STUDENTINDICATORS row?
+
+==========
+MEMBER D EXTRA ENDPOINTS (not used by a numbered step above)
+==========
+
+GET /api/SupportCategories?page=1&pageSize=20 - all categories (any role)
+GET /api/SupportCategories/{id}/shareable-attributes - the active attributes of the category's consent purpose the student may share (WF2 2.4.1 in one call); alreadyShared = true for attributes the student already consented to
+GET /api/Cases/me?status=open&currentStage=assigned - Student: own cases (WF2 / D2.3)
+PUT /api/Cases/{id}/reassign - Programme Head: move one case to another advisor of the right type, body { "advisorId": "...", "reason": "..." }; stage kept, hand-over written to the stage history; refused while a referral is pending
+GET /api/Cases/assigned?unreadOnly=true&sortBy=priority&sortDirection=desc&page=1&pageSize=20 - advisor list options; also student (name or code contains), supportType, priority, status
+GET /api/CaseNotes/{id} - one note (drafts only for their author)
+GET /api/Referrals/me/outgoing?status=pending - advisor: referrals I sent
+GET /api/Referrals/search?caseId={caseId} - staff of the case: all referrals of a case (Programme Head may omit caseId)
+GET /api/AdvisorAssignments/{id}, GET /api/AssignmentChangeRequests/{id} - single rows for the people involved and the Programme Head
+
+Rules worth knowing when testing
+- Notifications from Member D point to /cases/{caseId}, /referrals/{referralId} or /assignment-change-requests/{id}; opening GET /api/Cases/{id} marks the caller's notifications for that case as read, which drives unreadNotificationCount in /api/Cases/assigned
+- Case notes: only the case's current advisor writes; drafts are private; students never read notes
+- A case with a pending referral cannot change stage or be reassigned until the receiver accepts or returns it
+- Welfare Officer accepting a referral does not take the case: the advisor keeps it (stage stays referred) and moves it to followUp after the welfare work
+- Advisor outreach (EX3) is only allowed for students the advisor already has an active assignment with
+- The rejection reason of an assignment change request is not stored in the table (no column); it is in the notifications and the activity log
