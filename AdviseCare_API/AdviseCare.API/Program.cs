@@ -27,7 +27,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- Database (SQL Server) ---
 // Enums are stored as NVARCHAR + CHECK in AdviseCareDB and stay as string in code, so no enum mapping is needed here.
-var connectionString = builder.Configuration.GetConnectionString("AdviseCareDB") ?? throw new InvalidOperationException("Connection string 'AdviseCareDB' was not found.");
+var connectionString = builder.Configuration.GetConnectionString("DBDefault") ?? throw new InvalidOperationException("Connection string 'AdviseCareDB' was not found.");
 builder.Services.AddDbContext<AdviseCareContext>(options => options.UseSqlServer(connectionString));
 
 // --- CORS ---
