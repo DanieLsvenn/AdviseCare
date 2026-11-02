@@ -238,10 +238,11 @@ EX14: Student exports own record
 3. Student downloads it; the export is logged
 
 EX15: Correction request (pending review)
-1. Student selects a value believed to be wrong and explains why
-2. Advisor reviews it against its source
-3. Approved: a corrected value is stored as a new version (the old one stays in history); Rejected: the advisor writes the reason
-4. Student is notified
+A student asks for a wrong value in their own student data (e.g. an attendance rate) to be corrected; directory data (name, student code, academic status) is edited by the admin instead
+1. Student picks the value believed to be wrong (one data attribute for one term), gives the correct value and a reason; only possible while the student has an open case (otherwise the student is asked to open a support case first)
+2. The advisor of one of the student's open cases reviews it against its source (e.g. the lecturer's attendance sheet)
+3. Approved: the corrected value is saved as a new version with the same valid-from date, and the wrong value stays in the history (system time still shows the old value, valid time shows the corrected one); Rejected: the advisor writes the reason
+4. Student is notified; while pending, the student can track or withdraw the request
 
 EX16: Notifications, language and settings
 1. User views notifications, marks them read, clicks through to the item and clears old ones
@@ -258,7 +259,7 @@ FU2: Stored report history (reports are generated and downloaded on the fly for 
 FU3: Backup and restore with integrity check
 FU4: Automated/AI case matching to replace the Programme Head's manual matching
 FU5: Evaluating the effectiveness of advising over a period
-FU6: Importing accounts from a Google Sheet (Excel import only for now)
+FU6: Importing accounts and student data from a Google Sheet (Excel/CSV import only for now)
 FU7: Meeting scheduling inside the app (advisor time slots, students book, advisors swap)
 FU8: In-app chat between advisor and student (possible stretch goal if the scope turns out small)
 FU9: Accounts without a Google account on file, created with a one-time activation code
