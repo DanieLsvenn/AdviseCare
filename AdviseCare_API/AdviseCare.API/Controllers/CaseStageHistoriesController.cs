@@ -7,7 +7,7 @@ using System.Security.Claims;
 
 namespace AdviseCare.API.Controllers
 {
-    // CASESTAGEHISTORIES is insert-only: rows are written by the case, referral and assignment endpoints, never through this controller
+    // Case stage histories are insert-only; they are written by the case workflow in CaseService
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
@@ -15,13 +15,16 @@ namespace AdviseCare.API.Controllers
     {
         private readonly ICaseService _caseService = caseService;
 
+        // Search Case stage histories of a case
         [HttpGet("search")]
-        [SwaggerOperation(Summary = "[Involved accounts] Get the stage history of a case",
-            Description = "Oldest first, each row with fromStage, toStage, who changed it, why and when. Same access as GET /api/Cases/{id} (the student can see their own).")]
+        [SwaggerOperation(Summary = "[Student, advisors, Student Welfare Officer, Programme Head] Get the stage history of a case",
+            Description = "caseId is required. Lists every stage change and hand-over of the case, oldest first, with fromStage, toStage, who changed it, why and when. " +
+                "Same access as GET /api/Cases/{id} (the student can see their own).")]
         public async Task<IActionResult> Search([FromQuery] SearchCaseStageHistoryRequest request)
         {
-            var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
-            return Ok(await _caseService.GetStageHistoryAsync(accountId, request.CaseId));
+            var callerId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _caseService.SearchCaseStageHistoryAsync(callerId, request);
+            return Ok(response);
         }
     }
 }

@@ -5,10 +5,12 @@ namespace AdviseCare.Application.Interfaces.Services
 {
     public interface ICaseNoteService
     {
-        Task<CaseNoteResponse> CreateAsync(Guid authorId, CreateCaseNoteRequest request);
-        Task<CaseNoteResponse> UpdateAsync(Guid authorId, Guid caseNoteId, UpdateCaseNoteRequest request);
-        Task<CaseNoteResponse> FinalizeAsync(Guid authorId, Guid caseNoteId);
-        Task<CaseNoteResponse> GetByIdAsync(Guid callerId, Guid caseNoteId);
-        Task<List<CaseNoteResponse>> SearchAsync(Guid callerId, SearchCaseNoteRequest request);
+        Task<IEnumerable<GetAllCaseNoteResponse>> GetAll(Guid AuthorId);
+        Task<IEnumerable<GetAllCaseNoteWithPaginationResponse>> GetAllWithPaginationAsync(Guid AuthorId, int page, int pageSize);
+        Task<GetCaseNoteByIdResponse> GetByIdAsync(Guid CallerId, Guid CaseNoteId);
+        Task<List<SearchCaseNoteResponse>> SearchAsync(Guid CallerId, SearchCaseNoteRequest request);
+        Task<CreateCaseNoteResponse> CreateAsync(Guid CreatorId, CreateCaseNoteRequest request);
+        Task<UpdateCaseNoteResponse> UpdateAsync(Guid AuthorId, Guid CaseNoteId, UpdateCaseNoteRequest request);
+        Task<FinalizeCaseNoteResponse> FinalizeAsync(Guid AuthorId, Guid CaseNoteId);
     }
 }

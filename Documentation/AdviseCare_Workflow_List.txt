@@ -44,7 +44,7 @@ WF2: Student requests support and gets advised
 2.4.1. Only the attributes covered by the category's consent purpose are offered (defined by the Steward)
 2.4.2. The student may leave it empty
 2.4.3. Each chosen attribute is recorded as consent for that purpose
-2.5. Submits; the case is created with stage = pending
+2.5. Submits; the case is created with stage = pending and priority = medium (the student does not set the priority)
 3. Programme Head matches the case (manual for now)
 3.1. Programme Head sees the case in the matching queue
 3.2. Programme Head picks a suitable advisor
@@ -74,7 +74,7 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
 2. Welfare Officer triages it
 2.1. Opens the referral and the advisor's notes
 2.2. Sets the priority
-2.3. Accepts it, or returns it to the advisor with a reason
+2.3. Accepts it (the wellbeing advisor keeps the case and the stage stays referred), or returns it to the advisor with a reason (the case goes back to the stage it had before the referral)
 3. Welfare Officer works with the student (loan arrangement, financial aid, banking documents)
 3.1. Logs each intervention (type, date, notes)
 3.2. Records any support grant issued
@@ -163,7 +163,7 @@ EX4: Referral between advisors
 1. Advisor opens the case and chooses "Refer"
 2. Advisor picks the receiver (advisor of the same or the other type) and writes the reason and priority
 3. Receiver gets a notification
-4. Receiver accepts (becomes the handling advisor) or returns the referral with a reason
+4. Receiver accepts (becomes the handling advisor) or returns the referral with a reason (the case goes back to the stage it had before the referral)
 5. Case stage history records the hand-over
 
 EX5: Escalation to the Programme Head
@@ -177,7 +177,7 @@ EX6: Case advisor change
 2. Programme Head reviews the request
 3. Programme Head approves or rejects it
 3.1. Approved: the case's advisor becomes the proposed advisor
-3.2. Rejected: the reason is recorded
+3.2. Rejected: the Programme Head's reason is recorded (decisionNotes) and the case keeps its advisor
 4. Both advisors and the student are notified
 5. Programme Head can also reassign directly without a request
 

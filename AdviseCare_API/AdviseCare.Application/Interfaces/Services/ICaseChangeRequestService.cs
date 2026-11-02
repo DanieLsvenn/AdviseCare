@@ -5,10 +5,12 @@ namespace AdviseCare.Application.Interfaces.Services
 {
     public interface ICaseChangeRequestService
     {
-        Task<CaseChangeRequestResponse> CreateAsync(Guid requestedBy, CreateCaseChangeRequestRequest request);
-        Task<List<CaseChangeRequestResponse>> SearchAsync(Guid callerId, SearchCaseChangeRequestRequest request);
-        Task<CaseChangeRequestResponse> GetByIdAsync(Guid callerId, Guid caseChangeRequestId);
-        Task<CaseChangeRequestResponse> ApproveAsync(Guid programmeHeadId, Guid caseChangeRequestId, ApproveCaseChangeRequestRequest request);
-        Task<CaseChangeRequestResponse> RejectAsync(Guid programmeHeadId, Guid caseChangeRequestId, RejectCaseChangeRequestRequest request);
+        Task<IEnumerable<GetAllCaseChangeRequestResponse>> GetAll(Guid CallerId);
+        Task<IEnumerable<GetAllCaseChangeRequestWithPaginationResponse>> GetAllWithPaginationAsync(Guid CallerId, int page, int pageSize);
+        Task<GetCaseChangeRequestByIdResponse> GetByIdAsync(Guid CallerId, Guid CaseChangeRequestId);
+        Task<List<SearchCaseChangeRequestResponse>> SearchAsync(Guid CallerId, SearchCaseChangeRequestRequest request);
+        Task<CreateCaseChangeRequestResponse> CreateAsync(Guid CreatorId, CreateCaseChangeRequestRequest request);
+        Task<ApproveCaseChangeRequestResponse> ApproveAsync(Guid ProgrammeHeadId, Guid CaseChangeRequestId, ApproveCaseChangeRequestRequest request);
+        Task<RejectCaseChangeRequestResponse> RejectAsync(Guid ProgrammeHeadId, Guid CaseChangeRequestId, RejectCaseChangeRequestRequest request);
     }
 }

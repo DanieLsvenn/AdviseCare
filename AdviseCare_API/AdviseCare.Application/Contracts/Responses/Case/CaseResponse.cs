@@ -1,74 +1,350 @@
 namespace AdviseCare.Application.Contracts.Responses.Case
 {
-    public class CaseResponse
+    public class GetAllCaseResponse
     {
-        public Guid CaseId { get; set; }
-        public Guid StudentId { get; set; }
-        public string StudentName { get; set; } = string.Empty;
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
+        public Guid OpenedBy { get; set; } = Guid.Empty;
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
+        public Guid SupportCategoryId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string OpenedByFullName { get; set; } = string.Empty;
+        public string RequestReason { get; set; } = string.Empty;
         public string StudentCode { get; set; } = string.Empty;
         public string StudentEmail { get; set; } = string.Empty;
-        public Guid? AdvisorId { get; set; }
-        public string AdvisorName { get; set; } = string.Empty;
-        // The advisor's contact information, shown to the student once the case is matched (WF2 step 4.1)
-        public string AdvisorEmail { get; set; } = string.Empty;
-        public Guid OpenedBy { get; set; }
-        public string OpenedByName { get; set; } = string.Empty;
-        public Guid? SubjectId { get; set; }
+        public string StudentFullName { get; set; } = string.Empty;
         public string SubjectCode { get; set; } = string.Empty;
         public string SubjectName { get; set; } = string.Empty;
-        public Guid SupportCategoryId { get; set; }
-        public string CategoryName { get; set; } = string.Empty;
-        public string SupportType { get; set; } = string.Empty;
-        public Guid ConsentPurposeId { get; set; }
-        public string RequestReason { get; set; } = string.Empty;
-        public DateTime OpenedAt { get; set; }
         public DateTime? ClosedAt { get; set; }
-        public string CurrentStage { get; set; } = string.Empty;
-        public string Priority { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty;
-        // Only filled in the advisor's assigned list: unread notifications of the signed-in advisor that point to this case
-        public int UnreadNotificationCount { get; set; }
+        public DateTime OpenedAt { get; set; }
+        public string SupportType { get; set; } = "academic";
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string Status { get; set; } = "open";
     }
 
-    public class AssignedCasesResponse
+    public class GetAllCaseWithPaginationResponse
     {
-        public int TotalCount { get; set; }
-        public int Page { get; set; }
-        public int PageSize { get; set; }
-        // Assigned cases (after filters) that have at least one unread notification for the advisor
-        public int UnreadCaseCount { get; set; }
-        public List<CaseResponse> Items { get; set; } = new();
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
+        public Guid OpenedBy { get; set; } = Guid.Empty;
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
+        public Guid SupportCategoryId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string OpenedByFullName { get; set; } = string.Empty;
+        public string RequestReason { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
+        public string StudentEmail { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
+        public DateTime? ClosedAt { get; set; }
+        public DateTime OpenedAt { get; set; }
+        public string SupportType { get; set; } = "academic";
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string Status { get; set; } = "open";
     }
 
-    public class SuggestedAdvisorResponse
+    public class GetCaseByIdResponse
     {
-        public Guid AdvisorId { get; set; }
-        public string FullName { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
+        public Guid OpenedBy { get; set; } = Guid.Empty;
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
+        public Guid SupportCategoryId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string OpenedByFullName { get; set; } = string.Empty;
+        public string RequestReason { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
+        public string StudentEmail { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
+        public DateTime? ClosedAt { get; set; }
+        public DateTime OpenedAt { get; set; }
+        public string SupportType { get; set; } = "academic";
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string Status { get; set; } = "open";
+    }
+
+    public class SearchCaseResponse
+    {
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
+        public Guid OpenedBy { get; set; } = Guid.Empty;
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
+        public Guid SupportCategoryId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string OpenedByFullName { get; set; } = string.Empty;
+        public string RequestReason { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
+        public string StudentEmail { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
+        public DateTime? ClosedAt { get; set; }
+        public DateTime OpenedAt { get; set; }
+        public string SupportType { get; set; } = "academic";
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string Status { get; set; } = "open";
+    }
+
+    public class CreateCaseResponse
+    {
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
+        public Guid OpenedBy { get; set; } = Guid.Empty;
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
+        public Guid SupportCategoryId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string OpenedByFullName { get; set; } = string.Empty;
+        public string RequestReason { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
+        public string StudentEmail { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
+        public DateTime? ClosedAt { get; set; }
+        public DateTime OpenedAt { get; set; }
+        public string SupportType { get; set; } = "academic";
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string Status { get; set; } = "open";
+    }
+
+    public class GetMyCaseResponse
+    {
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
+        public Guid OpenedBy { get; set; } = Guid.Empty;
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
+        public Guid SupportCategoryId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string OpenedByFullName { get; set; } = string.Empty;
+        public string RequestReason { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
+        public string StudentEmail { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
+        public DateTime? ClosedAt { get; set; }
+        public DateTime OpenedAt { get; set; }
+        public string SupportType { get; set; } = "academic";
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string Status { get; set; } = "open";
+    }
+
+    public class GetMatchingQueueCaseResponse
+    {
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
+        public Guid OpenedBy { get; set; } = Guid.Empty;
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
+        public Guid SupportCategoryId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string OpenedByFullName { get; set; } = string.Empty;
+        public string RequestReason { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
+        public string StudentEmail { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
+        public DateTime? ClosedAt { get; set; }
+        public DateTime OpenedAt { get; set; }
+        public string SupportType { get; set; } = "academic";
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string Status { get; set; } = "open";
+    }
+
+    public class GetAssignedCaseResponse
+    {
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
+        public Guid OpenedBy { get; set; } = Guid.Empty;
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
+        public Guid SupportCategoryId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string OpenedByFullName { get; set; } = string.Empty;
+        public string RequestReason { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
+        public string StudentEmail { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
+        public DateTime? ClosedAt { get; set; }
+        public DateTime OpenedAt { get; set; }
+        public int UnreadNotificationCount { get; set; } = 0;
+        public string SupportType { get; set; } = "academic";
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string Status { get; set; } = "open";
+    }
+
+    public class GetAssignedCaseWithPaginationResponse
+    {
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
+        public Guid OpenedBy { get; set; } = Guid.Empty;
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
+        public Guid SupportCategoryId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string OpenedByFullName { get; set; } = string.Empty;
+        public string RequestReason { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
+        public string StudentEmail { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
+        public DateTime? ClosedAt { get; set; }
+        public DateTime OpenedAt { get; set; }
+        public int UnreadNotificationCount { get; set; } = 0;
+        public string SupportType { get; set; } = "academic";
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string Status { get; set; } = "open";
+    }
+
+    public class GetCaseSuggestedAdvisorResponse
+    {
+        public Guid AdvisorId { get; set; } = Guid.Empty;
         public Guid? FacultyId { get; set; }
+        public string Email { get; set; } = string.Empty;
         public string FacultyName { get; set; } = string.Empty;
-        public List<string> SpecialisedSubjectCodes { get; set; } = new();
-        // Specialised in the case's subject (ACCOUNT_SUBJECT)
-        public bool IsSubjectSpecialist { get; set; }
-        // Academic advisor with no subject link
-        public bool IsGeneralAdvisor { get; set; }
-        public bool IsSameFaculty { get; set; }
-        // Already handles another case of this student that is not closed (familiar pair)
-        public bool IsFamiliarAdvisor { get; set; }
-        // Cases of this advisor that are not closed (workload)
-        public int OpenCaseCount { get; set; }
+        public string FullName { get; set; } = string.Empty;
         public List<string> MatchReasons { get; set; } = new();
+        public List<string> SpecialisedSubjectCodes { get; set; } = new();
+        public int OpenCaseCount { get; set; } = 0;
+        public bool IsFamiliarAdvisor { get; set; } = false;
+        public bool IsGeneralAdvisor { get; set; } = false;
+        public bool IsSameFaculty { get; set; } = false;
+        public bool IsSubjectSpecialist { get; set; } = false;
     }
 
-    public class CaseStageHistoryResponse
+    public class AssignCaseResponse
     {
-        public Guid CaseStageHistoryId { get; set; }
-        public Guid CaseId { get; set; }
-        public Guid ChangedBy { get; set; }
-        public string ChangedByName { get; set; } = string.Empty;
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public DateTime? ClosedAt { get; set; }
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string Status { get; set; } = "open";
+    }
+
+    public class ReassignCaseResponse
+    {
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public DateTime? ClosedAt { get; set; }
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string Status { get; set; } = "open";
+    }
+
+    public class ChangeCaseStageResponse
+    {
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public DateTime? ClosedAt { get; set; }
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string Status { get; set; } = "open";
+    }
+
+    public class ReopenCaseResponse
+    {
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public DateTime? ClosedAt { get; set; }
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string Status { get; set; } = "open";
+    }
+
+    public class ChangeCasePriorityResponse
+    {
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public DateTime? ClosedAt { get; set; }
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string Status { get; set; } = "open";
+    }
+
+    public class SearchCaseStageHistoryResponse
+    {
+        public Guid CaseStageHistoryId { get; set; } = Guid.Empty;
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid ChangedBy { get; set; } = Guid.Empty;
+        public string ChangedByFullName { get; set; } = string.Empty;
         public string Reason { get; set; } = string.Empty;
         public DateTime ChangedAt { get; set; }
-        public string FromStage { get; set; } = string.Empty;
-        public string ToStage { get; set; } = string.Empty;
+        public string FromStage { get; set; } = "pending";
+        public string ToStage { get; set; } = "pending";
     }
 }

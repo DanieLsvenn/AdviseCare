@@ -95,10 +95,10 @@ MEMBER D - SUPPORT REQUESTS, CASES, MATCHING AND REPORTS
 Tables owned: SUPPORTCATEGORIES, CASES, CASENOTES, CASESTAGEHISTORIES, REFERRALS, CASECHANGEREQUESTS
 ==========
 
-D1. Support categories (Admin): create/edit/archive, academic/wellbeing, governing consent purpose
+D1. Support categories (Admin): create/edit/archive, academic/wellbeing, governing consent purpose; the shareable attributes of a category (its purpose's active attributes)
 D2. Support requests (Student)
 D2.1. Create a case: support type, category, subject (academic), reason
-D2.2. List the attributes the student may share (from the category's purpose) and record the chosen ones as consents (calls Member B's consent table directly through the DbContext, or B's service once ready)
+D2.2. List the attributes the student may share (from the category's purpose) and record the chosen ones as consents (Member B's IConsentService.CreateAsync, saved together with the case)
 D2.3. Student's own cases, stages and history
 D3. Matching (Programme Head)
 D3.1. Queue of unassigned cases
@@ -106,10 +106,10 @@ D3.2. Suggested advisors: by type, subject specialisation, faculty, workload (an
 D3.3. Assign a case: set advisorId (the case's advisor is the only advisor-student link), notify student with the advisor's contact information (NotificationService.NotifyAsync, Member A)
 D3.4. Reassign directly
 D4. Advisor case workflow (Academic and Wellbeing Advisors)
-D4.1. Assigned case list: sort, filter, unread count
+D4.1. Assigned case list: sort, filter, unread notifications per case and the unread-case count
 D4.2. Advisor opens a case for a student based on their data (read through Member C's StudentData API)
 D4.3. Case notes: draft, edit, finalize (no edits after finalize)
 D4.4. Stage changes with reason (CASESTAGEHISTORIES insert-only); close, reopen
 D4.5. Referrals: to another advisor (same/other type) or to the Welfare Officer; accept / return
-D5. Case change requests (CASECHANGEREQUESTS): the case's advisor or student requests another advisor for one case, Programme Head approves (CASES.advisorId = proposed advisor) or rejects
-D6. Reports (Programme Head): cases in a time range with filters, caseload volume and closure time per advisor, export Excel/CSV/PDF generated on the fly
+D5. Case change requests (CASECHANGEREQUESTS): the case's advisor or student requests another advisor for one case, Programme Head approves (CASES.advisorId = proposed advisor) or rejects with decision notes (required)
+D6. Reports (Programme Head; ReportsController + ReportService): cases in a time range with filters, caseload volume and closure time per advisor, export Excel/CSV/PDF generated on the fly (the PDF uses the built-in SimplePdfWriter, which cannot draw Vietnamese diacritics)

@@ -5,12 +5,14 @@ namespace AdviseCare.Application.Interfaces.Services
 {
     public interface IReferralService
     {
-        Task<ReferralResponse> CreateAsync(Guid fromAccountId, CreateReferralRequest request);
-        Task<List<ReferralResponse>> GetIncomingAsync(Guid accountId, SearchMyReferralsRequest request);
-        Task<List<ReferralResponse>> GetOutgoingAsync(Guid accountId, SearchMyReferralsRequest request);
-        Task<List<ReferralResponse>> SearchAsync(Guid callerId, SearchReferralRequest request);
-        Task<ReferralResponse> GetByIdAsync(Guid callerId, Guid referralId);
-        Task<ReferralResponse> AcceptAsync(Guid receiverId, Guid referralId);
-        Task<ReferralResponse> ReturnAsync(Guid receiverId, Guid referralId, ReturnReferralRequest request);
+        Task<IEnumerable<GetAllReferralResponse>> GetAll();
+        Task<IEnumerable<GetAllReferralWithPaginationResponse>> GetAllWithPaginationAsync(int page, int pageSize);
+        Task<GetReferralByIdResponse> GetByIdAsync(Guid CallerId, Guid ReferralId);
+        Task<List<SearchReferralResponse>> SearchAsync(Guid CallerId, SearchReferralRequest request);
+        Task<CreateReferralResponse> CreateAsync(Guid CreatorId, CreateReferralRequest request);
+        Task<List<GetMyIncomingReferralResponse>> GetMyIncomingAsync(Guid AccountId, SearchMyReferralRequest request);
+        Task<List<GetMyOutgoingReferralResponse>> GetMyOutgoingAsync(Guid AccountId, SearchMyReferralRequest request);
+        Task<AcceptReferralResponse> AcceptAsync(Guid ReceiverId, Guid ReferralId);
+        Task<ReturnReferralResponse> ReturnAsync(Guid ReceiverId, Guid ReferralId, ReturnReferralRequest request);
     }
 }
