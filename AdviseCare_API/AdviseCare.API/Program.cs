@@ -75,6 +75,15 @@ builder.Services.AddScoped<IInterventionService, InterventionService>();
 builder.Services.AddScoped<ISupportGrantService, SupportGrantService>();
 builder.Services.AddScoped<IEscalationService, EscalationService>();
 
+// Member D
+builder.Services.AddScoped<CaseWorkflowHelper>();
+builder.Services.AddScoped<ISupportCategoryService, SupportCategoryService>();
+builder.Services.AddScoped<ICaseService, CaseService>();
+builder.Services.AddScoped<ICaseNoteService, CaseNoteService>();
+builder.Services.AddScoped<IReferralService, ReferralService>();
+builder.Services.AddScoped<ICaseChangeRequestService, CaseChangeRequestService>();
+builder.Services.AddScoped<ICaseReportService, CaseReportService>();
+
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -100,6 +109,7 @@ builder.Services.AddHttpClient<IStorageService, SupabaseStorageService>();
 builder.Services.AddScoped<IExcelReader, ExcelReader>();
 builder.Services.AddScoped<ICsvReader, CsvReader>();
 builder.Services.AddScoped<IExcelWriter, ExcelWriter>();
+builder.Services.AddScoped<IPdfWriter, SimplePdfWriter>();
 
 // -- HttpContextAccessor ---
 builder.Services.AddHttpContextAccessor();

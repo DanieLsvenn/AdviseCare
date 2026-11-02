@@ -287,6 +287,7 @@ caseId (FK) - uuid - which case should change advisor
 programmeHeadId (FK) - uuid - the Programme Head who decided the request; null while pending
 proposedAdvisorId (FK) - uuid - the advisor proposed to take over the case, becomes CASES.advisorId once approved
 requestedBy (FK) - uuid - who asked for the change (the student of the case or its current advisor)
+decisionNotes - string - the Programme Head's reason when rejecting (required for status rejected), or an optional note when approving
 reason - string - justification for the requested change, shown to the Programme Head
 decidedAt - date - when the Programme Head made their decision
 requestedAt - date - when the request was submitted

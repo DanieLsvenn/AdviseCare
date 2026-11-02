@@ -17,6 +17,8 @@ public partial class Casechangerequest
 
     public Guid RequestedBy { get; set; }
 
+    public string DecisionNotes { get; set; }
+
     public string Reason { get; set; }
 
     public DateTime? DecidedAt { get; set; }
@@ -32,4 +34,4 @@ public partial class Casechangerequest
     public virtual Account ProposedAdvisor { get; set; }
 
     public virtual Account RequestedByNavigation { get; set; }
-}
+}

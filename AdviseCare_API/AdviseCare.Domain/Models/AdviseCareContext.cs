@@ -506,6 +506,7 @@ public partial class AdviseCareContext : DbContext
             entity.Property(e => e.DecidedAt)
                 .HasPrecision(3)
                 .HasColumnName("decidedAt");
+            entity.Property(e => e.DecisionNotes).HasColumnName("decisionNotes");
             entity.Property(e => e.ProgrammeHeadId).HasColumnName("programmeHeadId");
             entity.Property(e => e.ProposedAdvisorId).HasColumnName("proposedAdvisorId");
             entity.Property(e => e.Reason)
@@ -1620,4 +1621,4 @@ public partial class AdviseCareContext : DbContext
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
-}
+}
