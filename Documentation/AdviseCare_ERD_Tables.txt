@@ -172,7 +172,7 @@ DATA INGESTION
 dataSourceId (PK) - uuid - unique identifier for one configured data source connection
 createdBy (FK) - uuid - which admin configured this source, for accountability
 dataAttributeId (FK) - uuid - the single data attribute this source supplies (one to one: one data source per type of data, e.g. GPA)
-connectionConfig - string - connection details, or the stored file reference for an uploaded Excel/CSV/Google Sheet
+connectionConfig - string - connection details, or the stored file reference for an uploaded Excel/CSV file
 fieldMapping - string - how incoming source fields map onto system fields, set during source setup
 sourceName - string - display label for the source
 sourceType - enum - what kind of source it is (file upload for the current version; database/API kept for the future scheduled-ingestion feature)
@@ -213,7 +213,7 @@ status - enum - outcome of the run (success/failed); imports are all-or-nothing:
 studentDataId (PK) - uuid - unique identifier for one recorded value of one data attribute for one student
 attributeKeyId (FK) - uuid - the student's key for this data attribute that encrypted this value (ATTRIBUTEKEYS); null for a missing row, which has no value
 dataAttributeId (FK) - uuid - which data attribute this value belongs to (e.g. GPA)
-dataSourceId (FK) - uuid - the data source the value was ingested from (future scheduled ingestion); null for values imported from an Excel/CSV file or Google Sheet, which go straight into this table
+dataSourceId (FK) - uuid - the data source the value was ingested from (future scheduled ingestion); null for values imported from an Excel/CSV file, which go straight into this table
 studentId (FK) - uuid - which student the value belongs to
 termId (FK) - uuid - which academic term this value is scoped to
 dataValue - string - the recorded value, stored encrypted (VARBINARY: format version + nonce + tag + AES-256-GCM ciphertext) with the student's key for this attribute; tied to its key, student, attribute, row and field, so it cannot be moved to another row; null for a missing row and after an erasure
@@ -336,7 +336,7 @@ status - enum - pending/accepted/returned, drives the receiver's referral queue
 
 25. CORRECTIONREQUESTS
 correctionRequestId (PK) - uuid - unique identifier for one student-submitted correction request
-reviewedBy (FK) - uuid - which advisor reviewed the request
+reviewedBy (FK) - uuid - which advisor reviewed the request; must be the advisor of one of the student's open cases
 studentDataId (FK) - uuid - the exact STUDENTDATA row the student says is wrong (its attribute, term and value)
 studentId (FK) - uuid - which student submitted the request
 currentValue - string - the value on record when the request was submitted, kept for the audit trail; stored encrypted with the same key as its STUDENTDATA row and cleared by an erasure of that key
@@ -586,13 +586,14 @@ status - enum - lifecycle state of the restore (e.g. running/verified/failed)
 
 NOTES (current version)
 
-- Current version: student data enters only through manual Excel/CSV/Google Sheet imports, which write straight into STUDENTDATA with dataSourceId = null; the source of each imported value is kept in provenanceNote. DATASOURCES - DATAATTRIBUTES is one to one (one data source per type of data).
+- Current version: student data enters only through manual Excel/CSV imports (importing from a Google Sheet is future, FU6), which write straight into STUDENTDATA with dataSourceId = null; the source of each imported value is kept in provenanceNote. DATASOURCES - DATAATTRIBUTES is one to one (one data source per type of data).
 - FUTURE, already in this ERD (tables are designed, but no feature is built for them in the current version):
   + Scheduled data ingestion / live integration with FAP, FLM, LMS: DATASOURCES, INGESTIONSCHEDULES, INGESTIONJOBS (and STUDENTDATA.dataSourceId)
   + Stored report history: REPORTS (in the current version, case reports and the student JSON export are generated and downloaded on the fly, not stored)
   + Backup and restore with integrity check: BACKUPS, RESTOREOPERATIONS
   + Automated / AI case matching: no extra table needed, it would use CASES, ACCOUNT_SUBJECT and SUBJECTS (incl. prioritising a familiar advisor-student pair, found from the student's earlier cases)
   + Advising effectiveness analysis: no extra table needed, it would use CASES, CASESTAGEHISTORIES, REFERRALS and INTERVENTIONS
+  + Importing accounts and student data from a Google Sheet: no extra table needed, it writes the same ACCOUNTS, ACCOUNT_ROLE, STUDENTPROFILES and STUDENTDATA rows as the Excel/CSV imports
 - FUTURE, not in this ERD (would need new tables):
   + In-app meeting scheduling: advisor time slots, student booking, advisors swapping meetings
   + In-app chat between advisor and student (possible stretch goal)
@@ -608,6 +609,7 @@ NOTES (current version)
 - INDICATORS was merged into DATAATTRIBUTES (they were one to one) and STUDENTINDICATORS renamed to STUDENTDATA. Archiving a data attribute is one-way: it can no longer be attached to a purpose, granted, requested or imported (import rows for it are rejected and listed, the other rows are still imported), but existing values and consents are kept and still apply.
 - Removed in this version as well: ADVISORASSIGNMENTS (advisors are linked to students only through CASES.advisorId) and ASSIGNMENTCHANGEREQUESTS, replaced by CASECHANGEREQUESTS (a change of advisor is requested per case).
 - Access guard ("if you consent, we serve"): staff may read a student's attribute only when the student has a granted, unexpired consent on it under a purpose that is active, still covers the attribute (PURPOSE_ATTRIBUTE) and has an active access policy for one of the staff member's roles. Inside a case only the case category's purpose counts; outside a case (e.g. a student's data read outside a case) any such purpose counts, and attributes not consented are simply left out. A consent is given to everyone holding a role that has a policy for the purpose, not to one named advisor, so the guard does not check which advisor is asking (by design). Every allowed read writes one ACCESSLOGS row per attribute; students reading their own data are not logged.
+- Correction requests: a student can submit one only while they have at least one open case (otherwise they are asked to open a support case first), and it is reviewed by the advisor of one of their open cases. An approved request inserts a new STUDENTDATA row (status = correction) with the same validFrom as the wrong row; the wrong row stays, so system time still shows the old value and valid time shows the corrected one.
 - Consent expiry is checked when data is read (no background job): a granted consent past expiresAt gives no access until the student renews it.
 - Erasure: ATTRIBUTEKEYS holds one key per student per attribute, so withdrawing a consent queues an ERASUREREQUESTS row only when the attribute is no longer granted under any purpose and the student has an active key for it; the Steward executes it in one save: the key is destroyed (wrappedKey null, status = destroyed) and every STUDENTDATA value and CORRECTIONREQUESTS value under that key is cleared (erasedAt set). A backup taken before the erasure still holds the old wrapped key, so before restoring one the completed erasures must be re-applied (until the master key version it used is deleted).
 - Emergency access: Stewards share one pool of requests; the first Steward to approve or reject is stored in stewardId (a rejection needs a rejectionReason). While approved and before scopeExpiresAt, the requester may read every attribute of that student through the access guard; each read is logged with consentPurposeId = null. The access ends on its own at scopeExpiresAt.

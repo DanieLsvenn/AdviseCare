@@ -72,7 +72,7 @@ Tables owned: STUDENTDATA, CORRECTIONREQUESTS, INTERVENTIONS, SUPPORTGRANTS, EXT
 ==========
 
 C1. Student data import (Admin; StudentDataController)
-C1.1. Upload Excel/CSV (Google Sheet is not built yet); preview the header and sample rows; map columns to data attributes
+C1.1. Upload Excel/CSV (Google Sheet is future, FU6); preview the header and sample rows; map columns to data attributes
 C1.2. Validate the whole file (also as a dry run), all-or-nothing; return the list of invalid rows; rows of archived data attributes are not imported but listed in rejectedRows, and the rest still goes in
 C1.3. Insert new STUDENTDATA rows only (dataSourceId null, provenanceNote = file name + import date); never update; encrypt each value with Member B's IAttributeKeyService.EncryptValuesAsync before saving (new keys are saved by the same SaveAsync)
 C1.4. Flag missing values (isMissing) for every enrolled, active student without a value for an imported attribute and term
@@ -82,7 +82,7 @@ C2.1. Student data API: data attribute values with sources and missing-data noti
 C2.2. Point-in-time view ("way back machine") on both time axes: system time (latest transactionFrom up to the chosen date) and valid time (latest validFrom up to the chosen date, a later recording winning on ties); compare two dates
 C2.3. Student's own data view (no consent needed, not logged)
 C2.4. Student JSON export (own record + own access log), generated on the fly
-C2.5. Correction requests (pending review): submit on one STUDENTDATA row (values stored encrypted), reviewed by the advisor of one of the student's open cases (the values are only shown with consent or emergency access, and logged), approved = new "correction" row with the same validFrom, withdraw
+C2.5. Correction requests (pending review): submit on one STUDENTDATA row (values stored encrypted), only while the student has an open case (to do: refuse with 409 otherwise), reviewed by the advisor of one of the student's open cases (the values are only shown with consent or emergency access, and logged), approved = new "correction" row with the same validFrom, withdraw
 C3. Welfare (Student Welfare Officer)
 C3.1. Interventions: log, update until closed (the outcome is part of the update), close, history per student
 C3.2. Support grants under an intervention; revoke
