@@ -65,5 +65,11 @@
   "owner": "Phụ trách",
   "raisedAt": "Gửi lúc",
   "decidedAt": "Quyết định lúc",
-  "expiresAt": "Hết hạn"
+  "expiresAt": "Hết hạn",
+  "signOut": "Đăng xuất",
+  "signingOut": "Đang đăng xuất…",
+  "logoutFailed": "Chưa thể xác nhận đăng xuất. Vui lòng thử lại.",
+  "notifications": "Thông báo",
+  "settings": "Cài đặt tài khoản",
+  "workspaces": "Không gian làm việc"
 }

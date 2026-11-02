@@ -25,6 +25,7 @@ export function AppShell({
   accountRole,
   accountInitials,
   accountStatus,
+  roles,
   footerNote,
   hasAlert,
   children,
@@ -40,6 +41,7 @@ export function AppShell({
   accountRole: string;
   accountInitials: string;
   accountStatus?: string;
+  roles?: string[];
   footerNote?: { icon: string; title: string; caption: string };
   hasAlert?: boolean;
   children: ReactNode;
@@ -105,6 +107,7 @@ export function AppShell({
           accountRole={accountStatus ?? accountRole}
           accountInitials={accountInitials}
           hasAlert={hasAlert}
+          roles={roles}
         />
         <main className="flex-1 px-gutter-mobile py-space-lg lg:px-gutter-desktop">
           <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-space-lg">

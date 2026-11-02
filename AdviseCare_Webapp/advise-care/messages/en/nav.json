@@ -3,6 +3,17 @@
   "sectionSteward": "Data Protection",
   "sectionAdministration": "System Administration",
   "sectionStudent": "My Record",
+  "sectionWelfare": "Student Welfare",
+  "sectionHead": "Programme Governance",
+  "roles": {
+    "systemAdministrator": "System Administrator",
+    "dataProtectionSteward": "Data Protection Steward",
+    "academicAdvisor": "Academic Advisor",
+    "wellbeingAdvisor": "Wellbeing Advisor",
+    "studentWelfareOfficer": "Student Welfare Officer",
+    "student": "Student",
+    "programmeHead": "Programme Head"
+  },
   "advisor": {
     "caseload": "Caseload",
     "cases": "Cases",
@@ -16,37 +27,48 @@
     "policies": "Access policies",
     "accessRecords": "Access & processing records",
     "erasure": "Erasure queue",
-    "emergencyReviews": "Emergency access review"
+    "emergencyReviews": "Emergency access review",
+    "attributes": "Data attributes",
+    "consents": "Consent history",
+    "keys": "Encryption key status"
   },
   "student": {
     "profile": "My profile",
     "consent": "Consent",
+    "cases": "My support cases",
     "accessHistory": "Access history",
     "corrections": "Corrections",
-    "export": "Export my data",
-    "events": "Events"
+    "export": "Export my data"
   },
   "head": {
-    "overview": "Cohort overview",
+    "overview": "Matching queue",
     "workload": "Advisor workload",
-    "assignments": "Assignment changes",
-    "reports": "Term reports"
+    "assignments": "Case change requests",
+    "reports": "Case reports"
   },
-  "advisorFooterTitle": "Demo Advisor 01",
-  "advisorFooterCaption": "Academic Advisor • Online",
-  "stewardFooterTitle": "Demo Steward 01",
-  "stewardFooterCaption": "Data Protection Steward • Online",
-  "administratorFooterTitle": "System Administrator",
-  "administratorFooterCaption": "Institutional Root Trust • Online",
+  "welfare": {
+    "referrals": "Incoming referrals",
+    "cases": "Welfare casework"
+  },
+  "welfareFooterTitle": "Student welfare",
+  "welfareFooterCaption": "Case access is checked by the API",
+  "headFooterTitle": "Programme governance",
+  "headFooterCaption": "Matching and reports",
   "administrator": {
     "accounts": "Accounts & roles",
-    "faculties": "Faculties & assignments",
-    "sources": "Data sources",
-    "reference": "Reference data",
-    "health": "System health",
-    "restore": "Restore & integrity",
-    "indicators": "Indicator configuration"
+    "faculties": "Academic reference data",
+    "sources": "Student data import",
+    "reference": "Support categories",
+    "health": "Activity history",
+    "restore": "Notifications",
+    "indicators": "Account settings"
   },
-  "studentFooterTitle": "Student Data Agency",
-  "studentFooterCaption": "Strict Privacy Sealed"
+  "advisorFooterTitle": "Advisor workspace",
+  "advisorFooterCaption": "Case access is checked by the API",
+  "stewardFooterTitle": "Data protection workspace",
+  "stewardFooterCaption": "Metadata and audit operations",
+  "administratorFooterTitle": "System administration",
+  "administratorFooterCaption": "Account and reference data management",
+  "studentFooterTitle": "Student data agency",
+  "studentFooterCaption": "Consent and own-record access"
 }

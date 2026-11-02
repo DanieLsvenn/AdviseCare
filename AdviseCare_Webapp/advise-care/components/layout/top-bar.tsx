@@ -1,12 +1,15 @@
 import type { ReactNode } from "react";
+import { getTranslations } from "next-intl/server";
 import { cn } from "@/lib/cn";
 import { Avatar } from "@/components/ui/avatar";
 import { Icon } from "@/components/ui/icon";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { StatusChip } from "@/components/ui/status-chip";
+import { SignOutButton } from "@/components/auth/sign-out-button";
+import { Link } from "@/i18n/navigation";
+import { localizeRole, roleHomePath } from "@/lib/roles";
 
-/** Global utility header — 56px, chứa danh tính, ngữ cảnh mục đích và EN|VI. */
-export function TopBar({
+export async function TopBar({
   title,
   contextLabel,
   purposeLabel,
@@ -14,6 +17,7 @@ export function TopBar({
   accountRole,
   accountInitials,
   hasAlert,
+  roles = [],
   className,
   extra,
 }: {
@@ -24,13 +28,21 @@ export function TopBar({
   accountRole: string;
   accountInitials: string;
   hasAlert?: boolean;
+  roles?: string[];
   className?: string;
   extra?: ReactNode;
 }) {
+  const tn = await getTranslations("nav");
+  const tc = await getTranslations("common");
+  const workspaces = roles.flatMap((role) => {
+    const href = roleHomePath(role);
+    return href ? [{ role, href }] : [];
+  });
+
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 flex h-header-height items-center gap-space-md border-b border-outline-variant/30 bg-surface-container-lowest px-space-lg",
+        "sticky top-0 z-40 flex min-h-header-height flex-wrap items-center gap-space-md border-b border-outline-variant/30 bg-surface-container-lowest px-space-lg py-space-xs",
         className,
       )}
     >
@@ -58,16 +70,23 @@ export function TopBar({
 
       <div className="ml-auto flex items-center gap-space-md">
         {extra}
-        <span className="relative flex size-8 items-center justify-center rounded text-on-surface-variant">
+        <Link
+          aria-label={tc("notifications")}
+          className="relative flex size-8 items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+          href="/notifications"
+        >
           <Icon name="notifications" className="text-[20px]" />
           {hasAlert ? (
-            <span
-              aria-label="Unread notifications"
-              role="status"
-              className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-status-urgent-text"
-            />
+            <span className="absolute right-1 top-1 size-2 rounded-full bg-status-urgent-text" />
           ) : null}
-        </span>
+        </Link>
+        <Link
+          aria-label={tc("settings")}
+          className="flex size-8 items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+          href="/settings"
+        >
+          <Icon name="settings" className="text-[20px]" />
+        </Link>
 
         <LanguageSwitcher />
 
@@ -84,6 +103,28 @@ export function TopBar({
           </span>
           <Avatar initials={accountInitials} className="size-8" />
         </span>
+        {workspaces.length > 1 ? (
+          <details className="relative">
+            <summary className="cursor-pointer list-none rounded border border-outline-variant/50 px-space-sm py-1 font-caption text-caption text-on-surface-variant hover:bg-surface-container-low">
+              {tc("workspaces")}
+            </summary>
+            <nav
+              aria-label={tc("workspaces")}
+              className="absolute right-0 top-full z-50 mt-1 min-w-56 rounded border border-outline-variant bg-surface-container-lowest p-space-xs shadow-lg"
+            >
+              {workspaces.map(({ role, href }) => (
+                <Link
+                  className="block rounded px-space-sm py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low"
+                  href={href}
+                  key={role}
+                >
+                  {localizeRole(role, tn)}
+                </Link>
+              ))}
+            </nav>
+          </details>
+        ) : null}
+        <SignOutButton />
       </div>
     </header>
   );

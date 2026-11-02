@@ -1,48 +1,61 @@
+import { getTranslations } from "next-intl/server";
 import { AppShell } from "@/components/layout/app-shell";
 import { ActiveNavTitle } from "@/components/layout/active-nav-title";
 import type { NavItem } from "@/components/layout/sidebar-nav";
-import { getTranslations } from "next-intl/server";
+import { getInitials, requireRole } from "@/lib/auth";
+import { localizeRole } from "@/lib/roles";
+
+export const dynamic = "force-dynamic";
 
 export default async function HeadLayout({
   children,
+  params,
 }: LayoutProps<"/[locale]/head">) {
+  const { locale } = await params;
   const t = await getTranslations("nav");
+  const user = await requireRole(locale, ["Programme Head"]);
   const navItems: NavItem[] = [
     {
-      href: "/head/programme-overview",
-      label: t("head.overview"),
-      icon: "analytics",
+      href: "/head",
+      label: t("programmeHead.matching"),
+      icon: "assignment",
     },
     {
       href: "/head/advisor-workload",
-      label: t("head.workload"),
+      label: t("programmeHead.workload"),
       icon: "balance",
     },
     {
       href: "/head/assignment-changes",
-      label: t("head.assignments"),
+      label: t("programmeHead.assignments"),
       icon: "assignment_ind",
-      badge: "dot",
     },
-    { href: "/head/reports", label: t("head.reports"), icon: "description" },
+    {
+      href: "/head/reports",
+      label: t("programmeHead.reports"),
+      icon: "description",
+    },
   ];
 
   return (
     <AppShell
       navItems={navItems}
-      navSectionLabel="Strategic governance"
-      brandSubtitle="Programme performance & strategic advising oversight"
-      title={<ActiveNavTitle items={navItems} fallback={t("head.overview")} />}
-      contextLabel="Fall 2026"
-      purposeLabel="Purpose: cohort performance & strategic advising oversight"
-      accountName="Prof. Vu Thi Kim Oanh"
-      accountRole="Programme Head · Computing"
-      accountInitials="VO"
-      hasAlert
+      navSectionLabel={t("sectionHead")}
+      brandSubtitle="AdviseCare programme governance"
+      title={
+        <ActiveNavTitle
+          items={navItems}
+          fallback={t("programmeHead.matching")}
+        />
+      }
+      accountName={user.fullName}
+      accountRole={user.roles.map((role) => localizeRole(role, t)).join(", ")}
+      accountInitials={getInitials(user.fullName)}
+      roles={user.roles}
       footerNote={{
         icon: "account_balance",
-        title: "Institutional registry",
-        caption: "Audit log immutable · v4.18.0-rel",
+        title: t("headFooterTitle"),
+        caption: t("headFooterCaption"),
       }}
     >
       {children}

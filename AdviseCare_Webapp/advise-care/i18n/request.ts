@@ -12,7 +12,15 @@ import { routing } from "./routing";
  * sinh viên…) đến từ API và được giữ nguyên ngôn ngữ lúc soạn: đó là dữ liệu
  * pháp lý bất biến, không phải chuỗi giao diện để dịch lại.
  */
-const namespaces = ["common", "nav", "auth", "advisor", "student", "steward"] as const;
+const namespaces = [
+  "common",
+  "nav",
+  "auth",
+  "advisor",
+  "student",
+  "steward",
+  "workspace",
+] as const;
 
 export default getRequestConfig(async ({ requestLocale }) => {
   const requested = await requestLocale;

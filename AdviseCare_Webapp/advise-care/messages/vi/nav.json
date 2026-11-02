@@ -1,52 +1,74 @@
 {
-  "sectionAdvisor": "Nghiệp vụ học vụ",
+  "sectionAdvisor": "Vận hành cố vấn",
   "sectionSteward": "Bảo vệ dữ liệu",
   "sectionAdministration": "Quản trị hệ thống",
-  "administratorFooterTitle": "Quản trị viên hệ thống",
-  "administratorFooterCaption": "Tin cậy gốc cấp trường • Trực tuyến",
-  "administrator": {
-    "accounts": "Tài khoản và vai trò",
-    "faculties": "Khoa và phân công",
-    "sources": "Nguồn dữ liệu",
-    "reference": "Dữ liệu tham chiếu",
-    "health": "Tình trạng hệ thống",
-    "restore": "Khôi phục và toàn vẹn",
-    "indicators": "Cấu hình chỉ số"
-  },
   "sectionStudent": "Hồ sơ của tôi",
+  "sectionWelfare": "Công tác sinh viên",
+  "sectionHead": "Quản lý chương trình",
+  "roles": {
+    "systemAdministrator": "Quản trị viên hệ thống",
+    "dataProtectionSteward": "Cán bộ bảo vệ dữ liệu",
+    "academicAdvisor": "Cố vấn học tập",
+    "wellbeingAdvisor": "Cố vấn wellbeing",
+    "studentWelfareOfficer": "Cán bộ công tác sinh viên",
+    "student": "Sinh viên",
+    "programmeHead": "Trưởng chương trình"
+  },
   "advisor": {
     "caseload": "Danh sách phụ trách",
-    "cases": "Hồ sơ tư vấn",
-    "consentRequests": "Yêu cầu mở phạm vi",
+    "cases": "Ca hỗ trợ",
+    "consentRequests": "Yêu cầu đồng ý",
     "corrections": "Đính chính",
     "referrals": "Chuyển tuyến",
     "emergencyAccess": "Truy cập khẩn cấp"
   },
   "steward": {
-    "purposes": "Mục đích xử lý",
+    "purposes": "Mục đích đồng ý",
     "policies": "Chính sách truy cập",
-    "accessRecords": "Nhật ký truy cập & xử lý",
+    "accessRecords": "Nhật ký truy cập và xử lý",
     "erasure": "Hàng đợi xóa dữ liệu",
-    "emergencyReviews": "Duyệt truy cập khẩn cấp"
+    "emergencyReviews": "Duyệt truy cập khẩn cấp",
+    "attributes": "Thuộc tính dữ liệu",
+    "consents": "Lịch sử đồng ý",
+    "keys": "Trạng thái khóa mã hóa"
   },
   "student": {
     "profile": "Hồ sơ của tôi",
-    "consent": "Sự đồng ý",
+    "consent": "Đồng ý chia sẻ",
+    "cases": "Yêu cầu hỗ trợ của tôi",
     "accessHistory": "Lịch sử truy cập",
-    "corrections": "Đính chính",
-    "export": "Xuất dữ liệu",
-    "events": "Sự kiện"
+    "corrections": "Yêu cầu đính chính",
+    "export": "Xuất dữ liệu của tôi"
   },
   "head": {
-    "overview": "Tổng quan khóa học",
-    "workload": "Tải cố vấn",
-    "assignments": "Thay đổi phân công",
-    "reports": "Báo cáo học kỳ"
+    "overview": "Hàng đợi phân công",
+    "workload": "Khối lượng cố vấn",
+    "assignments": "Yêu cầu đổi cố vấn",
+    "reports": "Báo cáo ca hỗ trợ"
   },
-  "advisorFooterTitle": "Demo Advisor 01",
-  "advisorFooterCaption": "Cố vấn học tập • Trực tuyến",
-  "stewardFooterTitle": "Demo Steward 01",
-  "stewardFooterCaption": "Cán bộ bảo vệ dữ liệu • Trực tuyến",
+  "welfare": {
+    "referrals": "Yêu cầu được chuyển đến",
+    "cases": "Xử lý công tác sinh viên"
+  },
+  "welfareFooterTitle": "Công tác sinh viên",
+  "welfareFooterCaption": "API kiểm tra quyền truy cập ca hỗ trợ",
+  "headFooterTitle": "Quản lý chương trình",
+  "headFooterCaption": "Phân công và báo cáo",
+  "administrator": {
+    "accounts": "Tài khoản và vai trò",
+    "faculties": "Danh mục học thuật",
+    "sources": "Nhập dữ liệu sinh viên",
+    "reference": "Danh mục hỗ trợ",
+    "health": "Lịch sử hoạt động",
+    "restore": "Thông báo",
+    "indicators": "Cài đặt tài khoản"
+  },
+  "advisorFooterTitle": "Không gian cố vấn",
+  "advisorFooterCaption": "API kiểm tra quyền truy cập ca hỗ trợ",
+  "stewardFooterTitle": "Không gian bảo vệ dữ liệu",
+  "stewardFooterCaption": "Quản lý siêu dữ liệu và kiểm toán",
+  "administratorFooterTitle": "Quản trị hệ thống",
+  "administratorFooterCaption": "Quản lý tài khoản và danh mục",
   "studentFooterTitle": "Quyền tự quyết dữ liệu sinh viên",
-  "studentFooterCaption": "Niêm phong quyền riêng tư"
+  "studentFooterCaption": "Quản lý đồng ý và hồ sơ cá nhân"
 }
