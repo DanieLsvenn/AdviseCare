@@ -17,22 +17,22 @@ export default async function HeadLayout({
   const navItems: NavItem[] = [
     {
       href: "/head",
-      label: t("programmeHead.matching"),
+      label: t("head.overview"),
       icon: "assignment",
     },
     {
       href: "/head/advisor-workload",
-      label: t("programmeHead.workload"),
+      label: t("head.workload"),
       icon: "balance",
     },
     {
       href: "/head/assignment-changes",
-      label: t("programmeHead.assignments"),
+      label: t("head.assignments"),
       icon: "assignment_ind",
     },
     {
       href: "/head/reports",
-      label: t("programmeHead.reports"),
+      label: t("head.reports"),
       icon: "description",
     },
   ];
@@ -45,7 +45,7 @@ export default async function HeadLayout({
       title={
         <ActiveNavTitle
           items={navItems}
-          fallback={t("programmeHead.matching")}
+          fallback={t("head.overview")}
         />
       }
       accountName={user.fullName}

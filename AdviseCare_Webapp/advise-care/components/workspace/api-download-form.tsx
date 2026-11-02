@@ -15,11 +15,17 @@ export function ApiDownloadForm({
   title,
   path,
   fileName,
+  extensionFromQuery,
   fields = [],
 }: {
   title: string;
   path: string;
-  fileName: string | ((query: ApiQuery) => string);
+  fileName: string;
+  extensionFromQuery?: {
+    queryKey: string;
+    extensions: Record<string, string>;
+    fallback: string;
+  };
   fields?: WorkspaceField[];
 }) {
   const t = useTranslations("workspace");
@@ -56,8 +62,12 @@ export function ApiDownloadForm({
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download =
-        typeof fileName === "function" ? fileName(query) : fileName;
+      const extension = extensionFromQuery
+        ? extensionFromQuery.extensions[
+            String(query[extensionFromQuery.queryKey] ?? "")
+          ] ?? extensionFromQuery.fallback
+        : "";
+      anchor.download = extension ? `${fileName}.${extension}` : fileName;
       anchor.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       setMessage(t("downloaded"));

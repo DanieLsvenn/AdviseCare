@@ -34,6 +34,16 @@ export interface WorkspaceField {
   accept?: string;
   placeholder?: string;
   pathOnly?: boolean;
+  optionsFrom?: WorkspaceOptionSource;
+}
+
+export interface WorkspaceOptionSource {
+  path: string;
+  collectionKey?: string;
+  valueKey: string;
+  labelKeys: string[];
+  match?: Record<string, string | number | boolean>;
+  requiredValueKeys?: string[];
 }
 
 export interface WorkspaceColumn {
@@ -80,6 +90,21 @@ export function ApiWorkspace({
     [definition.pathValues, definition.queryFields],
   );
   const recordFilter = definition.recordFilter;
+  const queryFields = useMemo(
+    () =>
+      (definition.queryFields ?? []).filter(
+        (field) =>
+          !Object.prototype.hasOwnProperty.call(
+            definition.pathValues ?? {},
+            field.key,
+          ),
+      ),
+    [definition.pathValues, definition.queryFields],
+  );
+  const requiredQueryFields = useMemo(
+    () => queryFields.filter((field) => field.required),
+    [queryFields],
+  );
   const [records, setRecords] = useState<Record<string, unknown>[]>([]);
   const [selectedRecord, setSelectedRecord] =
     useState<Record<string, unknown> | null>(null);
@@ -89,11 +114,26 @@ export function ApiWorkspace({
         ? { page: 1, pageSize: definition.pageSize }
         : {}),
     }));
+  const requiredQueryValuesPresent = hasRequiredQueryValues(
+    query,
+    requiredQueryFields,
+    scopedQuery,
+  );
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
   const loadRecords = useCallback(
     async (nextQuery: ApiQuery = query) => {
+      if (
+        !hasRequiredQueryValues(
+          nextQuery,
+          requiredQueryFields,
+          scopedQuery,
+        )
+      ) {
+        return;
+      }
+
       setLoading(true);
       setLoadError("");
       try {
@@ -128,6 +168,7 @@ export function ApiWorkspace({
       definition.collectionKey,
       listPath,
       query,
+      requiredQueryFields,
       recordFilter,
       scopedQuery,
       t,
@@ -135,6 +176,8 @@ export function ApiWorkspace({
   );
 
   useEffect(() => {
+    if (!requiredQueryValuesPresent) return;
+
     let active = true;
     const timer = window.setTimeout(() => {
       if (active) void loadRecords();
@@ -143,15 +186,8 @@ export function ApiWorkspace({
       active = false;
       window.clearTimeout(timer);
     };
-  }, [loadRecords]);
+  }, [loadRecords, requiredQueryValuesPresent]);
 
-  const queryFields = (definition.queryFields ?? []).filter(
-    (field) =>
-      !Object.prototype.hasOwnProperty.call(
-        definition.pathValues ?? {},
-        field.key,
-      ),
-  );
   const createOperation = definition.create
     ? {
         ...definition.create,
@@ -274,7 +310,7 @@ export function ApiWorkspace({
             {definition.title}
           </h2>
           <Button
-            disabled={loading}
+            disabled={loading || !requiredQueryValuesPresent}
             icon="refresh"
             onClick={() => void loadRecords()}
             size="sm"
@@ -284,7 +320,15 @@ export function ApiWorkspace({
           </Button>
         </div>
 
-        {loadError ? (
+        {!requiredQueryValuesPresent ? (
+          <p
+            aria-live="polite"
+            className="px-space-lg py-space-xl text-on-surface-variant"
+            role="status"
+          >
+            {t("completeRequiredFilters")}
+          </p>
+        ) : loadError ? (
           <div
             aria-live="polite"
             className="m-space-lg rounded border border-status-urgent-border bg-status-urgent-surface p-space-md font-body-sm text-body-sm text-status-urgent-text"
@@ -400,7 +444,9 @@ export function ApiWorkspace({
         ) : null}
       </Panel>
 
-      {selectedRecord && definition.rowOperations?.length ? (
+      {requiredQueryValuesPresent &&
+      selectedRecord &&
+      definition.rowOperations?.length ? (
         <Panel className="p-space-lg">
           <h2 className="font-headline-md text-headline-md text-on-surface">
             {t("actions")}
@@ -555,10 +601,59 @@ export function WorkspaceInput({
   onChange: (value: unknown) => void;
   error?: string;
 }) {
+  const t = useTranslations("workspace");
   const formId = useId();
   const id = `workspace-${formId}-${field.key}`;
+  const optionSource = field.optionsFrom;
+  const [loadedOptions, setLoadedOptions] = useState<{
+    source: WorkspaceOptionSource;
+    options: Array<{ label: string; value: string }>;
+    error?: string;
+  } | null>(null);
+  const loadedForSource =
+    loadedOptions?.source === optionSource ? loadedOptions : null;
+  const remoteOptions = loadedForSource?.options ?? [];
+  const optionsError = loadedForSource?.error ?? "";
+  const optionsLoading =
+    optionSource !== undefined && loadedForSource === null;
   const baseClass =
     "w-full rounded border border-outline-variant bg-surface-container-lowest px-space-md py-2 font-body-sm text-body-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+
+  useEffect(() => {
+    if (!optionSource) return;
+
+    let active = true;
+    const controller = new AbortController();
+    void clientApiGet<unknown>(optionSource.path, {
+      signal: controller.signal,
+    })
+      .then((payload) => {
+        const options = extractOptions(payload, optionSource);
+        if (!active) return;
+        if (!options) {
+          setLoadedOptions({
+            source: optionSource,
+            options: [],
+            error: t("unexpectedResponse"),
+          });
+          return;
+        }
+        setLoadedOptions({ source: optionSource, options });
+      })
+      .catch((loadError: unknown) => {
+        if (!active) return;
+        setLoadedOptions({
+          source: optionSource,
+          options: [],
+          error: errorMessage(loadError, t),
+        });
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [optionSource, t]);
 
   if (field.type === "checkbox") {
     return (
@@ -594,21 +689,43 @@ export function WorkspaceInput({
           value={typeof value === "string" ? value : ""}
         />
       ) : field.type === "select" ? (
-        <select
-          className={baseClass}
-          id={id}
-          name={field.key}
-          onChange={(event) => onChange(event.target.value)}
-          required={field.required}
-          value={typeof value === "string" ? value : ""}
-        >
-          <option value="">—</option>
-          {field.options?.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
+        <>
+          <select
+            className={baseClass}
+            id={id}
+            name={field.key}
+            onChange={(event) => onChange(event.target.value)}
+            required={field.required}
+            value={typeof value === "string" ? value : ""}
+          >
+            <option value="">
+              {optionSource
+                ? optionsLoading
+                  ? t("loadingStudentDataValues")
+                  : optionsError
+                    ? t("studentDataOptionsUnavailable")
+                    : remoteOptions.length
+                      ? t("selectStudentDataValue")
+                      : t("noCorrectableStudentData")
+                : "—"}
             </option>
-          ))}
-        </select>
+            {(optionSource ? remoteOptions : field.options ?? []).map(
+              (option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ),
+            )}
+          </select>
+          {optionsError ? (
+            <span
+              className="mt-1 block font-caption text-caption text-status-urgent-text"
+              role="alert"
+            >
+              {optionsError}
+            </span>
+          ) : null}
+        </>
       ) : field.type === "file" ? (
         <input
           accept={field.accept}
@@ -695,6 +812,17 @@ function makeBody(
   return body;
 }
 
+function hasRequiredQueryValues(
+  query: ApiQuery,
+  requiredFields: WorkspaceField[],
+  scopedQuery: ApiQuery,
+): boolean {
+  return requiredFields.every((field) => {
+    const value = query[field.key] ?? scopedQuery[field.key];
+    return value !== undefined && value !== null && value !== "";
+  });
+}
+
 function getScopedQuery(
   queryFields: WorkspaceField[] | undefined,
   pathValues: Record<string, unknown> | undefined,
@@ -768,6 +896,51 @@ function extractRecords(
     if (Array.isArray(value)) return value.filter(isRecord);
   }
   return recordIdentity(payload) ? [payload] : null;
+}
+
+function extractOptions(
+  payload: unknown,
+  source: WorkspaceOptionSource,
+): Array<{ label: string; value: string }> | null {
+  const records = extractRecords(payload, source.collectionKey);
+  if (!records) return null;
+
+  return records.flatMap((record) => {
+    const matches = Object.entries(source.match ?? {}).every(
+      ([key, expected]) => readRecordValue(record, key) === expected,
+    );
+    if (!matches) return [];
+
+    const optionValue = readRecordValue(record, source.valueKey);
+    if (
+      (typeof optionValue !== "string" && typeof optionValue !== "number") ||
+      String(optionValue).length === 0 ||
+      (source.requiredValueKeys ?? []).some((key) => {
+        const requiredValue = readRecordValue(record, key);
+        return (
+          requiredValue === null ||
+          requiredValue === undefined ||
+          requiredValue === ""
+        );
+      })
+    ) {
+      return [];
+    }
+
+    const labelParts = source.labelKeys
+      .map((key) => readRecordValue(record, key))
+      .filter(
+        (value) => value !== null && value !== undefined && value !== "",
+      )
+      .map(displayValue);
+
+    return [
+      {
+        label: labelParts.join(" · ") || String(optionValue),
+        value: String(optionValue),
+      },
+    ];
+  });
 }
 
 function recordIdentity(record: Record<string, unknown>): string | undefined {

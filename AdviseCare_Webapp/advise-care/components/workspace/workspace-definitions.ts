@@ -724,7 +724,24 @@ export function getWorkspaceDefinitions(
           ],
           {
             create: operation("create", "POST", "CorrectionRequests", [
-              field("studentDataId", "text", true),
+              {
+                key: "studentDataId",
+                label: t("correctionDataValue"),
+                type: "select",
+                required: true,
+                optionsFrom: {
+                  path: "StudentData/me",
+                  collectionKey: "values",
+                  valueKey: "studentDataId",
+                  labelKeys: ["attributeName", "termName", "value"],
+                  match: {
+                    hasValue: true,
+                    isMissing: false,
+                    isErased: false,
+                  },
+                  requiredValueKeys: ["value"],
+                },
+              },
               field("explanation", "textarea", true),
               field("proposedValue", "textarea", true),
             ]),

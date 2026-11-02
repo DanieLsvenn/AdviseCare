@@ -79,9 +79,12 @@ export async function WorkspacePage({
         <ApiDownloadForm
           title={t("export")}
           path="AccessLogs/processing-record/export"
-          fileName={(query) =>
-            `advisecare-processing-record.${query.format === "csv" ? "csv" : "xlsx"}`
-          }
+          fileName="advisecare-processing-record"
+          extensionFromQuery={{
+            queryKey: "format",
+            extensions: { csv: "csv" },
+            fallback: "xlsx",
+          }}
           fields={[
             textField(t, "studentId"),
             textField(t, "fromDate", "date"),
@@ -104,17 +107,23 @@ export async function WorkspacePage({
           <ApiDownloadForm
             title={t("caseReports")}
             path="Reports/cases/export"
-            fileName={(query) =>
-              `advisecare-cases.${query.format === "pdf" ? "pdf" : "xlsx"}`
-            }
+            fileName="advisecare-cases"
+            extensionFromQuery={{
+              queryKey: "format",
+              extensions: { pdf: "pdf" },
+              fallback: "xlsx",
+            }}
             fields={reportFields(t)}
           />
           <ApiDownloadForm
             title={t("advisorWorkload")}
             path="Reports/caseload-closure/export"
-            fileName={(query) =>
-              `advisecare-caseload-closure.${query.format === "pdf" ? "pdf" : "xlsx"}`
-            }
+            fileName="advisecare-caseload-closure"
+            extensionFromQuery={{
+              queryKey: "format",
+              extensions: { pdf: "pdf" },
+              fallback: "xlsx",
+            }}
             fields={reportFields(t)}
           />
         </>
