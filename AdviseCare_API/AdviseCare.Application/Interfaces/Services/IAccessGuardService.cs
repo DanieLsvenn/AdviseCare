@@ -1,4 +1,4 @@
-using AdviseCare.Application.DTOs;
+﻿using AdviseCare.Application.DTOs;
 
 namespace AdviseCare.Application.Interfaces.Services
 {
@@ -8,6 +8,7 @@ namespace AdviseCare.Application.Interfaces.Services
     {
         Task<List<AccessDecision>> CheckAccessAsync(Guid AccessorId, Guid StudentId, List<Guid> DataAttributeIds, Guid? ConsentPurposeId);
         Task<List<AccessDecision>> CheckAccessForStudentsAsync(Guid AccessorId, List<Guid> StudentIds, List<Guid> DataAttributeIds);
-        Task LogAccessAsync(Guid AccessorId, Guid StudentId, Guid? ConsentPurposeId, string AccessedResource);
+        Task LogAccessAsync(Guid AccessorId, Guid StudentId, Guid? StudentDataId, Guid? ConsentPurposeId, string AccessedResource);
+        Task LogAccessBatchAsync(Guid AccessorId, List<AccessLogEntry> Entries);
     }
 }

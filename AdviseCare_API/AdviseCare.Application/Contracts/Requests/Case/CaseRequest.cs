@@ -23,6 +23,19 @@ namespace AdviseCare.Application.Contracts.Requests.Case
         public List<Guid> SharedAttributeIds { get; set; } = new();
     }
 
+    // GET /api/Cases/search (Programme Head)
+    public class SearchCasesRequest
+    {
+        public Guid? StudentId { get; set; }
+        public Guid? AdvisorId { get; set; }
+        public Guid? SupportCategoryId { get; set; }
+        public Guid? SubjectId { get; set; }
+        public string SupportType { get; set; } = string.Empty;
+        public string CurrentStage { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string Priority { get; set; } = string.Empty;
+    }
+
     public class SearchMyCasesRequest
     {
         public string Status { get; set; } = string.Empty;

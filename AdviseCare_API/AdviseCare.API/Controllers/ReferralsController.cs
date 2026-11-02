@@ -61,7 +61,7 @@ namespace AdviseCare.API.Controllers
         [HttpPut("{id:guid}/accept")]
         [Authorize(Roles = HandlerRoles)]
         [SwaggerOperation(Summary = "[Receiver] Accept a pending referral",
-            Description = "Advisor receiver: becomes the case's advisor (assignment created or kept), stage referred -> assigned, the student gets the new contact information. " +
+            Description = "Advisor receiver: becomes the case's advisor, stage referred -> assigned, the student gets the new contact information. " +
                 "Welfare Officer: the advisor keeps the case and the stage stays referred until the welfare work is done.")]
         public async Task<IActionResult> Accept([FromRoute] Guid id)
         {

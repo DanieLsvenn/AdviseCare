@@ -1,4 +1,4 @@
-using AdviseCare.Application.Contracts.Requests.Account;
+﻿using AdviseCare.Application.Contracts.Requests.Account;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -195,17 +195,6 @@ namespace AdviseCare.API.Controllers
         public async Task<IActionResult> DeleteAccountRole([FromRoute] Guid accountId, [FromRoute] Guid roleId)
         {
             var response = await _accountService.DeleteAccountRoleAsync(accountId, roleId);
-            return Ok(response);
-        }
-
-        // Update a Student Account's student profile (STUDENTPROFILES)
-        [HttpPut("{id}/student-profile")]
-        [SwaggerOperation(Summary = "[System Administrator] Update a student's profile",
-            Description = "Updates the student code and academic status (enrolled/onLeave/withdrawn/graduated) of a Student account, e.g. when the student goes on leave or graduates. " +
-                "The student code must stay unique. Returns 404 when the account has no student profile (staff accounts have none). The profile itself is created with the account (single create, import or giving the Student role).")]
-        public async Task<IActionResult> UpdateStudentProfile([FromRoute] Guid id, [FromBody] UpdateStudentProfileRequest request)
-        {
-            var response = await _accountService.UpdateStudentProfileAsync(id, request);
             return Ok(response);
         }
     }

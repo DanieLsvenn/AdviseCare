@@ -16,7 +16,6 @@ namespace AdviseCare.Application.Services
         IGenericRepository<Subject> subjectRepository,
         IGenericRepository<Consentpurpose> purposeRepository,
         IGenericRepository<Account> accountRepository,
-        IGenericRepository<Advisorassignment> assignmentRepository,
         IGenericRepository<AccountSubject> accountSubjectRepository,
         IGenericRepository<Faculty> facultyRepository,
         IGenericRepository<Referral> referralRepository,
@@ -32,7 +31,6 @@ namespace AdviseCare.Application.Services
         private readonly IGenericRepository<Subject> _subjectRepository = subjectRepository;
         private readonly IGenericRepository<Consentpurpose> _purposeRepository = purposeRepository;
         private readonly IGenericRepository<Account> _accountRepository = accountRepository;
-        private readonly IGenericRepository<Advisorassignment> _assignmentRepository = assignmentRepository;
         private readonly IGenericRepository<AccountSubject> _accountSubjectRepository = accountSubjectRepository;
         private readonly IGenericRepository<Faculty> _facultyRepository = facultyRepository;
         private readonly IGenericRepository<Referral> _referralRepository = referralRepository;
@@ -72,7 +70,7 @@ namespace AdviseCare.Application.Services
 
             if (isOutreach)
             {
-                // EX3: an advisor opens a case for one of their assigned students
+                // EX3: an advisor opens a case for a student after looking at their (consented) data
                 var advisorRole = CaseRules.AdvisorRoleFor(category.SupportType);
                 if (!roles.Contains(advisorRole))
                     throw new ForbiddenException($"Only a {advisorRole} can open a {category.SupportType} case for a student.");
@@ -85,10 +83,6 @@ namespace AdviseCare.Application.Services
                     throw new ValidationException($"{student.FullName} is not a student.");
                 if (student.Status != CaseRules.Active)
                     throw new ValidationException($"{student.FullName} is not an active account.");
-                if (!await _assignmentRepository.ExistsAsync(a =>
-                        a.AdvisorId == callerId && a.StudentId == student.AccountId && a.Status == CaseRules.Active))
-                    throw new ForbiddenException("You can only open cases for students who are assigned to you.");
-
                 priority = CaseWorkflowHelper.OptionalFilter(request.Priority, CaseRules.Priorities, "Priority") ?? "medium";
             }
             else
@@ -194,6 +188,29 @@ namespace AdviseCare.Application.Services
             return await _workflow.ToCaseResponsesAsync(cases);
         }
 
+        public async Task<List<CaseResponse>> SearchAsync(SearchCasesRequest request)
+        {
+            var supportType = CaseWorkflowHelper.OptionalFilter(request.SupportType, CaseRules.SupportTypes, "Support type");
+            var stage = CaseWorkflowHelper.OptionalFilter(request.CurrentStage, CaseRules.Stages, "Current stage");
+            var status = CaseWorkflowHelper.OptionalFilter(request.Status, CaseRules.CaseStatuses, "Status");
+            var priority = CaseWorkflowHelper.OptionalFilter(request.Priority, CaseRules.Priorities, "Priority");
+
+            var cases = await _caseRepository.SearchAsyncIncludeOrderBy(
+                c => (!request.StudentId.HasValue || c.StudentId == request.StudentId.Value) &&
+                     (!request.AdvisorId.HasValue || c.AdvisorId == request.AdvisorId.Value) &&
+                     (!request.SupportCategoryId.HasValue || c.SupportCategoryId == request.SupportCategoryId.Value) &&
+                     (!request.SubjectId.HasValue || c.SubjectId == request.SubjectId.Value) &&
+                     (supportType == null || c.SupportCategory.SupportType == supportType) &&
+                     (stage == null || c.CurrentStage == stage) &&
+                     (status == null || c.Status == status) &&
+                     (priority == null || c.Priority == priority),
+                c => c.OpenedAt,
+                false,
+                c => c.Student, c => c.Advisor, c => c.OpenedByNavigation, c => c.Subject, c => c.SupportCategory);
+
+            return await _workflow.ToCaseResponsesAsync(cases);
+        }
+
         public async Task<CaseResponse> GetByIdAsync(Guid callerId, Guid caseId)
         {
             var caseRecord = await _workflow.GetCaseWithDetailsAsync(caseId);
@@ -263,9 +280,9 @@ namespace AdviseCare.Application.Services
                 link => candidateIds.Contains(link.AccountId), link => link.Subject);
             var openCases = await _caseRepository.SearchAsync(c =>
                 c.AdvisorId != null && candidateIds.Contains(c.AdvisorId.Value) && c.Status != CaseRules.StatusClosed);
-            var familiarIds = (await _assignmentRepository.SearchAsync(a =>
-                    a.StudentId == caseRecord.StudentId && a.Status == CaseRules.Active && candidateIds.Contains(a.AdvisorId)))
-                .Select(a => a.AdvisorId)
+            var familiarIds = openCases
+                .Where(c => c.StudentId == caseRecord.StudentId && c.CaseId != caseRecord.CaseId)
+                .Select(c => c.AdvisorId!.Value)
                 .ToHashSet();
             var facultyIds = candidates.Where(a => a.FacultyId != null).Select(a => a.FacultyId!.Value).Distinct().ToList();
             var faculties = (await _facultyRepository.SearchAsync(f => facultyIds.Contains(f.FacultyId)))
@@ -290,7 +307,7 @@ namespace AdviseCare.Application.Services
                     IsFamiliarAdvisor = familiarIds.Contains(advisor.AccountId),
                     OpenCaseCount = openCases.Count(c => c.AdvisorId == advisor.AccountId)
                 };
-                if (suggestion.IsFamiliarAdvisor) suggestion.MatchReasons.Add("Already advises this student");
+                if (suggestion.IsFamiliarAdvisor) suggestion.MatchReasons.Add("Already handles another open case of this student");
                 if (suggestion.IsSubjectSpecialist) suggestion.MatchReasons.Add($"Specialised in {caseRecord.Subject?.SubjectCode}");
                 if (suggestion.IsGeneralAdvisor) suggestion.MatchReasons.Add("General academic advisor");
                 if (suggestion.IsSameFaculty) suggestion.MatchReasons.Add("Same faculty as the student");
@@ -298,7 +315,7 @@ namespace AdviseCare.Application.Services
                 return suggestion;
             });
 
-            // Familiar pair first (optional add-on of WF2 3.2.3), then subject specialists, then the student's faculty
+            // Familiar pair first (optional add-on of D3.2: an advisor already handling another open case of the student), then subject specialists, then the student's faculty
             // (general advisors before other specialists there), then the lightest workload
             return suggestions
                 .OrderByDescending(s => s.IsFamiliarAdvisor)
@@ -316,14 +333,13 @@ namespace AdviseCare.Application.Services
             if (caseRecord.Status == CaseRules.StatusClosed)
                 throw new ConflictException("The case is closed.");
             if (caseRecord.AdvisorId != null || caseRecord.CurrentStage != CaseRules.StagePending)
-                throw new ValidationException("The case already has an advisor. Use reassign or an assignment change request to change it.");
+                throw new ValidationException("The case already has an advisor. Use reassign or a case change request to change it.");
 
             var category = caseRecord.SupportCategory;
             var (advisor, _) = await _workflow.GetActiveAdvisorAsync(request.AdvisorId, CaseRules.AdvisorRoleFor(category.SupportType));
             var reason = string.IsNullOrWhiteSpace(request.Reason) ? "Matched by the Programme Head" : request.Reason.Trim();
 
             var now = DateTime.UtcNow;
-            await _workflow.StageEnsureAssignmentAsync(advisor.AccountId, caseRecord.StudentId, programmeHeadId, now);
             caseRecord.AdvisorId = advisor.AccountId;
             caseRecord.Advisor = advisor;
             _workflow.StageStageChange(caseRecord, programmeHeadId, CaseRules.StageAssigned, reason, now);
@@ -354,13 +370,7 @@ namespace AdviseCare.Application.Services
             var reason = CaseWorkflowHelper.RequireText(request.Reason, "Reason is required.");
             var oldAdvisor = caseRecord.Advisor;
 
-            var now = DateTime.UtcNow;
-            await _workflow.StageEnsureAssignmentAsync(advisor.AccountId, caseRecord.StudentId, programmeHeadId, now);
-            caseRecord.AdvisorId = advisor.AccountId;
-            caseRecord.Advisor = advisor;
-            _workflow.StageStageChange(caseRecord, programmeHeadId, caseRecord.CurrentStage,
-                $"Reassigned from {oldAdvisor?.FullName} to {advisor.FullName}: {reason}", now);
-            _caseRepository.PrepareUpdate(caseRecord);
+            _workflow.StageAdvisorChange(caseRecord, advisor, programmeHeadId, reason, DateTime.UtcNow);
             await _caseRepository.SaveAsync();
 
             await _activityLogService.LogAsync(programmeHeadId, "caseReassigned",

@@ -1,10 +1,11 @@
-using AdviseCare.Application.DTOs;
+﻿using AdviseCare.Application.DTOs;
 using AdviseCare.Application.Interfaces.Excel;
 using Microsoft.VisualBasic.FileIO;
 using System.Text;
 
 namespace AdviseCare.Infrastructure.Excel
 {
+    // Reads a .csv file (UTF-8, comma-separated, quotes allowed): the first row is the header, every other non-empty row becomes one ExcelRow
     public class CsvReader : ICsvReader
     {
         public List<ExcelRow> ReadRows(Stream content)

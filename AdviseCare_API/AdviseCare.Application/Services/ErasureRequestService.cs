@@ -1,8 +1,7 @@
-using AdviseCare.Application.Contracts.Requests.ErasureRequest;
+﻿using AdviseCare.Application.Contracts.Requests.ErasureRequest;
 using AdviseCare.Application.Contracts.Responses.ErasureRequest;
 using AdviseCare.Application.Exceptions;
 using AdviseCare.Application.Interfaces.Repository;
-using AdviseCare.Application.Interfaces.Security;
 using AdviseCare.Application.Interfaces.Services;
 using AdviseCare.Domain.Models;
 using System.Linq.Expressions;
@@ -13,23 +12,23 @@ namespace AdviseCare.Application.Services
     {
         private readonly IGenericRepository<Erasurerequest> _erasureRequestRepository;
         private readonly IGenericRepository<Consent> _consentRepository;
-        private readonly IErasureWorkflowRepository _erasureWorkflowRepository;
-        private readonly IKeyManagementService _keyManagementService;
+        private readonly IGenericRepository<Studentdata> _studentDataRepository;
+        private readonly IGenericRepository<Correctionrequest> _correctionRequestRepository;
         private readonly INotificationService _notificationService;
         private readonly IActivityLogService _activityLogService;
 
         public ErasureRequestService(
             IGenericRepository<Erasurerequest> erasureRequestRepository,
             IGenericRepository<Consent> consentRepository,
-            IErasureWorkflowRepository erasureWorkflowRepository,
-            IKeyManagementService keyManagementService,
+            IGenericRepository<Studentdata> studentDataRepository,
+            IGenericRepository<Correctionrequest> correctionRequestRepository,
             INotificationService notificationService,
             IActivityLogService activityLogService)
         {
             _erasureRequestRepository = erasureRequestRepository;
             _consentRepository = consentRepository;
-            _erasureWorkflowRepository = erasureWorkflowRepository;
-            _keyManagementService = keyManagementService;
+            _studentDataRepository = studentDataRepository;
+            _correctionRequestRepository = correctionRequestRepository;
             _notificationService = notificationService;
             _activityLogService = activityLogService;
         }
@@ -137,49 +136,51 @@ namespace AdviseCare.Application.Services
             }).ToList();
         }
 
-        // Erasure first removes live payloads in SQL, then destroys the external key before final confirmation.
+        // Execute Erasure request: verify the withdrawal still stands, then destroy the attribute key and clear the values it protected (the audit trail stays)
         public async Task<bool> ExecuteAsync(Guid StewardId, Guid ErasureRequestId)
         {
             var request = (await GetRequestsAsync(e => e.ErasureRequestId == ErasureRequestId)).FirstOrDefault()
                 ?? throw new NotFoundException("Erasure request not found.");
 
-            if (request.Status == "pending")
-            {
-                if (request.Consent.Status != "withdrawn")
-                    throw new ConflictException("The consent behind this request is no longer withdrawn, so the erasure cannot go ahead.");
-                if (await _consentRepository.ExistsAsync(c =>
-                        c.StudentId == request.Consent.StudentId &&
-                        c.DataAttributeId == request.Consent.DataAttributeId &&
-                        c.Status == "granted"))
-                    throw new ConflictException("The student has shared this attribute again under another purpose; erasing the key would wipe data that is still shared.");
-
-                await _keyManagementService.EnsureKeyCanBeDestroyedAsync(request.AttributeKey.KeyManagementKeyId);
-
-                var execution = await _erasureWorkflowRepository.ExecuteErasureAsync(ErasureRequestId, StewardId);
-                if (execution.AttributeKeyId != request.AttributeKeyId ||
-                    !string.Equals(
-                        execution.KeyManagementKeyId,
-                        request.AttributeKey.KeyManagementKeyId,
-                        StringComparison.Ordinal))
-                {
-                    throw new InvalidOperationException("The erasure procedure returned a different key reference than the loaded request.");
-                }
-            }
-            else if (request.Status != "pendingKeyDestruction")
-            {
+            if (request.Status != "pending")
                 throw new ConflictException("This erasure has already been executed.");
-            }
+            if (request.Consent.Status != "withdrawn")
+                throw new ConflictException("The consent behind this request is no longer withdrawn, so the erasure cannot go ahead.");
+            if (await _consentRepository.ExistsAsync(c =>
+                    c.StudentId == request.Consent.StudentId &&
+                    c.DataAttributeId == request.Consent.DataAttributeId &&
+                    c.Status == "granted"))
+                throw new ConflictException("The student has shared this attribute again under another purpose; erasing the key would wipe data that is still shared.");
 
-            await _keyManagementService.DestroyKeyAsync(request.AttributeKey.KeyManagementKeyId);
-            await _erasureWorkflowRepository.ConfirmKmsKeyDestructionAsync(
-                ErasureRequestId,
-                request.AttributeKey.KeyManagementKeyId,
-                StewardId);
+            // One save: destroy the key, clear every value it protected (student data and correction requests) and close the request
+            var now = DateTime.UtcNow;
+            if (request.AttributeKey.Status == "active")
+            {
+                request.AttributeKey.Status = "destroyed";
+                request.AttributeKey.DestroyedAt = now;
+                request.AttributeKey.WrappedKey = null;
+            }
+            var studentData = await _studentDataRepository.SearchAsync(d => d.AttributeKeyId == request.AttributeKeyId && d.ErasedAt == null);
+            foreach (var row in studentData)
+            {
+                row.DataValue = null;
+                row.ErasedAt = now;
+            }
+            var correctionRequests = await _correctionRequestRepository.SearchAsync(c => c.StudentData.AttributeKeyId == request.AttributeKeyId);
+            foreach (var correctionRequest in correctionRequests)
+            {
+                correctionRequest.CurrentValue = null;
+                correctionRequest.ProposedValue = null;
+            }
+            request.ExecutedBy = StewardId;
+            request.ExecutedAt = now;
+            request.Status = "completed";
+            await _erasureRequestRepository.SaveAsync();
 
             await _notificationService.NotifyAsync(request.Consent.StudentId, "Your data has been erased",
-                $"Your {request.Consent.DataAttribute.AttributeName} values can no longer be read. The record that they existed and were withdrawn is kept for audit.", "/consents");
+                $"Your {request.Consent.DataAttribute.AttributeName} values can no longer be read by anyone. The record that they existed and were withdrawn is kept for audit.", "/consents");
             await _activityLogService.LogCurrentAccountAsync("erasureExecuted",
-                $"Erasure completed for {request.Consent.Student.FullName}'s {request.Consent.DataAttribute.AttributeName} after Vault key destruction.");
+                $"Erased {request.Consent.Student.FullName}'s {request.Consent.DataAttribute.AttributeName} (key destroyed, {studentData.Count} value(s) cleared)");
             return true;
         }
 

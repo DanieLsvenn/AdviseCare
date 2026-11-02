@@ -1,4 +1,4 @@
-using AdviseCare.Application.Contracts.Requests.AttributeKey;
+﻿using AdviseCare.Application.Contracts.Requests.AttributeKey;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +16,7 @@ namespace AdviseCare.API.Controllers
         // Get all Attribute keys, with optional pagination
         [HttpGet]
         [SwaggerOperation(Summary = "[Data Protection Steward] Get all attribute keys with optional pagination",
-            Description = "Lists the encryption keys (one per student per data attribute), newest first, with the student, the attribute, when the key was created and whether it was destroyed by an erasure. " +
+            Description = "Lists the encryption keys (one per student per data attribute), newest first, with the student, the attribute, the master key version that wraps it, when the key was created and whether it was destroyed by an erasure. " +
                 "The key itself is never returned. Keys are created automatically when a student's first value for an attribute is stored. Pass page and pageSize together to page the results.")]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
@@ -47,6 +47,18 @@ namespace AdviseCare.API.Controllers
         public async Task<IActionResult> Search([FromQuery] SearchAttributeKeyRequest request)
         {
             var response = await _attributeKeyService.SearchAsync(request);
+            return Ok(response);
+        }
+
+        // Rewrap every active Attribute key under the current master key version
+        [HttpPut("rewrap")]
+        [SwaggerOperation(Summary = "[Data Protection Steward] Rewrap attribute keys under the current master key version",
+            Description = "After a new master key version is added to the configuration (Encryption__MasterKeys__N and Encryption__CurrentVersion = N), this re-wraps every active attribute key with it. " +
+                "Only the wrapped keys change; the stored values are not re-encrypted. The response lists the versions no active key uses any more: such a version can be removed from the configuration " +
+                "once no kept database backup still needs it, which also makes values erased before that backup unrecoverable from it.")]
+        public async Task<IActionResult> Rewrap()
+        {
+            var response = await _attributeKeyService.RewrapAsync();
             return Ok(response);
         }
     }

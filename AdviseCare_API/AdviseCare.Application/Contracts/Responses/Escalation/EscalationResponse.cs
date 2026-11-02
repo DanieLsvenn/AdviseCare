@@ -1,16 +1,86 @@
 namespace AdviseCare.Application.Contracts.Responses.Escalation
 {
-    public class EscalationResponse
+    public class GetAllEscalationResponse
     {
-        public Guid EscalationId { get; set; }
-        public Guid CaseId { get; set; }
-        public Guid EscalatedBy { get; set; }
-        public string EscalatedByName { get; set; } = string.Empty;
-        public Guid EscalatedTo { get; set; }
-        public string EscalatedToName { get; set; } = string.Empty;
+        public Guid EscalationId { get; set; } = Guid.Empty;
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid EscalatedBy { get; set; } = Guid.Empty;
+        public Guid EscalatedTo { get; set; } = Guid.Empty;
+        public string EscalatedByFullName { get; set; } = string.Empty;
+        public string EscalatedToFullName { get; set; } = string.Empty;
         public string Reason { get; set; } = string.Empty;
         public string Response { get; set; } = string.Empty;
         public DateTime EscalatedAt { get; set; }
-        public string Status { get; set; } = string.Empty;
+        public string Status { get; set; } = "pending";
+    }
+
+    public class GetAllEscalationWithPaginationResponse
+    {
+        public Guid EscalationId { get; set; } = Guid.Empty;
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid EscalatedBy { get; set; } = Guid.Empty;
+        public Guid EscalatedTo { get; set; } = Guid.Empty;
+        public string EscalatedByFullName { get; set; } = string.Empty;
+        public string EscalatedToFullName { get; set; } = string.Empty;
+        public string Reason { get; set; } = string.Empty;
+        public string Response { get; set; } = string.Empty;
+        public DateTime EscalatedAt { get; set; }
+        public string Status { get; set; } = "pending";
+    }
+
+    public class GetEscalationByIdResponse
+    {
+        public Guid EscalationId { get; set; } = Guid.Empty;
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid EscalatedBy { get; set; } = Guid.Empty;
+        public Guid EscalatedTo { get; set; } = Guid.Empty;
+        public string EscalatedByFullName { get; set; } = string.Empty;
+        public string EscalatedToFullName { get; set; } = string.Empty;
+        public string Reason { get; set; } = string.Empty;
+        public string Response { get; set; } = string.Empty;
+        public DateTime EscalatedAt { get; set; }
+        public string Status { get; set; } = "pending";
+    }
+
+    public class SearchEscalationResponse
+    {
+        public Guid EscalationId { get; set; } = Guid.Empty;
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid EscalatedBy { get; set; } = Guid.Empty;
+        public Guid EscalatedTo { get; set; } = Guid.Empty;
+        public string EscalatedByFullName { get; set; } = string.Empty;
+        public string EscalatedToFullName { get; set; } = string.Empty;
+        public string Reason { get; set; } = string.Empty;
+        public string Response { get; set; } = string.Empty;
+        public DateTime EscalatedAt { get; set; }
+        public string Status { get; set; } = "pending";
+    }
+
+    public class CreateEscalationResponse
+    {
+        public Guid EscalationId { get; set; } = Guid.Empty;
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid EscalatedBy { get; set; } = Guid.Empty;
+        public Guid EscalatedTo { get; set; } = Guid.Empty;
+        public string EscalatedByFullName { get; set; } = string.Empty;
+        public string EscalatedToFullName { get; set; } = string.Empty;
+        public string Reason { get; set; } = string.Empty;
+        public string Response { get; set; } = string.Empty;
+        public DateTime EscalatedAt { get; set; }
+        public string Status { get; set; } = "pending";
+    }
+
+    public class RespondEscalationResponse
+    {
+        public Guid EscalationId { get; set; } = Guid.Empty;
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid EscalatedBy { get; set; } = Guid.Empty;
+        public Guid EscalatedTo { get; set; } = Guid.Empty;
+        public string EscalatedByFullName { get; set; } = string.Empty;
+        public string EscalatedToFullName { get; set; } = string.Empty;
+        public string Reason { get; set; } = string.Empty;
+        public string Response { get; set; } = string.Empty;
+        public DateTime EscalatedAt { get; set; }
+        public string Status { get; set; } = "pending";
     }
 }

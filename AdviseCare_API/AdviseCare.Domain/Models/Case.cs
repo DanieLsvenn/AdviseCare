@@ -33,6 +33,8 @@ public partial class Case
 
     public virtual Account Advisor { get; set; }
 
+    public virtual ICollection<Casechangerequest> Casechangerequests { get; set; } = new List<Casechangerequest>();
+
     public virtual ICollection<Casenote> Casenotes { get; set; } = new List<Casenote>();
 
     public virtual ICollection<Casestagehistory> Casestagehistories { get; set; } = new List<Casestagehistory>();

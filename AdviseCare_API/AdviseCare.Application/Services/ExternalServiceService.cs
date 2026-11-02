@@ -7,38 +7,59 @@ using AdviseCare.Domain.Models;
 
 namespace AdviseCare.Application.Services
 {
-    public class ExternalServiceService(IGenericRepository<Externalservice> externalServiceRepository) : IExternalServiceService
+    public class ExternalServiceService : IExternalServiceService
     {
-        private readonly IGenericRepository<Externalservice> _externalServiceRepository = externalServiceRepository;
+        private readonly IGenericRepository<Externalservice> _externalServiceRepository;
+        private readonly IActivityLogService _activityLogService;
 
-        public async Task<IEnumerable<GetAllExternalServiceResponse>> GetAll()
+        public ExternalServiceService(
+            IGenericRepository<Externalservice> externalServiceRepository,
+            IActivityLogService activityLogService)
         {
-            var services = await _externalServiceRepository.GetAllAsyncOrderBy(service => service.ServiceName);
-            return services.Select(ToGetAllResponse);
+            _externalServiceRepository = externalServiceRepository;
+            _activityLogService = activityLogService;
         }
 
+        // Get all External services
+        public async Task<IEnumerable<GetAllExternalServiceResponse>> GetAll()
+        {
+            var services = await _externalServiceRepository.GetAllAsyncOrderBy(s => s.ServiceName, true);
+
+            return services.Select(s => new GetAllExternalServiceResponse
+            {
+                ExternalServiceId = s.ExternalServiceId,
+                ContactInfo = s.ContactInfo ?? string.Empty,
+                ServiceName = s.ServiceName,
+                ServiceType = s.ServiceType ?? string.Empty,
+                IsActive = s.IsActive
+            });
+        }
+
+        // Get all External services with pagination
         public async Task<IEnumerable<GetAllExternalServiceWithPaginationResponse>> GetAllWithPaginationAsync(int page, int pageSize)
         {
             if (page < 1 || pageSize < 1)
                 throw new ValidationException("Page and page size must be at least 1.");
 
-            var services = await _externalServiceRepository.GetAllAsyncOrderBy(service => service.ServiceName);
+            var services = await _externalServiceRepository.GetAllAsyncOrderBy(s => s.ServiceName, true);
+
             return services
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(service => new GetAllExternalServiceWithPaginationResponse
+                .Select(s => new GetAllExternalServiceWithPaginationResponse
                 {
-                    ExternalServiceId = service.ExternalServiceId,
-                    ContactInfo = service.ContactInfo ?? string.Empty,
-                    ServiceName = service.ServiceName,
-                    ServiceType = service.ServiceType ?? string.Empty,
-                    IsActive = service.IsActive
+                    ExternalServiceId = s.ExternalServiceId,
+                    ContactInfo = s.ContactInfo ?? string.Empty,
+                    ServiceName = s.ServiceName,
+                    ServiceType = s.ServiceType ?? string.Empty,
+                    IsActive = s.IsActive
                 });
         }
 
-        public async Task<GetExternalServiceByIdResponse> GetByIdAsync(Guid externalServiceId)
+        // Get External service by Id
+        public async Task<GetExternalServiceByIdResponse> GetByIdAsync(Guid ExternalServiceId)
         {
-            var service = await _externalServiceRepository.GetByIdAsync(externalServiceId)
+            var service = await _externalServiceRepository.GetByIdAsync(ExternalServiceId)
                 ?? throw new NotFoundException("External service not found.");
 
             return new GetExternalServiceByIdResponse
@@ -51,40 +72,39 @@ namespace AdviseCare.Application.Services
             };
         }
 
+        // Search External services by name or type (contains) and active state
         public async Task<List<SearchExternalServiceResponse>> SearchAsync(SearchExternalServiceRequest request)
         {
-            var services = await _externalServiceRepository.SearchAsyncOrderBy(service =>
-                (string.IsNullOrWhiteSpace(request.ServiceName) || service.ServiceName.Contains(request.ServiceName.Trim())) &&
-                (string.IsNullOrWhiteSpace(request.ServiceType) || (service.ServiceType != null && service.ServiceType.Contains(request.ServiceType.Trim()))) &&
-                (!request.IsActive.HasValue || service.IsActive == request.IsActive.Value),
-                service => service.ServiceName);
+            var services = await _externalServiceRepository.SearchAsyncOrderBy(s =>
+                (string.IsNullOrWhiteSpace(request.ServiceName) || s.ServiceName.Contains(request.ServiceName)) &&
+                (string.IsNullOrWhiteSpace(request.ServiceType) || (s.ServiceType != null && s.ServiceType.Contains(request.ServiceType))) &&
+                (request.IsActive == null || s.IsActive == request.IsActive),
+                s => s.ServiceName, true);
 
-            return services.Select(service => new SearchExternalServiceResponse
+            return services.Select(s => new SearchExternalServiceResponse
             {
-                ExternalServiceId = service.ExternalServiceId,
-                ContactInfo = service.ContactInfo ?? string.Empty,
-                ServiceName = service.ServiceName,
-                ServiceType = service.ServiceType ?? string.Empty,
-                IsActive = service.IsActive
+                ExternalServiceId = s.ExternalServiceId,
+                ContactInfo = s.ContactInfo ?? string.Empty,
+                ServiceName = s.ServiceName,
+                ServiceType = s.ServiceType ?? string.Empty,
+                IsActive = s.IsActive
             }).ToList();
         }
 
+        // Create External service (active)
         public async Task<CreateExternalServiceResponse> CreateAsync(CreateExternalServiceRequest request)
         {
-            var serviceName = request.ServiceName.Trim();
-            if (string.IsNullOrWhiteSpace(serviceName))
-                throw new ValidationException("Service name is required.");
-
             var service = new Externalservice
             {
                 ExternalServiceId = Guid.NewGuid(),
-                ServiceName = serviceName,
-                ServiceType = NormalizeOptionalValue(request.ServiceType),
-                ContactInfo = NormalizeOptionalValue(request.ContactInfo),
+                ContactInfo = string.IsNullOrWhiteSpace(request.ContactInfo) ? null : request.ContactInfo.Trim(),
+                ServiceName = request.ServiceName.Trim(),
+                ServiceType = string.IsNullOrWhiteSpace(request.ServiceType) ? null : request.ServiceType.Trim(),
                 IsActive = true
             };
-
             await _externalServiceRepository.CreateAsync(service);
+
+            await _activityLogService.LogCurrentAccountAsync("externalServiceCreated", $"Added external service {service.ServiceName}");
 
             return new CreateExternalServiceResponse
             {
@@ -96,22 +116,19 @@ namespace AdviseCare.Application.Services
             };
         }
 
-        public async Task<UpdateExternalServiceResponse> UpdateAsync(Guid externalServiceId, UpdateExternalServiceRequest request)
+        // Update External service (an inactive service stays in old referrals but cannot receive new ones)
+        public async Task<UpdateExternalServiceResponse> UpdateAsync(Guid ExternalServiceId, UpdateExternalServiceRequest request)
         {
-            var service = await _externalServiceRepository.GetByIdAsync(externalServiceId)
+            var service = await _externalServiceRepository.GetByIdAsync(ExternalServiceId)
                 ?? throw new NotFoundException("External service not found.");
 
-            var serviceName = request.ServiceName.Trim();
-            if (string.IsNullOrWhiteSpace(serviceName))
-                throw new ValidationException("Service name is required.");
-            if (!request.IsActive.HasValue)
-                throw new ValidationException("Active state is required.");
-
-            service.ServiceName = serviceName;
-            service.ServiceType = NormalizeOptionalValue(request.ServiceType);
-            service.ContactInfo = NormalizeOptionalValue(request.ContactInfo);
-            service.IsActive = request.IsActive.Value;
+            service.ContactInfo = string.IsNullOrWhiteSpace(request.ContactInfo) ? null : request.ContactInfo.Trim();
+            service.ServiceName = request.ServiceName.Trim();
+            service.ServiceType = string.IsNullOrWhiteSpace(request.ServiceType) ? null : request.ServiceType.Trim();
+            service.IsActive = request.IsActive;
             await _externalServiceRepository.UpdateAsync(service);
+
+            await _activityLogService.LogCurrentAccountAsync("externalServiceUpdated", $"Updated external service {service.ServiceName} ({(service.IsActive ? "active" : "inactive")})");
 
             return new UpdateExternalServiceResponse
             {
@@ -122,17 +139,5 @@ namespace AdviseCare.Application.Services
                 IsActive = service.IsActive
             };
         }
-
-        private static GetAllExternalServiceResponse ToGetAllResponse(Externalservice service) => new()
-        {
-            ExternalServiceId = service.ExternalServiceId,
-            ContactInfo = service.ContactInfo ?? string.Empty,
-            ServiceName = service.ServiceName,
-            ServiceType = service.ServiceType ?? string.Empty,
-            IsActive = service.IsActive
-        };
-
-        private static string? NormalizeOptionalValue(string? value) =>
-            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

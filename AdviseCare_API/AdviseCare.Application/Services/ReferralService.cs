@@ -134,8 +134,7 @@ namespace AdviseCare.Application.Services
 
             if (!isWelfareHandover)
             {
-                // The receiving advisor becomes the handling advisor
-                await _workflow.StageEnsureAssignmentAsync(receiverId, caseRecord.StudentId, referral.FromAccountId, now);
+                // The receiving advisor becomes the handling advisor (CASES.advisorId is the only advisor-student link)
                 caseRecord.AdvisorId = receiverId;
                 caseRecord.Advisor = receiver;
                 _workflow.StageStageChange(caseRecord, receiverId, CaseRules.StageAssigned,

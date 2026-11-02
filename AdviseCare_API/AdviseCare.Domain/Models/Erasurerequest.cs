@@ -13,10 +13,6 @@ public partial class Erasurerequest
 
     public Guid ConsentId { get; set; }
 
-    public Guid StudentId { get; set; }
-
-    public Guid DataAttributeId { get; set; }
-
     public Guid? ExecutedBy { get; set; }
 
     public DateTime? ExecutedAt { get; set; }

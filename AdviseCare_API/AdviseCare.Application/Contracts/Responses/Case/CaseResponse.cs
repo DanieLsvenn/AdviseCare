@@ -11,8 +11,6 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public string AdvisorName { get; set; } = string.Empty;
         // The advisor's contact information, shown to the student once the case is matched (WF2 step 4.1)
         public string AdvisorEmail { get; set; } = string.Empty;
-        // Active ADVISORASSIGNMENTS row of the case's advisor and student, used for EX6 change requests
-        public Guid? AdvisorAssignmentId { get; set; }
         public Guid OpenedBy { get; set; }
         public string OpenedByName { get; set; } = string.Empty;
         public Guid? SubjectId { get; set; }
@@ -55,7 +53,7 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         // Academic advisor with no subject link
         public bool IsGeneralAdvisor { get; set; }
         public bool IsSameFaculty { get; set; }
-        // Already has an active ADVISORASSIGNMENTS row with this student (familiar pair)
+        // Already handles another case of this student that is not closed (familiar pair)
         public bool IsFamiliarAdvisor { get; set; }
         // Cases of this advisor that are not closed (workload)
         public int OpenCaseCount { get; set; }

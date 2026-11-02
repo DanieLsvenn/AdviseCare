@@ -13,6 +13,8 @@ public partial class Dataattribute
 
     public string AttributeName { get; set; }
 
+    public string DataType { get; set; }
+
     public string Status { get; set; }
 
     public virtual ICollection<Attributekey> Attributekeys { get; set; } = new List<Attributekey>();
@@ -21,7 +23,9 @@ public partial class Dataattribute
 
     public virtual ICollection<Consent> Consents { get; set; } = new List<Consent>();
 
-    public virtual Indicator Indicator { get; set; }
+    public virtual Datasource Datasource { get; set; }
+
+    public virtual ICollection<Studentdata> Studentdata { get; set; } = new List<Studentdata>();
 
     public virtual ICollection<Consentpurpose> ConsentPurposes { get; set; } = new List<Consentpurpose>();
 }

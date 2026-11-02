@@ -1,4 +1,4 @@
-namespace AdviseCare.Application.Contracts.Responses.Account
+﻿namespace AdviseCare.Application.Contracts.Responses.Account
 {
     public class GetAllAccountResponse
     {
@@ -251,14 +251,5 @@ namespace AdviseCare.Application.Contracts.Responses.Account
         public string FullName { get; set; } = string.Empty;
         public string RoleName { get; set; } = string.Empty;
         public DateTime AssignedAt { get; set; }
-    }
-
-    public class UpdateStudentProfileResponse
-    {
-        public Guid StudentProfileId { get; set; } = Guid.Empty;
-        public Guid StudentId { get; set; } = Guid.Empty;
-        public string FullName { get; set; } = string.Empty;
-        public string StudentCode { get; set; } = string.Empty;
-        public string AcademicStatus { get; set; } = "enrolled";
     }
 }

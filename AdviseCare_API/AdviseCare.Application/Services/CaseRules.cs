@@ -59,6 +59,6 @@ namespace AdviseCare.Application.Services
         // Redirect URLs put in NOTIFICATIONS; the advisor's unread count per case is built from these
         public static string CaseUrl(Guid caseId) => $"/cases/{caseId}";
         public static string ReferralUrl(Guid referralId) => $"/referrals/{referralId}";
-        public static string ChangeRequestUrl(Guid requestId) => $"/assignment-change-requests/{requestId}";
+        public static string ChangeRequestUrl(Guid requestId) => $"/case-change-requests/{requestId}";
     }
 }

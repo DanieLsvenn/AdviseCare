@@ -1,4 +1,4 @@
-using AdviseCare.Application.Contracts.Requests.AccessLog;
+﻿using AdviseCare.Application.Contracts.Requests.AccessLog;
 using AdviseCare.Application.Contracts.Responses.AccessLog;
 using AdviseCare.Application.Exceptions;
 using AdviseCare.Application.Interfaces.Excel;
@@ -49,6 +49,7 @@ namespace AdviseCare.Application.Services
                 AccessorId = l.AccessorId,
                 ConsentPurposeId = l.ConsentPurposeId,
                 RecordedUserId = l.RecordedUserId,
+                StudentDataId = l.StudentDataId,
                 AccessorFullName = l.Accessor.FullName,
                 PurposeName = l.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,
                 RecordedUserFullName = l.RecordedUser.FullName,
@@ -76,6 +77,7 @@ namespace AdviseCare.Application.Services
                     AccessorId = l.AccessorId,
                     ConsentPurposeId = l.ConsentPurposeId,
                     RecordedUserId = l.RecordedUserId,
+                    StudentDataId = l.StudentDataId,
                     AccessorFullName = l.Accessor.FullName,
                     PurposeName = l.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,
                     RecordedUserFullName = l.RecordedUser.FullName,
@@ -98,6 +100,7 @@ namespace AdviseCare.Application.Services
                 AccessorId = log.AccessorId,
                 ConsentPurposeId = log.ConsentPurposeId,
                 RecordedUserId = log.RecordedUserId,
+                StudentDataId = log.StudentDataId,
                 AccessorFullName = log.Accessor.FullName,
                 PurposeName = log.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,
                 RecordedUserFullName = log.RecordedUser.FullName,
@@ -126,6 +129,7 @@ namespace AdviseCare.Application.Services
                 AccessorId = l.AccessorId,
                 ConsentPurposeId = l.ConsentPurposeId,
                 RecordedUserId = l.RecordedUserId,
+                StudentDataId = l.StudentDataId,
                 AccessorFullName = l.Accessor.FullName,
                 PurposeName = l.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,
                 RecordedUserFullName = l.RecordedUser.FullName,
@@ -191,6 +195,7 @@ namespace AdviseCare.Application.Services
                 {
                     AccessLogId = l.AccessLogId,
                     ConsentPurposeId = l.ConsentPurposeId,
+                    StudentDataId = l.StudentDataId,
                     AccessorFullName = l.Accessor.FullName,
                     AccessorRoleNames = accessorRoles.TryGetValue(l.AccessorId, out var roles) ? roles : new List<string>(),
                     PurposeName = l.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,

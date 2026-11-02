@@ -24,7 +24,7 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[Student, Academic Advisor, Wellbeing Advisor] Create a case",
             Description = "Student (WF2): leave studentId empty; subjectId only for academic categories; sharedAttributeIds must belong to the category's consent purpose " +
                 "and are recorded as consents in the same transaction. The case starts at stage pending and waits in the matching queue.\n\n" +
-                "Advisor (EX3): give studentId of a student assigned to you and a category of your type; priority optional; sharedAttributeIds must be empty. " +
+                "Advisor (EX3): give studentId of an active student and a category of your type; priority optional; sharedAttributeIds must be empty. " +
                 "The case starts at stage assigned with you as its advisor and the student is notified with your contact information.")]
         public async Task<IActionResult> Create([FromBody] CreateCaseRequest request)
         {
@@ -37,6 +37,16 @@ namespace AdviseCare.API.Controllers
         public async Task<IActionResult> GetMine([FromQuery] SearchMyCasesRequest request)
         {
             return Ok(await _caseService.GetMyCasesAsync(CurrentAccountId, request));
+        }
+
+        [HttpGet("search")]
+        [Authorize(Roles = "Programme Head")]
+        [SwaggerOperation(Summary = "[Programme Head] Search cases",
+            Description = "Newest first. Filters: studentId, advisorId, supportCategoryId, subjectId, supportType, currentStage, status, priority. " +
+                "E.g. ?studentId=...&status=open shows which advisors already handle the student (WF2 step 3.2.3).")]
+        public async Task<IActionResult> Search([FromQuery] SearchCasesRequest request)
+        {
+            return Ok(await _caseService.SearchAsync(request));
         }
 
         [HttpGet("{id:guid}")]
@@ -71,7 +81,7 @@ namespace AdviseCare.API.Controllers
         [HttpPut("{id:guid}/assign")]
         [Authorize(Roles = "Programme Head")]
         [SwaggerOperation(Summary = "[Programme Head] Assign an unassigned case to an advisor",
-            Description = "Sets the advisor, creates or keeps the advisor-student assignment, moves the case pending -> assigned and notifies the student (with the advisor's contact information) and the advisor.")]
+            Description = "Sets the case's advisor (the only advisor-student link), moves the case pending -> assigned and notifies the student (with the advisor's contact information) and the advisor.")]
         public async Task<IActionResult> Assign([FromRoute] Guid id, [FromBody] AssignCaseRequest request)
         {
             return Ok(await _caseService.AssignAsync(CurrentAccountId, id, request));
@@ -81,7 +91,7 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "Programme Head")]
         [SwaggerOperation(Summary = "[Programme Head] Move one case to another advisor directly",
             Description = "The stage is kept; the hand-over is written to the stage history. Refused while a referral of the case is pending. " +
-                "To move all of a student's cases, use PUT /api/AdvisorAssignments/{id}/reassign.")]
+                "The old advisor, the new advisor and the student are notified (EX6 step 5).")]
         public async Task<IActionResult> Reassign([FromRoute] Guid id, [FromBody] ReassignCaseRequest request)
         {
             return Ok(await _caseService.ReassignAsync(CurrentAccountId, id, request));

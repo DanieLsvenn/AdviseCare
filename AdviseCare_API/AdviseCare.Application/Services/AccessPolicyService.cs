@@ -1,4 +1,4 @@
-using AdviseCare.Application.Contracts.Requests.AccessPolicy;
+﻿using AdviseCare.Application.Contracts.Requests.AccessPolicy;
 using AdviseCare.Application.Contracts.Responses.AccessPolicy;
 using AdviseCare.Application.Exceptions;
 using AdviseCare.Application.Interfaces.Repository;
@@ -16,7 +16,7 @@ namespace AdviseCare.Application.Services
         private readonly IGenericRepository<Account> _accountRepository;
         private readonly IGenericRepository<AccountRole> _accountRoleRepository;
         private readonly IGenericRepository<Consent> _consentRepository;
-        private readonly IGenericRepository<Studentindicator> _studentIndicatorRepository;
+        private readonly IGenericRepository<Studentdata> _studentDataRepository;
         private readonly IActivityLogService _activityLogService;
 
         public AccessPolicyService(
@@ -26,7 +26,7 @@ namespace AdviseCare.Application.Services
             IGenericRepository<Account> accountRepository,
             IGenericRepository<AccountRole> accountRoleRepository,
             IGenericRepository<Consent> consentRepository,
-            IGenericRepository<Studentindicator> studentIndicatorRepository,
+            IGenericRepository<Studentdata> studentDataRepository,
             IActivityLogService activityLogService)
         {
             _accessPolicyRepository = accessPolicyRepository;
@@ -35,7 +35,7 @@ namespace AdviseCare.Application.Services
             _accountRepository = accountRepository;
             _accountRoleRepository = accountRoleRepository;
             _consentRepository = consentRepository;
-            _studentIndicatorRepository = studentIndicatorRepository;
+            _studentDataRepository = studentDataRepository;
             _activityLogService = activityLogService;
         }
 
@@ -238,12 +238,12 @@ namespace AdviseCare.Application.Services
                     (c.ExpiresAt == null || c.ExpiresAt > now)))
                 .Select(c => c.DataAttributeId)
                 .ToHashSet();
-            var attributeIdsWithValue = (await _studentIndicatorRepository.SearchAsyncInclude(si =>
-                    si.StudentId == student.AccountId &&
-                    !si.IsMissing &&
-                    attributeIds.Contains(si.Indicator.DataAttributeId),
-                    si => si.Indicator))
-                .Select(si => si.Indicator.DataAttributeId)
+            var attributeIdsWithValue = (await _studentDataRepository.SearchAsync(d =>
+                    d.StudentId == student.AccountId &&
+                    !d.IsMissing &&
+                    d.ErasedAt == null &&
+                    attributeIds.Contains(d.DataAttributeId)))
+                .Select(d => d.DataAttributeId)
                 .ToHashSet();
 
             var isInEffect = policy.Status == "active" && purpose.Status == "active";

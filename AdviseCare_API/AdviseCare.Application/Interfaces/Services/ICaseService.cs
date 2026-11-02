@@ -8,6 +8,7 @@ namespace AdviseCare.Application.Interfaces.Services
         // D2 / D4.2
         Task<CaseResponse> CreateAsync(Guid callerId, CreateCaseRequest request);
         Task<List<CaseResponse>> GetMyCasesAsync(Guid studentId, SearchMyCasesRequest request);
+        Task<List<CaseResponse>> SearchAsync(SearchCasesRequest request);
         Task<CaseResponse> GetByIdAsync(Guid callerId, Guid caseId);
         Task<List<CaseStageHistoryResponse>> GetStageHistoryAsync(Guid callerId, Guid caseId);
 

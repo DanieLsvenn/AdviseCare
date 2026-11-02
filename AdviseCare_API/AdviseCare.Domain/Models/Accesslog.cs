@@ -15,6 +15,8 @@ public partial class Accesslog
 
     public Guid RecordedUserId { get; set; }
 
+    public Guid? StudentDataId { get; set; }
+
     public string AccessedResource { get; set; }
 
     public DateTime AccessedAt { get; set; }
@@ -28,4 +30,6 @@ public partial class Accesslog
     public virtual Consentpurpose ConsentPurpose { get; set; }
 
     public virtual Account RecordedUser { get; set; }
+
+    public virtual Studentdata StudentData { get; set; }
 }
