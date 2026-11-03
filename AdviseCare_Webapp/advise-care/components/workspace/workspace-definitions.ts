@@ -627,6 +627,7 @@ export function getWorkspaceDefinitions(
             emptyTitle: t("myRequestsEmptyTitle"),
             emptyBody: t("myRequestsEmptyBody"),
             rowHref: "/me/cases/:caseId",
+            primaryLink: { label: t("requestSupport"), href: "/me/support-request", icon: "add" },
             queryFields: [
               select("currentStage", caseStageOptions),
               select("status", caseStatusOptions),
@@ -636,27 +637,7 @@ export function getWorkspaceDefinitions(
       ];
 
     case "student.support":
-      return [
-        workspace(
-          "cases",
-          "Cases/me",
-          [
-            "caseId",
-            ["categoryName", "supportCategoryName"],
-            "subjectName",
-            "currentStage",
-            "status",
-            "priority",
-            "openedAt",
-          ],
-          {
-            queryFields: [
-              select("status", caseStatusOptions),
-              select("currentStage", caseStageOptions),
-            ],
-          },
-        ),
-      ];
+      return [];
 
     case "student.consent":
       return [

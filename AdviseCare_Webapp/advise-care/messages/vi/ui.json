@@ -79,5 +79,72 @@
     "actions": "Thao tác",
     "saved": "Đã lưu.",
     "load": "Tải"
+  },
+  "request": {
+    "title": "Gửi yêu cầu hỗ trợ",
+    "description": "Cho chúng tôi biết bạn cần giúp gì. Trưởng chương trình đọc mọi yêu cầu và ghép bạn với cố vấn phù hợp, thường trong hai ngày làm việc.",
+    "typeTitle": "Bạn cần hỗ trợ về việc gì?",
+    "typeHint": "Chọn mục gần nhất; cố vấn có thể chuyển tuyến nếu cần.",
+    "type": {
+      "academic": "Học tập",
+      "academicHint": "Môn học đang gặp khó, kế hoạch học tập, tín chỉ, tài nguyên FLM/FAP/LMS.",
+      "wellbeing": "Đời sống",
+      "wellbeingHint": "Căng thẳng, chỗ ở, gia đình, tư vấn chi tiêu, giấy tờ và chứng nhận."
+    },
+    "moneyNote": "Việc vay tiền hoặc hỗ trợ tài chính do Cán bộ phúc lợi sinh viên xử lý. Hãy gửi yêu cầu ở đây, cố vấn sẽ chuyển tuyến cho bạn.",
+    "categoryTitle": "Mục nào phù hợp nhất?",
+    "noCategories": "Chưa có danh mục nào cho loại hỗ trợ này. Hãy liên hệ văn phòng khoa.",
+    "subject": "Môn học (không bắt buộc)",
+    "subjectNone": "Không chọn môn cụ thể",
+    "subjectHint": "Chọn môn giúp ghép bạn với cố vấn dạy môn đó.",
+    "reasonTitle": "Kể cho cố vấn điều bạn đang gặp",
+    "reasonHint": "Bằng lời của bạn. Chỉ cố vấn được ghép và Trưởng chương trình đọc được nội dung này.",
+    "reasonPlaceholder": "Ví dụ: Em bị trượt bài kiểm tra tiến độ đầu tiên và chưa hiểu phần này. Em muốn được hướng dẫn lên kế hoạch học bù.",
+    "shareTitle": "Chia sẻ dữ liệu với cố vấn",
+    "shareBody": "Các mục được chọn chỉ chia sẻ cho mục đích <strong>{purpose}</strong>. Bạn có thể rút lại bất cứ lúc nào ở mục Đồng ý chia sẻ.",
+    "thisPurpose": "này",
+    "alreadyShared": "Đã chia sẻ",
+    "shareFootnote": "Không gì được chia sẻ nếu bạn không chọn. Mỗi lần có người đọc, bạn sẽ thấy trong lịch sử truy cập.",
+    "nothingToShare": "Loại yêu cầu này không dùng đến dữ liệu của bạn.",
+    "summaryShared": "Bạn chia sẻ {count} mục với cố vấn.",
+    "summaryNothingShared": "Bạn không chia sẻ dữ liệu nào với yêu cầu này.",
+    "send": "Gửi yêu cầu",
+    "sentTitle": "Đã gửi yêu cầu",
+    "sentBody": "Bạn sẽ nhận email và thông báo kèm thông tin liên hệ của cố vấn ngay khi được ghép.",
+    "openRequest": "Mở yêu cầu này",
+    "openRequests": "Xem các yêu cầu của tôi",
+    "seeRequests": "Xem các yêu cầu bạn đã gửi →",
+    "nextTitle": "Điều gì sẽ diễn ra",
+    "next1Title": "Được ghép với cố vấn",
+    "next1Body": "Trưởng chương trình chọn cố vấn phù hợp nhất để giúp bạn.",
+    "next2Title": "Nhận thông tin liên hệ",
+    "next2Body": "Qua email và trong AdviseCare. Hai bên tự hẹn cách và thời gian gặp.",
+    "next3Title": "Theo dõi đến khi giải quyết",
+    "next3Body": "Mọi bước đều được ghi lại ở đây, và bạn thấy được ai đã đọc dữ liệu của mình."
+  },
+  "case": {
+    "progress": "Tiến trình case",
+    "step": {
+      "pending": "Đã gửi",
+      "assigned": "Đã ghép",
+      "contacted": "Đã liên hệ",
+      "followUp": "Theo dõi",
+      "closed": "Đã đóng"
+    },
+    "backToRequests": "Yêu cầu hỗ trợ của tôi",
+    "notFoundTitle": "Không tìm thấy yêu cầu này",
+    "notFoundBody": "Có thể yêu cầu thuộc tài khoản khác, hoặc liên kết bị sai.",
+    "sentOn": "Gửi lúc <mono>{date}</mono>",
+    "yourRequest": "Nội dung bạn đã gửi",
+    "yourAdvisor": "Cố vấn của bạn",
+    "meetHint": "Liên hệ cố vấn để thống nhất cách và thời gian gặp (trực tuyến hoặc trực tiếp).",
+    "waitingMatch": "Trưởng chương trình chưa ghép yêu cầu của bạn. Bạn sẽ nhận email ngay khi được ghép.",
+    "history": "Lịch sử",
+    "noHistory": "Chưa có gì được ghi lại.",
+    "event": {
+      "opened": "Đã gửi yêu cầu",
+      "updated": "Cập nhật case",
+      "moved": "Chuyển sang {to}"
+    }
   }
 }

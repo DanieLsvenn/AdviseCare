@@ -410,5 +410,6 @@
   "requestedByName": "Người yêu cầu",
   "approveChangeHint": "Case chuyển sang cố vấn đề xuất; sinh viên và cả hai cố vấn đều được thông báo.",
   "approved": "Đã duyệt",
-  "rejected": "Đã từ chối"
+  "rejected": "Đã từ chối",
+  "requestSupport": "Gửi yêu cầu hỗ trợ"
 }

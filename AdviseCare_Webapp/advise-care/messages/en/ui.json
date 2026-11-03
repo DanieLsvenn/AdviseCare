@@ -79,5 +79,72 @@
     "actions": "What you can do",
     "saved": "Saved.",
     "load": "Load"
+  },
+  "request": {
+    "title": "Request support",
+    "description": "Tell us what you need help with. The Programme Head reads every request and matches you with an advisor, usually within two working days.",
+    "typeTitle": "What do you need help with?",
+    "typeHint": "Pick the closest one; the advisor can refer you on if needed.",
+    "type": {
+      "academic": "Study",
+      "academicHint": "A subject you are struggling with, your study plan, credits, FLM/FAP/LMS resources.",
+      "wellbeing": "Life and wellbeing",
+      "wellbeingHint": "Stress, accommodation, family, everyday money advice, certificates and paperwork."
+    },
+    "moneyNote": "Borrowing money or financial support is handled by the Student Welfare Officer. Ask here and your advisor will refer you.",
+    "categoryTitle": "Which of these fits best?",
+    "noCategories": "No categories are open for this kind of help yet. Contact the faculty office.",
+    "subject": "Subject (optional)",
+    "subjectNone": "No specific subject",
+    "subjectHint": "Choosing the subject helps match you with an advisor who teaches it.",
+    "reasonTitle": "Tell your advisor what is going on",
+    "reasonHint": "In your own words. Only the matched advisor and the Programme Head can read this.",
+    "reasonPlaceholder": "For example: I failed the first progress test and I do not understand the topic. I would like help to plan how to catch up.",
+    "shareTitle": "Share data with your advisor",
+    "shareBody": "Ticked items are shared for <strong>{purpose}</strong> only. You can withdraw them at any time under Consent.",
+    "thisPurpose": "this purpose",
+    "alreadyShared": "Already shared",
+    "shareFootnote": "Nothing is shared unless you tick it. Every time someone reads it, it appears in your access history.",
+    "nothingToShare": "This kind of request does not use any of your data.",
+    "summaryShared": "{count, plural, one {You share # item} other {You share # items}} with your advisor.",
+    "summaryNothingShared": "You are not sharing any data with this request.",
+    "send": "Send request",
+    "sentTitle": "Your request has been sent",
+    "sentBody": "You will get an email and a notification with your advisor's contact details as soon as you are matched.",
+    "openRequest": "Open this request",
+    "openRequests": "See my requests",
+    "seeRequests": "See the requests you have already sent →",
+    "nextTitle": "What happens next",
+    "next1Title": "Matched with an advisor",
+    "next1Body": "The Programme Head picks the advisor best placed to help.",
+    "next2Title": "You get their contact",
+    "next2Body": "By email and in AdviseCare. You arrange how and when to meet.",
+    "next3Title": "Followed until it is resolved",
+    "next3Body": "Every step is recorded here, and you can see who read your data."
+  },
+  "case": {
+    "progress": "Case progress",
+    "step": {
+      "pending": "Sent",
+      "assigned": "Matched",
+      "contacted": "Contacted",
+      "followUp": "Follow-up",
+      "closed": "Closed"
+    },
+    "backToRequests": "My support requests",
+    "notFoundTitle": "This request could not be found",
+    "notFoundBody": "It may belong to another account, or the link is wrong.",
+    "sentOn": "Sent <mono>{date}</mono>",
+    "yourRequest": "What you asked for",
+    "yourAdvisor": "Your advisor",
+    "meetHint": "Contact your advisor to agree how and when to meet (online or in person).",
+    "waitingMatch": "The Programme Head has not matched your request yet. You will get an email as soon as they do.",
+    "history": "History",
+    "noHistory": "Nothing has been recorded yet.",
+    "event": {
+      "opened": "Request sent",
+      "updated": "Case updated",
+      "moved": "Moved to {to}"
+    }
   }
 }

@@ -410,5 +410,6 @@
   "requestedByName": "Requested by",
   "approveChangeHint": "The case moves to the proposed advisor; the student and both advisors are notified.",
   "approved": "Approved",
-  "rejected": "Rejected"
+  "rejected": "Rejected",
+  "requestSupport": "Request support"
 }

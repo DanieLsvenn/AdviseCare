@@ -15,7 +15,7 @@ import { clientApiGet, clientApiRequest } from "@/lib/client-api";
 import { cn } from "@/lib/cn";
 import { formatDate, formatTime, parseDate, shortId } from "@/lib/format";
 import { statusFields, statusKey } from "@/lib/status";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Drawer } from "@/components/ui/drawer";
 import { controlClass } from "@/components/ui/field";
@@ -110,6 +110,8 @@ export interface ApiWorkspaceDefinition {
   rowOperations?: WorkspaceOperation[];
   /** Rows link to a page of their own instead of opening the drawer. */
   rowHref?: string;
+  /** Main action of the screen when it lives on another page. */
+  primaryLink?: { label: string; href: string; icon?: string };
   pageSize?: number;
   pathValues?: Record<string, unknown>;
   recordFilter?: { key: string; value: string };
@@ -306,6 +308,11 @@ export function ApiWorkspace({
                 <Button icon="add" onClick={() => setCreating(true)}>
                   {createOperation.label}
                 </Button>
+              ) : null}
+              {definition.primaryLink ? (
+                <ButtonLink href={definition.primaryLink.href} icon={definition.primaryLink.icon ?? "add"}>
+                  {definition.primaryLink.label}
+                </ButtonLink>
               ) : null}
             </>
           }
