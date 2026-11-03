@@ -18,6 +18,7 @@ export default async function WelfareLayout({
     { href: "/welfare/cases", label: t("welfare.cases"), icon: "payments" },
     { href: "/welfare/external-referrals", label: t("welfare.externalReferrals"), icon: "outbound" },
     { href: "/welfare/external-services", label: t("welfare.externalServices"), icon: "store" },
+    { href: "/welfare/escalations", label: t("welfare.escalations"), icon: "priority_high" },
   ];
 
   return (

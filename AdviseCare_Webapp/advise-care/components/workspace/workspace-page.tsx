@@ -130,7 +130,7 @@ export async function WorkspacePage({
       ) : null}
       {definitions.map((definition, index) => (
         <ApiWorkspace
-          definition={definition}
+          definition={index > 0 ? { ...definition, embedded: true } : definition}
           key={`${screen}:${definition.listPath}:${index}`}
         />
       ))}

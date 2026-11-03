@@ -650,7 +650,7 @@ function columnKind(column: WorkspaceColumn): NonNullable<WorkspaceColumn["forma
   if (/(Count|Cases|Rate|Total|Days|Number)$/.test(column.key) || /^(total|count)/.test(column.key)) {
     return "number";
   }
-  if (/(studentName|fullName|accountName|Name)$/.test(column.key)) return "identity";
+  if (/^(studentName|fullName|accountName)$/.test(column.key)) return "identity";
   if (/(supportType|Type|format|channel)$/.test(column.key)) return "label";
   return "text";
 }

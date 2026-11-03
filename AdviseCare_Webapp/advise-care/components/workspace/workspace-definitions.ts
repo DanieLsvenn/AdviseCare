@@ -55,6 +55,9 @@ export type WorkspaceScreen =
   | "steward.keys"
   | "head.matching"
   | "head.cases"
+  | "head.changeRequests"
+  | "head.escalations"
+  | "welfare.escalations"
   | "head.reports"
   | "head.workload"
   | "notifications"
@@ -100,14 +103,21 @@ export function getWorkspaceDefinitions(
       value: option.value,
     })),
   });
-  const columns = (keys: WorkspaceKey[]): WorkspaceColumn[] =>
-    keys.map((key) => ({ key, label: t(key) }));
+  // A column is a message key, or [data key, message key] when the API field
+  // name differs from the label's key (e.g. categoryName → "Support category").
+  const columns = (keys: Array<WorkspaceKey | [string, WorkspaceKey]>): WorkspaceColumn[] =>
+    keys.map((key) =>
+      Array.isArray(key) ? { key: key[0], label: t(key[1]) } : { key, label: t(key) },
+    );
   const operation = (
     labelKey: WorkspaceKey,
     method: WorkspaceOperation["method"],
     path: string,
     fields?: WorkspaceField[],
-    options: Pick<WorkspaceOperation, "confirm" | "bodyFromRecord"> = {},
+    options: Pick<
+      WorkspaceOperation,
+      "confirm" | "bodyFromRecord" | "destructive" | "description"
+    > = {},
   ): WorkspaceOperation => ({
     label: t(labelKey),
     method,
@@ -118,7 +128,7 @@ export function getWorkspaceDefinitions(
   const workspace = (
     titleKey: WorkspaceKey,
     listPath: string,
-    columnKeys: WorkspaceKey[],
+    columnKeys: Array<WorkspaceKey | [string, WorkspaceKey]>,
     options: Omit<
       ApiWorkspaceDefinition,
       "title" | "listPath" | "columns"
@@ -603,24 +613,23 @@ export function getWorkspaceDefinitions(
     case "student.cases":
       return [
         workspace(
-          "cases",
+          "myRequests",
           "Cases/me",
           [
-            "caseId",
-            "supportCategoryName",
+            ["categoryName", "supportCategoryName"],
             "subjectName",
+            "advisorName",
             "currentStage",
-            "status",
-            "priority",
             "openedAt",
           ],
           {
+            description: t("myRequestsDescription"),
+            emptyTitle: t("myRequestsEmptyTitle"),
+            emptyBody: t("myRequestsEmptyBody"),
+            rowHref: "/me/cases/:caseId",
             queryFields: [
-              select("status", caseStatusOptions),
               select("currentStage", caseStageOptions),
-            ],
-            rowOperations: [
-              operation("details", "GET", "Cases/:caseId"),
+              select("status", caseStatusOptions),
             ],
           },
         ),
@@ -633,7 +642,7 @@ export function getWorkspaceDefinitions(
           "Cases/me",
           [
             "caseId",
-            "supportCategoryName",
+            ["categoryName", "supportCategoryName"],
             "subjectName",
             "currentStage",
             "status",
@@ -821,36 +830,32 @@ export function getWorkspaceDefinitions(
     case "advisor.caseload":
       return [
         workspace(
-          "cases",
+          "myCases",
           "Cases/assigned",
           [
-            "caseId",
             "studentName",
-            "supportType",
-            "supportCategoryName",
+            "studentCode",
+            ["categoryName", "supportCategoryName"],
+            "subjectName",
             "currentStage",
-            "status",
             "priority",
-            "unreadCaseCount",
+            "unreadNotificationCount",
             "openedAt",
           ],
           {
+            description: t("myCasesDescription"),
+            emptyTitle: t("myCasesEmptyTitle"),
+            emptyBody: t("myCasesEmptyBody"),
+            rowHref: "/advisor/cases/:caseId",
             queryFields: [
               select("currentStage", caseStageOptions),
-              select("status", caseStatusOptions),
-              select("supportType", ["academic", "wellbeing"]),
               select("priority", priorityOptions),
+              select("supportType", ["academic", "wellbeing"]),
               field("student"),
+              select("status", caseStatusOptions),
               field("unreadOnly", "checkbox"),
               select("sortBy", ["openedAt", "priority", "stage", "studentName"]),
               select("sortDirection", ["asc", "desc"]),
-            ],
-            rowOperations: [
-              operation("details", "GET", "Cases/:caseId"),
-              operation("update", "PUT", "Cases/:caseId/stage", [
-                select("toStage", ["contacted", "followUp", "closed"], true),
-                field("reason", "textarea", true),
-              ]),
             ],
             pageSize: 20,
           },
@@ -865,7 +870,7 @@ export function getWorkspaceDefinitions(
           [
             "caseId",
             "studentName",
-            "supportCategoryName",
+            ["categoryName", "supportCategoryName"],
             "supportType",
             "subjectName",
             "requestReason",
@@ -976,8 +981,8 @@ export function getWorkspaceDefinitions(
           "receivedRequests",
           "Referrals/me/incoming",
           [
-            "referralId",
-            "caseId",
+            "studentName",
+            ["categoryName", "supportCategoryName"],
             "fromAccountName",
             "referralReason",
             "priority",
@@ -985,14 +990,18 @@ export function getWorkspaceDefinitions(
             "createdAt",
           ],
           {
-            queryFields: [field("status")],
+            description: t("referralsDescription"),
+            emptyTitle: t("referralsEmptyTitle"),
+            emptyBody: t("referralsEmptyBody"),
+            queryFields: [select("status", ["pending", "accepted", "returned"])],
             rowOperations: [
               operation("accept", "PUT", "Referrals/:referralId/accept", undefined, {
                 confirm: true,
+                description: t("acceptReferralHint"),
               }),
               operation("returnReferral", "PUT", "Referrals/:referralId/return", [
                 field("reason", "textarea", true),
-              ], { confirm: true }),
+              ], { confirm: true, destructive: true }),
             ],
           },
         ),
@@ -1000,15 +1009,15 @@ export function getWorkspaceDefinitions(
           "sentRequests",
           "Referrals/me/outgoing",
           [
-            "referralId",
-            "caseId",
+            "studentName",
+            ["categoryName", "supportCategoryName"],
             "toAccountName",
             "referralReason",
             "priority",
             "status",
             "createdAt",
           ],
-          { queryFields: [field("status")] },
+          { queryFields: [select("status", ["pending", "accepted", "returned"])] },
         ),
       ];
 
@@ -1112,8 +1121,8 @@ export function getWorkspaceDefinitions(
           "welfareReferrals",
           "Referrals/me/incoming",
           [
-            "referralId",
-            "caseId",
+            "studentName",
+            ["categoryName", "supportCategoryName"],
             "fromAccountName",
             "referralReason",
             "priority",
@@ -1121,15 +1130,41 @@ export function getWorkspaceDefinitions(
             "createdAt",
           ],
           {
-            queryFields: [field("status")],
+            description: t("welfareReferralsDescription"),
+            emptyTitle: t("referralsEmptyTitle"),
+            emptyBody: t("referralsEmptyBody"),
+            queryFields: [select("status", ["pending", "accepted", "returned"])],
             rowOperations: [
               operation("accept", "PUT", "Referrals/:referralId/accept", undefined, {
                 confirm: true,
+                description: t("acceptWelfareReferralHint"),
               }),
+              operation("changePriority", "PUT", "Cases/:caseId/priority", [
+                select("priority", priorityOptions, true),
+              ]),
               operation("returnReferral", "PUT", "Referrals/:referralId/return", [
                 field("reason", "textarea", true),
-              ], { confirm: true }),
+              ], { confirm: true, destructive: true }),
+              operation("escalate", "POST", "Escalations", [
+                field("escalatedTo", "text", true),
+                field("reason", "textarea", true),
+              ], { bodyFromRecord: { caseId: { key: "caseId" } } }),
             ],
+          },
+        ),
+      ];
+
+    case "welfare.escalations":
+      return [
+        workspace(
+          "escalations",
+          "Escalations/search",
+          ["caseId", "escalatedToFullName", "reason", "response", "status", "escalatedAt"],
+          {
+            description: t("welfareEscalationsDescription"),
+            emptyTitle: t("escalationsEmptyTitle"),
+            emptyBody: t("escalationsEmptyBody"),
+            queryFields: [select("status", ["pending", "responded", "closed"])],
           },
         ),
       ];
@@ -1195,7 +1230,7 @@ export function getWorkspaceDefinitions(
           [
             "caseId",
             "studentName",
-            "supportCategoryName",
+            ["categoryName", "supportCategoryName"],
             "currentStage",
             "status",
             "priority",
@@ -1543,7 +1578,7 @@ export function getWorkspaceDefinitions(
           [
             "caseId",
             "studentName",
-            "supportCategoryName",
+            ["categoryName", "supportCategoryName"],
             "supportType",
             "subjectName",
             "priority",
@@ -1568,34 +1603,87 @@ export function getWorkspaceDefinitions(
     case "head.cases":
       return [
         workspace(
-          "cases",
+          "allCases",
           "Cases/search",
           [
-            "caseId",
             "studentName",
             "advisorName",
-            "supportCategoryName",
+            ["categoryName", "supportCategoryName"],
+            "supportType",
             "currentStage",
-            "status",
             "priority",
             "openedAt",
           ],
           {
+            description: t("allCasesDescription"),
             queryFields: [
+              select("currentStage", caseStageOptions),
+              select("priority", priorityOptions),
+              select("supportType", ["academic", "wellbeing"]),
+              select("status", caseStatusOptions),
               field("studentId"),
               field("advisorId"),
               field("supportCategoryId"),
-              select("currentStage", caseStageOptions),
-              select("status", caseStatusOptions),
-              select("priority", priorityOptions),
             ],
             rowOperations: [
-              operation("update", "PUT", "Cases/:caseId/reassign", [
+              operation("reassign", "PUT", "Cases/:caseId/reassign", [
                 field("advisorId", "text", true),
                 field("reason", "textarea", true),
               ], { confirm: true }),
             ],
             pageSize: 20,
+          },
+        ),
+      ];
+
+    case "head.changeRequests":
+      return [
+        workspace(
+          "caseChangeRequests",
+          "CaseChangeRequests/search",
+          [
+            "studentName",
+            ["categoryName", "supportCategoryName"],
+            "currentAdvisorName",
+            "proposedAdvisorName",
+            "requestedByName",
+            "reason",
+            "status",
+            "requestedAt",
+          ],
+          {
+            description: t("caseChangeRequestsDescription"),
+            emptyTitle: t("caseChangeRequestsEmptyTitle"),
+            emptyBody: t("caseChangeRequestsEmptyBody"),
+            queryFields: [select("status", ["pending", "approved", "rejected"])],
+            rowOperations: [
+              operation("approve", "PUT", "CaseChangeRequests/:caseChangeRequestId/approve", [
+                field("decisionNotes", "textarea"),
+              ], { confirm: true, description: t("approveChangeHint") }),
+              operation("reject", "PUT", "CaseChangeRequests/:caseChangeRequestId/reject", [
+                field("reason", "textarea", true),
+              ], { confirm: true, destructive: true }),
+            ],
+          },
+        ),
+      ];
+
+    case "head.escalations":
+      return [
+        workspace(
+          "escalations",
+          "Escalations/search",
+          ["caseId", "escalatedByFullName", "reason", "response", "status", "escalatedAt"],
+          {
+            description: t("headEscalationsDescription"),
+            emptyTitle: t("escalationsEmptyTitle"),
+            emptyBody: t("escalationsEmptyBody"),
+            queryFields: [select("status", ["pending", "responded", "closed"])],
+            rowOperations: [
+              operation("respond", "PUT", "Escalations/:escalationId/respond", [
+                field("response", "textarea", true),
+              ]),
+            ],
           },
         ),
       ];

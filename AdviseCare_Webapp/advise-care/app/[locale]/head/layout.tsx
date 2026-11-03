@@ -16,6 +16,7 @@ export default async function HeadLayout({
   const navItems: NavItem[] = [
     { href: "/head/matching", label: t("head.overview"), icon: "assignment_ind", match: ["/head"] },
     { href: "/head/assignment-changes", label: t("head.assignments"), icon: "swap_horiz" },
+    { href: "/head/escalations", label: t("head.escalations"), icon: "priority_high" },
     { href: "/head/cases", label: t("head.allCases"), icon: "folder_open" },
     { href: "/head/advisor-workload", label: t("head.workload"), icon: "balance" },
     { href: "/head/reports", label: t("head.reports"), icon: "description" },
