@@ -1,0 +1,27 @@
+---
+title: AdviseCare - Sequence Diagram SD-06 - Deactivate or Ban Account
+---
+sequenceDiagram
+    autonumber
+    actor ADM as System Administrator
+    participant W as Web App
+    participant C as AccountsController
+    participant S as AccountService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADM->>W: Open account and click "Deactivate" (or "Ban")
+    W->>C: PUT /api/Accounts/{id}/deactivate
+    C->>S: DeactivateAsync(ActorId, AccountId)
+    alt actor is the account itself
+        S-->>C: ValidationException
+        C-->>W: 400 Bad Request
+    else other account
+        S->>R: GetByIdAsync(account)
+        S->>R: PrepareUpdate status = deactivated (or banned)
+        S->>R: Stage ending every active session of the account
+        S->>R: SaveAsync()
+        R->>DB: UPDATE ACCOUNTS, SESSIONS
+        S->>S: Log activity accountDeactivated
+        S-->>C: true
+        C-->>W: 200 OK
+    end

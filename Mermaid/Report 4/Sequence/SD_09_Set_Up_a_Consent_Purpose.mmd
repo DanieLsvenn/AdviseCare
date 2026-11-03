@@ -1,0 +1,34 @@
+---
+title: AdviseCare - Sequence Diagram SD-09 - Set Up a Consent Purpose
+---
+sequenceDiagram
+    autonumber
+    actor STW as Data Protection Steward
+    participant W as Web App
+    participant C as ConsentPurposesController
+    participant S as ConsentPurposeService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    STW->>W: Create purpose "Wellbeing support"
+    W->>C: POST /api/ConsentPurposes {purposeName, description}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: CreateAsync(purpose, status = inactive)
+    R->>DB: INSERT CONSENTPURPOSES
+    loop each attribute to cover
+        W->>C: POST /api/ConsentPurposes/purpose-attributes {consentPurposeId, dataAttributeId}
+        C->>S: CreatePurposeAttributeAsync(request)
+        S->>R: Check the attribute is active and not attached yet
+        S->>R: Add link, SaveAsync()
+        R->>DB: INSERT PURPOSE_ATTRIBUTE
+    end
+    W->>C: PUT /api/ConsentPurposes/{id}/activate
+    C->>S: ActivateAsync(ConsentPurposeId)
+    alt no active attribute attached
+        S-->>C: ValidationException
+        C-->>W: 400 Bad Request
+    else
+        S->>R: UpdateAsync(status = active)
+        R->>DB: UPDATE CONSENTPURPOSES
+        S-->>C: true
+        C-->>W: 200 OK
+    end

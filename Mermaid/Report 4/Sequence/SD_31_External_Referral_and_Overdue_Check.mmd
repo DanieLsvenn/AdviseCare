@@ -1,0 +1,33 @@
+---
+title: AdviseCare - Sequence Diagram SD-31 - External Referral and Overdue Check
+---
+sequenceDiagram
+    autonumber
+    actor SWO as Student Welfare Officer
+    participant W as Web App
+    participant C as ExternalReferralsController
+    participant S as ExternalReferralService
+    participant BG as ExternalReferralOverdueService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    SWO->>W: Refer student to "Example Bank" with follow-up date
+    W->>C: POST /api/ExternalReferrals {caseId, externalServiceId, followUpDueAt}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: Case open and accepted by this officer, service active
+    S->>R: CreateAsync(referral, status = sent, isOverdue = false)
+    R->>DB: INSERT EXTERNALREFERRALS
+    loop periodically (hosted background service)
+        BG->>R: Referrals with status sent and followUpDueAt in the past
+        BG->>R: Set isOverdue = true, SaveAsync()
+        R->>DB: UPDATE EXTERNALREFERRALS
+    end
+    SWO->>W: Log follow-up outcome
+    W->>C: PUT /api/ExternalReferrals/{id} {followUpOutcome}
+    C->>S: UpdateAsync(ExternalReferralId, request)
+    S->>R: UpdateAsync(status = followedUp, isOverdue = false)
+    SWO->>W: Close referral
+    W->>C: PUT /api/ExternalReferrals/{id}/close
+    C->>S: CloseAsync(ExternalReferralId)
+    S->>R: UpdateAsync(status = closed)
+    R->>DB: UPDATE EXTERNALREFERRALS
+    C-->>W: 200 OK

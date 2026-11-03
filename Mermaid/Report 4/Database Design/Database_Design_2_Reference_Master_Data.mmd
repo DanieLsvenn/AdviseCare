@@ -1,0 +1,40 @@
+---
+title: AdviseCare - Database Design - Reference / Master Data
+---
+erDiagram
+    FACULTIES {
+        uniqueidentifier facultyId PK "NOT NULL"
+        nvarchar(255) facultyCode UK "NOT NULL"
+        nvarchar(255) facultyName "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    PROGRAMMES {
+        uniqueidentifier programmeId PK "NOT NULL"
+        uniqueidentifier facultyId FK "NOT NULL"
+        nvarchar(255) programmeCode UK "NOT NULL"
+        nvarchar(255) programmeName "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    ACADEMICTERMS {
+        uniqueidentifier termId PK "NOT NULL"
+        datetime2(3) endDate "NOT NULL"
+        datetime2(3) startDate "NOT NULL"
+        nvarchar(255) termName "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    SUBJECTS {
+        uniqueidentifier subjectId PK "NOT NULL"
+        uniqueidentifier facultyId FK "NOT NULL"
+        nvarchar(255) subjectCode UK "NOT NULL"
+        nvarchar(255) subjectName "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    DATAATTRIBUTES {
+        uniqueidentifier dataAttributeId PK "NOT NULL"
+        nvarchar(max) attributeDescription "NULL"
+        nvarchar(255) attributeName UK "NOT NULL"
+        nvarchar(30) dataType "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    FACULTIES ||--o{ SUBJECTS : "facultyId"
+    FACULTIES ||--o{ PROGRAMMES : "facultyId"

@@ -1,0 +1,27 @@
+---
+title: AdviseCare - Sequence Diagram SD-10 - Create and Activate Access Policy
+---
+sequenceDiagram
+    autonumber
+    actor STW as Data Protection Steward
+    participant W as Web App
+    participant C as AccessPoliciesController
+    participant S as AccessPolicyService
+    participant G as IAccessGuardService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    STW->>W: Link role "Wellbeing Advisor" to purpose "Wellbeing support"
+    W->>C: POST /api/AccessPolicies {consentPurposeId, roleId}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: Check purpose not retired, role is not Student, no live policy for the same pair
+    S->>R: CreateAsync(policy, status = draft)
+    R->>DB: INSERT ACCESSPOLICIES
+    W->>C: POST /api/AccessPolicies/{id}/test {studentId}
+    C->>S: TestAsync(AccessPolicyId, request)
+    S->>R: Read the student's consents under the purpose (nothing is logged)
+    S-->>C: Which attributes the role would see
+    W->>C: PUT /api/AccessPolicies/{id}/activate
+    C->>S: ActivateAsync(AccessPolicyId)
+    S->>R: UpdateAsync(status = active)
+    R->>DB: UPDATE ACCESSPOLICIES
+    Note over G: From now on the access guard allows this role to read the attributes students granted under the purpose

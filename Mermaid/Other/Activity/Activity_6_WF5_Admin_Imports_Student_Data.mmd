@@ -1,0 +1,22 @@
+---
+title: AdviseCare - Activity Diagram - WF5 Admin Imports Student Data
+---
+
+flowchart TD
+    S((Start)) --> A1[Admin opens Import student data]
+    A1 --> A2[Upload an xlsx or csv file and preview the header and first rows]
+    A2 --> A3[Map the columns: student identifier, data attribute, value, term, valid-from date]
+    A3 --> D0{Validate only?}
+    D0 -->|Yes| A4[System checks the whole file and reports, nothing is written]
+    A4 --> A3
+    D0 -->|No| B1[System checks every row: student, attribute, value type, term, date]
+    B1 --> D1{Any invalid row?}
+    D1 -->|Yes| B2[List the invalid rows, nothing is imported]
+    B2 --> A3
+    D1 -->|No| B3[Set aside rows of archived attributes and list them]
+    B3 --> B4[Encrypt each value with the student's key for the attribute, creating the key on the first value]
+    B4 --> B5[Insert each value as a new STUDENTDATA row with its source note]
+    B5 --> B6[Insert a missing row for every enrolled student without a value]
+    B6 --> B7[All rows and new keys saved in one transaction]
+    B7 --> B8[Admin views the result and the import history]
+    B8 --> X((End))

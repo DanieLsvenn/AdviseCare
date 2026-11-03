@@ -1,0 +1,29 @@
+---
+title: AdviseCare - Sequence Diagram SD-35 - Read Notifications
+---
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant W as Web App
+    participant C as NotificationsController
+    participant S as NotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    W->>C: GET /api/Notifications/me/unread-count
+    C->>S: GetMyUnreadCountAsync(AccountId)
+    S-->>W: count for the badge
+    U->>W: Open the notification list
+    W->>C: GET /api/Notifications/me
+    C->>S: GetMyNotificationsAsync(AccountId)
+    S->>R: Own notifications, newest first
+    U->>W: Click a notification
+    W->>C: PUT /api/Notifications/me/{id}/read
+    C->>S: MarkAsReadAsync(AccountId, NotificationId)
+    S->>R: UpdateAsync(isRead = true)
+    R->>DB: UPDATE NOTIFICATIONS
+    W-->>U: Navigate to redirectUrl (e.g. /cases/{caseId})
+    U->>W: "Clear read notifications"
+    W->>C: DELETE /api/Notifications/me/clear
+    C->>S: ClearMyReadNotificationsAsync(AccountId)
+    S->>R: Remove read notifications
+    R->>DB: DELETE NOTIFICATIONS

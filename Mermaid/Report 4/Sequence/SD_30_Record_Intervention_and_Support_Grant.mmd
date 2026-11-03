@@ -1,0 +1,33 @@
+---
+title: AdviseCare - Sequence Diagram SD-30 - Record Intervention and Support Grant
+---
+sequenceDiagram
+    autonumber
+    actor SWO as Student Welfare Officer
+    participant W as Web App
+    participant IC as InterventionsController
+    participant IS as InterventionService
+    participant GC as SupportGrantsController
+    participant GS as SupportGrantService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    SWO->>W: Log intervention (type, date, notes)
+    W->>IC: POST /api/Interventions {caseId, interventionType, interventionDate, notes, status}
+    IC->>IS: CreateAsync(CreatorId, request)
+    IS->>R: Case open, referred to and accepted by this officer
+    IS->>R: CreateAsync(intervention)
+    R->>DB: INSERT INTERVENTIONS
+    SWO->>W: Record grant (description, type, issued at)
+    W->>GC: POST /api/SupportGrants {interventionId, grantDescription, grantType, issuedAt}
+    GC->>GS: CreateAsync(CreatorId, request)
+    GS->>R: Intervention is the officer's and not closed
+    GS->>R: CreateAsync(grant, status = issued)
+    R->>DB: INSERT SUPPORTGRANTS
+    SWO->>W: Close intervention with the outcome
+    W->>IC: PUT /api/Interventions/{id}/close {outcome}
+    IC->>IS: CloseAsync(OfficerId, InterventionId, request)
+    IS->>R: UpdateAsync(outcome, isClosed = true, status = completed)
+    R->>DB: UPDATE INTERVENTIONS
+    IS->>N: NotifyAsync(case advisor, "Continue follow-up and closure")
+    IC-->>W: 200 OK

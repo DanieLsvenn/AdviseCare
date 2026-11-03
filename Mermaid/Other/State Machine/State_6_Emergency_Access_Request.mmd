@@ -1,0 +1,16 @@
+---
+title: AdviseCare - State Machine - Emergency Access Request
+---
+
+stateDiagram-v2
+    direction LR
+    [*] --> pending : staff request access with a justification
+    pending --> pending : requester rewords the justification
+    pending --> approved : first Steward approves with scopeExpiresAt
+    pending --> rejected : first Steward rejects with a reason
+    state approved {
+        [*] --> active
+        active --> ended : scopeExpiresAt passes
+    }
+    approved --> [*]
+    rejected --> [*]

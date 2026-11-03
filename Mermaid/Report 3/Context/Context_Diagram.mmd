@@ -1,0 +1,43 @@
+---
+title: AdviseCare - Context Diagram
+---
+flowchart LR
+    SYS((AdviseCare))
+
+    ADM[System Administrator]
+    STW[Data Protection Steward]
+    PH[Programme Head]
+    AA[Academic Advisor]
+    WA[Wellbeing Advisor]
+    SWO[Student Welfare Officer]
+    STU[Student]
+    GOO[Google Identity Services]
+    MAIL[Email Service - Gmail SMTP]
+    STO[File Storage - Supabase Storage]
+    EXT[External Support Services]
+
+    ADM -->|"Accounts, roles, student profiles, account and student data imports, terms, faculties, subjects, support categories, external services"| SYS
+    SYS -->|"Account dashboard, import results, linking status, import history"| ADM
+
+    STW -->|"Data attributes, consent purposes, access policies, emergency access decisions, erasure execution, key rotation"| SYS
+    SYS -->|"Access log, flagged entries, processing records, erasure queue, key status"| STW
+
+    PH -->|"Case matching and reassignment, case change decisions, escalation responses, report filters"| SYS
+    SYS -->|"Matching queue, suggested advisors, case and caseload reports, exported files"| PH
+
+    AA -->|"Case notes, stage changes, referrals, consent requests, correction reviews, outreach cases"| SYS
+    SYS -->|"Assigned cases, consented student data, past-date views, notifications"| AA
+
+    WA -->|"Case notes, stage changes, referrals, consent requests, correction reviews, outreach cases"| SYS
+    SYS -->|"Assigned cases, consented student data, past-date views, notifications"| WA
+
+    SWO -->|"Referral answers, interventions, support grants, external referrals, escalations"| SYS
+    SYS -->|"Incoming referrals, case notes, overdue follow-ups, escalation responses"| SWO
+
+    STU -->|"Support requests, consent choices, consent request answers, correction requests, access log flags"| SYS
+    SYS -->|"Advisor contact information, case progress, own data and sources, own access log, JSON export"| STU
+
+    SYS <-->|"Google ID token validation for account linking and sign-in"| GOO
+    SYS -->|"Account-linking, password reset and notification emails"| MAIL
+    SYS <-->|"Avatar upload and public URL"| STO
+    SWO -.->|"Refers the student offline; the follow-up outcome is recorded in AdviseCare"| EXT

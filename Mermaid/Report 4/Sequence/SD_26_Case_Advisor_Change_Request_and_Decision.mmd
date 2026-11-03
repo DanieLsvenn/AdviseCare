@@ -1,0 +1,38 @@
+---
+title: AdviseCare - Sequence Diagram SD-26 - Case Advisor Change Request and Decision
+---
+sequenceDiagram
+    autonumber
+    actor RQ as Student or current advisor
+    actor PH as Programme Head
+    participant W as Web App
+    participant C as CaseChangeRequestsController
+    participant S as CaseChangeRequestService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    RQ->>W: Propose another advisor with a reason
+    W->>C: POST /api/CaseChangeRequests {caseId, proposedAdvisorId, reason}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: Caller is the case's student or advisor, case open with an advisor, proposed advisor active with the case's role, no pending request
+    S->>R: CreateAsync(request, status = pending)
+    R->>DB: INSERT CASECHANGEREQUESTS
+    S->>N: NotifyAsync(each Programme Head)
+    PH->>W: Review pending requests
+    W->>C: GET /api/CaseChangeRequests/search?status=pending
+    alt approve
+        W->>C: PUT /api/CaseChangeRequests/{id}/approve {decisionNotes?}
+        C->>S: ApproveAsync(ProgrammeHeadId, Id, request)
+        S->>R: Refuse while a referral of the case is pending
+        S->>R: PrepareUpdate request (approved), PrepareUpdate Case (advisorId = proposed), PrepareCreate CaseStageHistory (same stage, hand-over)
+        S->>R: SaveAsync()
+        R->>DB: UPDATE CASECHANGEREQUESTS, CASES, INSERT CASESTAGEHISTORIES
+        S->>N: NotifyAsync(student, new advisor, old advisor)
+    else reject
+        W->>C: PUT /api/CaseChangeRequests/{id}/reject {decisionNotes}
+        C->>S: RejectAsync(ProgrammeHeadId, Id, request)
+        S->>R: UpdateAsync(rejected, decisionNotes)
+        R->>DB: UPDATE CASECHANGEREQUESTS
+        S->>N: NotifyAsync(requester, student, both advisors, with the reason)
+    end
+    C-->>W: 200 OK

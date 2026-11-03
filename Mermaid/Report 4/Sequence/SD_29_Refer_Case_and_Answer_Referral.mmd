@@ -1,0 +1,42 @@
+---
+title: AdviseCare - Sequence Diagram SD-29 - Refer Case and Answer Referral
+---
+sequenceDiagram
+    autonumber
+    actor ADV as Advisor
+    actor RCV as Receiver
+    participant W as Web App
+    participant C as ReferralsController
+    participant S as ReferralService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADV->>W: Refer case with receiver, reason, priority
+    W->>C: POST /api/Referrals {caseId, toAccountId, referralReason, priority}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: Caller is the case's advisor, case not closed, no pending referral, receiver active advisor or Welfare Officer
+    S->>R: PrepareCreate Referral (pending), PrepareCreate CaseStageHistory (-> referred), PrepareUpdate Case
+    S->>R: SaveAsync()
+    R->>DB: INSERT REFERRALS, CASESTAGEHISTORIES, UPDATE CASES
+    S->>N: NotifyAsync(receiver, "New referral")
+    RCV->>W: Open incoming referrals
+    W->>C: GET /api/Referrals/me/incoming?status=pending
+    alt accept
+        W->>C: PUT /api/Referrals/{id}/accept
+        C->>S: AcceptAsync(ReceiverId, ReferralId)
+        alt receiver is an advisor
+            S->>R: Referral accepted, Case advisorId = receiver, CaseStageHistory (referred -> assigned)
+            S->>N: NotifyAsync(student, new advisor's contact)
+        else receiver is the Welfare Officer
+            S->>R: Referral accepted, case and stage unchanged (stays referred)
+        end
+        S->>N: NotifyAsync(sender, "Referral accepted")
+    else return
+        W->>C: PUT /api/Referrals/{id}/return {reason}
+        C->>S: ReturnAsync(ReceiverId, ReferralId, request)
+        S->>R: Referral returned, CaseStageHistory (referred -> previous stage, with the reason)
+        S->>N: NotifyAsync(sender, "Referral returned" with the reason)
+    end
+    S->>R: SaveAsync()
+    R->>DB: UPDATE REFERRALS, CASES, INSERT CASESTAGEHISTORIES
+    C-->>W: 200 OK

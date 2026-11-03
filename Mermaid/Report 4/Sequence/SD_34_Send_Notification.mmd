@@ -1,0 +1,22 @@
+---
+title: AdviseCare - Sequence Diagram SD-34 - Send Notification
+---
+sequenceDiagram
+    autonumber
+    participant F as Calling service (e.g. CaseService)
+    participant S as NotificationService
+    participant E as IEmailService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    F->>S: NotifyAsync(accountId, title, message, redirectUrl)
+    S->>R: Notification preferences of the account
+    R->>DB: SELECT NOTIFICATIONPREFERENCES
+    opt in-app channel on (no row counts as on)
+        S->>R: CreateAsync(Notification, isRead = false)
+        R->>DB: INSERT NOTIFICATIONS
+    end
+    opt email channel on
+        S->>R: Account email
+        S->>E: SendNotificationEmailAsync(email, fullName, title, message, redirectUrl)
+    end
+    S-->>F: done

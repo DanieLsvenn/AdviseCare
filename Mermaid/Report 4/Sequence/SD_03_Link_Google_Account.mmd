@@ -1,0 +1,38 @@
+---
+title: AdviseCare - Sequence Diagram SD-03 - Link Google Account
+---
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant W as Web App
+    participant G as Google Identity
+    participant C as AuthController
+    participant S as AccountService
+    participant V as IGoogleTokenValidator
+    participant J as IJwtTokenGenerator
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    U->>W: Open link from the email (token)
+    W->>G: Sign in with Google
+    G-->>W: Google ID token
+    W->>C: POST /api/Auth/link-google {token, idToken, deviceInfo}
+    C->>S: LinkGoogleAccountAsync(request)
+    S->>V: Validate ID token
+    V-->>S: GoogleUserInfo (googleId, email)
+    S->>R: Find account by token hash
+    R->>DB: SELECT ACCOUNTS
+    DB-->>R: account
+    alt token unknown or expired, email differs, or Google account already linked
+        S-->>C: ValidationException
+        C-->>W: 400 Bad Request
+    else valid
+        S->>S: Set googleId, linkStatus = linked, clear token
+        S->>R: PrepareCreate Session (device, expires in 1 month)
+        S->>R: SaveAsync()
+        R->>DB: UPDATE ACCOUNTS, INSERT SESSIONS
+        S->>J: Generate JWT (accountId, sessionId, roles)
+        J-->>S: token
+        S-->>C: LoginResponse (token, roles, hasPassword = false)
+        C-->>W: 200 OK
+        W-->>U: Account setup step: set a password or skip
+    end

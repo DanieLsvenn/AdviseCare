@@ -1,0 +1,31 @@
+---
+title: AdviseCare - Activity Diagram - WF2 Student Requests Support
+---
+
+flowchart TD
+    S((Start)) --> A1[Student signs in and opens Request support]
+    A1 --> A2[Choose support type and category, and the subject for an academic request]
+    A2 --> A3[Write the reason]
+    A3 --> A4[System offers the active attributes of the category's consent purpose]
+    A4 --> D1{Share any data?}
+    D1 -->|Yes| A5[Choose attributes, each becomes a consent for that purpose]
+    D1 -->|No| A6
+    A5 --> A6[Submit: case created, stage pending, priority medium, Programme Heads notified]
+    A6 --> B1[Programme Head opens the matching queue]
+    B1 --> B2[System suggests advisors: familiar pair, subject specialist, same faculty, lightest workload]
+    B2 --> B3[Programme Head assigns an advisor: stage assigned]
+    B3 --> B4[Student gets the advisor's contact information, advisor gets a notification]
+    B4 --> C1[Advisor opens the case and the student's directory data and consented data, every value shown is logged]
+    C1 --> D2{More data needed?}
+    D2 -->|Yes| C2[Send a consent request, see EX7]
+    D2 -->|No| C3
+    C2 --> C3[Advisor and student meet outside the app, stage contacted]
+    C3 --> C4[Advisor records notes and finalizes them]
+    C4 --> D3{Needs someone else?}
+    D3 -->|Another advisor| C5[Refer the case, see EX4]
+    D3 -->|Money matter| C6[Refer to the Welfare Officer, see WF2b]
+    D3 -->|No| C7
+    C5 --> C7
+    C6 --> C7[Advisor follows up, stage followUp]
+    C7 --> C8[Advisor closes the case: status closed, student notified]
+    C8 --> X((End))

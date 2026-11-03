@@ -1,0 +1,22 @@
+---
+title: AdviseCare - Sequence Diagram SD-21 - Export Own Record
+---
+sequenceDiagram
+    autonumber
+    actor STU as Student
+    participant W as Web App
+    participant C as StudentDataController
+    participant S as StudentDataService
+    participant K as IAttributeKeyService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    STU->>W: Settings - "Export my data"
+    W->>C: GET /api/StudentData/me/export
+    C->>S: ExportMyDataAsync(StudentId)
+    S->>R: Account, profile, current STUDENTDATA rows, own cases, own access log
+    R->>DB: SELECT
+    S->>K: DecryptValuesAsync(own values) (no consent check, not logged)
+    S->>S: Build JSON document
+    S->>S: Log activity dataExported
+    S-->>C: ExportStudentDataResponse (file name, content type, bytes)
+    C-->>W: File download (application/json)

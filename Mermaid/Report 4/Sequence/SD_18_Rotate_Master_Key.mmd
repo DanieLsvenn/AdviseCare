@@ -1,0 +1,26 @@
+---
+title: AdviseCare - Sequence Diagram SD-18 - Rotate Master Key
+---
+sequenceDiagram
+    autonumber
+    actor STW as Data Protection Steward
+    participant W as Web App
+    participant C as AttributeKeysController
+    participant S as AttributeKeyService
+    participant E as IDataEncryptor
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    Note over W,DB: Encryption:MasterKeys has versions 1 and 2, Encryption:CurrentVersion = 2 (server configuration)
+    STW->>W: Click "Rewrap keys"
+    W->>C: PUT /api/AttributeKeys/rewrap
+    C->>S: RewrapAsync()
+    S->>R: Load active keys with masterKeyVersion < current
+    loop each key
+        S->>E: Unwrap with the old version, wrap with the current version (HKDF bound to the key row)
+        S->>R: PrepareUpdate wrappedKey, masterKeyVersion
+    end
+    S->>R: SaveAsync()
+    R->>DB: UPDATE ATTRIBUTEKEYS
+    S->>S: Log activity attributeKeysRewrapped
+    S-->>C: RewrapAttributeKeyResponse (count)
+    C-->>W: 200 OK

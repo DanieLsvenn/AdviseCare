@@ -1,0 +1,46 @@
+---
+title: AdviseCare - Use Cases of Wellbeing Advisor
+---
+flowchart LR
+    ACT(["&laquo;actor&raquo;<br/><b>Wellbeing Advisor</b>"])
+    GEN(["&laquo;actor&raquo;<br/>All authenticated users"])
+    ACT -.->|"inherits"| GEN
+    subgraph SYS["AdviseCare"]
+        direction TB
+        subgraph CON["Consent and Data Protection"]
+            UC22(["UC-22<br/>Request Additional Consent"])
+            UC26(["UC-26<br/>Request Emergency Access"])
+        end
+        subgraph SDA["Student Data Management"]
+            UC31(["UC-31<br/>View Student Data"])
+            UC32(["UC-32<br/>View Student Data at a Past Date"])
+            UC35(["UC-35<br/>Review Correction Request"])
+        end
+        subgraph SUP["Support Requests and Case Matching"]
+            UC37(["UC-37<br/>Open Case for Student"])
+            UC41(["UC-41<br/>Request Case Advisor Change"])
+        end
+        subgraph CWF["Case Workflow and Referrals"]
+            UC43(["UC-43<br/>View Assigned Cases"])
+            UC44(["UC-44<br/>Record Case Notes"])
+            UC45(["UC-45<br/>Advance Case Stage"])
+            UC46(["UC-46<br/>Change Case Priority"])
+            UC47(["UC-47<br/>Refer Case"])
+            UC48(["UC-48<br/>Answer Referral"])
+            UC49(["UC-49<br/>View Case History"])
+        end
+    end
+    ACT --- UC22
+    ACT --- UC26
+    ACT --- UC31
+    ACT --- UC32
+    ACT --- UC35
+    ACT --- UC37
+    ACT --- UC41
+    ACT --- UC43
+    ACT --- UC44
+    ACT --- UC45
+    ACT --- UC46
+    ACT --- UC47
+    ACT --- UC48
+    ACT --- UC49

@@ -1,0 +1,28 @@
+---
+title: AdviseCare - Sequence Diagram SD-08 - Create Support Category
+---
+sequenceDiagram
+    autonumber
+    actor ADM as System Administrator
+    participant W as Web App
+    participant C as SupportCategoriesController
+    participant S as SupportCategoryService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADM->>W: Fill category name, description, support type, consent purpose
+    W->>C: POST /api/SupportCategories
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: GetByIdAsync(consent purpose)
+    alt purpose missing or retired
+        S-->>C: NotFoundException / ValidationException
+        C-->>W: 404 / 400
+    else name already used for this support type
+        S-->>C: ConflictException
+        C-->>W: 409 Conflict
+    else valid
+        S->>R: CreateAsync(category, status = active)
+        R->>DB: INSERT SUPPORTCATEGORIES
+        S->>S: Log activity supportCategoryCreated
+        S-->>C: CreateSupportCategoryResponse
+        C-->>W: 200 OK
+    end

@@ -1,0 +1,27 @@
+---
+title: AdviseCare - Activity Diagram - WF2b Welfare Officer Handles Referral
+---
+
+flowchart TD
+    S((Start)) --> A1[Welfare Officer sees the referral in the incoming queue]
+    A1 --> A2[Open the referral and the advisor's finalized notes]
+    A2 --> A3[Set the case priority]
+    A3 --> D1{Financial matter?}
+    D1 -->|No| A4[Return the referral with a reason: case goes back to its previous stage]
+    A4 --> X((End))
+    D1 -->|Yes| A5[Accept: the wellbeing advisor keeps the case, stage stays referred]
+    A5 --> B1[Log interventions: loan arrangement, financial aid, banking paperwork]
+    B1 --> D2{Grant issued?}
+    D2 -->|Yes| B2[Record the support grant]
+    D2 -->|No| D3
+    B2 --> D3{Outside service needed?}
+    D3 -->|Yes| C1[Record an external referral with a follow-up date]
+    C1 --> C2[System flags it overdue if the date passes without an outcome]
+    C2 --> C3[Log the follow-up outcome, then close the external referral]
+    D3 -->|No| D4
+    C3 --> D4{Beyond the officer's authority?}
+    D4 -->|Yes| E1[Escalate to the Programme Head, see EX5]
+    D4 -->|No| F1
+    E1 --> F1[Close the intervention with its outcome]
+    F1 --> F2[The advisor is notified and continues follow-up and closure]
+    F2 --> X

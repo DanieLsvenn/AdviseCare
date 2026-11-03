@@ -1,0 +1,140 @@
+---
+title: AdviseCare - Class Diagram - Reports and Notifications
+---
+classDiagram
+    direction LR
+    class ReportsController {
+        <<controller>>
+        +GetCaseReport() GET /cases
+        +ExportCaseReport() GET /cases/export
+        +GetCaseloadClosureReport() GET /caseload-closure
+        +ExportCaseloadClosureReport() GET /caseload-closure/export
+    }
+    ReportsController --> IReportService : uses
+    class NotificationsController {
+        <<controller>>
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +Delete() DELETE /:id
+        +GetMine() GET /me
+        +GetMyUnreadCount() GET /me/unread-count
+        +MarkAsRead() PUT /me/:id/read
+        +MarkAllAsRead() PUT /me/read-all
+        +DeleteMine() DELETE /me/:id
+        +ClearMine() DELETE /me/clear
+    }
+    NotificationsController --> INotificationService : uses
+    class NotificationPreferencesController {
+        <<controller>>
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +GetMine() GET /me
+        +UpdateMine() PUT /me
+    }
+    NotificationPreferencesController --> INotificationPreferenceService : uses
+    class IReportService {
+        <<interface>>
+        +GetCaseReportAsync(request) List~GetCaseReportResponse~
+        +ExportCaseReportAsync(ProgrammeHeadId, request) ExportCaseReportResponse
+        +GetCaseloadClosureReportAsync(request) List~GetCaseloadClosureReportResponse~
+        +ExportCaseloadClosureReportAsync(ProgrammeHeadId, request) ExportCaseloadClosureReportResponse
+    }
+    class ReportService {
+        <<service>>
+    }
+    ReportService ..|> IReportService
+    ReportService --> Case : IGenericRepository
+    ReportService --> IExcelWriter : uses
+    ReportService --> IPdfWriter : uses
+    class INotificationService {
+        <<interface>>
+        +GetAll() IEnumerable~GetAllNotificationResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllNotificationWithPaginationResponse~
+        +GetByIdAsync(NotificationId) GetNotificationByIdResponse
+        +SearchAsync(request) List~SearchNotificationResponse~
+        +CreateAsync(request) CreateNotificationResponse
+        +UpdateAsync(NotificationId, request) UpdateNotificationResponse
+        +DeleteAsync(NotificationId) bool
+        +GetMyNotificationsAsync(AccountId) List~GetMyNotificationResponse~
+        +GetMyUnreadCountAsync(AccountId) int
+        +MarkAsReadAsync(AccountId, NotificationId) bool
+        +MarkAllAsReadAsync(AccountId) int
+        +DeleteMyNotificationAsync(AccountId, NotificationId) bool
+        +ClearMyReadNotificationsAsync(AccountId) int
+        +NotifyAsync(AccountId, title, message, redirectUrl) void
+    }
+    class NotificationService {
+        <<service>>
+    }
+    NotificationService ..|> INotificationService
+    NotificationService --> Notification : IGenericRepository
+    NotificationService --> Notificationpreference : IGenericRepository
+    NotificationService --> IEmailService : uses
+    class INotificationPreferenceService {
+        <<interface>>
+        +GetAll() IEnumerable~GetAllNotificationPreferenceResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllNotificationPreferenceWithPaginationResponse~
+        +GetByIdAsync(NotificationPreferenceId) GetNotificationPreferenceByIdResponse
+        +SearchAsync(request) List~SearchNotificationPreferenceResponse~
+        +CreateAsync(request) CreateNotificationPreferenceResponse
+        +UpdateAsync(NotificationPreferenceId, request) UpdateNotificationPreferenceResponse
+        +GetMyNotificationPreferencesAsync(AccountId) List~GetMyNotificationPreferenceResponse~
+        +UpdateMyNotificationPreferenceAsync(AccountId, request) UpdateMyNotificationPreferenceResponse
+    }
+    class NotificationPreferenceService {
+        <<service>>
+    }
+    NotificationPreferenceService ..|> INotificationPreferenceService
+    NotificationPreferenceService --> Notificationpreference : IGenericRepository
+    class IActivityLogService {
+        <<interface, other module>>
+    }
+    NotificationPreferenceService --> IActivityLogService : uses
+    ReportService --> IActivityLogService : uses
+    class IExcelWriter {
+        <<interface, infrastructure>>
+    }
+    class IPdfWriter {
+        <<interface, infrastructure>>
+    }
+    class IEmailService {
+        <<interface, infrastructure>>
+    }
+    class Notification {
+        <<entity>>
+        +Guid notificationId
+        +Guid accountId
+        +string message
+        +string redirectUrl
+        +string title
+        +DateTime createdAt
+        +bool isRead
+    }
+    class Notificationpreference {
+        <<entity>>
+        +Guid notificationPreferenceId
+        +Guid accountId
+        +string channel
+        +bool isEnabled
+    }
+    class Case {
+        <<entity>>
+        +Guid caseId
+        +Guid? advisorId
+        +Guid openedBy
+        +Guid studentId
+        +Guid? subjectId
+        +Guid supportCategoryId
+        +string requestReason
+        +DateTime? closedAt
+        +DateTime openedAt
+        +string currentStage
+        +string priority
+        +string status
+    }

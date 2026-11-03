@@ -1,0 +1,26 @@
+---
+title: AdviseCare - Use Cases of Data Protection Steward
+---
+flowchart LR
+    ACT(["&laquo;actor&raquo;<br/><b>Data Protection Steward</b>"])
+    GEN(["&laquo;actor&raquo;<br/>All authenticated users"])
+    ACT -.->|"inherits"| GEN
+    subgraph SYS["AdviseCare"]
+        direction TB
+        subgraph CON["Consent and Data Protection"]
+            UC18(["UC-18<br/>Manage Data Attributes"])
+            UC19(["UC-19<br/>Manage Consent Purposes"])
+            UC20(["UC-20<br/>Manage Access Policies"])
+            UC24(["UC-24<br/>Review Access Log"])
+            UC27(["UC-27<br/>Decide Emergency Access"])
+            UC28(["UC-28<br/>Execute Cryptographic Erasure"])
+            UC29(["UC-29<br/>Rotate Master Key"])
+        end
+    end
+    ACT --- UC18
+    ACT --- UC19
+    ACT --- UC20
+    ACT --- UC24
+    ACT --- UC27
+    ACT --- UC28
+    ACT --- UC29

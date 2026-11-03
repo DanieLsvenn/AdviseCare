@@ -1,0 +1,27 @@
+---
+title: AdviseCare - Sequence Diagram SD-25 - Open Case for Student
+---
+sequenceDiagram
+    autonumber
+    actor ADV as Advisor
+    participant W as Web App
+    participant SD as StudentDataController
+    participant C as CasesController
+    participant S as CaseService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADV->>W: Look at a student's data
+    W->>SD: GET /api/StudentData/students/{studentId}
+    SD-->>W: Consented values (access guard, logged)
+    ADV->>W: Open a case with category, reason, priority
+    W->>C: POST /api/Cases {studentId, supportCategoryId, requestReason, priority}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: Advisor has the role of the category's type, student active with Student role, no shared attributes
+    S->>R: PrepareCreate Case (advisorId = caller), PrepareCreate CaseStageHistory (pending -> assigned)
+    S->>R: SaveAsync()
+    R->>DB: INSERT CASES, CASESTAGEHISTORIES
+    S->>S: Log activity caseOpened
+    S->>N: NotifyAsync(student, "An advisor would like to meet you" with contact)
+    S-->>C: CreateCaseResponse
+    C-->>W: 200 OK

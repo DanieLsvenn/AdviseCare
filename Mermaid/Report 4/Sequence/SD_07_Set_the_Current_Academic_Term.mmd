@@ -1,0 +1,24 @@
+---
+title: AdviseCare - Sequence Diagram SD-07 - Set the Current Academic Term
+---
+sequenceDiagram
+    autonumber
+    actor ADM as System Administrator
+    participant W as Web App
+    participant C as AcademicTermsController
+    participant S as AcademicTermService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADM->>W: Edit term "Fall 2026", status = current
+    W->>C: PUT /api/AcademicTerms/{id} {termName, startDate, endDate, status}
+    C->>S: UpdateAsync(TermId, request)
+    S->>S: Check endDate is after startDate and the name is unique
+    opt status = current
+        S->>R: Find the other current term
+        S->>R: PrepareUpdate it to past
+    end
+    S->>R: Update the term, SaveAsync()
+    R->>DB: UPDATE ACADEMICTERMS
+    S->>S: Log activity academicTermUpdated
+    S-->>C: UpdateAcademicTermResponse
+    C-->>W: 200 OK
