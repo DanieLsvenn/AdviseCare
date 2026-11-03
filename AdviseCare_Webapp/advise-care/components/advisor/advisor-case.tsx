@@ -203,9 +203,10 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
         />
       ) : null}
 
-      <div className="grid gap-space-lg xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
-        <div className="flex min-w-0 flex-col gap-space-lg">
-          <section className="rounded-lg border border-rule bg-paper p-space-lg">
+      {/* Act before record: on narrow screens the next step comes right after
+          the request; from 1024px the actions are a sticky right rail. */}
+      <div className="grid gap-space-lg lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_auto_1fr] lg:[grid-template-areas:'req_rail'_'notes_rail'_'hist_rail']">
+        <section className="rounded-lg border border-rule bg-paper p-space-lg lg:[grid-area:req]">
             <div className="flex flex-wrap items-baseline justify-between gap-space-sm">
               <h2 className="text-base font-semibold text-text">{t("request")}</h2>
               <span className="font-mono text-[0.8125rem] text-text-faint">{formatDateTime(record.openedAt)}</span>
@@ -216,43 +217,10 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
             </p>
           </section>
 
-          <NotesSection
-            caseId={record.caseId}
-            notes={notes}
-            send={send}
-            confirm={confirm}
-            labels={ledgerLabels}
-            closed={closed}
-            freshIds={freshIds}
-          />
-
-          <section className="rounded-lg border border-rule bg-paper p-space-lg">
-            <h2 className="mb-space-md text-base font-semibold text-text">{t("history")}</h2>
-            {history.length ? (
-              <Ledger
-                labels={ledgerLabels}
-                entries={history.map((item) => ({
-                  id: item.caseStageHistoryId || `${item.changedAt}-${item.toStage}`,
-                  at: item.changedAt,
-                  title:
-                    item.fromStage === item.toStage
-                      ? item.toStage === "pending"
-                        ? tu("case.event.opened")
-                        : tu("case.event.updated")
-                      : tu("case.event.moved", { to: tu(`status.${item.toStage.toLowerCase()}`) }),
-                  body: item.reason,
-                  signed: true,
-                  signer: { name: item.changedByName },
-                  fresh: freshIds.has(`h:${item.caseStageHistoryId || item.changedAt}`),
-                }))}
-              />
-            ) : (
-              <p className="text-sm text-text-muted">{tu("case.noHistory")}</p>
-            )}
-          </section>
-        </div>
-
-        <aside className="flex flex-col gap-space-md xl:sticky xl:top-20">
+        <aside
+          aria-label={t("nextSteps")}
+          className="flex flex-col gap-space-md lg:sticky lg:top-20 lg:[grid-area:rail] lg:self-start"
+        >
           {closed ? (
             <ActionCard icon="lock_open" title={t("reopen")} hint={t("reopenHint")} defaultOpen>
               <ReasonForm
@@ -289,7 +257,8 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
             </ActionCard>
           )}
 
-          <ActionCard icon="flag" title={t("priority")}>
+          <div className="divide-y divide-rule rounded-lg border border-rule bg-paper">
+          <ActionCard plain icon="flag" title={t("priority")}>
             <PriorityForm
               current={record.priority}
               onSubmit={(priority) =>
@@ -299,7 +268,7 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
           </ActionCard>
 
           {!closed ? (
-            <ActionCard icon="forward_to_inbox" title={t("refer")} hint={t("referHint")}>
+            <ActionCard plain icon="forward_to_inbox" title={t("refer")} hint={t("referHint")}>
               <ReferForm
                 onSubmit={(toAccountId, referralReason, priority) =>
                   send(
@@ -314,7 +283,7 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
           ) : null}
 
           {!closed ? (
-            <ActionCard icon="swap_horiz" title={t("changeAdvisor")} hint={t("changeAdvisorHint")}>
+            <ActionCard plain icon="swap_horiz" title={t("changeAdvisor")} hint={t("changeAdvisorHint")}>
               <ChangeAdvisorForm
                 onSubmit={(proposedAdvisorId, reason) =>
                   send(
@@ -328,6 +297,7 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
             </ActionCard>
           ) : null}
 
+          </div>
           <Link
             href={`/advisor/students/${record.studentId}`}
             className="flex items-center gap-space-md rounded-lg border border-rule bg-paper px-space-base py-space-md text-sm font-semibold text-ink transition-colors hover:border-ink"
@@ -338,6 +308,41 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
           </Link>
           <p className="px-1 text-[0.75rem] leading-5 text-text-faint">{t("studentDataHint")}</p>
         </aside>
+          <NotesSection
+            className="lg:[grid-area:notes]"
+            caseId={record.caseId}
+            notes={notes}
+            send={send}
+            confirm={confirm}
+            labels={ledgerLabels}
+            closed={closed}
+            freshIds={freshIds}
+          />
+
+          <section className="rounded-lg border border-rule bg-paper p-space-lg lg:[grid-area:hist]">
+            <h2 className="mb-space-md text-base font-semibold text-text">{t("history")}</h2>
+            {history.length ? (
+              <Ledger
+                labels={ledgerLabels}
+                entries={history.map((item) => ({
+                  id: item.caseStageHistoryId || `${item.changedAt}-${item.toStage}`,
+                  at: item.changedAt,
+                  title:
+                    item.fromStage === item.toStage
+                      ? item.toStage === "pending"
+                        ? tu("case.event.opened")
+                        : tu("case.event.updated")
+                      : tu("case.event.moved", { to: tu(`status.${item.toStage.toLowerCase()}`) }),
+                  body: item.reason,
+                  signed: true,
+                  signer: { name: item.changedByName },
+                  fresh: freshIds.has(`h:${item.caseStageHistoryId || item.changedAt}`),
+                }))}
+              />
+            ) : (
+              <p className="text-sm text-text-muted">{tu("case.noHistory")}</p>
+            )}
+          </section>
       </div>
       {confirmDialog}
     </div>
@@ -354,7 +359,9 @@ function NotesSection({
   labels,
   closed,
   freshIds,
+  className,
 }: {
+  className?: string;
   caseId: string;
   notes: CaseNoteRecord[];
   send: Send;
@@ -390,7 +397,7 @@ function NotesSection({
   }
 
   return (
-    <section className="rounded-lg border border-rule bg-paper p-space-lg">
+    <section className={cn("rounded-lg border border-rule bg-paper p-space-lg", className)}>
       <div className="mb-space-md flex flex-wrap items-baseline justify-between gap-space-sm">
         <h2 className="text-base font-semibold text-text">{t("notes")}</h2>
         <span className="text-[0.8125rem] text-text-faint">{t("notesPrivate")}</span>
@@ -485,17 +492,20 @@ function ActionCard({
   title,
   hint,
   defaultOpen,
+  plain,
   children,
 }: {
   icon: string;
   title: string;
   hint?: string;
   defaultOpen?: boolean;
+  /** Part of a grouped list: no box of its own. */
+  plain?: boolean;
   children: ReactNode;
 }) {
   return (
-    <details open={defaultOpen} className="group rounded-lg border border-rule bg-paper">
-      <summary className="flex cursor-pointer list-none items-center gap-space-md px-space-base py-space-md">
+    <details open={defaultOpen} className={cn("group", plain ? "" : "rounded-lg border border-rule bg-paper")}>
+      <summary className="flex min-h-12 cursor-pointer list-none items-center gap-space-md px-space-base py-space-sm">
         <Icon name={icon} className="text-[20px] text-ink" />
         <span className="flex-1 text-sm font-semibold text-text">{title}</span>
         <Icon name="expand_more" className="text-[20px] text-text-faint transition-transform group-open:rotate-180" />
@@ -567,7 +577,7 @@ function StageForm({
           <label
             key={stage}
             className={cn(
-              "cursor-pointer rounded-md border px-2.5 py-1.5 text-sm transition-colors",
+              "flex cursor-pointer items-center rounded-md border px-2.5 py-1.5 text-sm transition-colors pointer-coarse:min-h-11 pointer-coarse:px-3.5",
               toStage === stage ? "border-ink bg-ink-wash font-semibold text-ink" : "border-rule-strong text-text-muted hover:border-text-faint",
             )}
           >

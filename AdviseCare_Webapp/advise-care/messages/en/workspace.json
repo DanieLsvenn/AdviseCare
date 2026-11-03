@@ -329,7 +329,7 @@
   "booleanType": "Boolean",
   "dateType": "Date",
   "to": "To",
-  "importAccounts": "Import accounts",
+  "importAccounts": "Import from Excel",
   "accountImportDescription": "Upload an .xlsx file with the documented account columns. The API validates the full file before creating any accounts and returns row-level errors for invalid files.",
   "academicTermId": "Academic term ID",
   "subjectAssignments": "Subject assignments",
@@ -411,5 +411,8 @@
   "approveChangeHint": "The case moves to the proposed advisor; the student and both advisors are notified.",
   "approved": "Approved",
   "rejected": "Rejected",
-  "requestSupport": "Request support"
+  "requestSupport": "Request support",
+  "sendLinkHint": "Emails the account-linking link (valid 7 days).",
+  "deactivateHint": "Ends all of this account's sessions; it can be activated again.",
+  "banHint": "Blocks sign-in and ends all sessions until the ban is removed."
 }

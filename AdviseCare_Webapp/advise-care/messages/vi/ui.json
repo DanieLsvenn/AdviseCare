@@ -79,7 +79,8 @@
     "allFields": "Tất cả trường",
     "actions": "Thao tác",
     "saved": "Đã lưu.",
-    "load": "Tải"
+    "load": "Tải",
+    "dangerZone": "Gỡ bỏ hoặc chặn quyền truy cập"
   },
   "request": {
     "title": "Gửi yêu cầu hỗ trợ",
@@ -185,7 +186,10 @@
     "reasonFamiliar": "Đang cố vấn cho sinh viên này",
     "reasonSpecialist": "Chuyên môn đúng môn",
     "reasonGeneral": "Cố vấn học tập chung",
-    "reasonFaculty": "Cùng khoa"
+    "reasonFaculty": "Cùng khoa",
+    "overdue": "Quá hạn · {count} ngày",
+    "findingOverdue": "{count} yêu cầu đã quá hạn (chờ từ 2 ngày).",
+    "order": "Khẩn cấp trước, sau đó chờ lâu nhất"
   },
   "advisorCase": {
     "back": "Case của tôi",
@@ -235,7 +239,8 @@
     "sendChangeRequest": "Gửi đề nghị",
     "changeRequested": "Đã gửi đề nghị đổi cố vấn tới Trưởng chương trình.",
     "studentData": "Dữ liệu sinh viên chia sẻ với bạn",
-    "studentDataHint": "Chỉ hiện các thuộc tính sinh viên đồng ý cho mục đích của vai trò bạn, và mỗi lần đọc đều được ghi nhật ký."
+    "studentDataHint": "Chỉ hiện các thuộc tính sinh viên đồng ý cho mục đích của vai trò bạn, và mỗi lần đọc đều được ghi nhật ký.",
+    "nextSteps": "Bước tiếp theo"
   },
   "myRequests": {
     "title": "Yêu cầu hỗ trợ của tôi",

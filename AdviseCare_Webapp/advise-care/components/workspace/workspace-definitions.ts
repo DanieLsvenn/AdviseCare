@@ -116,7 +116,7 @@ export function getWorkspaceDefinitions(
     fields?: WorkspaceField[],
     options: Pick<
       WorkspaceOperation,
-      "confirm" | "bodyFromRecord" | "destructive" | "description"
+      "confirm" | "bodyFromRecord" | "destructive" | "description" | "icon" | "when"
     > = {},
   ): WorkspaceOperation => ({
     label: t(labelKey),
@@ -165,9 +165,8 @@ export function getWorkspaceDefinitions(
           "accountList",
           "Accounts/search",
           [
-            "accountId",
-            "email",
             "fullName",
+            "email",
             "userName",
             "facultyName",
             "roles",
@@ -185,6 +184,20 @@ export function getWorkspaceDefinitions(
               selectValues("academicStatus", academicStatusOptions),
               field("linkStatus"),
               select("status", ["active", "inactive", "banned"] as WorkspaceKey[]),
+            ],
+            globalOperations: [
+              {
+                ...operation("importAccounts", "POST", "Accounts/import", [
+                  {
+                    key: "file",
+                    label: t("file"),
+                    type: "file",
+                    required: true,
+                    accept: ".xlsx",
+                  },
+                ]),
+                description: t("accountImportDescription"),
+              },
             ],
             create: operation("create", "POST", "Accounts", [
               field("email", "email", true),
@@ -211,6 +224,9 @@ export function getWorkspaceDefinitions(
               }),
               operation("sendLink", "POST", "Accounts/linking-emails", undefined, {
                 confirm: true,
+                icon: "forward_to_inbox",
+                description: t("sendLinkHint"),
+                when: { key: "linkStatus", notIn: ["linked"] },
                 bodyFromRecord: {
                   accountIds: { key: "accountId", asArray: true },
                 },
@@ -226,19 +242,32 @@ export function getWorkspaceDefinitions(
                 ],
                 {
                   bodyFromRecord: { accountId: { key: "accountId" } },
+                  icon: "badge",
                 },
               ),
               operation("activate", "PUT", "Accounts/:accountId/activate", undefined, {
                 confirm: true,
-              }),
-              operation("deactivate", "PUT", "Accounts/:accountId/deactivate", undefined, {
-                confirm: true,
-              }),
-              operation("ban", "PUT", "Accounts/:accountId/ban", undefined, {
-                confirm: true,
+                icon: "toggle_on",
+                when: { key: "status", in: ["inactive"] },
               }),
               operation("unban", "PUT", "Accounts/:accountId/unban", undefined, {
                 confirm: true,
+                icon: "lock_open",
+                when: { key: "status", in: ["banned"] },
+              }),
+              operation("deactivate", "PUT", "Accounts/:accountId/deactivate", undefined, {
+                confirm: true,
+                destructive: true,
+                icon: "toggle_off",
+                description: t("deactivateHint"),
+                when: { key: "status", in: ["active"] },
+              }),
+              operation("ban", "PUT", "Accounts/:accountId/ban", undefined, {
+                confirm: true,
+                destructive: true,
+                icon: "block",
+                description: t("banHint"),
+                when: { key: "status", notIn: ["banned"] },
               }),
             ],
             pageSize: 20,

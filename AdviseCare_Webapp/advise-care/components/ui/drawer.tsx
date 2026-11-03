@@ -58,7 +58,7 @@ export function Drawer({
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-semibold leading-6 text-text">{title}</h2>
               {description ? (
-                <p className="mt-0.5 text-sm text-text-muted">{description}</p>
+                <div className="mt-0.5 text-sm text-text-muted">{description}</div>
               ) : null}
             </div>
             <button

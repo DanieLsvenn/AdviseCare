@@ -79,7 +79,8 @@
     "allFields": "All fields",
     "actions": "What you can do",
     "saved": "Saved.",
-    "load": "Load"
+    "load": "Load",
+    "dangerZone": "Removes or blocks access"
   },
   "request": {
     "title": "Request support",
@@ -185,7 +186,10 @@
     "reasonFamiliar": "Already advising this student",
     "reasonSpecialist": "Subject specialist",
     "reasonGeneral": "General academic advisor",
-    "reasonFaculty": "Same faculty"
+    "reasonFaculty": "Same faculty",
+    "overdue": "Overdue · {count} days",
+    "findingOverdue": "{count, plural, one {# is} other {# are}} overdue (waiting 2+ days).",
+    "order": "Urgent first, then longest waiting"
   },
   "advisorCase": {
     "back": "My cases",
@@ -235,7 +239,8 @@
     "sendChangeRequest": "Send request",
     "changeRequested": "Change request sent to the Programme Head.",
     "studentData": "Student data shared with you",
-    "studentDataHint": "Only attributes the student consented to under your role's purpose are shown, and each read is logged."
+    "studentDataHint": "Only attributes the student consented to under your role's purpose are shown, and each read is logged.",
+    "nextSteps": "Next steps"
   },
   "myRequests": {
     "title": "My support requests",

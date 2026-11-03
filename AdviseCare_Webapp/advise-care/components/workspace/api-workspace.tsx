@@ -96,6 +96,10 @@ export interface WorkspaceOperation {
   confirm?: boolean;
   /** The operation removes or blocks something (red button, warning dialog). */
   destructive?: boolean;
+  /** Icon in the record drawer; defaults by method. */
+  icon?: string;
+  /** Only offer the operation when the record is in one of these states. */
+  when?: { key: string; in?: string[]; notIn?: string[] };
   bodyFromRecord?: Record<string, { key: string; asArray?: boolean }>;
 }
 
@@ -402,7 +406,25 @@ export function ApiWorkspace({
             </EmptyState>
           )
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Phones: one stacked item per record (identity, then the
+              remaining fields as a caption, states as chips). */}
+          <ul className="divide-y divide-rule sm:hidden" onKeyDown={moveRowFocus}>
+            {records.map((record, index) => (
+              <li key={`m-${createRowKey(record, index, new Map())}`}>
+                <button
+                  type="button"
+                  data-row-open
+                  onClick={() => openRecord(record)}
+                  className="flex min-h-14 w-full items-center gap-space-md px-space-base py-space-md text-left transition-colors hover:bg-paper-tint focus-visible:bg-paper-tint focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ink"
+                >
+                  <MobileRecord columns={columns} record={record} tu={tu} />
+                  <Icon name="chevron_right" className="shrink-0 text-[20px] text-rule-strong" />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="relative hidden overflow-x-auto sm:block">
             <table className="w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-rule">
@@ -461,7 +483,7 @@ export function ApiWorkspace({
                                 openRecord(record);
                               }}
                             >
-                              <Cell column={column} record={record} tu={tu} />
+                              <Cell column={column} record={record} tu={tu} inButton />
                             </button>
                           ) : (
                             <Cell column={column} record={record} tu={tu} />
@@ -482,6 +504,7 @@ export function ApiWorkspace({
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {pageSize && requiredQueryValuesPresent && !loadError && (records.length > 0 || page > 1) ? (
@@ -567,7 +590,13 @@ export function ApiWorkspace({
             ? (recordTitle(selectedRecord) ?? tu("workspace.recordDetails"))
             : ""
         }
-        description={definition.title}
+        description={
+          selectedRecord ? (
+            <RecordHeadline columns={columns} record={selectedRecord} fallback={definition.title} />
+          ) : (
+            definition.title
+          )
+        }
         closeLabel={tu("close")}
         width="lg"
       >
@@ -657,6 +686,57 @@ function FilterBar({
 /* Cells                                                                     */
 /* ------------------------------------------------------------------------ */
 
+const QUIET_STATES = new Set(["active", "linked", "enrolled"]);
+
+/** Phone layout of a record: identity first, other text fields as one caption line. */
+function MobileRecord({
+  columns,
+  record,
+  tu,
+}: {
+  columns: WorkspaceColumn[];
+  record: Record<string, unknown>;
+  tu: UiT;
+}) {
+  const value = (column: WorkspaceColumn) =>
+    getPathValue(record, column.key) ?? readRecordValue(record, column.key);
+  const identity =
+    columns.find((column) => columnKind(column) === "identity") ??
+    columns.find((column) => columnKind(column) === "text") ??
+    columns[0];
+  const states = columns.filter((column) => {
+    if (columnKind(column) !== "status") return false;
+    const raw = value(column);
+    return !(typeof raw === "string" && QUIET_STATES.has(statusKey(raw)));
+  });
+  const caption = columns
+    .filter((column) => column !== identity && !states.includes(column))
+    .filter((column) => ["text", "label", "identity"].includes(columnKind(column)))
+    .map((column) => displayValue(value(column)))
+    .filter((text) => text && text !== "—")
+    .slice(0, 2);
+  return (
+    <span className="min-w-0 flex-1">
+      <span className="block truncate font-semibold text-text">
+        {identity ? displayValue(value(identity)) : "—"}
+      </span>
+      {caption.length ? (
+        <span className="block truncate text-[0.8125rem] text-text-muted">{caption.join(" · ")}</span>
+      ) : null}
+      {states.length ? (
+        <span className="mt-1.5 flex flex-wrap gap-1.5">
+          {states.map((column) => {
+            const raw = value(column);
+            return typeof raw === "string" && raw ? (
+              <FormattedValue key={column.key} kind="status" fieldKey={column.key} value={raw} tu={tu} />
+            ) : null;
+          })}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function columnKind(column: WorkspaceColumn): NonNullable<WorkspaceColumn["format"]> {
   if (column.format) return column.format;
   if (statusFields.has(column.key)) return "status";
@@ -674,12 +754,23 @@ function Cell({
   column,
   record,
   tu,
+  inButton,
 }: {
   column: WorkspaceColumn;
   record: Record<string, unknown>;
   tu: UiT;
+  /** Rendered inside the row's button: no nested interactive controls. */
+  inButton?: boolean;
 }) {
   const raw = getPathValue(record, column.key) ?? readRecordValue(record, column.key);
+  if (inButton && columnKind(column) === "id" && typeof raw === "string") {
+    return (
+      <span title={raw} className="font-mono text-[0.8125rem] text-text-muted">
+        {shortId(raw)}
+        {raw.length > 12 ? "…" : ""}
+      </span>
+    );
+  }
   return <FormattedValue kind={columnKind(column)} fieldKey={column.key} value={raw} tu={tu} />;
 }
 
@@ -718,6 +809,11 @@ function FormattedValue({
     );
   }
   if (typeof value === "string" && kind === "status") {
+    // The expected state (an active, linked account) is quiet text; only a
+    // state that needs attention gets a coloured chip.
+    if (!full && QUIET_STATES.has(statusKey(value))) {
+      return <span className="text-text-faint">{tu.has(`status.${statusKey(value)}`) ? tu(`status.${statusKey(value)}`) : value}</span>;
+    }
     return <StatusValue field={fieldKey} value={value} size="sm" />;
   }
   if (typeof value === "string" && kind === "id") {
@@ -818,14 +914,31 @@ function RecordDetail({
       !shownKeys.has(key.toLowerCase()) &&
       (typeof value !== "object" || value === null || Array.isArray(value)),
   );
-  const [openOperation, setOpenOperation] = useState<number | null>(
-    operations.length === 1 ? 0 : null,
+  // Offer only what makes sense for this record's state, and keep the
+  // operations that remove or block access in their own group at the end.
+  const available = operations.filter((operation) => {
+    if (!operation.when) return true;
+    const value = String(readRecordValue(record, operation.when.key) ?? "").toLowerCase();
+    if (operation.when.in && !operation.when.in.includes(value)) return false;
+    if (operation.when.notIn && operation.when.notIn.includes(value)) return false;
+    return true;
+  });
+  const regular = available.filter((operation) => !operation.destructive);
+  const danger = available.filter((operation) => operation.destructive);
+  const [openOperation, setOpenOperation] = useState<string | null>(
+    available.length === 1 ? opKey(available[0]!, 0) : null,
   );
 
   return (
     <div className="flex flex-col gap-space-xl">
       <FieldList
-        entries={columns.map((column) => [column.key, column.label, getPathValue(record, column.key) ?? readRecordValue(record, column.key), columnKind(column)])}
+        entries={columns
+          .filter((column) => {
+            const kind = columnKind(column);
+            // Name and states are already in the drawer header.
+            return kind !== "status" && !(kind === "identity" && recordTitle(record));
+          })
+          .map((column) => [column.key, column.label, getPathValue(record, column.key) ?? readRecordValue(record, column.key), columnKind(column)])}
       />
 
       {extraFields.length ? (
@@ -847,57 +960,128 @@ function RecordDetail({
         </details>
       ) : null}
 
-      {operations.length ? (
-        <section>
-          <h3 className="mb-space-sm text-sm font-semibold text-text">{tu("workspace.actions")}</h3>
-          <div className="divide-y divide-rule rounded-lg border border-rule">
-            {operations.map((operation, index) => {
-              const isOpen = openOperation === index;
-              return (
-                <div key={`${operation.method}:${operation.path}:${index}`}>
-                  <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    onClick={() => setOpenOperation(isOpen ? null : index)}
-                    className="flex w-full items-center gap-space-md px-space-base py-space-md text-left transition-colors hover:bg-paper-tint"
-                  >
-                    <Icon
-                      name={operationIcon(operation)}
-                      className={cn(
-                        "text-[20px]",
-                        operation.destructive ? "text-red-ink" : "text-ink",
-                      )}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-text">{operation.label}</span>
-                      {operation.description ? (
-                        <span className="block text-[0.8125rem] text-text-faint">
-                          {operation.description}
-                        </span>
-                      ) : null}
-                    </span>
-                    <Icon
-                      name="expand_more"
-                      className={cn("text-[20px] text-text-faint transition-transform", isOpen && "rotate-180")}
-                    />
-                  </button>
-                  {isOpen ? (
-                    <div className="border-t border-rule bg-paper-tint/60 px-space-base pb-space-base">
-                      <ApiOperationForm
-                        definition={operation}
-                        bodyDefaults={bodyFromRecord(operation, record)}
-                        pathValues={{ ...pathValues, ...record }}
-                        onComplete={onComplete}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </section>
+      {regular.length ? (
+        <OperationGroup
+          title={tu("workspace.actions")}
+          operations={regular}
+          openOperation={openOperation}
+          setOpenOperation={setOpenOperation}
+          record={record}
+          pathValues={pathValues}
+          onComplete={onComplete}
+        />
+      ) : null}
+      {danger.length ? (
+        <OperationGroup
+          danger
+          title={tu("workspace.dangerZone")}
+          operations={danger}
+          openOperation={openOperation}
+          setOpenOperation={setOpenOperation}
+          record={record}
+          pathValues={pathValues}
+          onComplete={onComplete}
+        />
       ) : null}
     </div>
+  );
+}
+
+function opKey(operation: WorkspaceOperation, index: number): string {
+  return `${operation.method}:${operation.path}:${index}`;
+}
+
+function OperationGroup({
+  title,
+  danger,
+  operations,
+  openOperation,
+  setOpenOperation,
+  record,
+  pathValues,
+  onComplete,
+}: {
+  title: string;
+  danger?: boolean;
+  operations: WorkspaceOperation[];
+  openOperation: string | null;
+  setOpenOperation: (key: string | null) => void;
+  record: Record<string, unknown>;
+  pathValues?: Record<string, unknown>;
+  onComplete: () => Promise<void>;
+}) {
+  return (
+    <section>
+      <h3 className={cn("mb-space-sm text-sm font-semibold", danger ? "text-red-ink" : "text-text")}>{title}</h3>
+      <div className={cn("divide-y rounded-lg border", danger ? "divide-status-urgent-border border-status-urgent-border" : "divide-rule border-rule")}>
+        {operations.map((operation, index) => {
+          const key = opKey(operation, index);
+          const isOpen = openOperation === key;
+          return (
+            <div key={key}>
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() => setOpenOperation(isOpen ? null : key)}
+                className="flex min-h-12 w-full items-center gap-space-md px-space-base py-space-sm text-left transition-colors hover:bg-paper-tint"
+              >
+                <Icon
+                  name={operation.icon ?? operationIcon(operation)}
+                  className={cn("text-[20px]", danger ? "text-red-ink" : "text-ink")}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className={cn("block text-sm font-semibold", danger ? "text-red-ink" : "text-text")}>
+                    {operation.label}
+                  </span>
+                  {operation.description ? (
+                    <span className="block text-[0.8125rem] text-text-faint">{operation.description}</span>
+                  ) : null}
+                </span>
+                <Icon
+                  name="expand_more"
+                  className={cn("text-[20px] text-text-faint transition-transform", isOpen && "rotate-180")}
+                />
+              </button>
+              {isOpen ? (
+                <div className="border-t border-rule bg-paper-tint/60 px-space-base pb-space-base">
+                  <ApiOperationForm
+                    definition={operation}
+                    bodyDefaults={bodyFromRecord(operation, record)}
+                    pathValues={{ ...pathValues, ...record }}
+                    onComplete={onComplete}
+                  />
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/** Drawer subtitle: the record's states as chips, so who and where come first. */
+function RecordHeadline({
+  columns,
+  record,
+  fallback,
+}: {
+  columns: WorkspaceColumn[];
+  record: Record<string, unknown>;
+  fallback: string;
+}) {
+  const tu = useTranslations("ui");
+  const states = columns.filter((column) => columnKind(column) === "status");
+  const chips = states
+    .map((column) => [column, getPathValue(record, column.key) ?? readRecordValue(record, column.key)] as const)
+    .filter(([, raw]) => typeof raw === "string" && raw);
+  if (!chips.length) return <>{fallback}</>;
+  return (
+    <span className="mt-1 flex flex-wrap items-center gap-1.5">
+      {chips.map(([column, raw]) => (
+        <FormattedValue key={column.key} kind="status" fieldKey={column.key} value={raw} tu={tu} full />
+      ))}
+    </span>
   );
 }
 

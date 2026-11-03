@@ -33,7 +33,8 @@ interface Suggestion {
   matchReasons: string[];
 }
 
-const PRIORITY_ORDER: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
+/** A request waiting this many days or more is overdue (PRODUCT: no request waits unseen). */
+const OVERDUE_DAYS = 2;
 
 /**
  * Programme Head's main screen (SRS "Match cases to advisors"): the queue of
@@ -66,9 +67,11 @@ export function MatchingQueue() {
       const payload = await clientApiGet<unknown>("Cases/matching-queue");
       const items = listOf(payload)
         .map(toCase)
+        // Urgent requests jump the line; everything else in the order it arrived,
+        // so the student who has waited longest is seen first.
         .sort(
           (a, b) =>
-            (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9) ||
+            Number(b.priority === "urgent") - Number(a.priority === "urgent") ||
             a.openedAt.localeCompare(b.openedAt),
         );
       setQueue(items);
@@ -133,7 +136,20 @@ export function MatchingQueue() {
     () => queue.reduce((max, item) => Math.max(max, daysSince(item.openedAt) ?? 0), 0),
     [queue],
   );
+  const overdueCount = queue.filter((item) => (daysSince(item.openedAt) ?? 0) >= OVERDUE_DAYS).length;
   const maxLoad = Math.max(1, ...suggestions.map((item) => item.openCaseCount));
+
+  /** On a phone the detail is below the queue: take the user there. */
+  function selectRequest(caseId: string) {
+    setSelectedId(caseId);
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      window.requestAnimationFrame(() => {
+        const heading = document.getElementById("request-heading");
+        heading?.scrollIntoView({ behavior: "smooth", block: "start" });
+        heading?.focus({ preventScroll: true });
+      });
+    }
+  }
 
   async function assign(suggestion: Suggestion) {
     if (!selected) return;
@@ -187,7 +203,7 @@ export function MatchingQueue() {
           loading || error
             ? t("description")
             : queue.length
-              ? t("finding", { count: queue.length, days: oldestDays })
+              ? `${t("finding", { count: queue.length, days: oldestDays })}${overdueCount ? ` ${t("findingOverdue", { count: overdueCount })}` : ""}`
               : t("description")
         }
         actions={
@@ -214,7 +230,10 @@ export function MatchingQueue() {
         {/* Queue */}
         <section aria-label={t("queue")} className="overflow-hidden rounded-lg border border-rule bg-paper lg:sticky lg:top-20">
           <header className="flex items-center justify-between border-b border-rule px-space-base py-space-md">
-            <h2 className="text-base font-semibold text-text">{t("queue")}</h2>
+            <div>
+              <h2 className="text-base font-semibold text-text">{t("queue")}</h2>
+              <p className="text-[0.75rem] text-text-faint">{t("order")}</p>
+            </div>
             {!loading && !error ? (
               <span className="text-[0.8125rem] text-text-faint">{t("waiting", { count: queue.length })}</span>
             ) : null}
@@ -228,7 +247,7 @@ export function MatchingQueue() {
               {t("emptyBody")}
             </EmptyState>
           ) : (
-            <ul className="max-h-[calc(100dvh-14rem)] divide-y divide-rule overflow-y-auto" onKeyDown={moveRowFocus}>
+            <ul className="divide-y divide-rule lg:max-h-[calc(100dvh-14rem)] lg:overflow-y-auto" onKeyDown={moveRowFocus}>
               {queue.map((item) => {
                 const isSelected = item.caseId === selectedId;
                 const waited = daysSince(item.openedAt) ?? 0;
@@ -238,7 +257,7 @@ export function MatchingQueue() {
                       type="button"
                       data-row-open
                       aria-current={isSelected ? "true" : undefined}
-                      onClick={() => setSelectedId(item.caseId)}
+                      onClick={() => selectRequest(item.caseId)}
                       className={cn(
                         "flex w-full flex-col gap-1 px-space-base py-space-md text-left transition-colors",
                         isSelected ? "bg-ink-wash" : "hover:bg-paper-tint",
@@ -254,9 +273,14 @@ export function MatchingQueue() {
                       </span>
                       <span className="flex items-center justify-between text-[0.8125rem] text-text-faint">
                         <span className="font-mono">{item.studentCode}</span>
-                        <span className={cn(waited >= 2 && "font-semibold text-status-attention-text")}>
-                          {waited === 0 ? t("today") : t("waitedDays", { count: waited })}
-                        </span>
+                        {waited >= OVERDUE_DAYS ? (
+                          <span className="inline-flex items-center gap-1 font-semibold text-red-ink">
+                            <Icon name="schedule" className="text-[15px]" />
+                            {t("overdue", { count: waited })}
+                          </span>
+                        ) : (
+                          <span>{waited === 0 ? t("today") : t("waitedDays", { count: waited })}</span>
+                        )}
                       </span>
                     </button>
                   </li>
@@ -272,7 +296,9 @@ export function MatchingQueue() {
             <section className="rounded-lg border border-rule bg-paper p-space-lg">
               <div className="flex flex-wrap items-start justify-between gap-space-md">
                 <div className="min-w-0">
-                  <h2 className="text-xl font-semibold text-text">{selected.studentName}</h2>
+                  <h2 id="request-heading" tabIndex={-1} className="scroll-mt-20 text-xl font-semibold text-text outline-none">
+                    {selected.studentName}
+                  </h2>
                   <p className="mt-0.5 text-sm text-text-muted">
                     <span className="font-mono">{selected.studentCode}</span>
                     {selected.studentEmail ? ` · ${selected.studentEmail}` : ""}
@@ -316,20 +342,6 @@ export function MatchingQueue() {
                   <p className="text-[0.8125rem] text-text-faint">{t("suggestionsHint")}</p>
                 </div>
               </header>
-              <div className="border-b border-rule bg-paper-tint/60 px-space-lg py-space-md">
-                <label htmlFor="assign-note" className="mb-1.5 block text-sm font-semibold text-text">
-                  {t("note")}
-                </label>
-                <textarea
-                  id="assign-note"
-                  className={cn(controlClass, "min-h-12 w-full py-2")}
-                  maxLength={2000}
-                  placeholder={t("notePlaceholder")}
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                />
-                {assignError ? <Notice className="mt-space-md" tone="urgent" icon="error" title={assignError} /> : null}
-              </div>
               {suggestionsError ? (
                 <ErrorState title={suggestionsError} />
               ) : suggestionsLoading ? (
@@ -341,8 +353,8 @@ export function MatchingQueue() {
               ) : (
                 <ul className="divide-y divide-rule">
                   {suggestions.map((suggestion, index) => (
-                    <li key={suggestion.advisorId} className="grid gap-space-md px-space-lg py-space-base sm:grid-cols-[minmax(0,1fr)_9rem_auto] sm:items-center">
-                      <div className="flex min-w-0 items-start gap-space-md">
+                    <li key={suggestion.advisorId} className="flex flex-wrap items-center gap-x-space-lg gap-y-space-md px-space-lg py-space-base">
+                      <div className="flex min-w-0 flex-1 basis-72 items-start gap-space-md">
                         <Avatar initials={getInitials(suggestion.fullName)} />
                         <div className="min-w-0">
                           <p className="flex flex-wrap items-center gap-2 font-semibold text-text">
@@ -371,7 +383,7 @@ export function MatchingQueue() {
                           </ul>
                         </div>
                       </div>
-                      <div aria-label={t("openCases", { count: suggestion.openCaseCount })}>
+                      <div className="w-32 shrink-0" aria-label={t("openCases", { count: suggestion.openCaseCount })}>
                         <p className="text-[0.8125rem] text-text-muted">
                           <span className="font-mono font-medium text-text">{suggestion.openCaseCount}</span>{" "}
                           {t("openCasesLabel")}
@@ -384,6 +396,7 @@ export function MatchingQueue() {
                         </span>
                       </div>
                       <Button
+                        className="max-sm:w-full"
                         variant={index === 0 ? "primary" : "secondary"}
                         loading={assigning === suggestion.advisorId}
                         disabled={assigning !== null}
@@ -395,6 +408,20 @@ export function MatchingQueue() {
                   ))}
                 </ul>
               )}
+              <div className="border-t border-rule px-space-lg py-space-md">
+                <label htmlFor="assign-note" className="mb-1.5 block text-sm font-semibold text-text">
+                  {t("note")}
+                </label>
+                <textarea
+                  id="assign-note"
+                  className={cn(controlClass, "min-h-12 w-full py-2")}
+                  maxLength={2000}
+                  placeholder={t("notePlaceholder")}
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                />
+                {assignError ? <Notice className="mt-space-md" tone="urgent" icon="error" title={assignError} /> : null}
+              </div>
             </section>
           </div>
         ) : !loading && queue.length === 0 ? null : (

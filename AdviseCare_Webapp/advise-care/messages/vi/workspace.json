@@ -329,7 +329,7 @@
   "booleanType": "Đúng/Sai",
   "dateType": "Ngày",
   "to": "Đến",
-  "importAccounts": "Nhập tài khoản",
+  "importAccounts": "Nhập từ Excel",
   "accountImportDescription": "Tải lên tệp .xlsx theo các cột tài khoản đã được tài liệu hóa. API kiểm tra toàn bộ tệp trước khi tạo tài khoản và trả về lỗi theo từng dòng nếu dữ liệu không hợp lệ.",
   "academicTermId": "Mã học kỳ",
   "subjectAssignments": "Phân công môn học",
@@ -411,5 +411,8 @@
   "approveChangeHint": "Case chuyển sang cố vấn đề xuất; sinh viên và cả hai cố vấn đều được thông báo.",
   "approved": "Đã duyệt",
   "rejected": "Đã từ chối",
-  "requestSupport": "Gửi yêu cầu hỗ trợ"
+  "requestSupport": "Gửi yêu cầu hỗ trợ",
+  "sendLinkHint": "Gửi email chứa liên kết liên kết tài khoản (hiệu lực 7 ngày).",
+  "deactivateHint": "Kết thúc mọi phiên của tài khoản; có thể kích hoạt lại.",
+  "banHint": "Chặn đăng nhập và kết thúc mọi phiên cho đến khi gỡ cấm."
 }

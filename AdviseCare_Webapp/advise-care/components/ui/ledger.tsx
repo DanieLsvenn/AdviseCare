@@ -35,10 +35,10 @@ export function Ledger({
   className?: string;
 }) {
   return (
-    <div className={cn("text-sm", className)}>
+    <div className={cn("@container text-sm", className)}>
       <div
         aria-hidden
-        className="hidden grid-cols-[6.5rem_minmax(0,1fr)_12rem] gap-space-lg border-b border-rule-strong pb-1.5 text-[0.75rem] font-semibold text-text-faint md:grid"
+        className="hidden grid-cols-[6.5rem_minmax(0,1fr)_12rem] gap-space-lg border-b border-rule-strong pb-1.5 text-[0.75rem] font-semibold text-text-faint @lg:grid"
       >
         <span>{labels.date}</span>
         <span>{labels.entry}</span>
@@ -49,7 +49,7 @@ export function Ledger({
           <li
             key={entry.id}
             className={cn(
-              "grid gap-x-space-lg gap-y-1.5 py-space-md md:grid-cols-[6.5rem_minmax(0,1fr)_12rem]",
+              "grid gap-x-space-lg gap-y-1.5 py-space-md @lg:grid-cols-[6.5rem_minmax(0,1fr)_12rem]",
               entry.fresh && "pb-space-lg",
             )}
           >
@@ -58,7 +58,7 @@ export function Ledger({
               className="font-mono text-[0.8125rem] leading-5 text-text-muted"
             >
               <span className="text-text">{formatDate(entry.at)}</span>
-              <span className="ml-2 md:ml-0 md:block">{formatTime(entry.at)}</span>
+              <span className="ml-2 @lg:ml-0 @lg:block">{formatTime(entry.at)}</span>
             </time>
 
             <div className="min-w-0">
@@ -83,9 +83,9 @@ export function Ledger({
               ) : null}
             </div>
 
-            <div className="md:pt-0.5">
+            <div className="@lg:pt-0.5">
               {entry.signed && entry.signer ? (
-                <div className="relative inline-block min-w-40 pb-1 md:block">
+                <div className="relative inline-block min-w-40 pb-1 @lg:block">
                   <p className="truncate font-semibold leading-5 text-text">{entry.signer.name}</p>
                   {entry.signer.role ? (
                     <p className="truncate text-[0.75rem] leading-4 text-text-faint">
@@ -109,7 +109,7 @@ export function Ledger({
                   ) : null}
                 </div>
               ) : (
-                <div className="inline-block min-w-40 border-b border-dashed border-rule-strong pb-1 md:block">
+                <div className="inline-block min-w-40 border-b border-dashed border-rule-strong pb-1 @lg:block">
                   <p className="text-[0.8125rem] italic leading-5 text-text-faint">
                     {labels.unsigned}
                   </p>
