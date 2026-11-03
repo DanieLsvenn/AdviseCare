@@ -130,10 +130,15 @@ export async function AppShell({
     <div className="flex min-h-screen flex-col lg:flex-row">
       {skipLink(tc("skipToContent"))}
       <aside className="flex shrink-0 flex-col bg-cover text-white lg:sticky lg:top-0 lg:h-screen lg:w-sidebar-width">
-        <div className="flex h-14 items-center px-space-base">
+        <div className="flex h-14 items-center gap-space-sm px-space-base">
           <Link href={workspaces[0]?.href ?? "/"} className="min-w-0 rounded-md focus-visible:outline-white">
             <Brand />
           </Link>
+          {/* Phones: the utilities live on the cover so there is one bar, not two. */}
+          <div className="ml-auto flex items-center gap-1 lg:hidden">
+            {utilities("cover")}
+            <SignOutButton tone="cover" compact />
+          </div>
         </div>
 
         <div className="hidden px-space-base pb-space-sm lg:block">
@@ -178,13 +183,10 @@ export async function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-space-md border-b border-rule bg-paper/95 px-gutter-mobile text-text backdrop-blur-sm lg:px-gutter-desktop">
+        <header className="sticky top-0 z-30 hidden h-14 items-center gap-space-md border-b border-rule bg-paper/95 px-gutter-mobile text-text backdrop-blur-sm lg:flex lg:px-gutter-desktop">
           <NavTrail items={navItems} section={navSectionLabel} fallback={fallback} />
           <div className="ml-auto flex items-center gap-space-sm">
             {utilities("paper")}
-            <span className="lg:hidden">
-              <SignOutButton compact />
-            </span>
           </div>
         </header>
         <main id="main" tabIndex={-1} className="flex-1 px-gutter-mobile py-space-xl outline-none lg:px-gutter-desktop">

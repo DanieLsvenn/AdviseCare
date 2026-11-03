@@ -83,7 +83,7 @@ export interface WorkspaceColumn {
   key: string;
   label: string;
   /** Override the automatic cell format. */
-  format?: "text" | "status" | "date" | "datetime" | "id" | "number" | "identity" | "label";
+  format?: "text" | "status" | "date" | "datetime" | "id" | "number" | "identity" | "label" | "code";
 }
 
 export interface WorkspaceOperation {
@@ -245,6 +245,7 @@ export function ApiWorkspace({
     : undefined;
   const columns = definition.columns;
   const rowKeyOccurrences = new Map<string, number>();
+  const mobileKeyOccurrences = new Map<string, number>();
   const hasFiltersApplied = queryFields.some((field) => {
     const value = query[field.key];
     return value !== undefined && value !== "" && value !== false;
@@ -411,7 +412,7 @@ export function ApiWorkspace({
               remaining fields as a caption, states as chips). */}
           <ul className="divide-y divide-rule sm:hidden" onKeyDown={moveRowFocus}>
             {records.map((record, index) => (
-              <li key={`m-${createRowKey(record, index, new Map())}`}>
+              <li key={`m-${createRowKey(record, index, mobileKeyOccurrences)}`}>
                 <button
                   type="button"
                   data-row-open
@@ -507,7 +508,10 @@ export function ApiWorkspace({
           </>
         )}
 
-        {pageSize && requiredQueryValuesPresent && !loadError && (records.length > 0 || page > 1) ? (
+        {pageSize &&
+        requiredQueryValuesPresent &&
+        !loadError &&
+        (page > 1 || (total !== undefined ? total > pageSize : records.length >= pageSize)) ? (
           <div className="flex items-center justify-between gap-space-sm border-t border-rule px-space-lg py-space-sm">
             <span className="font-mono text-[0.8125rem] text-text-faint">
               {total !== undefined && records.length > 0
@@ -686,7 +690,7 @@ function FilterBar({
 /* Cells                                                                     */
 /* ------------------------------------------------------------------------ */
 
-const QUIET_STATES = new Set(["active", "linked", "enrolled"]);
+const QUIET_STATES = new Set(["active", "linked", "enrolled", "low"]);
 
 /** Phone layout of a record: identity first, other text fields as one caption line. */
 function MobileRecord({
@@ -746,6 +750,7 @@ function columnKind(column: WorkspaceColumn): NonNullable<WorkspaceColumn["forma
     return "number";
   }
   if (/^(studentName|fullName|accountName)$/.test(column.key)) return "identity";
+  if (/Code$/.test(column.key)) return "code";
   if (/(supportType|Type|format|channel)$/.test(column.key)) return "label";
   return "text";
 }
@@ -844,6 +849,9 @@ function FormattedValue({
     return <span className="text-text-faint">—</span>;
   }
   const text = String(value);
+  if (kind === "code") {
+    return <span className="font-mono text-[0.8125rem] text-text">{text}</span>;
+  }
   if (kind === "label") {
     const key = statusKey(text);
     return (
