@@ -8,11 +8,11 @@ type Size = "sm" | "md";
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-primary-container text-on-primary hover:bg-primary active:bg-[#134e4a] border border-transparent",
+    "bg-primary-container text-on-primary hover:bg-primary active:bg-ink-hover border border-transparent",
   secondary:
     "bg-surface-container-lowest text-on-surface border border-outline-variant/60 hover:bg-surface-container-low hover:border-outline-variant",
   destructive:
-    "bg-status-urgent-text text-white border border-transparent hover:bg-[#991b1b]",
+    "bg-status-urgent-text text-white border border-transparent hover:bg-[#8c0f18]",
   tertiary:
     "bg-transparent text-on-surface-variant border border-transparent hover:bg-surface-container-high hover:text-on-surface",
 };
