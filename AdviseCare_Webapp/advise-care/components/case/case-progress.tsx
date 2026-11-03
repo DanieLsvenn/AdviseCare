@@ -39,7 +39,6 @@ export function CaseProgress({
               className={cn(
                 "block h-1.5 rounded-full",
                 done ? "bg-ink" : current ? (referred ? "bg-status-referral-text" : "bg-ink") : "bg-rule",
-                current && !referred && "animate-pulse-soft",
               )}
             />
             <span
