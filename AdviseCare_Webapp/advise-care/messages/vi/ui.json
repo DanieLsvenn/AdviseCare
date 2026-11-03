@@ -177,7 +177,7 @@
     "noSuggestionsTitle": "Không có cố vấn loại này đang hoạt động",
     "noSuggestionsBody": "Nhờ quản trị viên kích hoạt tài khoản cố vấn cho loại hỗ trợ này.",
     "assign": "Ghép",
-    "note": "Ghi chú cho lịch sử case (không bắt buộc)",
+    "note": "Vì sao chọn cố vấn này (không bắt buộc)",
     "notePlaceholder": "Ví dụ: ghép với cố vấn chuyên môn PRF192.",
     "confirmTitle": "Ghép yêu cầu này cho {advisor}?",
     "confirmBody": "{student} và cố vấn sẽ được thông báo, sinh viên nhận thông tin liên hệ của cố vấn.",
@@ -190,7 +190,8 @@
     "reasonFaculty": "Cùng khoa",
     "overdue": "Quá hạn · {count} ngày",
     "findingOverdue": "{count} yêu cầu đã quá hạn (chờ từ 2 ngày).",
-    "order": "Khẩn cấp trước, sau đó chờ lâu nhất"
+    "order": "Khẩn cấp trước, sau đó chờ lâu nhất",
+    "noteHint": "Sinh viên thấy lý do này trong lịch sử case."
   },
   "advisorCase": {
     "back": "Case của tôi",
@@ -242,7 +243,9 @@
     "studentData": "Dữ liệu sinh viên chia sẻ với bạn",
     "studentDataHint": "Chỉ hiện các thuộc tính sinh viên đồng ý cho mục đích của vai trò bạn, và mỗi lần đọc đều được ghi nhật ký.",
     "nextSteps": "Bước tiếp theo",
-    "idInvalid": "Đây không phải ID tài khoản. ID có dạng 8-4-4-4-12 ký tự chữ và số."
+    "idInvalid": "Đây không phải ID tài khoản. ID có dạng 8-4-4-4-12 ký tự chữ và số.",
+    "moreActions": "Thao tác khác",
+    "moreActionsHint": "Ưu tiên, chuyển tuyến, đổi cố vấn, dữ liệu"
   },
   "myRequests": {
     "title": "Yêu cầu hỗ trợ của tôi",
@@ -259,5 +262,11 @@
     "waitingDays": "Đang chờ ghép cố vấn · gửi {count} ngày trước",
     "closedOn": "Đã đóng {date}",
     "withYourAdvisor": "Đang được cố vấn hỗ trợ"
+  },
+  "signer": {
+    "you": "Bạn",
+    "student": "Sinh viên",
+    "advisor": "Cố vấn",
+    "programmeHead": "Trưởng chương trình"
   }
 }

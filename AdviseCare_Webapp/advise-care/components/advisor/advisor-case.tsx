@@ -10,6 +10,7 @@ import { formatDateTime } from "@/lib/format";
 import {
   byDate,
   listOf,
+  signerRole,
   str,
   toCase,
   toHistory,
@@ -257,7 +258,17 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
             </ActionCard>
           )}
 
-          <div className="divide-y divide-rule rounded-lg border border-rule bg-paper">
+          {/* Distill: one obvious next step; everything else behind "More actions". */}
+          <details className="group/more rounded-lg border border-rule bg-paper">
+            <summary className="flex min-h-12 cursor-pointer list-none items-center gap-space-md px-space-base py-space-sm">
+              <Icon name="more_horiz" className="text-[20px] text-text-muted" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-text">{t("moreActions")}</span>
+                <span className="block truncate text-[0.75rem] text-text-faint">{t("moreActionsHint")}</span>
+              </span>
+              <Icon name="expand_more" className="text-[20px] text-text-faint transition-transform group-open/more:rotate-180" />
+            </summary>
+            <div className="divide-y divide-rule border-t border-rule">
           <ActionCard plain icon="flag" title={t("priority")}>
             <PriorityForm
               current={record.priority}
@@ -297,15 +308,16 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
             </ActionCard>
           ) : null}
 
-          </div>
-          <Link
-            href={`/advisor/students/${record.studentId}`}
-            className="flex items-center gap-space-md rounded-lg border border-rule bg-paper px-space-base py-space-md text-sm font-semibold text-ink transition-colors hover:border-ink"
-          >
-            <Icon name="lab_profile" className="text-[20px]" />
-            <span className="flex-1">{t("studentData")}</span>
-            <Icon name="chevron_right" className="text-[20px]" />
-          </Link>
+              <Link
+                href={`/advisor/students/${record.studentId}`}
+                className="flex min-h-12 items-center gap-space-md px-space-base py-space-sm text-sm font-semibold text-ink transition-colors hover:bg-paper-tint"
+              >
+                <Icon name="lab_profile" className="text-[20px]" />
+                <span className="flex-1">{t("studentData")}</span>
+                <Icon name="chevron_right" className="text-[20px]" />
+              </Link>
+            </div>
+          </details>
           <p className="px-1 text-[0.75rem] leading-5 text-text-faint">{t("studentDataHint")}</p>
         </aside>
           <NotesSection
@@ -335,7 +347,13 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
                       : tu("case.event.moved", { to: tu(`status.${item.toStage.toLowerCase()}`) }),
                   body: item.reason,
                   signed: true,
-                  signer: { name: item.changedByName },
+                  signer: {
+                    name: item.changedByName,
+                    role: (() => {
+                      const role = signerRole(item, record, "staff");
+                      return role ? tu(`signer.${role}`) : undefined;
+                    })(),
+                  },
                   fresh: freshIds.has(`h:${item.caseStageHistoryId || item.changedAt}`),
                 }))}
               />
@@ -423,7 +441,7 @@ function NotesSection({
                 <span className="text-text">{note.noteText}</span>
               ),
               signed: note.isFinalized,
-              signer: { name: note.authorName },
+              signer: { name: note.authorName, role: tu("signer.advisor") },
               fresh: freshIds.has(`n:${note.caseNoteId}`),
               actions: note.isFinalized ? undefined : isEditing ? (
                 <>

@@ -177,7 +177,7 @@
     "noSuggestionsTitle": "No active advisor of this type",
     "noSuggestionsBody": "Ask the administrator to activate an advisor account for this kind of help.",
     "assign": "Assign",
-    "note": "Note for the case history (optional)",
+    "note": "Why this advisor (optional)",
     "notePlaceholder": "For example: matched with the PRF192 specialist.",
     "confirmTitle": "Assign this request to {advisor}?",
     "confirmBody": "{student} and the advisor are notified, and the student receives the advisor's contact details.",
@@ -190,7 +190,8 @@
     "reasonFaculty": "Same faculty",
     "overdue": "Overdue · {count} days",
     "findingOverdue": "{count, plural, one {# is} other {# are}} overdue (waiting 2+ days).",
-    "order": "Urgent first, then longest waiting"
+    "order": "Urgent first, then longest waiting",
+    "noteHint": "The student sees this reason in their case history."
   },
   "advisorCase": {
     "back": "My cases",
@@ -242,7 +243,9 @@
     "studentData": "Student data shared with you",
     "studentDataHint": "Only attributes the student consented to under your role's purpose are shown, and each read is logged.",
     "nextSteps": "Next steps",
-    "idInvalid": "This is not an account ID. It looks like 8-4-4-4-12 letters and digits."
+    "idInvalid": "This is not an account ID. It looks like 8-4-4-4-12 letters and digits.",
+    "moreActions": "More actions",
+    "moreActionsHint": "Priority, refer, change advisor, data"
   },
   "myRequests": {
     "title": "My support requests",
@@ -259,5 +262,11 @@
     "waitingDays": "Waiting for a match · sent {count, plural, one {# day} other {# days}} ago",
     "closedOn": "Closed {date}",
     "withYourAdvisor": "With your advisor"
+  },
+  "signer": {
+    "you": "You",
+    "student": "Student",
+    "advisor": "Advisor",
+    "programmeHead": "Programme Head"
   }
 }

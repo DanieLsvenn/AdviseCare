@@ -9,6 +9,8 @@ import { daysSince, formatDateTime } from "@/lib/format";
 import {
   byDate,
   listOf,
+  signerRole,
+  type SignerRole,
   toCase,
   toHistory,
   unwrap,
@@ -182,7 +184,10 @@ export function StudentCase({ caseId }: { caseId: string }) {
                     }),
               body: item.reason,
               signed: true,
-              signer: { name: item.changedByName },
+              signer: {
+                name: item.changedByName,
+                role: roleLabel(signerRole(item, record, "student"), t),
+              },
             }))}
           />
         ) : (
@@ -191,4 +196,11 @@ export function StudentCase({ caseId }: { caseId: string }) {
       </section>
     </div>
   );
+}
+
+function roleLabel(
+  role: SignerRole,
+  t: ReturnType<typeof useTranslations<"ui">>,
+): string | undefined {
+  return role ? t(`signer.${role}`) : undefined;
 }

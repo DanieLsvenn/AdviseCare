@@ -26,6 +26,7 @@ export interface CaseRecord {
 
 export interface StageHistoryRecord {
   caseStageHistoryId: string;
+  changedBy: string;
   changedByName: string;
   reason: string;
   changedAt: string;
@@ -93,6 +94,7 @@ export function toCase(record: Record<string, unknown>): CaseRecord {
 export function toHistory(record: Record<string, unknown>): StageHistoryRecord {
   return {
     caseStageHistoryId: str(record.caseStageHistoryId),
+    changedBy: str(record.changedBy),
     changedByName: str(record.changedByName),
     reason: str(record.reason),
     changedAt: str(record.changedAt),
@@ -116,4 +118,25 @@ export function toNote(record: Record<string, unknown>): CaseNoteRecord {
 /** Oldest first, as a contact book is written. */
 export function byDate<T>(items: T[], at: (item: T) => string): T[] {
   return [...items].sort((a, b) => at(a).localeCompare(at(b)));
+}
+
+export type SignerRole = "you" | "student" | "advisor" | "programmeHead" | undefined;
+
+/**
+ * Who signed a stage-history entry, from what the case itself tells us:
+ * the student, the case's advisor, or the Programme Head (the only role
+ * that can match a pending case). Unknown signers get no role rather than
+ * a guessed one.
+ */
+export function signerRole(
+  entry: StageHistoryRecord,
+  record: CaseRecord,
+  viewer: "student" | "staff",
+): SignerRole {
+  if (entry.changedBy && entry.changedBy === record.studentId) {
+    return viewer === "student" ? "you" : "student";
+  }
+  if (entry.fromStage === "pending" && entry.toStage === "assigned") return "programmeHead";
+  if (entry.changedBy && record.advisorId && entry.changedBy === record.advisorId) return "advisor";
+  return undefined;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ApiError, isRecord } from "@/lib/api-contract";
 import { clientApiGet, clientApiRequest } from "@/lib/client-api";
@@ -55,7 +55,7 @@ export function MatchingQueue() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionsError, setSuggestionsError] = useState("");
-  const [note, setNote] = useState("");
+  const noteRef = useRef("");
   const [assigning, setAssigning] = useState<string | null>(null);
   const [done, setDone] = useState<{ student: string; advisor: string } | null>(null);
   const [assignError, setAssignError] = useState("");
@@ -153,9 +153,22 @@ export function MatchingQueue() {
 
   async function assign(suggestion: Suggestion) {
     if (!selected) return;
+    noteRef.current = "";
     const ok = await confirm({
       title: t("confirmTitle", { advisor: suggestion.fullName }),
-      body: t("confirmBody", { student: selected.studentName }),
+      body: (
+        <>
+          <p>{t("confirmBody", { student: selected.studentName })}</p>
+          <AssignNote
+            label={t("note")}
+            placeholder={t("notePlaceholder")}
+            hint={t("noteHint")}
+            onChange={(value) => {
+              noteRef.current = value;
+            }}
+          />
+        </>
+      ),
       confirmLabel: t("assign"),
       cancelLabel: tu("cancel"),
       icon: "how_to_reg",
@@ -168,7 +181,10 @@ export function MatchingQueue() {
         `Cases/${encodeURIComponent(selected.caseId)}/assign`,
         {
           method: "PUT",
-          body: { advisorId: suggestion.advisorId, ...(note.trim() ? { reason: note.trim() } : {}) },
+          body: {
+            advisorId: suggestion.advisorId,
+            ...(noteRef.current.trim() ? { reason: noteRef.current.trim() } : {}),
+          },
           redirectOnUnauthorized: true,
         },
       );
@@ -180,7 +196,6 @@ export function MatchingQueue() {
         });
       }
       setDone({ student: selected.studentName, advisor: suggestion.fullName });
-      setNote("");
       setQueue((current) => current.filter((item) => item.caseId !== selected.caseId));
       const next = queue.find((item) => item.caseId !== selected.caseId);
       setSelectedId(next?.caseId ?? null);
@@ -408,20 +423,11 @@ export function MatchingQueue() {
                   ))}
                 </ul>
               )}
-              <div className="border-t border-rule px-space-lg py-space-md">
-                <label htmlFor="assign-note" className="mb-1.5 block text-sm font-semibold text-text">
-                  {t("note")}
-                </label>
-                <textarea
-                  id="assign-note"
-                  className={cn(controlClass, "min-h-12 w-full py-2")}
-                  maxLength={2000}
-                  placeholder={t("notePlaceholder")}
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                />
-                {assignError ? <Notice className="mt-space-md" tone="urgent" icon="error" title={assignError} /> : null}
-              </div>
+              {assignError ? (
+                <div className="border-t border-rule px-space-lg py-space-md">
+                  <Notice tone="urgent" icon="error" title={assignError} />
+                </div>
+              ) : null}
             </section>
           </div>
         ) : !loading && queue.length === 0 ? null : (
@@ -447,4 +453,38 @@ function reasonTags(
   if (suggestion.isGeneralAdvisor) tags.push(t("reasonGeneral"));
   if (suggestion.isSameFaculty) tags.push(t("reasonFaculty"));
   return tags;
+}
+
+/** Optional reason for the match, written where the decision is confirmed. */
+function AssignNote({
+  label,
+  placeholder,
+  hint,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  hint: string;
+  onChange: (value: string) => void;
+}) {
+  const [value, setValue] = useState("");
+  return (
+    <div className="mt-space-md">
+      <label htmlFor="assign-note" className="mb-1 block text-[0.8125rem] font-semibold text-text">
+        {label}
+      </label>
+      <textarea
+        id="assign-note"
+        className={cn(controlClass, "min-h-16 w-full py-2 text-sm text-text")}
+        maxLength={2000}
+        placeholder={placeholder}
+        value={value}
+        onChange={(event) => {
+          setValue(event.target.value);
+          onChange(event.target.value);
+        }}
+      />
+      <p className="mt-1 text-[0.75rem] text-text-faint">{hint}</p>
+    </div>
+  );
 }
