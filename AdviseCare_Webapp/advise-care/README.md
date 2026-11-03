@@ -39,6 +39,32 @@ Next.js chuyển tiếp yêu cầu `/api/*` qua Route Handler
 `{ADVISECARE_API_BASE_URL}/api/{path}`. Biến này chỉ được đọc phía server và
 không nên dùng tiền tố `NEXT_PUBLIC_`.
 
+Đăng nhập bằng Google cần thêm Client ID (OAuth Web client) của Google
+Identity Services; nếu không đặt biến này, trang đăng nhập chỉ hiện form mật
+khẩu:
+
+```dotenv
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxxxxxxx.apps.googleusercontent.com
+```
+
+## Thiết kế
+
+Hệ thiết kế "Sổ liên lạc" được mô tả trong `DESIGN.md` (bảng màu, font Source
+Sans 3 / Source Code Pro, mật độ, mẫu "mục có chữ ký" cho mọi lịch sử chỉ
+ghi thêm). `PRODUCT.md` tóm tắt sự thật sản phẩm từ SRS mà mọi màn phải tôn
+trọng. Thành phần dùng chung nằm trong `components/ui`; màn danh sách sinh tự
+động từ `components/workspace/workspace-definitions.ts`.
+
+Các luồng chính có màn thiết kế riêng:
+
+| Luồng | Route |
+|---|---|
+| Đăng nhập, liên kết Google, đặt lại mật khẩu | `/sign-in`, `/link-account?token=`, `/reset-password?token=` |
+| Sinh viên gửi yêu cầu hỗ trợ | `/me/support-request` |
+| Sinh viên xem một yêu cầu | `/me/cases/[caseId]` |
+| Hàng đợi ghép cố vấn (Programme Head) | `/head`, `/head/matching` |
+| Chi tiết case của cố vấn | `/advisor/cases/[caseId]` |
+
 ## Tích hợp API và phiên đăng nhập
 
 - Đăng nhập, liên kết Google, khôi phục mật khẩu và thao tác nghiệp vụ gọi API
@@ -63,8 +89,9 @@ không nên dùng tiền tố `NEXT_PUBLIC_`.
   lịch sử đồng ý, nhật ký truy cập, yêu cầu xóa, truy cập khẩn cấp và khóa mã hóa.
 - **Công tác xã hội:** ca, chuyển tuyến đến và từ dịch vụ bên ngoài, dịch vụ và
   can thiệp.
-- **Trưởng chương trình:** hàng đợi phân công, ca, yêu cầu thay đổi ca, báo cáo
-  ca và khối lượng cố vấn.
+- **Trưởng chương trình:** hàng đợi ghép cố vấn (gợi ý cố vấn, ghép một chạm),
+  yêu cầu đổi cố vấn, yêu cầu chuyển cấp, tất cả case, báo cáo ca và khối
+  lượng cố vấn.
 
 Thông báo và cài đặt tài khoản dùng chung AppShell đã xác thực. Các workspace
 hiển thị kết quả trực tiếp từ API và cung cấp lọc, phân trang, biểu mẫu thao
