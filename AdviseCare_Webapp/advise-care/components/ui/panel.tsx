@@ -3,8 +3,8 @@ import { cn } from "@/lib/cn";
 import { Icon } from "./icon";
 
 /**
- * Level 1 elevation: nền trắng + viền 1px, không đổ bóng.
- * Toàn bộ chiều sâu trong hệ thống này do viền tạo ra, không do shadow.
+ * A page of the book: white paper, one 1px ruled edge, no shadow.
+ * Depth in this system comes from rules, never from shadows.
  */
 export function Panel({
   children,
@@ -16,7 +16,7 @@ export function Panel({
   return (
     <section
       className={cn(
-        "rounded-md border border-outline-variant/40 bg-surface-container-lowest",
+        "rounded-lg border border-rule bg-paper",
         className,
       )}
     >
@@ -41,20 +41,20 @@ export function PanelHeader({
   return (
     <header
       className={cn(
-        "flex flex-wrap items-start justify-between gap-space-md border-b border-outline-variant/30 px-space-lg py-space-base",
+        "flex flex-wrap items-center justify-between gap-space-md border-b border-rule px-space-lg py-space-md",
         className,
       )}
     >
       <div className="flex min-w-0 items-start gap-space-sm">
         {icon ? (
-          <Icon name={icon} className="mt-0.5 text-[20px] text-primary" />
+          <Icon name={icon} className="mt-0.5 text-[20px] text-ink" />
         ) : null}
         <div className="min-w-0">
-          <h2 className="font-headline-sm text-headline-sm text-on-surface">
+          <h2 className="text-base font-semibold text-text">
             {title}
           </h2>
           {subtitle ? (
-            <p className="mt-0.5 font-body-sm text-body-sm text-on-surface-variant">
+            <p className="mt-0.5 text-sm text-text-muted">
               {subtitle}
             </p>
           ) : null}
@@ -87,7 +87,7 @@ export function PanelFooter({
   return (
     <footer
       className={cn(
-        "flex flex-wrap items-center justify-between gap-space-sm border-t border-outline-variant/30 bg-surface-container-low/50 px-space-lg py-space-md font-body-sm text-body-sm text-on-surface-variant",
+        "flex flex-wrap items-center justify-between gap-space-sm border-t border-rule px-space-lg py-space-md text-sm text-text-muted",
         className,
       )}
     >

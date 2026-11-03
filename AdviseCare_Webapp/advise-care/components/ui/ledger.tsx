@@ -1,0 +1,111 @@
+import type { ReactNode } from "react";
+import { cn } from "@/lib/cn";
+import { formatDate, formatTime } from "@/lib/format";
+
+export interface LedgerEntry {
+  id: string;
+  /** ISO timestamp of when the entry was written. */
+  at: string;
+  title?: ReactNode;
+  body?: ReactNode;
+  /** Chips or small facts shown above the body. */
+  tags?: ReactNode;
+  /** Who signed the entry. Omit (or set signed=false) for drafts. */
+  signer?: { name: string; role?: string };
+  signed: boolean;
+  /** Controls available on this entry (only ever on unsigned drafts). */
+  actions?: ReactNode;
+}
+
+/**
+ * The signature pattern of the "Sổ liên lạc" system: every append-only history
+ * is set in the contact book's three columns — Date | Entry | Signature.
+ * A signed entry has no edit affordance; a draft shows an empty, dashed
+ * signature line until it is finalized.
+ */
+export function Ledger({
+  entries,
+  labels,
+  className,
+}: {
+  entries: LedgerEntry[];
+  labels: { date: string; entry: string; signature: string; unsigned: string };
+  className?: string;
+}) {
+  return (
+    <div className={cn("text-sm", className)}>
+      <div
+        aria-hidden
+        className="hidden grid-cols-[6.5rem_minmax(0,1fr)_12rem] gap-space-lg border-b border-rule-strong pb-1.5 text-[0.75rem] font-semibold text-text-faint md:grid"
+      >
+        <span>{labels.date}</span>
+        <span>{labels.entry}</span>
+        <span>{labels.signature}</span>
+      </div>
+      <ol className="divide-y divide-rule">
+        {entries.map((entry) => (
+          <li
+            key={entry.id}
+            className="grid gap-x-space-lg gap-y-1.5 py-space-md md:grid-cols-[6.5rem_minmax(0,1fr)_12rem]"
+          >
+            <time
+              dateTime={entry.at}
+              className="font-mono text-[0.8125rem] leading-5 text-text-muted"
+            >
+              <span className="text-text">{formatDate(entry.at)}</span>
+              <span className="ml-2 md:ml-0 md:block">{formatTime(entry.at)}</span>
+            </time>
+
+            <div className="min-w-0">
+              {entry.title ? (
+                <p className="font-semibold leading-5 text-text">{entry.title}</p>
+              ) : null}
+              {entry.tags ? (
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">{entry.tags}</div>
+              ) : null}
+              {entry.body ? (
+                <div
+                  className={cn(
+                    "whitespace-pre-line break-words leading-6 text-text-muted",
+                    (entry.title || entry.tags) && "mt-1",
+                  )}
+                >
+                  {entry.body}
+                </div>
+              ) : null}
+              {entry.actions ? (
+                <div className="mt-space-sm flex flex-wrap gap-space-sm">{entry.actions}</div>
+              ) : null}
+            </div>
+
+            <div className="md:pt-0.5">
+              {entry.signed && entry.signer ? (
+                <div className="inline-block min-w-40 border-b border-ink/60 pb-1 md:block">
+                  <p className="truncate font-semibold leading-5 text-ink">
+                    {entry.signer.name}
+                  </p>
+                  {entry.signer.role ? (
+                    <p className="truncate text-[0.75rem] leading-4 text-text-faint">
+                      {entry.signer.role}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="inline-block min-w-40 border-b border-dashed border-rule-strong pb-1 md:block">
+                  <p className="text-[0.8125rem] italic leading-5 text-text-faint">
+                    {labels.unsigned}
+                  </p>
+                  {entry.signer ? (
+                    <p className="truncate text-[0.75rem] leading-4 text-text-faint">
+                      {entry.signer.name}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}

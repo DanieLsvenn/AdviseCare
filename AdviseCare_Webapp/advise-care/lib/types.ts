@@ -7,4 +7,5 @@ export type StatusTone =
   | "attention"
   | "urgent"
   | "referral"
-  | "sealed";
+  | "sealed"
+  | "info";

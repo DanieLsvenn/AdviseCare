@@ -10,7 +10,8 @@ const toneClasses: Record<StatusTone, string> = {
   urgent: "border-status-urgent-border bg-status-urgent-surface/60 text-status-urgent-text",
   referral:
     "border-status-referral-border bg-status-referral-surface/50 text-status-referral-text",
-  sealed: "border-outline-variant/50 bg-surface-container-low text-on-surface-variant",
+  sealed: "border-rule bg-paper-tint text-text-muted",
+  info: "border-status-info-border bg-status-info-surface/70 text-status-info-text",
 };
 
 export function Notice({
@@ -31,7 +32,7 @@ export function Notice({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-start gap-space-md rounded-md border px-space-base py-space-md",
+        "flex flex-wrap items-start gap-space-md rounded-lg border px-space-base py-space-md",
         toneClasses[tone],
         className,
       )}
@@ -42,7 +43,7 @@ export function Notice({
           <p className="font-label-md text-label-md font-semibold">{title}</p>
         ) : null}
         {children ? (
-          <div className={cn("text-on-surface-variant", title && "mt-1")}>{children}</div>
+          <div className={cn("text-text-muted", title && "mt-1")}>{children}</div>
         ) : null}
       </div>
       {actions ? (
