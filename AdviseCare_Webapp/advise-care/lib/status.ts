@@ -17,7 +17,7 @@ const tones: Record<string, StatusTone> = {
   reopened: "attention",
   // Priority
   low: "sealed",
-  medium: "info",
+  medium: "sealed",
   high: "attention",
   urgent: "urgent",
   // Decisions and lifecycle

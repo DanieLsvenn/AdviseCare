@@ -61,5 +61,23 @@
   "no": "No",
   "copy": "Copy",
   "copied": "Copied",
-  "retry": "Try again"
+  "retry": "Try again",
+  "workspace": {
+    "recordCount": "{count, plural, =0 {No records} one {# record} other {# records}}",
+    "range": "{from}–{to} of {total}",
+    "moreFilters": "{count} more filters",
+    "fewerFilters": "Fewer filters",
+    "clearFilters": "Clear filters",
+    "needsFiltersTitle": "Choose the filters first",
+    "noMatchesTitle": "Nothing matches these filters",
+    "noMatchesBody": "Clear one or more filters to widen the list.",
+    "emptyTitle": "Nothing here yet",
+    "emptyBody": "Records appear here as soon as they are created.",
+    "openRecord": "Open",
+    "recordDetails": "Record details",
+    "allFields": "All fields",
+    "actions": "What you can do",
+    "saved": "Saved.",
+    "load": "Load"
+  }
 }

@@ -61,5 +61,23 @@
   "no": "Không",
   "copy": "Sao chép",
   "copied": "Đã sao chép",
-  "retry": "Thử lại"
+  "retry": "Thử lại",
+  "workspace": {
+    "recordCount": "{count, plural, =0 {Không có bản ghi} other {# bản ghi}}",
+    "range": "{from}–{to} trên {total}",
+    "moreFilters": "Thêm {count} bộ lọc",
+    "fewerFilters": "Thu gọn bộ lọc",
+    "clearFilters": "Xóa bộ lọc",
+    "needsFiltersTitle": "Hãy chọn bộ lọc trước",
+    "noMatchesTitle": "Không có bản ghi khớp bộ lọc",
+    "noMatchesBody": "Bỏ bớt bộ lọc để mở rộng danh sách.",
+    "emptyTitle": "Chưa có gì ở đây",
+    "emptyBody": "Bản ghi sẽ hiện ở đây ngay khi được tạo.",
+    "openRecord": "Mở",
+    "recordDetails": "Chi tiết bản ghi",
+    "allFields": "Tất cả trường",
+    "actions": "Thao tác",
+    "saved": "Đã lưu.",
+    "load": "Tải"
+  }
 }
