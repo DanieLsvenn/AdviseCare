@@ -1,0 +1,179 @@
+---
+title: AdviseCare - Class Diagram - Student Data
+---
+classDiagram
+    direction LR
+    class StudentDataController {
+        <<controller>>
+        +GetAll() GET /
+        +GetMyData() GET /me
+        +ExportMyData() GET /me/export
+        +GetById() GET /:id
+        +Search() GET /search
+        +Import() POST /import
+        +PreviewImport() POST /import/preview
+        +ValidateImport() POST /import/validate
+        +GetStudentData() GET /students/:studentId
+        +GetAsOf() GET /students/:studentId/as-of
+        +Compare() GET /students/:studentId/compare
+    }
+    StudentDataController --> IStudentDataService : uses
+    class CorrectionRequestsController {
+        <<controller>>
+        +GetAll() GET /
+        +GetMyAll() GET /me
+        +GetMyById() GET /me/:id
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Approve() PUT /:id/approve
+        +Reject() PUT /:id/reject
+        +Withdraw() PUT /:id/withdraw
+    }
+    CorrectionRequestsController --> ICorrectionRequestService : uses
+    class IStudentDataService {
+        <<interface>>
+        +GetAll() IEnumerable~GetAllStudentDataResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllStudentDataWithPaginationResponse~
+        +GetByIdAsync(StudentDataId) GetStudentDataByIdResponse
+        +SearchAsync(request) List~SearchStudentDataResponse~
+        +CreateAsync(CreatorId, request) CreateStudentDataResponse
+        +PreviewAsync(request) PreviewStudentDataResponse
+        +ValidateAsync(request) ValidateStudentDataResponse
+        +GetStudentDataAsync(AccessorId, StudentId, CaseId, TermId) GetStudentDataOfStudentResponse
+        +GetAsOfAsync(AccessorId, StudentId, request) GetStudentDataAsOfResponse
+        +CompareAsync(AccessorId, StudentId, request) CompareStudentDataResponse
+        +GetMyDataAsync(StudentId, TermId) GetMyStudentDataResponse
+        +ExportMyDataAsync(StudentId) ExportMyStudentDataResponse
+    }
+    class StudentDataService {
+        <<service>>
+    }
+    StudentDataService ..|> IStudentDataService
+    StudentDataService --> Studentdata : IGenericRepository
+    StudentDataService --> Studentprofile : IGenericRepository
+    StudentDataService --> Dataattribute : IGenericRepository
+    StudentDataService --> Academicterm : IGenericRepository
+    StudentDataService --> IExcelReader : uses
+    StudentDataService --> ICsvReader : uses
+    class ICorrectionRequestService {
+        <<interface>>
+        +GetAll(AdvisorId) IEnumerable~GetAllCorrectionRequestResponse~
+        +GetAllWithPaginationAsync(AdvisorId, page, pageSize) IEnumerable~GetAllCorrectionRequestWithPaginationResponse~
+        +GetByIdAsync(AdvisorId, CorrectionRequestId) GetCorrectionRequestByIdResponse
+        +SearchAsync(AdvisorId, request) List~SearchCorrectionRequestResponse~
+        +CreateAsync(CreatorId, request) CreateCorrectionRequestResponse
+        +ApproveAsync(AdvisorId, CorrectionRequestId, request) ApproveCorrectionRequestResponse
+        +RejectAsync(AdvisorId, CorrectionRequestId, request) RejectCorrectionRequestResponse
+        +WithdrawAsync(StudentId, CorrectionRequestId) bool
+        +GetMyAllAsync(StudentId) List~GetMyCorrectionRequestResponse~
+        +GetMyByIdAsync(StudentId, CorrectionRequestId) GetMyCorrectionRequestResponse
+    }
+    class CorrectionRequestService {
+        <<service>>
+    }
+    CorrectionRequestService ..|> ICorrectionRequestService
+    CorrectionRequestService --> Correctionrequest : IGenericRepository
+    CorrectionRequestService --> Studentdata : IGenericRepository
+    class IAccessGuardService {
+        <<interface, other module>>
+    }
+    class IAccessLogService {
+        <<interface, other module>>
+    }
+    class IActivityLogService {
+        <<interface, other module>>
+    }
+    class IAttributeKeyService {
+        <<interface, other module>>
+    }
+    class INotificationService {
+        <<interface, other module>>
+    }
+    class IStudentProfileService {
+        <<interface, other module>>
+    }
+    CorrectionRequestService --> IAccessGuardService : uses
+    CorrectionRequestService --> IActivityLogService : uses
+    CorrectionRequestService --> IAttributeKeyService : uses
+    CorrectionRequestService --> INotificationService : uses
+    StudentDataService --> IAccessGuardService : uses
+    StudentDataService --> IAccessLogService : uses
+    StudentDataService --> IActivityLogService : uses
+    StudentDataService --> IAttributeKeyService : uses
+    StudentDataService --> IStudentProfileService : uses
+    class IExcelReader {
+        <<interface, infrastructure>>
+    }
+    class ICsvReader {
+        <<interface, infrastructure>>
+    }
+    class Studentdata {
+        <<entity>>
+        +Guid studentDataId
+        +Guid? attributeKeyId
+        +Guid dataAttributeId
+        +Guid? dataSourceId
+        +Guid studentId
+        +Guid termId
+        +byte[] dataValue
+        +string provenanceNote
+        +DateTime? erasedAt
+        +DateTime transactionFrom
+        +DateTime validFrom
+        +bool isMissing
+        +string status
+    }
+    class Correctionrequest {
+        <<entity>>
+        +Guid correctionRequestId
+        +Guid? reviewedBy
+        +Guid studentDataId
+        +Guid studentId
+        +byte[] currentValue
+        +string decisionNotes
+        +string explanation
+        +byte[] proposedValue
+        +DateTime? decidedAt
+        +DateTime submittedAt
+        +string status
+    }
+    class Attributekey {
+        <<entity>>
+        +Guid attributeKeyId
+        +Guid dataAttributeId
+        +Guid studentId
+        +string wrappedKey
+        +int masterKeyVersion
+        +DateTime createdAt
+        +DateTime? destroyedAt
+        +string status
+    }
+    class Dataattribute {
+        <<entity>>
+        +Guid dataAttributeId
+        +string attributeDescription
+        +string attributeName
+        +string dataType
+        +string status
+    }
+    class Academicterm {
+        <<entity>>
+        +Guid termId
+        +DateTime endDate
+        +DateTime startDate
+        +string termName
+        +string status
+    }
+    class Studentprofile {
+        <<entity>>
+        +Guid studentProfileId
+        +Guid studentId
+        +string studentCode
+        +string academicStatus
+    }
+    Attributekey "0..1" -- "*" Studentdata : attributeKeyId
+    Dataattribute "1" -- "*" Studentdata : dataAttributeId
+    Academicterm "1" -- "*" Studentdata : termId
+    Studentdata "1" -- "*" Correctionrequest : studentDataId
+    Dataattribute "1" -- "*" Attributekey : dataAttributeId

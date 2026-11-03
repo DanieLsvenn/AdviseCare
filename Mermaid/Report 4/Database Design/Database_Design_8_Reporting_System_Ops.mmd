@@ -1,0 +1,39 @@
+---
+title: AdviseCare - Database Design - Reporting / System Ops
+---
+erDiagram
+    REPORTS {
+        uniqueidentifier reportId PK "NOT NULL"
+        uniqueidentifier generatedBy FK "NOT NULL"
+        uniqueidentifier termId FK "NOT NULL"
+        nvarchar(max) filePath "NULL"
+        nvarchar(30) reportType "NOT NULL"
+        datetime2(3) generatedAt "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    BACKUPS {
+        uniqueidentifier backupId PK "NOT NULL"
+        uniqueidentifier createdBy FK "NULL"
+        datetime2(3) backupTimestamp "NOT NULL"
+        bigint sizeBytes "NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    RESTOREOPERATIONS {
+        uniqueidentifier restoreOperationId PK "NOT NULL"
+        uniqueidentifier backupId FK "NOT NULL"
+        uniqueidentifier executedBy FK "NOT NULL"
+        nvarchar(max) integrityCheckResult "NULL"
+        datetime2(3) executedAt "NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    ACADEMICTERMS {
+        uniqueidentifier termId PK "referenced table, see its own section"
+    }
+    ACCOUNTS {
+        uniqueidentifier accountId PK "referenced table, see its own section"
+    }
+    ACCOUNTS ||--o{ REPORTS : "generatedBy"
+    ACADEMICTERMS ||--o{ REPORTS : "termId"
+    BACKUPS ||--o{ RESTOREOPERATIONS : "backupId"
+    ACCOUNTS ||--o{ RESTOREOPERATIONS : "executedBy"
+    ACCOUNTS |o--o{ BACKUPS : "createdBy"

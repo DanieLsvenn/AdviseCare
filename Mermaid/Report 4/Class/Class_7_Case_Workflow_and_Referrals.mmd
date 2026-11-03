@@ -1,0 +1,126 @@
+---
+title: AdviseCare - Class Diagram - Case Workflow and Referrals
+---
+classDiagram
+    direction LR
+    class CaseNotesController {
+        <<controller>>
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +Finalize() PUT /:id/finalize
+    }
+    CaseNotesController --> ICaseNoteService : uses
+    class ReferralsController {
+        <<controller>>
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +GetMyIncoming() GET /me/incoming
+        +GetMyOutgoing() GET /me/outgoing
+        +Accept() PUT /:id/accept
+        +Return() PUT /:id/return
+    }
+    ReferralsController --> IReferralService : uses
+    class CaseStageHistoriesController {
+        <<controller>>
+    }
+    CaseStageHistoriesController --> ICaseService : uses
+    class ICaseNoteService {
+        <<interface>>
+        +GetAll(AuthorId) IEnumerable~GetAllCaseNoteResponse~
+        +GetAllWithPaginationAsync(AuthorId, page, pageSize) IEnumerable~GetAllCaseNoteWithPaginationResponse~
+        +GetByIdAsync(CallerId, CaseNoteId) GetCaseNoteByIdResponse
+        +SearchAsync(CallerId, request) List~SearchCaseNoteResponse~
+        +CreateAsync(CreatorId, request) CreateCaseNoteResponse
+        +UpdateAsync(AuthorId, CaseNoteId, request) UpdateCaseNoteResponse
+        +FinalizeAsync(AuthorId, CaseNoteId) FinalizeCaseNoteResponse
+    }
+    class CaseNoteService {
+        <<service>>
+    }
+    CaseNoteService ..|> ICaseNoteService
+    CaseNoteService --> Casenote : IGenericRepository
+    CaseNoteService --> Case : IGenericRepository
+    CaseNoteService --> Referral : IGenericRepository
+    class IReferralService {
+        <<interface>>
+        +GetAll() IEnumerable~GetAllReferralResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllReferralWithPaginationResponse~
+        +GetByIdAsync(CallerId, ReferralId) GetReferralByIdResponse
+        +SearchAsync(CallerId, request) List~SearchReferralResponse~
+        +CreateAsync(CreatorId, request) CreateReferralResponse
+        +GetMyIncomingAsync(AccountId, request) List~GetMyIncomingReferralResponse~
+        +GetMyOutgoingAsync(AccountId, request) List~GetMyOutgoingReferralResponse~
+        +AcceptAsync(ReceiverId, ReferralId) AcceptReferralResponse
+        +ReturnAsync(ReceiverId, ReferralId, request) ReturnReferralResponse
+    }
+    class ReferralService {
+        <<service>>
+    }
+    ReferralService ..|> IReferralService
+    ReferralService --> Referral : IGenericRepository
+    ReferralService --> Case : IGenericRepository
+    ReferralService --> Casestagehistory : IGenericRepository
+    class IActivityLogService {
+        <<interface, other module>>
+    }
+    class INotificationService {
+        <<interface, other module>>
+    }
+    CaseNoteService --> IActivityLogService : uses
+    ReferralService --> IActivityLogService : uses
+    ReferralService --> INotificationService : uses
+    class Casenote {
+        <<entity>>
+        +Guid caseNoteId
+        +Guid authorId
+        +Guid caseId
+        +string noteText
+        +DateTime createdAt
+        +DateTime? editedAt
+        +bool isFinalized
+    }
+    class Referral {
+        <<entity>>
+        +Guid referralId
+        +Guid caseId
+        +Guid fromAccountId
+        +Guid toAccountId
+        +string referralReason
+        +DateTime? acceptedAt
+        +DateTime createdAt
+        +string priority
+        +string status
+    }
+    class Casestagehistory {
+        <<entity>>
+        +Guid caseStageHistoryId
+        +Guid caseId
+        +Guid changedBy
+        +string reason
+        +DateTime changedAt
+        +string fromStage
+        +string toStage
+    }
+    class Case {
+        <<entity>>
+        +Guid caseId
+        +Guid? advisorId
+        +Guid openedBy
+        +Guid studentId
+        +Guid? subjectId
+        +Guid supportCategoryId
+        +string requestReason
+        +DateTime? closedAt
+        +DateTime openedAt
+        +string currentStage
+        +string priority
+        +string status
+    }
+    Case "1" -- "*" Casenote : caseId
+    Case "1" -- "*" Referral : caseId
+    Case "1" -- "*" Casestagehistory : caseId

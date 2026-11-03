@@ -1,0 +1,14 @@
+---
+title: AdviseCare - State Machine - Erasure Request
+---
+
+stateDiagram-v2
+    direction LR
+    [*] --> pending : consent withdrawn and attribute no longer granted anywhere
+    pending --> completed : Steward executes (key destroyed, values cleared)
+    pending --> pending : refused while the attribute is shared again (409)
+    completed --> [*]
+    note right of completed
+        ATTRIBUTEKEYS.status = destroyed
+        STUDENTDATA rows stay, marked erased
+    end note

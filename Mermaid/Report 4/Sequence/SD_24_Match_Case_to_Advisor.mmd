@@ -1,0 +1,35 @@
+---
+title: AdviseCare - Sequence Diagram SD-24 - Match Case to Advisor
+---
+sequenceDiagram
+    autonumber
+    actor PH as Programme Head
+    participant W as Web App
+    participant C as CasesController
+    participant S as CaseService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    PH->>W: Open matching queue
+    W->>C: GET /api/Cases/matching-queue
+    C->>S: GetMatchingQueueAsync()
+    S->>R: Cases without advisor that are not closed
+    S-->>W: Most urgent first, then oldest
+    PH->>W: Open a case
+    W->>C: GET /api/Cases/{id}/suggested-advisors
+    C->>S: GetSuggestedAdvisorsAsync(CaseId)
+    S->>R: Active advisors of the case's role, their subjects, faculties and open cases
+    S->>S: Order: familiar advisor, subject specialist, same faculty (general first), fewest open cases
+    S-->>W: Suggestions with match reasons
+    PH->>W: Assign advisor
+    W->>C: PUT /api/Cases/{id}/assign {advisorId, reason}
+    C->>S: AssignAsync(ProgrammeHeadId, CaseId, request)
+    S->>R: Case pending without advisor, advisor active with the case's role
+    S->>R: PrepareUpdate Case (advisorId, stage assigned), PrepareCreate CaseStageHistory (pending -> assigned)
+    S->>R: SaveAsync()
+    R->>DB: UPDATE CASES, INSERT CASESTAGEHISTORIES
+    S->>S: Log activity caseAssigned
+    S->>N: NotifyAsync(student, advisor's name and email)
+    S->>N: NotifyAsync(advisor, "New case assigned")
+    S-->>C: AssignCaseResponse
+    C-->>W: 200 OK

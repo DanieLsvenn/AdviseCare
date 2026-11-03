@@ -1,0 +1,31 @@
+---
+title: AdviseCare - Sequence Diagram SD-11 - Grant Consent
+---
+sequenceDiagram
+    autonumber
+    actor STU as Student
+    participant W as Web App
+    participant C as ConsentsController
+    participant S as ConsentService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    STU->>W: Open consent page
+    W->>C: GET /api/Consents/me
+    C->>S: GetMyConsentsAsync(StudentId)
+    S-->>W: Purposes, attributes and state per attribute
+    STU->>W: Tick attributes of "Wellbeing support", optional expiry date
+    W->>C: POST /api/Consents {consentPurposeId, dataAttributeIds, expiresAt}
+    C->>S: CreateAsync(StudentId, request)
+    S->>R: Check purpose active, attributes active and covered, expiry in the future
+    loop each attribute
+        alt not granted yet
+            S->>R: PrepareCreate Consent (granted) and ConsentHistory (null -> granted)
+        else granted but expired
+            S->>R: PrepareUpdate Consent (renewed) and ConsentHistory
+        end
+    end
+    S->>R: SaveAsync()
+    R->>DB: INSERT/UPDATE CONSENTS, INSERT CONSENTHISTORIES
+    S->>S: Log activity consentGranted
+    S-->>C: List of CreateConsentResponse
+    C-->>W: 200 OK

@@ -1,0 +1,67 @@
+---
+title: AdviseCare - Detailed Package Diagram (backend)
+---
+flowchart TB
+    subgraph API["AdviseCare.API"]
+        direction LR
+        CTRL["Controllers<br/>35 REST controllers"]
+        BG["BackgroundServices<br/>ExternalReferralOverdueService"]
+        ROOT["Composition Root<br/>Program.cs: DI, JWT bearer auth, Swagger, CORS, AppException to HTTP status handler"]
+    end
+    subgraph APP["AdviseCare.Application"]
+        direction LR
+        REQ["Contracts.Requests"]
+        RES["Contracts.Responses"]
+        DTO["DTOs<br/>AccessDecision, AccessLogEntry, AttributeValue, ExcelRow, GoogleUserInfo, DataValueValidator"]
+        EXC["Exceptions<br/>AppException and subtypes"]
+        subgraph IFACE["Interfaces"]
+            ISVC["Services"]
+            IREP["Repository<br/>IGenericRepository&lt;T&gt;"]
+            ISEC["Security<br/>IJwtTokenGenerator, IGoogleTokenValidator, IPasswordHasher, IDataEncryptor"]
+            IEML["Email<br/>IEmailService"]
+            IXLS["Excel<br/>IExcelReader, ICsvReader, IExcelWriter, IPdfWriter"]
+            ISTO["Storage<br/>IStorageService"]
+        end
+        SVC["Services<br/>34 application services"]
+    end
+    subgraph DOM["AdviseCare.Domain"]
+        direction LR
+        MOD["Models<br/>43 entity classes"]
+        CTX["AdviseCareContext<br/>EF Core DbContext"]
+    end
+    subgraph INF["AdviseCare.Infrastructure"]
+        direction LR
+        REPO["Repository<br/>GenericRepository&lt;T&gt;"]
+        SEC["Security<br/>JwtTokenGenerator, GoogleTokenValidator, PasswordHasher, AesGcmDataEncryptor"]
+        EML["Email<br/>EmailService (Gmail SMTP)"]
+        XLS["Excel<br/>ExcelReader, CsvReader, ExcelWriter, SimplePdfWriter"]
+        STO["Storage<br/>SupabaseStorageService"]
+        CFG["Configuration<br/>EncryptionSettings, GmailSettings, SupabaseSettings"]
+    end
+
+    CTRL --> REQ
+    CTRL --> ISVC
+    BG --> ISVC
+    ROOT --> SVC
+    ROOT --> INF
+    SVC -.->|"implements"| ISVC
+    SVC --> REQ
+    SVC --> RES
+    SVC --> DTO
+    SVC --> EXC
+    SVC --> IREP
+    SVC --> ISEC
+    SVC --> IEML
+    SVC --> IXLS
+    SVC --> ISTO
+    SVC --> MOD
+    REPO -.->|"implements"| IREP
+    SEC -.->|"implements"| ISEC
+    EML -.->|"implements"| IEML
+    XLS -.->|"implements"| IXLS
+    STO -.->|"implements"| ISTO
+    REPO --> CTX
+    SEC --> CFG
+    EML --> CFG
+    STO --> CFG
+    CTX --> MOD

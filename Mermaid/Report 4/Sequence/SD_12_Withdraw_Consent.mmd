@@ -1,0 +1,29 @@
+---
+title: AdviseCare - Sequence Diagram SD-12 - Withdraw Consent
+---
+sequenceDiagram
+    autonumber
+    actor STU as Student
+    participant W as Web App
+    participant C as ConsentsController
+    participant S as ConsentService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    STU->>W: Click "Withdraw" on one attribute
+    W->>C: PUT /api/Consents/{id}/withdraw
+    C->>S: WithdrawAsync(StudentId, ConsentId)
+    S->>R: Load own granted consent
+    S->>R: PrepareUpdate status = withdrawn, withdrawnAt = now, PrepareCreate ConsentHistory (granted -> withdrawn)
+    S->>R: Is the attribute still granted under another purpose? Has the student an active key for it?
+    opt no other grant and an active key exists
+        S->>R: PrepareCreate ErasureRequest (pending)
+    end
+    S->>R: SaveAsync()
+    R->>DB: UPDATE CONSENTS, INSERT CONSENTHISTORIES, ERASUREREQUESTS
+    opt erasure queued
+        S->>N: NotifyAsync(each Steward, "Erasure request waiting")
+    end
+    S-->>C: true
+    C-->>W: 200 OK
+    Note over W,DB: The next read by staff is refused by the access guard ("exists, not shared")

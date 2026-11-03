@@ -1,0 +1,24 @@
+---
+title: AdviseCare - Overall Package Diagram
+---
+flowchart TB
+    subgraph CLIENT["Web Client"]
+        WEB["AdviseCare_Webapp<br/>Next.js + TypeScript + next-intl"]
+    end
+    subgraph BACKEND["AdviseCare_API solution (ASP.NET Core 8 Web API)"]
+        API["AdviseCare.API<br/>Controllers, BackgroundServices, Program.cs"]
+        APP["AdviseCare.Application<br/>Services, Contracts, DTOs, Interfaces, Exceptions"]
+        DOM["AdviseCare.Domain<br/>Entity models, AdviseCareContext"]
+        INF["AdviseCare.Infrastructure<br/>Repository, Security, Email, Excel, Storage"]
+    end
+    DB[("Microsoft SQL Server<br/>AdviseCareDB on MonsterASP")]
+    EXTS["External services<br/>Google Identity, Gmail SMTP, Supabase Storage"]
+
+    WEB -->|"HTTPS / REST + JWT"| API
+    API -->|"uses"| APP
+    API -->|"composition root registers"| INF
+    APP -->|"uses entities"| DOM
+    INF -.->|"implements interfaces of"| APP
+    INF -->|"uses"| DOM
+    INF -->|"EF Core"| DB
+    INF -->|"HTTPS / SMTP"| EXTS

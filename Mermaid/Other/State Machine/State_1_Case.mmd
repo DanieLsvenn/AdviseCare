@@ -1,0 +1,27 @@
+---
+title: AdviseCare - State Machine - Case
+---
+
+stateDiagram-v2
+    direction LR
+    [*] --> pending : student requests support
+    [*] --> assigned : advisor opens a case (outreach)
+    pending --> assigned : Programme Head assigns an advisor
+    assigned --> contacted : advisor met the student
+    assigned --> referred : advisor refers the case
+    contacted --> referred : advisor refers the case
+    followUp --> referred : advisor refers the case
+    referred --> assigned : another advisor accepts the referral
+    referred --> assigned : receiver returns it (back to the previous stage)
+    referred --> contacted : receiver returns it (back to the previous stage)
+    referred --> followUp : advisor follows up after the welfare work
+    contacted --> followUp : advisor follows up
+    assigned --> closed : advisor closes
+    contacted --> closed : advisor closes
+    followUp --> closed : advisor closes
+    closed --> assigned : advisor reopens (status reopened)
+    note right of closed
+        status = closed and closedAt set
+        a reassignment or an approved change request
+        keeps the stage and is logged as a hand-over
+    end note

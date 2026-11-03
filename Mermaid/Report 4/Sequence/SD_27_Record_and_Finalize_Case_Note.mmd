@@ -1,0 +1,28 @@
+---
+title: AdviseCare - Sequence Diagram SD-27 - Record and Finalize Case Note
+---
+sequenceDiagram
+    autonumber
+    actor ADV as Advisor
+    participant W as Web App
+    participant C as CaseNotesController
+    participant S as CaseNoteService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADV->>W: Write note on own case
+    W->>C: POST /api/CaseNotes {caseId, noteText}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: Caller is the case's advisor, case not closed
+    S->>R: CreateAsync(note, isFinalized = false)
+    R->>DB: INSERT CASENOTES
+    ADV->>W: Edit the draft
+    W->>C: PUT /api/CaseNotes/{id} {noteText}
+    C->>S: UpdateAsync(AuthorId, CaseNoteId, request)
+    S->>R: Own draft only (finalized -> 409), set editedAt, SaveAsync()
+    ADV->>W: Finalize
+    W->>C: PUT /api/CaseNotes/{id}/finalize
+    C->>S: FinalizeAsync(AuthorId, CaseNoteId)
+    S->>R: PrepareUpdate isFinalized = true, SaveAsync()
+    R->>DB: UPDATE CASENOTES
+    S->>S: Log activity caseNoteFinalized
+    C-->>W: 200 OK

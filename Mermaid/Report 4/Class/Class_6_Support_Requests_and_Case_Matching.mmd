@@ -1,0 +1,160 @@
+---
+title: AdviseCare - Class Diagram - Support Requests and Case Matching
+---
+classDiagram
+    direction LR
+    class CasesController {
+        <<controller>>
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +GetMyAll() GET /me
+        +GetMatchingQueue() GET /matching-queue
+        +GetSuggestedAdvisors() GET /:id/suggested-advisors
+        +Assign() PUT /:id/assign
+        +Reassign() PUT /:id/reassign
+        +GetAssigned() GET /assigned
+        +GetAssignedUnreadCount() GET /assigned/unread-count
+        +ChangeStage() PUT /:id/stage
+        +Reopen() PUT /:id/reopen
+        +ChangePriority() PUT /:id/priority
+    }
+    CasesController --> ICaseService : uses
+    class CaseChangeRequestsController {
+        <<controller>>
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Approve() PUT /:id/approve
+        +Reject() PUT /:id/reject
+    }
+    CaseChangeRequestsController --> ICaseChangeRequestService : uses
+    class ICaseService {
+        <<interface>>
+        +GetAll() IEnumerable~GetAllCaseResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllCaseWithPaginationResponse~
+        +GetByIdAsync(CallerId, CaseId) GetCaseByIdResponse
+        +SearchAsync(request) List~SearchCaseResponse~
+        +CreateAsync(CreatorId, request) CreateCaseResponse
+        +GetMyAllAsync(StudentId, request) List~GetMyCaseResponse~
+        +GetMatchingQueueAsync() List~GetMatchingQueueCaseResponse~
+        +GetSuggestedAdvisorsAsync(CaseId) List~GetCaseSuggestedAdvisorResponse~
+        +AssignAsync(ProgrammeHeadId, CaseId, request) AssignCaseResponse
+        +ReassignAsync(ProgrammeHeadId, CaseId, request) ReassignCaseResponse
+        +GetAssignedAsync(AdvisorId, request) List~GetAssignedCaseResponse~
+        +GetAssignedWithPaginationAsync(AdvisorId, request, page, pageSize) IEnumerable~GetAssignedCaseWithPaginationResponse~
+        +GetAssignedUnreadCountAsync(AdvisorId) int
+        +ChangeStageAsync(AdvisorId, CaseId, request) ChangeCaseStageResponse
+        +ReopenAsync(AdvisorId, CaseId, request) ReopenCaseResponse
+        +ChangePriorityAsync(CallerId, CaseId, request) ChangeCasePriorityResponse
+        +SearchCaseStageHistoryAsync(CallerId, request) List~SearchCaseStageHistoryResponse~
+    }
+    class CaseService {
+        <<service>>
+    }
+    CaseService ..|> ICaseService
+    CaseService --> Case : IGenericRepository
+    CaseService --> Casestagehistory : IGenericRepository
+    CaseService --> Supportcategory : IGenericRepository
+    CaseService --> AccountSubject : IGenericRepository
+    class ICaseChangeRequestService {
+        <<interface>>
+        +GetAll(CallerId) IEnumerable~GetAllCaseChangeRequestResponse~
+        +GetAllWithPaginationAsync(CallerId, page, pageSize) IEnumerable~GetAllCaseChangeRequestWithPaginationResponse~
+        +GetByIdAsync(CallerId, CaseChangeRequestId) GetCaseChangeRequestByIdResponse
+        +SearchAsync(CallerId, request) List~SearchCaseChangeRequestResponse~
+        +CreateAsync(CreatorId, request) CreateCaseChangeRequestResponse
+        +ApproveAsync(ProgrammeHeadId, CaseChangeRequestId, request) ApproveCaseChangeRequestResponse
+        +RejectAsync(ProgrammeHeadId, CaseChangeRequestId, request) RejectCaseChangeRequestResponse
+    }
+    class CaseChangeRequestService {
+        <<service>>
+    }
+    CaseChangeRequestService ..|> ICaseChangeRequestService
+    CaseChangeRequestService --> Casechangerequest : IGenericRepository
+    CaseChangeRequestService --> Case : IGenericRepository
+    CaseChangeRequestService --> Casestagehistory : IGenericRepository
+    class IActivityLogService {
+        <<interface, other module>>
+    }
+    class IConsentService {
+        <<interface, other module>>
+    }
+    class INotificationService {
+        <<interface, other module>>
+    }
+    CaseService --> IActivityLogService : uses
+    CaseService --> IConsentService : uses
+    CaseService --> INotificationService : uses
+    CaseChangeRequestService --> IActivityLogService : uses
+    CaseChangeRequestService --> INotificationService : uses
+    class Case {
+        <<entity>>
+        +Guid caseId
+        +Guid? advisorId
+        +Guid openedBy
+        +Guid studentId
+        +Guid? subjectId
+        +Guid supportCategoryId
+        +string requestReason
+        +DateTime? closedAt
+        +DateTime openedAt
+        +string currentStage
+        +string priority
+        +string status
+    }
+    class Casechangerequest {
+        <<entity>>
+        +Guid caseChangeRequestId
+        +Guid caseId
+        +Guid? programmeHeadId
+        +Guid proposedAdvisorId
+        +Guid requestedBy
+        +string decisionNotes
+        +string reason
+        +DateTime? decidedAt
+        +DateTime requestedAt
+        +string status
+    }
+    class Casestagehistory {
+        <<entity>>
+        +Guid caseStageHistoryId
+        +Guid caseId
+        +Guid changedBy
+        +string reason
+        +DateTime changedAt
+        +string fromStage
+        +string toStage
+    }
+    class Supportcategory {
+        <<entity>>
+        +Guid supportCategoryId
+        +Guid consentPurposeId
+        +Guid createdBy
+        +string categoryName
+        +string description
+        +string supportType
+        +string status
+    }
+    class AccountSubject {
+        <<entity>>
+        +Guid accountId
+        +Guid subjectId
+        +DateTime assignedAt
+    }
+    class Consent {
+        <<entity>>
+        +Guid consentId
+        +Guid consentPurposeId
+        +Guid dataAttributeId
+        +Guid studentId
+        +DateTime? expiresAt
+        +DateTime grantedAt
+        +DateTime? withdrawnAt
+        +string status
+    }
+    Supportcategory "1" -- "*" Case : supportCategoryId
+    Case "1" -- "*" Casechangerequest : caseId
+    Case "1" -- "*" Casestagehistory : caseId

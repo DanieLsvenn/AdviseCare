@@ -1,0 +1,31 @@
+---
+title: AdviseCare - Sequence Diagram SD-16 - Execute Cryptographic Erasure
+---
+sequenceDiagram
+    autonumber
+    actor STW as Data Protection Steward
+    participant W as Web App
+    participant C as ErasureRequestsController
+    participant S as ErasureRequestService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    STW->>W: Open pending erasure requests
+    W->>C: GET /api/ErasureRequests/search?status=pending
+    STW->>W: Execute one request
+    W->>C: PUT /api/ErasureRequests/{id}/execute
+    C->>S: ExecuteAsync(StewardId, ErasureRequestId)
+    S->>R: Load request with key and consent
+    alt not pending, or the attribute was shared again
+        S-->>C: ConflictException
+        C-->>W: 409 Conflict
+    else
+        S->>R: PrepareUpdate AttributeKey (wrappedKey = null, status = destroyed, destroyedAt)
+        S->>R: PrepareUpdate every STUDENTDATA value under the key (dataValue = null, erasedAt) and CORRECTIONREQUESTS values
+        S->>R: PrepareUpdate request (status = completed, executedBy, executedAt)
+        S->>R: SaveAsync()
+        R->>DB: UPDATE ATTRIBUTEKEYS, STUDENTDATA, CORRECTIONREQUESTS, ERASUREREQUESTS (one transaction)
+        S->>N: NotifyAsync(student, "Your withdrawn data was erased")
+        S-->>C: true
+        C-->>W: 200 OK
+    end

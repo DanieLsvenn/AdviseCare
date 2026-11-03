@@ -1,0 +1,30 @@
+---
+title: AdviseCare - Sequence Diagram SD-20 - View Student Data at a Past Date
+---
+sequenceDiagram
+    autonumber
+    actor ADV as Advisor
+    participant W as Web App
+    participant C as StudentDataController
+    participant S as StudentDataService
+    participant G as IAccessGuardService
+    participant K as IAttributeKeyService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADV->>W: "View as of" 2026-10-31, time axis = valid
+    W->>C: GET /api/StudentData/students/{studentId}/as-of?date&timeAxis
+    C->>S: GetAsOfAsync(AccessorId, StudentId, request)
+    S->>R: STUDENTDATA rows of the student
+    R->>DB: SELECT
+    alt timeAxis = system
+        S->>S: Per attribute and term: latest row with transactionFrom up to the date
+    else timeAxis = valid
+        S->>S: Among rows with validFrom up to the date: latest validFrom, later transactionFrom wins ties
+    end
+    S->>G: CheckAccessAsync(accessor, student, attributes, null)
+    G-->>S: decisions
+    S->>K: DecryptValuesAsync(allowed rows)
+    S->>G: LogAccessBatchAsync(one row per value shown, with studentDataId)
+    G->>R: INSERT ACCESSLOGS
+    S-->>C: Snapshot (values, sources, missing notices, "exists, not shared")
+    C-->>W: 200 OK

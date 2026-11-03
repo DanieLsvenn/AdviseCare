@@ -76,13 +76,12 @@ builder.Services.AddScoped<ISupportGrantService, SupportGrantService>();
 builder.Services.AddScoped<IEscalationService, EscalationService>();
 
 // Member D
-builder.Services.AddScoped<CaseWorkflowHelper>();
 builder.Services.AddScoped<ISupportCategoryService, SupportCategoryService>();
 builder.Services.AddScoped<ICaseService, CaseService>();
 builder.Services.AddScoped<ICaseNoteService, CaseNoteService>();
 builder.Services.AddScoped<IReferralService, ReferralService>();
 builder.Services.AddScoped<ICaseChangeRequestService, CaseChangeRequestService>();
-builder.Services.AddScoped<ICaseReportService, CaseReportService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.

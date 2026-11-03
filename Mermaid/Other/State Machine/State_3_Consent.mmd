@@ -1,0 +1,18 @@
+---
+title: AdviseCare - State Machine - Consent
+---
+
+stateDiagram-v2
+    direction LR
+    [*] --> granted : student grants, or grants an advisor's consent request
+    granted --> granted : student changes the expiry date
+    granted --> expired : expiresAt passes (checked when data is read)
+    expired --> granted : student grants again (renewed)
+    granted --> withdrawn : student withdraws the attribute or the whole purpose
+    expired --> withdrawn : student withdraws
+    withdrawn --> granted : student grants again
+    note right of withdrawn
+        access stops at once
+        an erasure request is queued when the attribute
+        is no longer granted under any purpose
+    end note

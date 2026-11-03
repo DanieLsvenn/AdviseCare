@@ -1,0 +1,31 @@
+---
+title: AdviseCare - Sequence Diagram SD-17 - Flag and Review Access Log Entry
+---
+sequenceDiagram
+    autonumber
+    actor STU as Student
+    actor STW as Data Protection Steward
+    participant W as Web App
+    participant C as AccessLogsController
+    participant S as AccessLogService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    STU->>W: Open own access log (date range, role)
+    W->>C: GET /api/AccessLogs/me?fromDate&toDate&roleName
+    C->>S: GetMyAccessLogsAsync(StudentId, request)
+    S-->>W: Who read which attribute, when and under which purpose
+    STU->>W: Flag an entry
+    W->>C: PUT /api/AccessLogs/me/{id}/flag
+    C->>S: FlagMineAsync(StudentId, AccessLogId)
+    S->>R: UpdateAsync(isFlagged = true, status = unreviewed)
+    R->>DB: UPDATE ACCESSLOGS (review fields only)
+    S->>N: NotifyAsync(every Steward)
+    STW->>W: Open flagged entries
+    W->>C: GET /api/AccessLogs/search?isFlagged=true
+    STW->>W: Mark as cleared (or confirmedIssue)
+    W->>C: PUT /api/AccessLogs/{id}/review {status}
+    C->>S: ReviewAsync(AccessLogId, request)
+    S->>R: UpdateAsync(status, reviewedBy, reviewedAt)
+    R->>DB: UPDATE ACCESSLOGS
+    C-->>W: 200 OK

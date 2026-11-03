@@ -332,7 +332,7 @@ For now matching is manual; an automated/AI matching mode is a future plan.
 
 + View pending case change requests (from the student of the case or its current advisor)
 + View reason and proposed advisor
-+ Approve or reject the change (approving moves the case to the proposed advisor)
++ Approve or reject the change (approving moves the case to the proposed advisor; rejecting needs a reason, which is sent to the people involved)
 + View history of past case changes
 
 - Receive and respond to escalations:

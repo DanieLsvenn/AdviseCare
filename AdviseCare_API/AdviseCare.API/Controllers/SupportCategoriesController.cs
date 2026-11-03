@@ -14,59 +14,78 @@ namespace AdviseCare.API.Controllers
     {
         private readonly ISupportCategoryService _supportCategoryService = supportCategoryService;
 
+        // Get all Support categories, with optional pagination
         [HttpGet]
         [SwaggerOperation(Summary = "[All roles] Get all support categories with optional pagination",
-            Description = "Ordered by support type, then name. Pass page and pageSize together to page the results.")]
+            Description = "Retrieves every support category with its governing consent purpose, ordered by support type, then name. Pass page and pageSize together to page the results.")]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
-            return Ok(await _supportCategoryService.GetAllAsync(page, pageSize));
+            if (page.HasValue && pageSize.HasValue)
+            {
+                return Ok(await _supportCategoryService.GetAllWithPaginationAsync(
+                    page.Value,
+                    pageSize.Value));
+            }
+
+            return Ok(await _supportCategoryService.GetAll());
         }
 
-        [HttpGet("search")]
-        [SwaggerOperation(Summary = "[All roles] Search support categories",
-            Description = "Filters: supportType (academic/wellbeing), status (active/archived), categoryName (contains), consentPurposeId. " +
-                "The student's request form uses ?supportType=academic&status=active.")]
-        public async Task<IActionResult> Search([FromQuery] SearchSupportCategoryRequest request)
-        {
-            return Ok(await _supportCategoryService.SearchAsync(request));
-        }
-
-        [HttpGet("{id:guid}")]
-        [SwaggerOperation(Summary = "[All roles] Get a support category by id", Description = "Includes the governing consent purpose's name and status.")]
+        // Get a Support category by Id
+        [HttpGet("{id}")]
+        [SwaggerOperation(Summary = "[All roles] Get support category by Id",
+            Description = "Retrieves one support category, including the name and status of the consent purpose that governs which data a student may share with a request in it.")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
-            return Ok(await _supportCategoryService.GetByIdAsync(id));
+            var response = await _supportCategoryService.GetByIdAsync(id);
+            return Ok(response);
         }
 
-        [HttpGet("{id:guid}/shareable-attributes")]
-        [SwaggerOperation(Summary = "[All roles] List the data attributes a student may share with a request in this category",
-            Description = "The active attributes of the category's consent purpose (WF2 step 2.4.1). Empty with canShare = false when the purpose is not active. " +
-                "For a Student, alreadyShared tells which attributes already have a granted consent for this purpose.")]
-        public async Task<IActionResult> GetShareableAttributes([FromRoute] Guid id)
+        // Search Support categories
+        [HttpGet("search")]
+        [SwaggerOperation(Summary = "[All roles] Search/Filter support categories",
+            Description = "Filters support categories by name (contains), governing consent purpose, support type (academic/wellbeing) and status (active/archived). Empty fields are ignored. " +
+                "The request form uses ?supportType=academic&status=active (WF2 step 2.2).")]
+        public async Task<IActionResult> Search([FromQuery] SearchSupportCategoryRequest request)
         {
-            var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
-            return Ok(await _supportCategoryService.GetShareableAttributesAsync(id, accountId, User.IsInRole("Student")));
+            var response = await _supportCategoryService.SearchAsync(request);
+            return Ok(response);
         }
 
+        // Create a Support category
         [HttpPost]
         [Authorize(Roles = "System Administrator")]
-        [SwaggerOperation(Summary = "[System Administrator] Create a support category",
-            Description = "supportType is academic or wellbeing; consentPurposeId is the purpose that governs which data a student may share (must not be retired). " +
-                "Names are unique within a support type. createdBy is taken from the token.")]
+        [SwaggerOperation(Summary = "[System Administrator] Create support category",
+            Description = "Creates an active support category. The support type (academic/wellbeing) decides which advisor role handles its cases; the consent purpose (not retired) decides which data attributes a student may share with a request. " +
+                "Names are unique within a support type.")]
         public async Task<IActionResult> Create([FromBody] CreateSupportCategoryRequest request)
         {
-            var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
-            return Ok(await _supportCategoryService.CreateAsync(accountId, request));
+            var creatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _supportCategoryService.CreateAsync(creatorId, request);
+            return Ok(response);
         }
 
-        [HttpPut("{id:guid}")]
+        // Update a Support category
+        [HttpPut("{id}")]
         [Authorize(Roles = "System Administrator")]
-        [SwaggerOperation(Summary = "[System Administrator] Edit or archive a support category",
-            Description = "Send every field; status = archived hides it from new requests (existing cases keep it). " +
+        [SwaggerOperation(Summary = "[System Administrator] Update support category",
+            Description = "Updates the name, description, support type, governing consent purpose and status of a support category. Setting the status to archived hides it from new requests while existing cases keep it. " +
                 "The support type cannot change once cases use the category.")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateSupportCategoryRequest request)
         {
-            return Ok(await _supportCategoryService.UpdateAsync(id, request));
+            var response = await _supportCategoryService.UpdateAsync(id, request);
+            return Ok(response);
+        }
+
+        // Get the data attributes a student may share with a request in a Support category
+        [HttpGet("{id}/shareable-attributes")]
+        [SwaggerOperation(Summary = "[All roles] Get the data attributes a student may share with a request in this category",
+            Description = "Lists the active data attributes of the category's consent purpose (WF2 step 2.4.1); empty with canShare = false when the purpose is not active. " +
+                "For a student, alreadyShared marks the attributes they already granted under that purpose.")]
+        public async Task<IActionResult> GetShareableAttributes([FromRoute] Guid id)
+        {
+            var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _supportCategoryService.GetShareableAttributesAsync(accountId, User.IsInRole("Student"), id);
+            return Ok(response);
         }
     }
 }

@@ -1,0 +1,38 @@
+---
+title: AdviseCare - Use Cases of Student Welfare Officer
+---
+flowchart LR
+    ACT(["&laquo;actor&raquo;<br/><b>Student Welfare Officer</b>"])
+    GEN(["&laquo;actor&raquo;<br/>All authenticated users"])
+    ACT -.->|"inherits"| GEN
+    subgraph SYS["AdviseCare"]
+        direction TB
+        subgraph CON["Consent and Data Protection"]
+            UC26(["UC-26<br/>Request Emergency Access"])
+        end
+        subgraph SDA["Student Data Management"]
+            UC31(["UC-31<br/>View Student Data"])
+            UC32(["UC-32<br/>View Student Data at a Past Date"])
+        end
+        subgraph CWF["Case Workflow and Referrals"]
+            UC46(["UC-46<br/>Change Case Priority"])
+            UC48(["UC-48<br/>Answer Referral"])
+            UC49(["UC-49<br/>View Case History"])
+        end
+        subgraph WEL["Student Welfare"]
+            UC50(["UC-50<br/>Record Interventions"])
+            UC51(["UC-51<br/>Record Support Grants"])
+            UC53(["UC-53<br/>Refer to External Service"])
+            UC54(["UC-54<br/>Escalate Case"])
+        end
+    end
+    ACT --- UC26
+    ACT --- UC31
+    ACT --- UC32
+    ACT --- UC46
+    ACT --- UC48
+    ACT --- UC49
+    ACT --- UC50
+    ACT --- UC51
+    ACT --- UC53
+    ACT --- UC54

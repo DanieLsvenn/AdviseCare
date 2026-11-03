@@ -1,0 +1,34 @@
+---
+title: AdviseCare - Sequence Diagram SD-28 - Advance Case Stage
+---
+sequenceDiagram
+    autonumber
+    actor ADV as Advisor
+    participant W as Web App
+    participant C as CasesController
+    participant S as CaseService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADV->>W: Move case to "closed" with a reason
+    W->>C: PUT /api/Cases/{id}/stage {toStage, reason}
+    C->>S: ChangeStageAsync(AdvisorId, CaseId, request)
+    S->>R: Case visible to the caller and the caller is its advisor
+    alt case closed, same stage, or a referral of the case is pending
+        S-->>C: ConflictException / ValidationException
+        C-->>W: 409 / 400
+    else
+        S->>R: PrepareCreate CaseStageHistory (from -> to, reason)
+        opt toStage = closed
+            S->>S: status = closed, closedAt = now
+        end
+        S->>R: PrepareUpdate Case, SaveAsync()
+        R->>DB: UPDATE CASES, INSERT CASESTAGEHISTORIES
+        S->>S: Log activity caseClosed / caseStageChanged
+        opt closed
+            S->>N: NotifyAsync(student, "Your case has been closed")
+        end
+        S-->>C: ChangeCaseStageResponse
+        C-->>W: 200 OK
+    end
+    Note over W,DB: PUT /api/Cases/{id}/reopen sets status = reopened, stage closed -> assigned, clears closedAt and notifies the student

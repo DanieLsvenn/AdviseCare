@@ -1,0 +1,204 @@
+---
+title: AdviseCare - Class Diagram - Master Data
+---
+classDiagram
+    direction LR
+    class AcademicTermsController {
+        <<controller>>
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+    }
+    AcademicTermsController --> IAcademicTermService : uses
+    class FacultiesController {
+        <<controller>>
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+    }
+    FacultiesController --> IFacultyService : uses
+    class ProgrammesController {
+        <<controller>>
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+    }
+    ProgrammesController --> IProgrammeService : uses
+    class SubjectsController {
+        <<controller>>
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +GetAllAccountSubject() GET /account-subjects
+        +GetAccountSubjectById() GET /account-subjects/:accountId/:subjectId
+        +SearchAccountSubject() GET /account-subjects/search
+        +CreateAccountSubject() POST /account-subjects
+        +DeleteAccountSubject() DELETE /account-subjects/:accountId/:subjectId
+    }
+    SubjectsController --> ISubjectService : uses
+    class SupportCategoriesController {
+        <<controller>>
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +GetShareableAttributes() GET /:id/shareable-attributes
+    }
+    SupportCategoriesController --> ISupportCategoryService : uses
+    class IAcademicTermService {
+        <<interface>>
+        +GetAll() IEnumerable~GetAllAcademicTermResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllAcademicTermWithPaginationResponse~
+        +GetByIdAsync(TermId) GetAcademicTermByIdResponse
+        +SearchAsync(request) List~SearchAcademicTermResponse~
+        +CreateAsync(request) CreateAcademicTermResponse
+        +UpdateAsync(TermId, request) UpdateAcademicTermResponse
+    }
+    class AcademicTermService {
+        <<service>>
+    }
+    AcademicTermService ..|> IAcademicTermService
+    AcademicTermService --> Academicterm : IGenericRepository
+    class IFacultyService {
+        <<interface>>
+        +GetAll() IEnumerable~GetAllFacultyResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllFacultyWithPaginationResponse~
+        +GetByIdAsync(FacultyId) GetFacultyByIdResponse
+        +SearchAsync(request) List~SearchFacultyResponse~
+        +CreateAsync(request) CreateFacultyResponse
+        +UpdateAsync(FacultyId, request) UpdateFacultyResponse
+    }
+    class FacultyService {
+        <<service>>
+    }
+    FacultyService ..|> IFacultyService
+    FacultyService --> Faculty : IGenericRepository
+    class IProgrammeService {
+        <<interface>>
+        +GetAll() IEnumerable~GetAllProgrammeResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllProgrammeWithPaginationResponse~
+        +GetByIdAsync(ProgrammeId) GetProgrammeByIdResponse
+        +SearchAsync(request) List~SearchProgrammeResponse~
+        +CreateAsync(request) CreateProgrammeResponse
+        +UpdateAsync(ProgrammeId, request) UpdateProgrammeResponse
+    }
+    class ProgrammeService {
+        <<service>>
+    }
+    ProgrammeService ..|> IProgrammeService
+    ProgrammeService --> Programme : IGenericRepository
+    ProgrammeService --> Faculty : IGenericRepository
+    class ISubjectService {
+        <<interface>>
+        +GetAll() IEnumerable~GetAllSubjectResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllSubjectWithPaginationResponse~
+        +GetByIdAsync(SubjectId) GetSubjectByIdResponse
+        +SearchAsync(request) List~SearchSubjectResponse~
+        +CreateAsync(request) CreateSubjectResponse
+        +UpdateAsync(SubjectId, request) UpdateSubjectResponse
+        +GetAllAccountSubjectAsync() IEnumerable~GetAllAccountSubjectResponse~
+        +GetAllAccountSubjectWithPaginationAsync(page, pageSize) IEnumerable~GetAllAccountSubjectWithPaginationResponse~
+        +GetAccountSubjectByIdAsync(AccountId, SubjectId) GetAccountSubjectByIdResponse
+        +SearchAccountSubjectAsync(request) List~SearchAccountSubjectResponse~
+        +CreateAccountSubjectAsync(request) CreateAccountSubjectResponse
+        +DeleteAccountSubjectAsync(AccountId, SubjectId) bool
+    }
+    class SubjectService {
+        <<service>>
+    }
+    SubjectService ..|> ISubjectService
+    SubjectService --> Subject : IGenericRepository
+    SubjectService --> Faculty : IGenericRepository
+    SubjectService --> AccountSubject : IGenericRepository
+    class ISupportCategoryService {
+        <<interface>>
+        +GetAll() IEnumerable~GetAllSupportCategoryResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllSupportCategoryWithPaginationResponse~
+        +GetByIdAsync(SupportCategoryId) GetSupportCategoryByIdResponse
+        +SearchAsync(request) List~SearchSupportCategoryResponse~
+        +CreateAsync(CreatorId, request) CreateSupportCategoryResponse
+        +UpdateAsync(SupportCategoryId, request) UpdateSupportCategoryResponse
+        +GetShareableAttributesAsync(AccountId, IsStudent, SupportCategoryId) GetSupportCategoryShareableAttributesResponse
+    }
+    class SupportCategoryService {
+        <<service>>
+    }
+    SupportCategoryService ..|> ISupportCategoryService
+    SupportCategoryService --> Supportcategory : IGenericRepository
+    SupportCategoryService --> Consentpurpose : IGenericRepository
+    class IActivityLogService {
+        <<interface, other module>>
+    }
+    AcademicTermService --> IActivityLogService : uses
+    FacultyService --> IActivityLogService : uses
+    ProgrammeService --> IActivityLogService : uses
+    SubjectService --> IActivityLogService : uses
+    SupportCategoryService --> IActivityLogService : uses
+    class Academicterm {
+        <<entity>>
+        +Guid termId
+        +DateTime endDate
+        +DateTime startDate
+        +string termName
+        +string status
+    }
+    class Faculty {
+        <<entity>>
+        +Guid facultyId
+        +string facultyCode
+        +string facultyName
+        +string status
+    }
+    class Programme {
+        <<entity>>
+        +Guid programmeId
+        +Guid facultyId
+        +string programmeCode
+        +string programmeName
+        +string status
+    }
+    class Subject {
+        <<entity>>
+        +Guid subjectId
+        +Guid facultyId
+        +string subjectCode
+        +string subjectName
+        +string status
+    }
+    class AccountSubject {
+        <<entity>>
+        +Guid accountId
+        +Guid subjectId
+        +DateTime assignedAt
+    }
+    class Supportcategory {
+        <<entity>>
+        +Guid supportCategoryId
+        +Guid consentPurposeId
+        +Guid createdBy
+        +string categoryName
+        +string description
+        +string supportType
+        +string status
+    }
+    class Consentpurpose {
+        <<entity>>
+        +Guid consentPurposeId
+        +Guid createdBy
+        +string description
+        +string purposeName
+        +string status
+    }
+    Faculty "1" -- "*" Programme : facultyId
+    Faculty "1" -- "*" Subject : facultyId
+    Subject "1" -- "*" AccountSubject : subjectId
+    Consentpurpose "1" -- "*" Supportcategory : consentPurposeId

@@ -1,0 +1,66 @@
+---
+title: AdviseCare - Database Design - Welfare
+---
+erDiagram
+    INTERVENTIONS {
+        uniqueidentifier interventionId PK "NOT NULL"
+        uniqueidentifier caseId FK "NOT NULL"
+        uniqueidentifier officerId FK "NOT NULL"
+        nvarchar(max) notes "NULL"
+        nvarchar(max) outcome "NULL"
+        datetime2(3) interventionDate "NOT NULL"
+        nvarchar(30) interventionType "NOT NULL"
+        bit isClosed "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    SUPPORTGRANTS {
+        uniqueidentifier supportGrantId PK "NOT NULL"
+        uniqueidentifier interventionId FK "NOT NULL"
+        nvarchar(max) grantDescription "NULL"
+        nvarchar(255) grantType "NOT NULL"
+        datetime2(3) issuedAt "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    EXTERNALSERVICES {
+        uniqueidentifier externalServiceId PK "NOT NULL"
+        nvarchar(max) contactInfo "NULL"
+        nvarchar(255) serviceName "NOT NULL"
+        nvarchar(255) serviceType "NULL"
+        bit isActive "NOT NULL"
+    }
+    EXTERNALREFERRALS {
+        uniqueidentifier externalReferralId PK "NOT NULL"
+        uniqueidentifier caseId FK "NOT NULL"
+        uniqueidentifier externalServiceId FK "NOT NULL"
+        uniqueidentifier referredBy FK "NOT NULL"
+        datetime2(3) followUpDueAt "NULL"
+        nvarchar(max) followUpOutcome "NULL"
+        datetime2(3) referredAt "NOT NULL"
+        bit isOverdue "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    ESCALATIONS {
+        uniqueidentifier escalationId PK "NOT NULL"
+        uniqueidentifier caseId FK "NOT NULL"
+        uniqueidentifier escalatedBy FK "NOT NULL"
+        uniqueidentifier escalatedTo FK "NOT NULL"
+        nvarchar(max) reason "NOT NULL"
+        nvarchar(max) response "NULL"
+        datetime2(3) escalatedAt "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    ACCOUNTS {
+        uniqueidentifier accountId PK "referenced table, see its own section"
+    }
+    CASES {
+        uniqueidentifier caseId PK "referenced table, see its own section"
+    }
+    INTERVENTIONS ||--o{ SUPPORTGRANTS : "interventionId"
+    CASES ||--o{ ESCALATIONS : "caseId"
+    ACCOUNTS ||--o{ ESCALATIONS : "escalatedBy"
+    ACCOUNTS ||--o{ ESCALATIONS : "escalatedTo"
+    CASES ||--o{ EXTERNALREFERRALS : "caseId"
+    EXTERNALSERVICES ||--o{ EXTERNALREFERRALS : "externalServiceId"
+    ACCOUNTS ||--o{ EXTERNALREFERRALS : "referredBy"
+    CASES ||--o{ INTERVENTIONS : "caseId"
+    ACCOUNTS ||--o{ INTERVENTIONS : "officerId"

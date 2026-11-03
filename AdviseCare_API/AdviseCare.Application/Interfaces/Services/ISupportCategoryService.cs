@@ -5,11 +5,12 @@ namespace AdviseCare.Application.Interfaces.Services
 {
     public interface ISupportCategoryService
     {
-        Task<List<SupportCategoryResponse>> GetAllAsync(int? page, int? pageSize);
-        Task<List<SupportCategoryResponse>> SearchAsync(SearchSupportCategoryRequest request);
-        Task<SupportCategoryResponse> GetByIdAsync(Guid supportCategoryId);
-        Task<ShareableAttributesResponse> GetShareableAttributesAsync(Guid supportCategoryId, Guid accountId, bool isStudent);
-        Task<SupportCategoryResponse> CreateAsync(Guid createdBy, CreateSupportCategoryRequest request);
-        Task<SupportCategoryResponse> UpdateAsync(Guid supportCategoryId, UpdateSupportCategoryRequest request);
+        Task<IEnumerable<GetAllSupportCategoryResponse>> GetAll();
+        Task<IEnumerable<GetAllSupportCategoryWithPaginationResponse>> GetAllWithPaginationAsync(int page, int pageSize);
+        Task<GetSupportCategoryByIdResponse> GetByIdAsync(Guid SupportCategoryId);
+        Task<List<SearchSupportCategoryResponse>> SearchAsync(SearchSupportCategoryRequest request);
+        Task<CreateSupportCategoryResponse> CreateAsync(Guid CreatorId, CreateSupportCategoryRequest request);
+        Task<UpdateSupportCategoryResponse> UpdateAsync(Guid SupportCategoryId, UpdateSupportCategoryRequest request);
+        Task<GetSupportCategoryShareableAttributesResponse> GetShareableAttributesAsync(Guid AccountId, bool IsStudent, Guid SupportCategoryId);
     }
 }

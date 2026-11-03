@@ -7,49 +7,56 @@ using System.Security.Claims;
 
 namespace AdviseCare.API.Controllers
 {
-    // Reports are generated on the fly and never stored, so this controller does not use the REPORTS table
+    // Reports are generated on the fly and never stored, so this controller does not use the REPORTS table (stored report history is FU2)
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Roles = "Programme Head")]
-    public class ReportsController(ICaseReportService caseReportService) : ControllerBase
+    public class ReportsController(IReportService reportService) : ControllerBase
     {
-        private readonly ICaseReportService _caseReportService = caseReportService;
+        private readonly IReportService _reportService = reportService;
 
-        private Guid CurrentAccountId => Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
-
+        // Get the Case report
         [HttpGet("cases")]
         [SwaggerOperation(Summary = "[Programme Head] List the cases opened in a date range",
-            Description = "from and to are inclusive UTC dates (e.g. 2026-09-07). Optional filters: advisorId, supportType, supportCategoryId, subjectId, currentStage, status.")]
-        public async Task<IActionResult> GetCases([FromQuery] CaseReportRequest request)
+            Description = "from and to are inclusive UTC dates (e.g. 2026-09-07). Optional filters: advisorId, supportType, supportCategoryId, subjectId, currentStage, status. " +
+                "Each row has daysToClose for closed cases.")]
+        public async Task<IActionResult> GetCaseReport([FromQuery] GetCaseReportRequest request)
         {
-            return Ok(await _caseReportService.GetCasesAsync(request));
+            var response = await _reportService.GetCaseReportAsync(request);
+            return Ok(response);
         }
 
+        // Export the Case report
+        [HttpGet("cases/export")]
+        [SwaggerOperation(Summary = "[Programme Head] Export the case report",
+            Description = "Same filters as /cases plus format = xlsx (default), csv or pdf. Downloads the file; nothing is stored, and the export is recorded in the activity log (reportExported).")]
+        public async Task<IActionResult> ExportCaseReport([FromQuery] ExportCaseReportRequest request)
+        {
+            var programmeHeadId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _reportService.ExportCaseReportAsync(programmeHeadId, request);
+            return File(response.Content, response.ContentType, response.FileName);
+        }
+
+        // Get the Caseload and closure report
         [HttpGet("caseload-closure")]
         [SwaggerOperation(Summary = "[Programme Head] Caseload volume and average closure time per advisor",
-            Description = "Over the cases opened in the range and grouped by their current advisor: total, open and closed cases, and the average days to close (closed cases only). " +
+            Description = "Over the cases opened in the range, grouped by their current advisor: total, open and closed cases, and the average days to close (closed cases only). " +
                 "Optional filters: advisorId, supportType.")]
-        public async Task<IActionResult> GetCaseloadClosure([FromQuery] CaseloadClosureRequest request)
+        public async Task<IActionResult> GetCaseloadClosureReport([FromQuery] GetCaseloadClosureReportRequest request)
         {
-            return Ok(await _caseReportService.GetCaseloadClosureAsync(request));
+            var response = await _reportService.GetCaseloadClosureReportAsync(request);
+            return Ok(response);
         }
 
-        [HttpGet("cases/export")]
-        [SwaggerOperation(Summary = "[Programme Head] Export the cases list",
-            Description = "Same filters as /cases plus format = xlsx (default), csv or pdf. Returns the file itself; nothing is stored.")]
-        public async Task<IActionResult> ExportCases([FromQuery] CaseReportExportRequest request)
-        {
-            var file = await _caseReportService.ExportCasesAsync(CurrentAccountId, request);
-            return File(file.Content, file.ContentType, file.FileName);
-        }
-
+        // Export the Caseload and closure report
         [HttpGet("caseload-closure/export")]
         [SwaggerOperation(Summary = "[Programme Head] Export the caseload and closure report",
-            Description = "Same filters as /caseload-closure plus format = xlsx (default), csv or pdf. Returns the file itself; nothing is stored.")]
-        public async Task<IActionResult> ExportCaseloadClosure([FromQuery] CaseloadClosureExportRequest request)
+            Description = "Same filters as /caseload-closure plus format = xlsx (default), csv or pdf. Downloads the file; nothing is stored, and the export is recorded in the activity log (reportExported).")]
+        public async Task<IActionResult> ExportCaseloadClosureReport([FromQuery] ExportCaseloadClosureReportRequest request)
         {
-            var file = await _caseReportService.ExportCaseloadClosureAsync(CurrentAccountId, request);
-            return File(file.Content, file.ContentType, file.FileName);
+            var programmeHeadId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _reportService.ExportCaseloadClosureReportAsync(programmeHeadId, request);
+            return File(response.Content, response.ContentType, response.FileName);
         }
     }
 }

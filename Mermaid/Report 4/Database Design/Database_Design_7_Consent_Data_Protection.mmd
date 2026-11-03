@@ -1,0 +1,133 @@
+---
+title: AdviseCare - Database Design - Consent & Data Protection
+---
+erDiagram
+    CONSENTPURPOSES {
+        uniqueidentifier consentPurposeId PK "NOT NULL"
+        uniqueidentifier createdBy FK "NOT NULL"
+        nvarchar(max) description "NULL"
+        nvarchar(255) purposeName UK "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    PURPOSE_ATTRIBUTE {
+        uniqueidentifier consentPurposeId PK, FK "NOT NULL"
+        uniqueidentifier dataAttributeId PK, FK "NOT NULL"
+    }
+    CONSENTS {
+        uniqueidentifier consentId PK "NOT NULL"
+        uniqueidentifier consentPurposeId FK "NOT NULL"
+        uniqueidentifier dataAttributeId FK "NOT NULL"
+        uniqueidentifier studentId FK "NOT NULL"
+        datetime2(3) expiresAt "NULL"
+        datetime2(3) grantedAt "NOT NULL"
+        datetime2(3) withdrawnAt "NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    CONSENTHISTORIES {
+        uniqueidentifier consentHistoryId PK "NOT NULL"
+        uniqueidentifier changedBy FK "NOT NULL"
+        uniqueidentifier consentId FK "NOT NULL"
+        datetime2(3) changedAt "NOT NULL"
+        nvarchar(30) newStatus "NOT NULL"
+        nvarchar(30) previousStatus "NULL"
+    }
+    CONSENTREQUESTS {
+        uniqueidentifier consentRequestId PK "NOT NULL"
+        uniqueidentifier advisorId FK "NOT NULL"
+        uniqueidentifier consentPurposeId FK "NOT NULL"
+        uniqueidentifier dataAttributeId FK "NOT NULL"
+        uniqueidentifier studentId FK "NOT NULL"
+        nvarchar(max) purposeStated "NOT NULL"
+        datetime2(3) requestedAt "NOT NULL"
+        datetime2(3) respondedAt "NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    ACCESSPOLICIES {
+        uniqueidentifier accessPolicyId PK "NOT NULL"
+        uniqueidentifier consentPurposeId FK "NOT NULL"
+        uniqueidentifier createdBy FK "NOT NULL"
+        uniqueidentifier roleId FK "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    ACCESSLOGS {
+        uniqueidentifier accessLogId PK "NOT NULL"
+        uniqueidentifier accessorId FK "NOT NULL"
+        uniqueidentifier consentPurposeId FK "NULL"
+        uniqueidentifier recordedUserId FK "NOT NULL"
+        uniqueidentifier studentDataId FK "NULL"
+        nvarchar(255) accessedResource "NOT NULL"
+        datetime2(3) accessedAt "NOT NULL"
+        bit isFlagged "NOT NULL"
+        nvarchar(30) status "NULL"
+    }
+    EMERGENCYACCESSREQUESTS {
+        uniqueidentifier emergencyAccessRequestId PK "NOT NULL"
+        uniqueidentifier requestedBy FK "NOT NULL"
+        uniqueidentifier stewardId FK "NULL"
+        uniqueidentifier studentId FK "NOT NULL"
+        nvarchar(max) justification "NOT NULL"
+        nvarchar(max) rejectionReason "NULL"
+        datetime2(3) requestedAt "NOT NULL"
+        datetime2(3) decidedAt "NULL"
+        datetime2(3) scopeExpiresAt "NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    ERASUREREQUESTS {
+        uniqueidentifier erasureRequestId PK "NOT NULL"
+        uniqueidentifier attributeKeyId FK "NOT NULL"
+        uniqueidentifier consentId FK "NOT NULL"
+        uniqueidentifier executedBy FK "NULL"
+        datetime2(3) executedAt "NULL"
+        datetime2(3) requestedAt "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    ATTRIBUTEKEYS {
+        uniqueidentifier attributeKeyId PK "NOT NULL"
+        uniqueidentifier dataAttributeId FK "NOT NULL"
+        uniqueidentifier studentId FK "NOT NULL"
+        nvarchar(255) wrappedKey "NULL"
+        int masterKeyVersion "NOT NULL"
+        datetime2(3) createdAt "NOT NULL"
+        datetime2(3) destroyedAt "NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    ACCOUNTS {
+        uniqueidentifier accountId PK "referenced table, see its own section"
+    }
+    DATAATTRIBUTES {
+        uniqueidentifier dataAttributeId PK "referenced table, see its own section"
+    }
+    ROLES {
+        uniqueidentifier roleId PK "referenced table, see its own section"
+    }
+    STUDENTDATA {
+        uniqueidentifier studentDataId PK "referenced table, see its own section"
+    }
+    ACCOUNTS ||--o{ EMERGENCYACCESSREQUESTS : "requestedBy"
+    ACCOUNTS |o--o{ EMERGENCYACCESSREQUESTS : "stewardId"
+    ACCOUNTS ||--o{ EMERGENCYACCESSREQUESTS : "studentId"
+    CONSENTPURPOSES ||--o{ CONSENTS : "consentPurposeId"
+    DATAATTRIBUTES ||--o{ CONSENTS : "dataAttributeId"
+    ACCOUNTS ||--o{ CONSENTS : "studentId"
+    CONSENTPURPOSES ||--o{ ACCESSPOLICIES : "consentPurposeId"
+    ACCOUNTS ||--o{ ACCESSPOLICIES : "createdBy"
+    ROLES ||--o{ ACCESSPOLICIES : "roleId"
+    ATTRIBUTEKEYS ||--o{ ERASUREREQUESTS : "attributeKeyId"
+    CONSENTS ||--o{ ERASUREREQUESTS : "consentId"
+    ACCOUNTS |o--o{ ERASUREREQUESTS : "executedBy"
+    ACCOUNTS ||--o{ CONSENTREQUESTS : "advisorId"
+    CONSENTPURPOSES ||--o{ CONSENTREQUESTS : "consentPurposeId"
+    DATAATTRIBUTES ||--o{ CONSENTREQUESTS : "dataAttributeId"
+    ACCOUNTS ||--o{ CONSENTREQUESTS : "studentId"
+    ACCOUNTS ||--o{ CONSENTHISTORIES : "changedBy"
+    CONSENTS ||--o{ CONSENTHISTORIES : "consentId"
+    DATAATTRIBUTES ||--o{ ATTRIBUTEKEYS : "dataAttributeId"
+    ACCOUNTS ||--o{ ATTRIBUTEKEYS : "studentId"
+    ATTRIBUTEKEYS |o--o{ STUDENTDATA : "attributeKeyId"
+    ACCOUNTS ||--o{ ACCESSLOGS : "accessorId"
+    CONSENTPURPOSES |o--o{ ACCESSLOGS : "consentPurposeId"
+    ACCOUNTS ||--o{ ACCESSLOGS : "recordedUserId"
+    STUDENTDATA |o--o{ ACCESSLOGS : "studentDataId"
+    ACCOUNTS ||--o{ CONSENTPURPOSES : "createdBy"
+    CONSENTPURPOSES ||--o{ PURPOSE_ATTRIBUTE : "consentPurposeId"
+    DATAATTRIBUTES ||--o{ PURPOSE_ATTRIBUTE : "dataAttributeId"

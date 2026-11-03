@@ -5,23 +5,22 @@ namespace AdviseCare.Application.Interfaces.Services
 {
     public interface ICaseService
     {
-        // D2 / D4.2
-        Task<CaseResponse> CreateAsync(Guid callerId, CreateCaseRequest request);
-        Task<List<CaseResponse>> GetMyCasesAsync(Guid studentId, SearchMyCasesRequest request);
-        Task<List<CaseResponse>> SearchAsync(SearchCasesRequest request);
-        Task<CaseResponse> GetByIdAsync(Guid callerId, Guid caseId);
-        Task<List<CaseStageHistoryResponse>> GetStageHistoryAsync(Guid callerId, Guid caseId);
-
-        // D3
-        Task<List<CaseResponse>> GetMatchingQueueAsync();
-        Task<List<SuggestedAdvisorResponse>> GetSuggestedAdvisorsAsync(Guid caseId);
-        Task<CaseResponse> AssignAsync(Guid programmeHeadId, Guid caseId, AssignCaseRequest request);
-        Task<CaseResponse> ReassignAsync(Guid programmeHeadId, Guid caseId, ReassignCaseRequest request);
-
-        // D4
-        Task<AssignedCasesResponse> GetAssignedAsync(Guid advisorId, SearchAssignedCasesRequest request);
-        Task<CaseResponse> ChangeStageAsync(Guid advisorId, Guid caseId, ChangeCaseStageRequest request);
-        Task<CaseResponse> ReopenAsync(Guid advisorId, Guid caseId, ReopenCaseRequest request);
-        Task<CaseResponse> ChangePriorityAsync(Guid callerId, Guid caseId, ChangeCasePriorityRequest request);
+        Task<IEnumerable<GetAllCaseResponse>> GetAll();
+        Task<IEnumerable<GetAllCaseWithPaginationResponse>> GetAllWithPaginationAsync(int page, int pageSize);
+        Task<GetCaseByIdResponse> GetByIdAsync(Guid CallerId, Guid CaseId);
+        Task<List<SearchCaseResponse>> SearchAsync(SearchCaseRequest request);
+        Task<CreateCaseResponse> CreateAsync(Guid CreatorId, CreateCaseRequest request);
+        Task<List<GetMyCaseResponse>> GetMyAllAsync(Guid StudentId, SearchMyCaseRequest request);
+        Task<List<GetMatchingQueueCaseResponse>> GetMatchingQueueAsync();
+        Task<List<GetCaseSuggestedAdvisorResponse>> GetSuggestedAdvisorsAsync(Guid CaseId);
+        Task<AssignCaseResponse> AssignAsync(Guid ProgrammeHeadId, Guid CaseId, AssignCaseRequest request);
+        Task<ReassignCaseResponse> ReassignAsync(Guid ProgrammeHeadId, Guid CaseId, ReassignCaseRequest request);
+        Task<List<GetAssignedCaseResponse>> GetAssignedAsync(Guid AdvisorId, SearchAssignedCaseRequest request);
+        Task<IEnumerable<GetAssignedCaseWithPaginationResponse>> GetAssignedWithPaginationAsync(Guid AdvisorId, SearchAssignedCaseRequest request, int page, int pageSize);
+        Task<int> GetAssignedUnreadCountAsync(Guid AdvisorId);
+        Task<ChangeCaseStageResponse> ChangeStageAsync(Guid AdvisorId, Guid CaseId, ChangeCaseStageRequest request);
+        Task<ReopenCaseResponse> ReopenAsync(Guid AdvisorId, Guid CaseId, ReopenCaseRequest request);
+        Task<ChangeCasePriorityResponse> ChangePriorityAsync(Guid CallerId, Guid CaseId, ChangeCasePriorityRequest request);
+        Task<List<SearchCaseStageHistoryResponse>> SearchCaseStageHistoryAsync(Guid CallerId, SearchCaseStageHistoryRequest request);
     }
 }

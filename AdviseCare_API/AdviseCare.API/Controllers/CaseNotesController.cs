@@ -14,46 +14,81 @@ namespace AdviseCare.API.Controllers
     {
         private readonly ICaseNoteService _caseNoteService = caseNoteService;
 
-        private Guid CurrentAccountId => Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
-
-        [HttpPost]
+        // Get all my Case notes, with optional pagination
+        [HttpGet]
         [Authorize(Roles = "Academic Advisor,Wellbeing Advisor")]
-        [SwaggerOperation(Summary = "[Case advisor] Write a draft note on my case", Description = "The note starts as a draft (isFinalized = false) that only the author can see and edit.")]
-        public async Task<IActionResult> Create([FromBody] CreateCaseNoteRequest request)
+        [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor] Get all my case notes with optional pagination",
+            Description = "Lists the notes the signed-in advisor wrote, newest first, drafts and finalized. Pass page and pageSize together to page the results.")]
+        public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
-            return Ok(await _caseNoteService.CreateAsync(CurrentAccountId, request));
+            var authorId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            if (page.HasValue && pageSize.HasValue)
+            {
+                return Ok(await _caseNoteService.GetAllWithPaginationAsync(
+                    authorId,
+                    page.Value,
+                    pageSize.Value));
+            }
+
+            return Ok(await _caseNoteService.GetAll(authorId));
         }
 
-        [HttpPut("{id:guid}")]
-        [Authorize(Roles = "Academic Advisor,Wellbeing Advisor")]
-        [SwaggerOperation(Summary = "[Note author] Edit my draft note", Description = "Sets editedAt. A finalized note cannot be edited (400).")]
-        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateCaseNoteRequest request)
-        {
-            return Ok(await _caseNoteService.UpdateAsync(CurrentAccountId, id, request));
-        }
-
-        [HttpPut("{id:guid}/finalize")]
-        [Authorize(Roles = "Academic Advisor,Wellbeing Advisor")]
-        [SwaggerOperation(Summary = "[Note author] Finalize my draft note", Description = "After this the note is visible to the staff of the case and can never change.")]
-        public async Task<IActionResult> Finalize([FromRoute] Guid id)
-        {
-            return Ok(await _caseNoteService.FinalizeAsync(CurrentAccountId, id));
-        }
-
-        [HttpGet("{id:guid}")]
-        [SwaggerOperation(Summary = "[Staff of the case] Get a case note", Description = "Drafts are only visible to their author.")]
+        // Get a Case note by Id
+        [HttpGet("{id}")]
+        [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor, Student Welfare Officer, Programme Head] Get case note by Id",
+            Description = "A draft is visible only to its author; a finalized note to the staff of the case (its advisor, the Programme Head, and anyone who sent or received a referral of it). Students never read case notes.")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
-            return Ok(await _caseNoteService.GetByIdAsync(CurrentAccountId, id));
+            var callerId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _caseNoteService.GetByIdAsync(callerId, id);
+            return Ok(response);
         }
 
+        // Search Case notes of a case
         [HttpGet("search")]
-        [SwaggerOperation(Summary = "[Staff of the case] Get the notes of a case",
-            Description = "caseId is required; optional isFinalized. Returns finalized notes plus the caller's own drafts, oldest first. " +
-                "Staff of the case = its current advisor, the Programme Head and the sender/receiver of any of its referrals (e.g. the Welfare Officer). Students cannot read notes.")]
+        [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor, Student Welfare Officer, Programme Head] Get the notes of a case",
+            Description = "caseId is required; isFinalized is optional. Lists the case's finalized notes plus the caller's own drafts, oldest first (staff of the case only), e.g. the Welfare Officer reading the advisor's notes (WF2b step 2.1).")]
         public async Task<IActionResult> Search([FromQuery] SearchCaseNoteRequest request)
         {
-            return Ok(await _caseNoteService.SearchAsync(CurrentAccountId, request));
+            var callerId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _caseNoteService.SearchAsync(callerId, request);
+            return Ok(response);
+        }
+
+        // Create a Case note
+        [HttpPost]
+        [Authorize(Roles = "Academic Advisor,Wellbeing Advisor")]
+        [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor] Write a draft note on my case",
+            Description = "Only the case's current advisor can write notes, and not on a closed case. The note starts as a draft (isFinalized = false) that only its author can see and edit.")]
+        public async Task<IActionResult> Create([FromBody] CreateCaseNoteRequest request)
+        {
+            var creatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _caseNoteService.CreateAsync(creatorId, request);
+            return Ok(response);
+        }
+
+        // Update a Case note
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Academic Advisor,Wellbeing Advisor")]
+        [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor] Edit my draft note",
+            Description = "Changes the text of the author's own draft and sets editedAt. A finalized note can never change (409).")]
+        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateCaseNoteRequest request)
+        {
+            var authorId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _caseNoteService.UpdateAsync(authorId, id, request);
+            return Ok(response);
+        }
+
+        // Finalize a Case note
+        [HttpPut("{id}/finalize")]
+        [Authorize(Roles = "Academic Advisor,Wellbeing Advisor")]
+        [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor] Finalize my draft note",
+            Description = "After this the note is visible to the staff of the case and can never change again.")]
+        public async Task<IActionResult> Finalize([FromRoute] Guid id)
+        {
+            var authorId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _caseNoteService.FinalizeAsync(authorId, id);
+            return Ok(response);
         }
     }
 }

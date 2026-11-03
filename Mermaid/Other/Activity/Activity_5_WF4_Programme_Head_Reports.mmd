@@ -1,0 +1,19 @@
+---
+title: AdviseCare - Activity Diagram - WF4 Programme Head Reports
+---
+
+flowchart TD
+    S((Start)) --> A1[Programme Head opens the reports page]
+    A1 --> A2[Choose a date range]
+    A2 --> D1{Dates valid? to not before from}
+    D1 -->|No| A2
+    D1 -->|Yes| A3[Filter by advisor, support type, category, subject, stage or status]
+    A3 --> D2{Which report?}
+    D2 -->|Cases| B1[List the cases opened in the range with days to close]
+    D2 -->|Caseload| B2[Total, open and closed cases and average days to close per current advisor]
+    B1 --> D3{Export?}
+    B2 --> D3
+    D3 -->|No| X((End))
+    D3 -->|Yes| C1[Choose xlsx, csv or pdf]
+    C1 --> C2[System generates the file on the fly and records reportExported]
+    C2 --> X

@@ -1,0 +1,34 @@
+---
+title: AdviseCare - Sequence Diagram SD-01 - Import Accounts
+---
+sequenceDiagram
+    autonumber
+    actor ADM as System Administrator
+    participant W as Web App
+    participant C as AccountsController
+    participant S as AccountService
+    participant X as IExcelReader
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADM->>W: Upload accounts.xlsx
+    W->>C: POST /api/Accounts/import (multipart file)
+    C->>S: ImportAsync(request)
+    S->>X: Read rows (email, fullName, userName, facultyCode, role, studentCode, academicStatus)
+    X-->>S: rows
+    S->>R: Load faculties, roles, existing emails, usernames and student codes
+    R->>DB: SELECT
+    DB-->>R: rows
+    R-->>S: reference data
+    S->>S: Validate every row (required fields, formats, duplicates in file and system, 5 or 7 filled columns)
+    alt any row is invalid
+        S-->>C: ImportAccountResponse (invalid rows, nothing created)
+        C-->>W: 200 OK with the invalid rows
+    else all rows valid
+        S->>R: PrepareCreate Account, AccountRole and StudentProfile for each row (linkStatus = notLinked, no password)
+        S->>R: SaveAsync()
+        R->>DB: INSERT (one transaction)
+        S->>S: Log activity accountsImported
+        S-->>C: ImportAccountResponse (created accounts)
+        C-->>W: 200 OK
+        W-->>ADM: Show result and offer to send linking emails
+    end

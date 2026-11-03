@@ -1,0 +1,33 @@
+---
+title: AdviseCare - Sequence Diagram SD-33 - Generate and Export Report
+---
+sequenceDiagram
+    autonumber
+    actor PH as Programme Head
+    participant W as Web App
+    participant C as ReportsController
+    participant S as ReportService
+    participant XW as IExcelWriter / IPdfWriter
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    PH->>W: Choose date range and filters
+    W->>C: GET /api/Reports/cases?from&to&advisorId&supportType...
+    C->>S: GetCaseReportAsync(request)
+    S->>S: Check both dates (inclusive UTC days, to not before from)
+    S->>R: Cases opened in the range with student, advisor, subject, category
+    R->>DB: SELECT
+    S-->>W: Rows with days to close
+    PH->>W: Export as xlsx
+    W->>C: GET /api/Reports/cases/export?...&format=xlsx
+    C->>S: ExportCaseReportAsync(ProgrammeHeadId, request)
+    S->>R: Same query
+    alt format = csv
+        S->>S: Build UTF-8 CSV with BOM
+    else format = pdf
+        S->>XW: WriteTable(title, subtitle, headers, rows)
+    else xlsx
+        S->>XW: WriteRows(sheet, headers, rows)
+    end
+    S->>S: Log activity reportExported
+    S-->>C: ExportCaseReportResponse (bytes, content type, file name)
+    C-->>W: File download

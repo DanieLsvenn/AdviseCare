@@ -1,0 +1,71 @@
+---
+title: AdviseCare - Database Design - Data Ingestion
+---
+erDiagram
+    DATASOURCES {
+        uniqueidentifier dataSourceId PK "NOT NULL"
+        uniqueidentifier createdBy FK "NULL"
+        uniqueidentifier dataAttributeId FK, UK "NOT NULL"
+        nvarchar(max) connectionConfig "NULL"
+        nvarchar(max) fieldMapping "NULL"
+        nvarchar(255) sourceName "NOT NULL"
+        nvarchar(30) sourceType "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    INGESTIONSCHEDULES {
+        uniqueidentifier ingestionScheduleId PK "NOT NULL"
+        uniqueidentifier dataSourceId FK "NOT NULL"
+        time(0) scheduledStartTime "NOT NULL"
+        int ingestionFrequency "NOT NULL"
+        datetime2(3) lastRun "NULL"
+        int numberOfSuccesses "NOT NULL"
+        int numberOfFails "NOT NULL"
+        nvarchar(30) onFailure "NOT NULL"
+        int failureRetryInterval "NULL"
+        int numberOfRetries "NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    INGESTIONJOBS {
+        uniqueidentifier ingestionJobId PK "NOT NULL"
+        uniqueidentifier ingestionScheduleId FK "NOT NULL"
+        datetime2(3) expectedStartTime "NOT NULL"
+        datetime2(3) completedAt "NULL"
+        nvarchar(max) errorDetails "NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    STUDENTDATA {
+        uniqueidentifier studentDataId PK "NOT NULL"
+        uniqueidentifier attributeKeyId FK "NULL"
+        uniqueidentifier dataAttributeId FK "NOT NULL"
+        uniqueidentifier dataSourceId FK "NULL"
+        uniqueidentifier studentId FK "NOT NULL"
+        uniqueidentifier termId FK "NOT NULL"
+        varbinary(max) dataValue "NULL"
+        nvarchar(max) provenanceNote "NULL"
+        datetime2(3) erasedAt "NULL"
+        datetime2(3) transactionFrom "NOT NULL"
+        datetime2(3) validFrom "NOT NULL"
+        bit isMissing "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    ACADEMICTERMS {
+        uniqueidentifier termId PK "referenced table, see its own section"
+    }
+    ACCOUNTS {
+        uniqueidentifier accountId PK "referenced table, see its own section"
+    }
+    ATTRIBUTEKEYS {
+        uniqueidentifier attributeKeyId PK "referenced table, see its own section"
+    }
+    DATAATTRIBUTES {
+        uniqueidentifier dataAttributeId PK "referenced table, see its own section"
+    }
+    INGESTIONSCHEDULES ||--o{ INGESTIONJOBS : "ingestionScheduleId"
+    DATASOURCES ||--o| INGESTIONSCHEDULES : "dataSourceId"
+    ACCOUNTS |o--o{ DATASOURCES : "createdBy"
+    DATAATTRIBUTES ||--o| DATASOURCES : "dataAttributeId"
+    ATTRIBUTEKEYS |o--o{ STUDENTDATA : "attributeKeyId"
+    DATAATTRIBUTES ||--o{ STUDENTDATA : "dataAttributeId"
+    DATASOURCES |o--o{ STUDENTDATA : "dataSourceId"
+    ACCOUNTS ||--o{ STUDENTDATA : "studentId"
+    ACADEMICTERMS ||--o{ STUDENTDATA : "termId"

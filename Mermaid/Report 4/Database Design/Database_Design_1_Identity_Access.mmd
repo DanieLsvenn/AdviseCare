@@ -1,0 +1,77 @@
+---
+title: AdviseCare - Database Design - Identity & Access
+---
+erDiagram
+    ACCOUNTS {
+        uniqueidentifier accountId PK "NOT NULL"
+        uniqueidentifier facultyId FK "NULL"
+        nvarchar(max) avatarUrl "NULL"
+        nvarchar(255) email UK "NOT NULL"
+        nvarchar(255) fullName "NOT NULL"
+        nvarchar(255) googleId "NULL"
+        nvarchar(255) authProvider "NULL"
+        nvarchar(255) passwordHash "NULL"
+        nvarchar(255) resetToken "NULL"
+        datetime2(3) resetTokenExpiresAt "NULL"
+        nvarchar(255) userName UK "NOT NULL"
+        datetime2(3) createdAt "NOT NULL"
+        nvarchar(30) linkStatus "NOT NULL"
+        nvarchar(30) preferredLanguage "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    STUDENTPROFILES {
+        uniqueidentifier studentProfileId PK "NOT NULL"
+        uniqueidentifier studentId FK, UK "NOT NULL"
+        nvarchar(50) studentCode UK "NOT NULL"
+        nvarchar(30) academicStatus "NOT NULL"
+    }
+    ACCOUNT_ROLE {
+        uniqueidentifier accountId PK, FK "NOT NULL"
+        uniqueidentifier roleId PK, FK "NOT NULL"
+        datetime2(3) assignedAt "NOT NULL"
+    }
+    ROLES {
+        uniqueidentifier roleId PK "NOT NULL"
+        nvarchar(255) roleName UK "NOT NULL"
+    }
+    SESSIONS {
+        uniqueidentifier sessionId PK "NOT NULL"
+        uniqueidentifier accountId FK "NOT NULL"
+        nvarchar(max) deviceInfo "NULL"
+        datetime2(3) loginAt "NOT NULL"
+        datetime2(3) logoutAt "NULL"
+        bit isActive "NOT NULL"
+    }
+    NOTIFICATIONS {
+        uniqueidentifier notificationId PK "NOT NULL"
+        uniqueidentifier accountId FK "NOT NULL"
+        nvarchar(max) message "NOT NULL"
+        nvarchar(max) redirectUrl "NULL"
+        nvarchar(255) title "NOT NULL"
+        datetime2(3) createdAt "NOT NULL"
+        bit isRead "NOT NULL"
+    }
+    NOTIFICATIONPREFERENCES {
+        uniqueidentifier notificationPreferenceId PK "NOT NULL"
+        uniqueidentifier accountId FK "NOT NULL"
+        nvarchar(30) channel "NOT NULL"
+        bit isEnabled "NOT NULL"
+    }
+    ACTIVITYLOGS {
+        uniqueidentifier activityLogId PK "NOT NULL"
+        uniqueidentifier accountId FK "NOT NULL"
+        nvarchar(max) activityDetail "NULL"
+        nvarchar(255) activityType "NOT NULL"
+        datetime2(3) occurredAt "NOT NULL"
+    }
+    FACULTIES {
+        uniqueidentifier facultyId PK "referenced table, see its own section"
+    }
+    ACCOUNTS ||--o{ ACTIVITYLOGS : "accountId"
+    ACCOUNTS ||--o{ SESSIONS : "accountId"
+    ACCOUNTS ||--o{ NOTIFICATIONPREFERENCES : "accountId"
+    ACCOUNTS ||--o{ NOTIFICATIONS : "accountId"
+    FACULTIES |o--o{ ACCOUNTS : "facultyId"
+    ACCOUNTS ||--o| STUDENTPROFILES : "studentId"
+    ACCOUNTS ||--o{ ACCOUNT_ROLE : "accountId"
+    ROLES ||--o{ ACCOUNT_ROLE : "roleId"

@@ -1,0 +1,24 @@
+---
+title: AdviseCare - Sequence Diagram SD-02 - Send Account-Linking Emails
+---
+sequenceDiagram
+    autonumber
+    actor ADM as System Administrator
+    participant W as Web App
+    participant C as AccountsController
+    participant S as AccountService
+    participant R as IGenericRepository
+    participant E as IEmailService
+    participant DB as SQL Server
+    ADM->>W: Select accounts and click "Send linking email"
+    W->>C: POST /api/Accounts/linking-emails {accountIds}
+    C->>S: SendLinkingEmailsAsync(request)
+    loop each account that is not linked
+        S->>S: Create a random token, store only its SHA-256 hash, expiry = now + 7 days
+        S->>R: PrepareUpdate(account) with linkStatus = emailSent
+        S->>E: SendAccountLinkingEmailAsync(email, fullName, token)
+    end
+    S->>R: SaveAsync()
+    R->>DB: UPDATE ACCOUNTS
+    S-->>C: SendLinkingEmailResponse (sent, skipped)
+    C-->>W: 200 OK

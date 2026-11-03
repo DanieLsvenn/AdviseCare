@@ -1,0 +1,34 @@
+---
+title: AdviseCare - Sequence Diagram SD-15 - Emergency Access Request and Decision
+---
+sequenceDiagram
+    autonumber
+    actor ST as Staff member
+    actor STW as Data Protection Steward
+    participant W as Web App
+    participant C as EmergencyAccessRequestsController
+    participant S as EmergencyAccessRequestService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ST->>W: Request emergency access to a student with a justification
+    W->>C: POST /api/EmergencyAccessRequests {studentId, justification}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: CreateAsync(request, status = pending, stewardId = null)
+    R->>DB: INSERT EMERGENCYACCESSREQUESTS
+    S->>N: NotifyAsync(every active Steward)
+    STW->>W: Open pending requests
+    alt approve
+        W->>C: PUT /api/EmergencyAccessRequests/{id}/approve {scopeExpiresAt}
+        C->>S: ApproveAsync(StewardId, Id, request)
+        S->>R: Load request still pending (decided by another Steward -> 409)
+        S->>R: UpdateAsync(status = approved, stewardId, decidedAt, scopeExpiresAt)
+    else reject
+        W->>C: PUT /api/EmergencyAccessRequests/{id}/reject {rejectionReason}
+        C->>S: RejectAsync(StewardId, Id, request)
+        S->>R: UpdateAsync(status = rejected, stewardId, rejectionReason)
+    end
+    R->>DB: UPDATE EMERGENCYACCESSREQUESTS
+    S->>N: NotifyAsync(requester, decision)
+    C-->>W: 200 OK
+    Note over S,DB: Access ends on its own at scopeExpiresAt, every read is logged with consentPurposeId = null
