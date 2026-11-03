@@ -29,7 +29,7 @@ export default async function SignInPage({
   const hasGoogle = Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
 
   return (
-    <AuthFrame title={t("title")} description={t("subtitle")}>
+    <AuthFrame title={t("title")} description={hasGoogle ? t("subtitle") : t("subtitlePassword")}>
       {notice ? (
         <Notice
           className="mb-space-lg"

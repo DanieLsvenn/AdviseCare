@@ -131,7 +131,7 @@
   "case": {
     "progress": "Tiến trình case",
     "step": {
-      "pending": "Đã gửi",
+      "pending": "Chờ ghép",
       "assigned": "Đã ghép",
       "contacted": "Đã liên hệ",
       "followUp": "Theo dõi",

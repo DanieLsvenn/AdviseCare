@@ -1,7 +1,7 @@
 {
   "status": {
     "pending": "Waiting for match",
-    "assigned": "Assigned",
+    "assigned": "Matched",
     "contacted": "Contacted",
     "followup": "Follow-up",
     "referred": "Referred",
@@ -131,7 +131,7 @@
   "case": {
     "progress": "Case progress",
     "step": {
-      "pending": "Sent",
+      "pending": "Waiting",
       "assigned": "Matched",
       "contacted": "Contacted",
       "followUp": "Follow-up",
