@@ -72,5 +72,7 @@
   "notifications": "Notifications",
   "settings": "Account settings",
   "workspaces": "Workspaces",
-  "skipToContent": "Skip to content"
+  "skipToContent": "Skip to content",
+  "breadcrumb": "Breadcrumb",
+  "language": "Language"
 }

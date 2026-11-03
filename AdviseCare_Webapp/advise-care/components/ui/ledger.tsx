@@ -86,7 +86,10 @@ export function Ledger({
             <div className="@lg:pt-0.5">
               {entry.signed && entry.signer ? (
                 <div className="relative inline-block min-w-40 pb-1 @lg:block">
-                  <p className="truncate font-semibold leading-5 text-text">{entry.signer.name}</p>
+                  <p className="truncate font-semibold leading-5 text-text">
+                    <span className="sr-only">{labels.signature}: </span>
+                    {entry.signer.name}
+                  </p>
                   {entry.signer.role ? (
                     <p className="truncate text-[0.75rem] leading-4 text-text-faint">
                       {entry.signer.role}
@@ -111,6 +114,7 @@ export function Ledger({
               ) : (
                 <div className="inline-block min-w-40 border-b border-dashed border-rule-strong pb-1 @lg:block">
                   <p className="text-[0.8125rem] italic leading-5 text-text-faint">
+                    <span className="sr-only">{labels.signature}: </span>
                     {labels.unsigned}
                   </p>
                   {entry.signer ? (

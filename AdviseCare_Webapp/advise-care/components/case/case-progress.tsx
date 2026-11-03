@@ -28,7 +28,7 @@ export function CaseProgress({
   const closed = stage === "closed";
 
   if (compact) {
-    const label = t(`case.step.${referred ? "assigned" : (PIPELINE[currentIndex] ?? "pending")}`);
+    const label = t(`status.${(referred ? "referred" : (PIPELINE[currentIndex] ?? "pending")).toLowerCase()}`);
     return (
       <span
         role="img"
@@ -72,12 +72,13 @@ export function CaseProgress({
             />
             <span
               className={cn(
-                "mt-2 flex items-center gap-1 text-[0.8125rem] leading-4",
+                "mt-2 items-center gap-1 text-[0.8125rem] leading-4",
+                current ? "flex" : "hidden sm:flex",
                 current ? "font-semibold text-text" : done ? "text-text-muted" : "text-text-faint",
               )}
             >
               {done ? <Icon name="check" className="text-[14px] text-ink" /> : null}
-              <span className="truncate">{t(`case.step.${step}`)}</span>
+              <span className={cn(current ? "whitespace-nowrap" : "truncate")}>{t(`status.${step.toLowerCase()}`)}</span>
             </span>
             {current && referred ? (
               <span className="mt-0.5 block text-[0.75rem] font-semibold text-status-referral-text">

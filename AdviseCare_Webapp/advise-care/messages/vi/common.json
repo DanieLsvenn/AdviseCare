@@ -72,5 +72,7 @@
   "notifications": "Thông báo",
   "settings": "Cài đặt tài khoản",
   "workspaces": "Không gian làm việc",
-  "skipToContent": "Bỏ qua đến nội dung"
+  "skipToContent": "Bỏ qua đến nội dung",
+  "breadcrumb": "Đường dẫn",
+  "language": "Ngôn ngữ"
 }

@@ -146,8 +146,9 @@ function RequestCard({ item }: { item: CaseRecord }) {
   const t = useTranslations("ui.myRequests");
   const tu = useTranslations("ui");
   const waited = daysSince(item.openedAt) ?? 0;
-  const matched = Boolean(item.advisorName);
   const isClosed = item.currentStage === "closed";
+  const waiting = item.currentStage === "pending";
+  const matched = !waiting && !isClosed;
 
   return (
     <li>
@@ -173,7 +174,9 @@ function RequestCard({ item }: { item: CaseRecord }) {
             {isClosed
               ? t("closedOn", { date: formatDate(item.closedAt ?? item.openedAt) })
               : matched
-                ? t("withAdvisor", { name: item.advisorName })
+                ? item.advisorName
+                  ? t("withAdvisor", { name: item.advisorName })
+                  : t("withYourAdvisor")
                 : waited === 0
                   ? t("waitingToday")
                   : t("waitingDays", { count: waited })}

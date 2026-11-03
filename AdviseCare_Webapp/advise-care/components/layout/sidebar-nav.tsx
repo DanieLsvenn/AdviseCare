@@ -157,17 +157,19 @@ export function NavTrail({
   items,
   section,
   fallback,
+  label = "Breadcrumb",
 }: {
   items: NavItem[];
   section: string;
   fallback?: string;
+  label?: string;
 }) {
   const pathname = usePathname();
   const active = activeNavItem(items, pathname);
   const current = active?.label ?? fallback;
 
   return (
-    <nav aria-label="Breadcrumb" className="min-w-0">
+    <nav aria-label={label} className="min-w-0">
       <ol className="flex min-w-0 items-center gap-1.5 text-sm">
         <li className="hidden shrink-0 text-text-faint sm:block">{section}</li>
         {current ? (

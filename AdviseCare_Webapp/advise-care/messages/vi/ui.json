@@ -108,7 +108,7 @@
     "alreadyShared": "Đã chia sẻ",
     "shareFootnote": "Không gì được chia sẻ nếu bạn không chọn. Mỗi lần có người đọc, bạn sẽ thấy trong lịch sử truy cập.",
     "nothingToShare": "Loại yêu cầu này không dùng đến dữ liệu của bạn.",
-    "summaryShared": "Bạn chia sẻ {count} mục với cố vấn.",
+    "summaryShared": "Cố vấn sẽ thấy {count} mục:",
     "summaryNothingShared": "Bạn không chia sẻ dữ liệu nào với yêu cầu này.",
     "send": "Gửi yêu cầu",
     "sentTitle": "Đã gửi yêu cầu",
@@ -126,7 +126,8 @@
     "lockedType": "Hãy chọn loại hỗ trợ ở bước 1 trước.",
     "lockedCategory": "Hãy chọn danh mục ở bước 2 trước.",
     "draftAutosave": "Tự lưu trên thiết bị này khi bạn gõ.",
-    "draftRestored": "Đã khôi phục nội dung bạn viết dở lần trước."
+    "draftRestored": "Đã khôi phục nội dung bạn viết dở lần trước.",
+    "summaryAlready": "{name} (đã chia sẻ trước đó)"
   },
   "case": {
     "progress": "Tiến trình case",
@@ -158,7 +159,7 @@
     "title": "Hàng đợi ghép cố vấn",
     "description": "Các yêu cầu hỗ trợ đang chờ cố vấn. Chọn một yêu cầu, xem cố vấn được gợi ý và ghép.",
     "finding": "{count} yêu cầu đang chờ cố vấn; yêu cầu lâu nhất đã chờ {days, plural, =0 {chưa tới một ngày} other {# ngày}}.",
-    "queue": "Đang chờ cố vấn",
+    "queue": "Chờ ghép cố vấn",
     "waiting": "{count} đang chờ",
     "today": "Gửi hôm nay",
     "waitedDays": "Đã chờ {count} ngày",
@@ -240,7 +241,8 @@
     "changeRequested": "Đã gửi đề nghị đổi cố vấn tới Trưởng chương trình.",
     "studentData": "Dữ liệu sinh viên chia sẻ với bạn",
     "studentDataHint": "Chỉ hiện các thuộc tính sinh viên đồng ý cho mục đích của vai trò bạn, và mỗi lần đọc đều được ghi nhật ký.",
-    "nextSteps": "Bước tiếp theo"
+    "nextSteps": "Bước tiếp theo",
+    "idInvalid": "Đây không phải ID tài khoản. ID có dạng 8-4-4-4-12 ký tự chữ và số."
   },
   "myRequests": {
     "title": "Yêu cầu hỗ trợ của tôi",
@@ -255,6 +257,7 @@
     "withAdvisor": "Cố vấn: {name}",
     "waitingToday": "Gửi hôm nay · đang chờ ghép cố vấn",
     "waitingDays": "Đang chờ ghép cố vấn · gửi {count} ngày trước",
-    "closedOn": "Đã đóng {date}"
+    "closedOn": "Đã đóng {date}",
+    "withYourAdvisor": "Đang được cố vấn hỗ trợ"
   }
 }

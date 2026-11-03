@@ -200,6 +200,10 @@ export function SupportRequestForm() {
   const category = categories.find((item) => item.id === categoryId);
   const needsSubject = category?.supportType === "academic";
   const ready = Boolean(categoryId) && reason.trim().length > 0 && !detailsLoading;
+  // What the advisor will actually be able to read: new ticks plus what was already shared.
+  const visibleToAdvisor = (shareable?.attributes ?? []).filter(
+    (attribute) => attribute.alreadyShared || sharedIds.includes(attribute.id),
+  );
 
   if (createdCaseId !== null) {
     return (
@@ -417,11 +421,26 @@ export function SupportRequestForm() {
         {error ? <Notice tone="urgent" icon="error" title={error} /> : null}
 
         <div className="flex flex-wrap items-center justify-between gap-space-md rounded-lg border border-rule bg-paper px-space-lg py-space-base">
-          <p className="text-sm text-text-muted">
-            {sharedIds.length
-              ? t("summaryShared", { count: sharedIds.length })
-              : t("summaryNothingShared")}
-          </p>
+          <div className="min-w-0 flex-1 text-sm text-text-muted">
+            {visibleToAdvisor.length ? (
+              <>
+                <p className="font-semibold text-text">
+                  {t("summaryShared", { count: visibleToAdvisor.length })}
+                </p>
+                <p className="mt-0.5">
+                  {visibleToAdvisor
+                    .map((attribute) =>
+                      attribute.alreadyShared
+                        ? t("summaryAlready", { name: attribute.name })
+                        : attribute.name,
+                    )
+                    .join(", ")}
+                </p>
+              </>
+            ) : (
+              <p>{t("summaryNothingShared")}</p>
+            )}
+          </div>
           <Button type="submit" size="lg" disabled={!ready} loading={pending} iconAfter="send">
             {t("send")}
           </Button>

@@ -105,3 +105,6 @@ export function humanize(value: string): string {
     .trim();
   return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
 }
+
+/** Expected states shown as quiet text, not a chip (colour only where it means something). */
+export const QUIET_STATES = new Set(["active", "linked", "enrolled", "low"]);

@@ -15,7 +15,7 @@ import { clientApiGet, clientApiRequest } from "@/lib/client-api";
 import { cn } from "@/lib/cn";
 import { moveRowFocus } from "@/lib/keyboard";
 import { formatDate, formatTime, parseDate, shortId } from "@/lib/format";
-import { statusFields, statusKey } from "@/lib/status";
+import { QUIET_STATES, statusFields, statusKey } from "@/lib/status";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Drawer } from "@/components/ui/drawer";
@@ -690,7 +690,6 @@ function FilterBar({
 /* Cells                                                                     */
 /* ------------------------------------------------------------------------ */
 
-const QUIET_STATES = new Set(["active", "linked", "enrolled", "low"]);
 
 /** Phone layout of a record: identity first, other text fields as one caption line. */
 function MobileRecord({
@@ -816,10 +815,7 @@ function FormattedValue({
   if (typeof value === "string" && kind === "status") {
     // The expected state (an active, linked account) is quiet text; only a
     // state that needs attention gets a coloured chip.
-    if (!full && QUIET_STATES.has(statusKey(value))) {
-      return <span className="text-text-faint">{tu.has(`status.${statusKey(value)}`) ? tu(`status.${statusKey(value)}`) : value}</span>;
-    }
-    return <StatusValue field={fieldKey} value={value} size="sm" />;
+    return <StatusValue field={fieldKey} value={value} size="sm" emphasize={full} />;
   }
   if (typeof value === "string" && kind === "id") {
     return full ? (

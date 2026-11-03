@@ -526,6 +526,14 @@ function Label({ htmlFor, children }: { htmlFor: string; children: ReactNode }) 
   );
 }
 
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Account IDs are typed until the API offers a staff directory: catch typos before sending. */
+function idError(value: string, message: string): string | undefined {
+  const trimmed = value.trim();
+  return trimmed && !GUID.test(trimmed) ? message : undefined;
+}
+
 function useSubmit() {
   const [pending, setPending] = useState(false);
   async function run(task: () => Promise<boolean>) {
@@ -676,8 +684,21 @@ function ReferForm({
     >
       <div>
         <Label htmlFor="refer-to">{t("receiver")}</Label>
-        <input id="refer-to" required className={cn(controlClass, "h-9 w-full font-mono text-[0.8125rem]")} value={receiver} onChange={(event) => setReceiver(event.target.value)} />
-        <p className="mt-1 text-[0.75rem] text-text-faint">{t("receiverHint")}</p>
+        <input
+          id="refer-to"
+          required
+          spellCheck={false}
+          autoComplete="off"
+          aria-invalid={idError(receiver, "x") ? true : undefined}
+          aria-describedby="refer-to-hint"
+          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+          className={cn(controlClass, "h-9 w-full font-mono text-[0.8125rem]")}
+          value={receiver}
+          onChange={(event) => setReceiver(event.target.value)}
+        />
+        <p id="refer-to-hint" className={cn("mt-1 text-[0.75rem]", idError(receiver, "x") ? "text-red-ink" : "text-text-faint")}>
+          {idError(receiver, t("idInvalid")) ?? t("receiverHint")}
+        </p>
       </div>
       <div>
         <Label htmlFor="refer-reason">{t("reason")}</Label>
@@ -693,7 +714,7 @@ function ReferForm({
           ))}
         </select>
       </div>
-      <Button type="submit" variant="secondary" loading={pending} disabled={!receiver.trim() || !reason.trim()}>
+      <Button type="submit" variant="secondary" loading={pending} disabled={!receiver.trim() || !reason.trim() || Boolean(idError(receiver, "x"))}>
         {t("sendReferral")}
       </Button>
     </form>
@@ -718,14 +739,27 @@ function ChangeAdvisorForm({ onSubmit }: { onSubmit: (advisorId: string, reason:
     >
       <div>
         <Label htmlFor="proposed-advisor">{t("proposedAdvisor")}</Label>
-        <input id="proposed-advisor" required className={cn(controlClass, "h-9 w-full font-mono text-[0.8125rem]")} value={advisor} onChange={(event) => setAdvisor(event.target.value)} />
-        <p className="mt-1 text-[0.75rem] text-text-faint">{t("receiverHint")}</p>
+        <input
+          id="proposed-advisor"
+          required
+          spellCheck={false}
+          autoComplete="off"
+          aria-invalid={idError(advisor, "x") ? true : undefined}
+          aria-describedby="proposed-advisor-hint"
+          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+          className={cn(controlClass, "h-9 w-full font-mono text-[0.8125rem]")}
+          value={advisor}
+          onChange={(event) => setAdvisor(event.target.value)}
+        />
+        <p id="proposed-advisor-hint" className={cn("mt-1 text-[0.75rem]", idError(advisor, "x") ? "text-red-ink" : "text-text-faint")}>
+          {idError(advisor, t("idInvalid")) ?? t("receiverHint")}
+        </p>
       </div>
       <div>
         <Label htmlFor="change-reason">{t("reason")}</Label>
         <textarea id="change-reason" required maxLength={4000} className={cn(controlClass, "min-h-20 w-full py-2")} value={reason} onChange={(event) => setReason(event.target.value)} />
       </div>
-      <Button type="submit" variant="secondary" loading={pending} disabled={!advisor.trim() || !reason.trim()}>
+      <Button type="submit" variant="secondary" loading={pending} disabled={!advisor.trim() || !reason.trim() || Boolean(idError(advisor, "x"))}>
         {t("sendChangeRequest")}
       </Button>
     </form>

@@ -184,7 +184,7 @@ export async function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 hidden h-14 items-center gap-space-md border-b border-rule bg-paper/95 px-gutter-mobile text-text backdrop-blur-sm lg:flex lg:px-gutter-desktop">
-          <NavTrail items={navItems} section={navSectionLabel} fallback={fallback} />
+          <NavTrail items={navItems} section={navSectionLabel} fallback={fallback} label={tc("breadcrumb")} />
           <div className="ml-auto flex items-center gap-space-sm">
             {utilities("paper")}
           </div>
