@@ -141,6 +141,7 @@ export function MatchingQueue() {
       body: t("confirmBody", { student: selected.studentName }),
       confirmLabel: t("assign"),
       cancelLabel: tu("cancel"),
+      icon: "how_to_reg",
     });
     if (!ok) return;
     setAssigning(suggestion.advisorId);

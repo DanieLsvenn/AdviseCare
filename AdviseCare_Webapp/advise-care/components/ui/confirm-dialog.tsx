@@ -10,6 +10,8 @@ interface ConfirmRequest {
   confirmLabel: string;
   cancelLabel: string;
   destructive?: boolean;
+  /** Names the consequence (draw = signing, lock = closing, how_to_reg = assigning). */
+  icon?: string;
 }
 
 /**
@@ -57,7 +59,7 @@ export function useConfirm() {
                   : "flex size-9 shrink-0 items-center justify-center rounded-full bg-ink-wash text-ink"
               }
             >
-              <Icon name={request.destructive ? "warning" : "help"} className="text-[20px]" />
+              <Icon name={request.icon ?? (request.destructive ? "warning" : "task_alt")} className="text-[20px]" />
             </span>
             <div className="min-w-0">
               <h2 id="confirm-title" className="text-base font-semibold text-text">

@@ -52,7 +52,8 @@
     "date": "Date",
     "entry": "Entry",
     "signature": "Signed by",
-    "unsigned": "Not signed yet"
+    "unsigned": "Not signed yet",
+    "justSigned": "Signed just now"
   },
   "close": "Close",
   "cancel": "Cancel",

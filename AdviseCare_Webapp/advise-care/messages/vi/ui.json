@@ -52,7 +52,8 @@
     "date": "Ngày",
     "entry": "Nội dung",
     "signature": "Người ký",
-    "unsigned": "Chưa ký"
+    "unsigned": "Chưa ký",
+    "justSigned": "Vừa ký"
   },
   "close": "Đóng",
   "cancel": "Hủy",

@@ -15,6 +15,8 @@ export interface LedgerEntry {
   signed: boolean;
   /** Controls available on this entry (only ever on unsigned drafts). */
   actions?: ReactNode;
+  /** Just signed in this session: the signature line is drawn in. */
+  fresh?: boolean;
 }
 
 /**
@@ -29,7 +31,7 @@ export function Ledger({
   className,
 }: {
   entries: LedgerEntry[];
-  labels: { date: string; entry: string; signature: string; unsigned: string };
+  labels: { date: string; entry: string; signature: string; unsigned: string; justSigned?: string };
   className?: string;
 }) {
   return (
@@ -46,7 +48,10 @@ export function Ledger({
         {entries.map((entry) => (
           <li
             key={entry.id}
-            className="grid gap-x-space-lg gap-y-1.5 py-space-md md:grid-cols-[6.5rem_minmax(0,1fr)_12rem]"
+            className={cn(
+              "grid gap-x-space-lg gap-y-1.5 py-space-md md:grid-cols-[6.5rem_minmax(0,1fr)_12rem]",
+              entry.fresh && "pb-space-lg",
+            )}
           >
             <time
               dateTime={entry.at}
@@ -80,13 +85,26 @@ export function Ledger({
 
             <div className="md:pt-0.5">
               {entry.signed && entry.signer ? (
-                <div className="inline-block min-w-40 border-b border-ink/60 pb-1 md:block">
-                  <p className="truncate font-semibold leading-5 text-ink">
-                    {entry.signer.name}
-                  </p>
+                <div className="relative inline-block min-w-40 pb-1 md:block">
+                  <p className="truncate font-semibold leading-5 text-text">{entry.signer.name}</p>
                   {entry.signer.role ? (
                     <p className="truncate text-[0.75rem] leading-4 text-text-faint">
                       {entry.signer.role}
+                    </p>
+                  ) : null}
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "absolute inset-x-0 bottom-0 h-[1.5px] origin-left rounded-full bg-ink",
+                      entry.fresh && "animate-sign",
+                    )}
+                  />
+                  {entry.fresh && labels.justSigned ? (
+                    <p
+                      role="status"
+                      className="absolute left-0 top-full mt-1 flex animate-signed-note items-center gap-1 text-[0.75rem] font-semibold text-ink"
+                    >
+                      {labels.justSigned}
                     </p>
                   ) : null}
                 </div>

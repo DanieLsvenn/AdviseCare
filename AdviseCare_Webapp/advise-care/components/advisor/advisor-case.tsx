@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { ApiError, isRecord, type ApiMethod } from "@/lib/api-contract";
@@ -54,6 +54,9 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
   const [error, setError] = useState("");
   const [missing, setMissing] = useState(false);
   const [flash, setFlash] = useState<{ ok: boolean; message: string } | null>(null);
+  // Entries signed by the last action get their signature line drawn in.
+  const knownIds = useRef<Set<string> | null>(null);
+  const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setError("");
@@ -65,8 +68,21 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
       ]);
       const data = unwrap(casePayload);
       setRecord(data ? toCase(data) : null);
-      setHistory(byDate(listOf(historyPayload).map(toHistory), (item) => item.changedAt));
-      setNotes(byDate(listOf(notesPayload).map(toNote), (item) => item.createdAt));
+      const nextHistory = byDate(listOf(historyPayload).map(toHistory), (item) => item.changedAt);
+      const nextNotes = byDate(listOf(notesPayload).map(toNote), (item) => item.createdAt);
+      const signedIds = [
+        ...nextHistory.map((item) => `h:${item.caseStageHistoryId || item.changedAt}`),
+        ...nextNotes.filter((note) => note.isFinalized).map((note) => `n:${note.caseNoteId}`),
+      ];
+      if (knownIds.current) {
+        const previous = knownIds.current;
+        const fresh = new Set(signedIds.filter((id) => !previous.has(id)));
+        setFreshIds(fresh);
+        if (fresh.size) window.setTimeout(() => setFreshIds(new Set()), 4000);
+      }
+      knownIds.current = new Set(signedIds);
+      setHistory(nextHistory);
+      setNotes(nextNotes);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 404) setMissing(true);
       else setError(tw("apiErrorNetwork"));
@@ -139,6 +155,7 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
     entry: tu("ledger.entry"),
     signature: tu("ledger.signature"),
     unsigned: tu("ledger.unsigned"),
+    justSigned: tu("ledger.justSigned"),
   };
 
   return (
@@ -199,7 +216,15 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
             </p>
           </section>
 
-          <NotesSection caseId={record.caseId} notes={notes} send={send} confirm={confirm} labels={ledgerLabels} closed={closed} />
+          <NotesSection
+            caseId={record.caseId}
+            notes={notes}
+            send={send}
+            confirm={confirm}
+            labels={ledgerLabels}
+            closed={closed}
+            freshIds={freshIds}
+          />
 
           <section className="rounded-lg border border-rule bg-paper p-space-lg">
             <h2 className="mb-space-md text-base font-semibold text-text">{t("history")}</h2>
@@ -218,6 +243,7 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
                   body: item.reason,
                   signed: true,
                   signer: { name: item.changedByName },
+                  fresh: freshIds.has(`h:${item.caseStageHistoryId || item.changedAt}`),
                 }))}
               />
             ) : (
@@ -240,16 +266,18 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
             <ActionCard icon="trending_flat" title={t("moveStage")} hint={t("moveStageHint")} defaultOpen>
               <StageForm
                 current={record.currentStage}
+                confirmFirst={(toStage) =>
+                  toStage === "closed"
+                    ? confirm({
+                        title: t("closeConfirmTitle"),
+                        body: t("closeConfirmBody"),
+                        confirmLabel: t("closeCase"),
+                        cancelLabel: tu("cancel"),
+                        icon: "lock",
+                      })
+                    : Promise.resolve(true)
+                }
                 onSubmit={async (toStage, reason) => {
-                  if (toStage === "closed") {
-                    const ok = await confirm({
-                      title: t("closeConfirmTitle"),
-                      body: t("closeConfirmBody"),
-                      confirmLabel: t("closeCase"),
-                      cancelLabel: tu("cancel"),
-                    });
-                    if (!ok) return false;
-                  }
                   return send(
                     `Cases/${record.caseId}/stage`,
                     "PUT",
@@ -325,13 +353,15 @@ function NotesSection({
   confirm,
   labels,
   closed,
+  freshIds,
 }: {
   caseId: string;
   notes: CaseNoteRecord[];
   send: Send;
   confirm: ReturnType<typeof useConfirm>["confirm"];
-  labels: { date: string; entry: string; signature: string; unsigned: string };
+  labels: { date: string; entry: string; signature: string; unsigned: string; justSigned?: string };
   closed: boolean;
+  freshIds: Set<string>;
 }) {
   const t = useTranslations("ui.advisorCase");
   const tu = useTranslations("ui");
@@ -354,6 +384,7 @@ function NotesSection({
       body: t("finalizeBody"),
       confirmLabel: t("finalize"),
       cancelLabel: tu("cancel"),
+      icon: "draw",
     });
     if (ok) await send(`CaseNotes/${note.caseNoteId}/finalize`, "PUT", undefined, t("noteFinalized"));
   }
@@ -386,6 +417,7 @@ function NotesSection({
               ),
               signed: note.isFinalized,
               signer: { name: note.authorName },
+              fresh: freshIds.has(`n:${note.caseNoteId}`),
               actions: note.isFinalized ? undefined : isEditing ? (
                 <>
                   <Button
@@ -408,11 +440,11 @@ function NotesSection({
                 </>
               ) : (
                 <>
-                  <Button size="sm" variant="secondary" icon="edit" onClick={() => setEditing({ id: note.caseNoteId, text: note.noteText })}>
-                    {t("editNote")}
-                  </Button>
-                  <Button size="sm" variant="quiet" icon="draw" onClick={() => void finalize(note)}>
+                  <Button size="sm" variant="secondary" icon="draw" onClick={() => void finalize(note)}>
                     {t("finalize")}
+                  </Button>
+                  <Button size="sm" variant="tertiary" icon="edit" onClick={() => setEditing({ id: note.caseNoteId, text: note.noteText })}>
+                    {t("editNote")}
                   </Button>
                 </>
               ),
@@ -506,9 +538,12 @@ const NEXT_STAGES: Record<string, string[]> = {
 
 function StageForm({
   current,
+  confirmFirst,
   onSubmit,
 }: {
   current: string;
+  /** Asked before the button shows any pending state. */
+  confirmFirst: (toStage: string) => Promise<boolean>;
   onSubmit: (toStage: string, reason: string) => Promise<boolean>;
 }) {
   const t = useTranslations("ui.advisorCase");
@@ -523,6 +558,7 @@ function StageForm({
       className="flex flex-col gap-space-md"
       onSubmit={async (event) => {
         event.preventDefault();
+        if (!(await confirmFirst(toStage))) return;
         if (await run(() => onSubmit(toStage, reason.trim()))) setReason("");
       }}
     >
