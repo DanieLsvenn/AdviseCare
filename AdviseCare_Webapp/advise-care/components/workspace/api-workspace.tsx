@@ -13,6 +13,7 @@ import { useRouter } from "@/i18n/navigation";
 import { ApiError, isRecord, type ApiMethod, type ApiQuery } from "@/lib/api-contract";
 import { clientApiGet, clientApiRequest } from "@/lib/client-api";
 import { cn } from "@/lib/cn";
+import { moveRowFocus } from "@/lib/keyboard";
 import { formatDate, formatTime, parseDate, shortId } from "@/lib/format";
 import { statusFields, statusKey } from "@/lib/status";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -424,14 +425,14 @@ export function ApiWorkspace({
                   ) : null}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-rule">
+              <tbody className="divide-y divide-rule" onKeyDown={moveRowFocus}>
                 {records.map((record, index) => {
                   const key = createRowKey(record, index, rowKeyOccurrences);
                   const isSelected = selectedRecord === record;
                   return (
                     <tr
                       className={cn(
-                        "group cursor-pointer transition-colors duration-100",
+                        "group relative cursor-pointer transition-colors duration-100 focus-within:bg-paper-tint focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-ink",
                         isSelected ? "bg-ink-wash" : "hover:bg-paper-tint",
                       )}
                       key={key}
@@ -446,18 +447,25 @@ export function ApiWorkspace({
                           key={column.key}
                         >
                           {columnIndex === 0 ? (
+                            // The first cell is the row's one focus stop; its
+                            // ::after stretches over the whole row so a click
+                            // anywhere opens the record, and Tab / j / k move
+                            // between rows instead of between cells.
                             <button
                               type="button"
-                              className="sr-only focus:not-sr-only"
+                              data-row-open
+                              aria-label={`${tu("workspace.openRecord")}: ${recordTitle(record) ?? displayValue(getPathValue(record, column.key))}`}
+                              className="text-left after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 openRecord(record);
                               }}
                             >
-                              {tu("workspace.openRecord")}
+                              <Cell column={column} record={record} tu={tu} />
                             </button>
-                          ) : null}
-                          <Cell column={column} record={record} tu={tu} />
+                          ) : (
+                            <Cell column={column} record={record} tu={tu} />
+                          )}
                         </td>
                       ))}
                       {recordsAreOpenable ? (
@@ -771,7 +779,7 @@ function CopyableId({ value }: { value: string }) {
         type="button"
         aria-label={copied ? tu("copied") : tu("copy")}
         title={copied ? tu("copied") : tu("copy")}
-        className="flex size-6 items-center justify-center rounded text-text-faint opacity-0 transition hover:bg-ink-wash hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
+        className="relative z-10 flex size-6 items-center justify-center rounded text-text-faint opacity-0 transition hover:bg-ink-wash hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
         onClick={(event) => {
           event.stopPropagation();
           void navigator.clipboard?.writeText(value).then(() => {

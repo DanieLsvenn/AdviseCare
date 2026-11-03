@@ -9,7 +9,7 @@ type Size = "sm" | "md" | "lg";
 /* Ballpoint-ink primary; everything else stays on the page's paper. */
 const variantClasses: Record<Variant, string> = {
   primary:
-    "border-transparent bg-ink text-white hover:bg-ink-hover active:bg-cover disabled:bg-rule-strong disabled:text-white",
+    "border-transparent bg-ink text-white hover:bg-ink-hover active:bg-cover disabled:border-rule disabled:bg-surface-container disabled:text-text-faint",
   secondary:
     "border-rule-strong bg-paper text-text hover:border-text-faint hover:bg-paper-tint active:bg-ink-wash",
   quiet:
@@ -27,7 +27,7 @@ const sizeClasses: Record<Size, string> = {
 };
 
 const base =
-  "inline-flex shrink-0 items-center justify-center rounded-md border font-semibold whitespace-nowrap transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex shrink-0 items-center justify-center rounded-md border font-semibold whitespace-nowrap transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-80";
 
 interface CommonProps {
   variant?: Variant;

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { ApiError, isRecord } from "@/lib/api-contract";
 import { clientApiGet, clientApiRequest } from "@/lib/client-api";
 import { cn } from "@/lib/cn";
+import { moveRowFocus } from "@/lib/keyboard";
 import { daysSince, formatDateTime } from "@/lib/format";
 import { listOf, str, toCase, type CaseRecord } from "@/components/case/case-api";
 import { Avatar } from "@/components/ui/avatar";
@@ -227,7 +228,7 @@ export function MatchingQueue() {
               {t("emptyBody")}
             </EmptyState>
           ) : (
-            <ul className="max-h-[calc(100dvh-14rem)] divide-y divide-rule overflow-y-auto">
+            <ul className="max-h-[calc(100dvh-14rem)] divide-y divide-rule overflow-y-auto" onKeyDown={moveRowFocus}>
               {queue.map((item) => {
                 const isSelected = item.caseId === selectedId;
                 const waited = daysSince(item.openedAt) ?? 0;
@@ -235,6 +236,7 @@ export function MatchingQueue() {
                   <li key={item.caseId}>
                     <button
                       type="button"
+                      data-row-open
                       aria-current={isSelected ? "true" : undefined}
                       onClick={() => setSelectedId(item.caseId)}
                       className={cn(

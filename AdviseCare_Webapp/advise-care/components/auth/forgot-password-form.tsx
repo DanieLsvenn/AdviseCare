@@ -17,6 +17,11 @@ export function ForgotPasswordForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setError(t("emailInvalid"));
+      document.getElementById("email")?.focus();
+      return;
+    }
     setPending(true);
     setError("");
     try {
@@ -38,7 +43,7 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form className="flex flex-col gap-space-base" onSubmit={submit}>
+    <form className="flex flex-col gap-space-base" noValidate onSubmit={submit}>
       <div>
         <label htmlFor="email" className="mb-1.5 block text-sm font-semibold text-text">
           {t("email")}

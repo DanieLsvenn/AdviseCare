@@ -18,7 +18,16 @@ export function ResetPasswordForm({ locale, token }: { locale: string; token: st
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (mismatch) return;
+    if (password.length < 6) {
+      setError(t("passwordRule"));
+      document.getElementById("new-password")?.focus();
+      return;
+    }
+    if (mismatch || !confirm) {
+      setError(t("passwordMismatch"));
+      document.getElementById("confirm-password")?.focus();
+      return;
+    }
     setPending(true);
     setError("");
     try {
@@ -40,7 +49,7 @@ export function ResetPasswordForm({ locale, token }: { locale: string; token: st
   }
 
   return (
-    <form className="flex flex-col gap-space-base" onSubmit={submit}>
+    <form className="flex flex-col gap-space-base" noValidate onSubmit={submit}>
       <div>
         <label htmlFor="new-password" className="mb-1.5 block text-sm font-semibold text-text">
           {t("newPassword")}

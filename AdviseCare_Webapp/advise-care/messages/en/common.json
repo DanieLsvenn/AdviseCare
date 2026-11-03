@@ -65,11 +65,12 @@
   "owner": "Owner",
   "raisedAt": "Raised",
   "decidedAt": "Decided",
-  "expiresAt": "Expires"
-  ,"signOut": "Sign out"
-  ,"signingOut": "Signing out…"
-  ,"logoutFailed": "Sign-out could not be confirmed. Please retry."
-  ,"notifications": "Notifications"
-  ,"settings": "Account settings"
-  ,"workspaces": "Workspaces"
+  "expiresAt": "Expires",
+  "signOut": "Sign out",
+  "signingOut": "Signing out…",
+  "logoutFailed": "Sign-out could not be confirmed. Please retry.",
+  "notifications": "Notifications",
+  "settings": "Account settings",
+  "workspaces": "Workspaces",
+  "skipToContent": "Skip to content"
 }

@@ -31,6 +31,7 @@ export function Notice({
 }) {
   return (
     <div
+      role={tone === "urgent" ? "alert" : tone === "ontrack" || tone === "info" ? "status" : undefined}
       className={cn(
         "flex flex-wrap items-start gap-space-md rounded-lg border px-space-base py-space-md",
         toneClasses[tone],

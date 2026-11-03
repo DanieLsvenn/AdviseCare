@@ -9,6 +9,15 @@ import { localizeRole, roleHomePath } from "@/lib/roles";
 import { Brand } from "./brand";
 import { NavTrail, SidebarNav, TopNav, type NavItem } from "./sidebar-nav";
 
+const skipLink = (label: string) => (
+  <a
+    href="#main"
+    className="sr-only z-[60] rounded-md bg-paper px-3 py-2 text-sm font-semibold text-ink shadow-popover focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+  >
+    {label}
+  </a>
+);
+
 /**
  * Two shells, one book.
  *  - Staff: the blue cover runs down the left as the sidebar (240px); the
@@ -83,6 +92,7 @@ export async function AppShell({
   if (variant === "student") {
     return (
       <div className="flex min-h-screen flex-col">
+        {skipLink(tc("skipToContent"))}
         <header className="sticky top-0 z-40 bg-cover text-white">
           <div className="mx-auto flex h-14 w-full max-w-[72rem] items-center gap-space-lg px-gutter-mobile lg:px-gutter-desktop">
             <Link href="/me/profile" className="rounded-md focus-visible:outline-white">
@@ -107,7 +117,7 @@ export async function AppShell({
             </div>
           </div>
         </header>
-        <main className="flex-1 px-gutter-mobile py-space-xl lg:px-gutter-desktop">
+        <main id="main" tabIndex={-1} className="flex-1 px-gutter-mobile py-space-xl outline-none lg:px-gutter-desktop">
           <div className="mx-auto flex w-full max-w-[60rem] flex-col gap-space-lg">
             {children}
           </div>
@@ -118,6 +128,7 @@ export async function AppShell({
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
+      {skipLink(tc("skipToContent"))}
       <aside className="flex shrink-0 flex-col bg-cover text-white lg:sticky lg:top-0 lg:h-screen lg:w-sidebar-width">
         <div className="flex h-14 items-center px-space-base">
           <Link href={workspaces[0]?.href ?? "/"} className="min-w-0 rounded-md focus-visible:outline-white">
@@ -176,7 +187,7 @@ export async function AppShell({
             </span>
           </div>
         </header>
-        <main className="flex-1 px-gutter-mobile py-space-xl lg:px-gutter-desktop">
+        <main id="main" tabIndex={-1} className="flex-1 px-gutter-mobile py-space-xl outline-none lg:px-gutter-desktop">
           <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-space-lg">
             {children}
           </div>
