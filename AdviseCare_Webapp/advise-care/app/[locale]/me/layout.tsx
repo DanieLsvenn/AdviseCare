@@ -17,8 +17,10 @@ export default async function StudentLayout({
     { href: "/me/cases", label: t("student.cases"), icon: "folder_open", match: ["/me/support-request"] },
     { href: "/me/consent", label: t("student.consent"), icon: "verified_user" },
     { href: "/me/access-history", label: t("student.accessHistory"), icon: "history" },
-    { href: "/me/corrections", label: t("student.corrections"), icon: "edit_note" },
+  ];
+  const moreNavItems: NavItem[] = [
     { href: "/me/profile", label: t("student.profile"), icon: "account_circle" },
+    { href: "/me/corrections", label: t("student.corrections"), icon: "edit_note" },
     { href: "/me/export", label: t("student.export"), icon: "download" },
   ];
 
@@ -26,6 +28,7 @@ export default async function StudentLayout({
     <AppShell
       variant="student"
       navItems={navItems}
+      moreNavItems={moreNavItems}
       navSectionLabel={t("sectionStudent")}
       accountName={user.fullName}
       accountRole={user.roles.map((role) => localizeRole(role, t)).join(", ")}

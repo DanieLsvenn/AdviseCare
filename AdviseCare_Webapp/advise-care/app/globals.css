@@ -277,6 +277,12 @@
     text-wrap: balance;
   }
 
+  p,
+  li,
+  dd {
+    text-wrap: pretty;
+  }
+
   /* Keyed numbers (codes, dates, counts) line up in columns. */
   .tabular,
   table {

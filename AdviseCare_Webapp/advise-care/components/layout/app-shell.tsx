@@ -19,6 +19,7 @@ import { NavTrail, SidebarNav, TopNav, type NavItem } from "./sidebar-nav";
  */
 export async function AppShell({
   navItems,
+  moreNavItems,
   navSectionLabel,
   title,
   accountName,
@@ -30,6 +31,8 @@ export async function AppShell({
   variant = "staff",
 }: {
   navItems: NavItem[];
+  /** Student shell: secondary destinations folded under "More". */
+  moreNavItems?: NavItem[];
   navSectionLabel: string;
   /** @deprecated the product name is fixed */
   brandSubtitle?: string;
@@ -100,7 +103,7 @@ export async function AppShell({
           </div>
           <div className="border-t border-cover-line">
             <div className="mx-auto w-full max-w-[72rem] px-gutter-mobile lg:px-gutter-desktop">
-              <TopNav items={navItems} label={navSectionLabel} />
+              <TopNav items={navItems} more={moreNavItems} moreLabel={tn("more")} label={navSectionLabel} />
             </div>
           </div>
         </header>

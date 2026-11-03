@@ -74,13 +74,28 @@ export function SidebarNav({ items, label }: { items: NavItem[]; label?: string 
   );
 }
 
-/** Horizontal navigation for the student's simpler top bar. */
-export function TopNav({ items, label }: { items: NavItem[]; label?: string }) {
+/**
+ * Horizontal navigation for the student's simpler top bar. The few places a
+ * student goes at a moment of need stay visible; account housekeeping folds
+ * into "More" so nothing is cut off on a phone.
+ */
+export function TopNav({
+  items,
+  more = [],
+  moreLabel = "More",
+  label,
+}: {
+  items: NavItem[];
+  more?: NavItem[];
+  moreLabel?: string;
+  label?: string;
+}) {
   const pathname = usePathname();
-  const active = activeNavItem(items, pathname);
+  const active = activeNavItem([...items, ...more], pathname);
+  const moreActive = more.includes(active as NavItem);
 
   return (
-    <nav aria-label={label} className="-mb-px flex gap-1 overflow-x-auto">
+    <nav aria-label={label} className="-mb-px flex gap-0.5 overflow-x-auto [scrollbar-width:none] sm:gap-1 sm:overflow-visible">
       {items.map((item) => {
         const isActive = item === active;
         return (
@@ -89,17 +104,50 @@ export function TopNav({ items, label }: { items: NavItem[]; label?: string }) {
             href={item.href}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-[0.9375rem] transition-colors duration-150",
+              "flex h-11 shrink-0 items-center gap-2 border-b-2 px-2.5 text-[0.9375rem] transition-colors duration-150 sm:px-3",
               isActive
                 ? "border-white font-semibold text-white"
                 : "border-transparent text-cover-ink hover:text-white",
             )}
           >
-            <Icon name={item.icon} filled={isActive} className="text-[19px]" />
+            <span aria-hidden className="hidden sm:inline-flex">
+              <Icon name={item.icon} filled={isActive} className="text-[19px]" />
+            </span>
             {item.label}
           </Link>
         );
       })}
+      {more.length ? (
+        <details className="group relative shrink-0">
+          <summary
+            className={cn(
+              "flex h-11 cursor-pointer list-none items-center gap-1 border-b-2 px-2.5 text-[0.9375rem] transition-colors duration-150 sm:px-3",
+              moreActive
+                ? "border-white font-semibold text-white"
+                : "border-transparent text-cover-ink hover:text-white",
+            )}
+          >
+            {moreActive ? active?.label : moreLabel}
+            <Icon name="expand_more" className="text-[19px] transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="fixed right-3 top-[6.25rem] z-50 min-w-56 rounded-lg border border-rule bg-paper p-1 shadow-popover sm:absolute sm:right-0 sm:top-full sm:mt-1">
+            {more.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={item === active ? "page" : undefined}
+                className={cn(
+                  "flex min-h-11 items-center gap-2.5 rounded-md px-3 text-[0.9375rem] text-text hover:bg-ink-wash",
+                  item === active && "font-semibold text-ink",
+                )}
+              >
+                <Icon name={item.icon} className="text-[19px] text-text-muted" />
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </details>
+      ) : null}
     </nav>
   );
 }

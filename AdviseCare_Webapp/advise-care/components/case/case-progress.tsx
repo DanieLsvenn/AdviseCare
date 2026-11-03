@@ -11,9 +11,12 @@ const PIPELINE = ["pending", "assigned", "contacted", "followUp", "closed"] as c
  */
 export function CaseProgress({
   stage,
+  compact,
   className,
 }: {
   stage: string;
+  /** Segments only, for list cards; the step name is announced, not shown. */
+  compact?: boolean;
   className?: string;
 }) {
   const t = useTranslations("ui");
@@ -23,6 +26,32 @@ export function CaseProgress({
     ? 1
     : Math.max(0, PIPELINE.indexOf(stage as (typeof PIPELINE)[number]));
   const closed = stage === "closed";
+
+  if (compact) {
+    const label = t(`case.step.${referred ? "assigned" : (PIPELINE[currentIndex] ?? "pending")}`);
+    return (
+      <span
+        role="img"
+        aria-label={`${t("case.progress")}: ${label}`}
+        className={cn("grid grid-cols-5 gap-1", className)}
+      >
+        {PIPELINE.map((step, index) => (
+          <span
+            key={step}
+            aria-hidden
+            className={cn(
+              "h-1 rounded-full",
+              index < currentIndex || closed || index === currentIndex
+                ? referred && index === currentIndex
+                  ? "bg-status-referral-text"
+                  : "bg-ink"
+                : "bg-rule",
+            )}
+          />
+        ))}
+      </span>
+    );
+  }
 
   return (
     <ol

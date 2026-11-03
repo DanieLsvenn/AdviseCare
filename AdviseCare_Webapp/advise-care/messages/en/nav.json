@@ -36,8 +36,8 @@
   "student": {
     "profile": "My profile",
     "consent": "Consent",
-    "cases": "My support cases",
-    "accessHistory": "Access history",
+    "cases": "My requests",
+    "accessHistory": "Access log",
     "corrections": "Corrections",
     "export": "Export my data",
     "requestSupport": "Request support"
@@ -69,5 +69,6 @@
     "sessions": "Active sessions",
     "specialisations": "Advisor specialisations"
   },
-  "sectionGeneral": "Account"
+  "sectionGeneral": "Account",
+  "more": "More"
 }

@@ -120,7 +120,11 @@
     "next2Title": "Nhận thông tin liên hệ",
     "next2Body": "Qua email và trong AdviseCare. Hai bên tự hẹn cách và thời gian gặp.",
     "next3Title": "Theo dõi đến khi giải quyết",
-    "next3Body": "Mọi bước đều được ghi lại ở đây, và bạn thấy được ai đã đọc dữ liệu của mình."
+    "next3Body": "Mọi bước đều được ghi lại ở đây, và bạn thấy được ai đã đọc dữ liệu của mình.",
+    "lockedType": "Hãy chọn loại hỗ trợ ở bước 1 trước.",
+    "lockedCategory": "Hãy chọn danh mục ở bước 2 trước.",
+    "draftAutosave": "Tự lưu trên thiết bị này khi bạn gõ.",
+    "draftRestored": "Đã khôi phục nội dung bạn viết dở lần trước."
   },
   "case": {
     "progress": "Tiến trình case",
@@ -138,14 +142,15 @@
     "yourRequest": "Nội dung bạn đã gửi",
     "yourAdvisor": "Cố vấn của bạn",
     "meetHint": "Liên hệ cố vấn để thống nhất cách và thời gian gặp (trực tuyến hoặc trực tiếp).",
-    "waitingMatch": "Trưởng chương trình chưa ghép yêu cầu của bạn. Bạn sẽ nhận email ngay khi được ghép.",
+    "waitingMatch": "Việc ghép thường mất tối đa hai ngày làm việc. Bạn sẽ nhận email kèm liên hệ của cố vấn ngay khi được ghép.",
     "history": "Lịch sử",
     "noHistory": "Chưa có gì được ghi lại.",
     "event": {
       "opened": "Đã gửi yêu cầu",
       "updated": "Cập nhật case",
       "moved": "Chuyển sang {to}"
-    }
+    },
+    "waitingFor": "{count, plural, =0 {Gửi hôm nay} other {Đã chờ # ngày}}"
   },
   "matching": {
     "title": "Hàng đợi ghép cố vấn",
@@ -230,5 +235,20 @@
     "changeRequested": "Đã gửi đề nghị đổi cố vấn tới Trưởng chương trình.",
     "studentData": "Dữ liệu sinh viên chia sẻ với bạn",
     "studentDataHint": "Chỉ hiện các thuộc tính sinh viên đồng ý cho mục đích của vai trò bạn, và mỗi lần đọc đều được ghi nhật ký."
+  },
+  "myRequests": {
+    "title": "Yêu cầu hỗ trợ của tôi",
+    "description": "Mọi yêu cầu bạn đã gửi, đang ở đâu và ai đang phụ trách.",
+    "newRequest": "Gửi yêu cầu hỗ trợ",
+    "emptyTitle": "Bạn chưa gửi yêu cầu hỗ trợ nào",
+    "emptyBody": "Cho chúng tôi biết bạn cần giúp gì, Trưởng chương trình sẽ ghép bạn với cố vấn phù hợp.",
+    "openHeading": "{count, plural, =0 {Đang xử lý} other {Đang xử lý · #}}",
+    "noneOpen": "Không có yêu cầu nào đang xử lý. Các yêu cầu đã đóng ở bên dưới.",
+    "showClosed": "Xem {count} yêu cầu đã đóng",
+    "hideClosed": "Ẩn yêu cầu đã đóng",
+    "withAdvisor": "Cố vấn: {name}",
+    "waitingToday": "Gửi hôm nay · đang chờ ghép cố vấn",
+    "waitingDays": "Đang chờ ghép cố vấn · gửi {count} ngày trước",
+    "closedOn": "Đã đóng {date}"
   }
 }

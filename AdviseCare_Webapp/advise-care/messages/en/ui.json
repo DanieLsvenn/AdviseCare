@@ -120,7 +120,11 @@
     "next2Title": "You get their contact",
     "next2Body": "By email and in AdviseCare. You arrange how and when to meet.",
     "next3Title": "Followed until it is resolved",
-    "next3Body": "Every step is recorded here, and you can see who read your data."
+    "next3Body": "Every step is recorded here, and you can see who read your data.",
+    "lockedType": "Choose the kind of help in step 1 first.",
+    "lockedCategory": "Choose a category in step 2 first.",
+    "draftAutosave": "Saved on this device as you type.",
+    "draftRestored": "We restored what you were writing last time."
   },
   "case": {
     "progress": "Case progress",
@@ -138,14 +142,15 @@
     "yourRequest": "What you asked for",
     "yourAdvisor": "Your advisor",
     "meetHint": "Contact your advisor to agree how and when to meet (online or in person).",
-    "waitingMatch": "The Programme Head has not matched your request yet. You will get an email as soon as they do.",
+    "waitingMatch": "Matching usually takes up to two working days. You will get an email with your advisor's contact as soon as it happens.",
     "history": "History",
     "noHistory": "Nothing has been recorded yet.",
     "event": {
       "opened": "Request sent",
       "updated": "Case updated",
       "moved": "Moved to {to}"
-    }
+    },
+    "waitingFor": "{count, plural, =0 {Sent today} one {Waiting # day so far} other {Waiting # days so far}}"
   },
   "matching": {
     "title": "Matching queue",
@@ -230,5 +235,20 @@
     "changeRequested": "Change request sent to the Programme Head.",
     "studentData": "Student data shared with you",
     "studentDataHint": "Only attributes the student consented to under your role's purpose are shown, and each read is logged."
+  },
+  "myRequests": {
+    "title": "My support requests",
+    "description": "Every request you have sent, where it stands and who is looking after it.",
+    "newRequest": "Request support",
+    "emptyTitle": "You have not asked for support yet",
+    "emptyBody": "Tell us what you need help with and the Programme Head will match you with an advisor.",
+    "openHeading": "{count, plural, =0 {In progress} other {In progress · #}}",
+    "noneOpen": "Nothing in progress. Your closed requests are below.",
+    "showClosed": "Show {count, plural, one {# closed request} other {# closed requests}}",
+    "hideClosed": "Hide closed requests",
+    "withAdvisor": "With {name}",
+    "waitingToday": "Sent today · waiting for a match",
+    "waitingDays": "Waiting for a match · sent {count, plural, one {# day} other {# days}} ago",
+    "closedOn": "Closed {date}"
   }
 }

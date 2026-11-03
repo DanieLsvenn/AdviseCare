@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { clientApiGet } from "@/lib/client-api";
 import { ApiError } from "@/lib/api-contract";
-import { formatDateTime } from "@/lib/format";
+import { daysSince, formatDateTime } from "@/lib/format";
 import {
   byDate,
   listOf,
@@ -151,7 +151,12 @@ export function StudentCase({ caseId }: { caseId: string }) {
               <p className="mt-space-md text-[0.8125rem] leading-5 text-text-muted">{t("case.meetHint")}</p>
             </div>
           ) : (
-            <p className="mt-space-sm text-sm leading-6 text-text-muted">{t("case.waitingMatch")}</p>
+            <div className="mt-space-sm">
+              <p className="text-sm font-semibold text-text">
+                {t("case.waitingFor", { count: daysSince(record.openedAt) ?? 0 })}
+              </p>
+              <p className="mt-1 text-sm leading-6 text-text-muted">{t("case.waitingMatch")}</p>
+            </div>
           )}
         </aside>
       </div>

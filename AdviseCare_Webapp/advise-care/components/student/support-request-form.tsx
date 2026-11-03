@@ -30,6 +30,28 @@ interface Shareable {
 }
 
 const REASON_MAX = 4000;
+const DRAFT_KEY = "advisecare.requestDraft";
+
+function readDraft(): { type?: string; reason?: string } {
+  try {
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as { type?: string; reason?: string }) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeDraft(value: { type: string; reason: string } | null) {
+  try {
+    if (value && (value.type || value.reason)) {
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(value));
+    } else {
+      window.localStorage.removeItem(DRAFT_KEY);
+    }
+  } catch {
+    // Storage unavailable (private mode): the form still works, just without a draft.
+  }
+}
 
 /**
  * The student's way in (SRS: "Request support"): kind of help → category
@@ -52,6 +74,7 @@ export function SupportRequestForm() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [createdCaseId, setCreatedCaseId] = useState<string | null>(null);
+  const [restored, setRestored] = useState(false);
 
   const loadCategories = useCallback(async () => {
     setLoading(true);
@@ -80,9 +103,23 @@ export function SupportRequestForm() {
   }, [tw]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void loadCategories(), 0);
+    const timer = window.setTimeout(() => {
+      const draft = readDraft();
+      if (draft.reason) {
+        setReason(draft.reason);
+        setRestored(true);
+      }
+      if (draft.type === "academic" || draft.type === "wellbeing") setType(draft.type);
+      void loadCategories();
+    }, 0);
     return () => window.clearTimeout(timer);
   }, [loadCategories]);
+
+  useEffect(() => {
+    if (createdCaseId !== null) return;
+    const timer = window.setTimeout(() => writeDraft({ type, reason }), 400);
+    return () => window.clearTimeout(timer);
+  }, [type, reason, createdCaseId]);
 
   async function chooseCategory(nextId: string) {
     setCategoryId(nextId);
@@ -150,6 +187,7 @@ export function SupportRequestForm() {
           code: "case_creation_failed",
         });
       }
+      writeDraft(null);
       setCreatedCaseId(str(unwrap(response)?.caseId) || "");
     } catch (submitError) {
       setError(messageFor(submitError, tw));
@@ -236,7 +274,7 @@ export function SupportRequestForm() {
         </Step>
 
         {/* 2. Category and subject */}
-        <Step number={2} title={t("categoryTitle")} disabled={!type}>
+        <Step number={2} title={t("categoryTitle")} disabled={!type} lockedHint={t("lockedType")}>
           {loading ? (
             <SkeletonRows rows={3} columns={2} label={tw("loading")} />
           ) : visibleCategories.length === 0 && type ? (
@@ -294,7 +332,7 @@ export function SupportRequestForm() {
         </Step>
 
         {/* 3. Reason */}
-        <Step number={3} title={t("reasonTitle")} hint={t("reasonHint")} disabled={!categoryId}>
+        <Step number={3} title={t("reasonTitle")} hint={t("reasonHint")} disabled={!categoryId} lockedHint={t("lockedCategory")}>
           <textarea
             aria-label={t("reasonTitle")}
             className={cn(controlClass, "min-h-36 w-full py-3 text-[0.9375rem] leading-6")}
@@ -304,13 +342,16 @@ export function SupportRequestForm() {
             onChange={(event) => setReason(event.target.value)}
             required
           />
-          <p className="mt-1 text-right font-mono text-[0.75rem] text-text-faint">
-            {reason.length}/{REASON_MAX}
-          </p>
+          <div className="mt-1 flex items-center justify-between gap-space-md text-[0.75rem] text-text-faint">
+            <span>{restored ? t("draftRestored") : t("draftAutosave")}</span>
+            <span className="font-mono">
+              {reason.length}/{REASON_MAX}
+            </span>
+          </div>
         </Step>
 
         {/* 4. Data sharing */}
-        <Step number={4} title={t("shareTitle")} disabled={!categoryId}>
+        <Step number={4} title={t("shareTitle")} disabled={!categoryId} lockedHint={t("lockedCategory")}>
           {detailsLoading ? (
             <SkeletonRows rows={2} columns={2} label={tw("loading")} />
           ) : shareable && shareable.canShare && shareable.attributes.length ? (
@@ -405,36 +446,47 @@ function Step({
   title,
   hint,
   disabled,
+  lockedHint,
   children,
 }: {
   number: number;
   title: string;
   hint?: string;
   disabled?: boolean;
+  /** Shown instead of the step's controls until the previous step is done. */
+  lockedHint?: string;
   children: ReactNode;
 }) {
   return (
     <fieldset
       disabled={disabled}
-      className={cn(
-        "rounded-lg border border-rule bg-paper p-space-lg transition-opacity",
-        disabled && "opacity-55",
-      )}
+      aria-describedby={disabled && lockedHint ? `step-${number}-locked` : undefined}
+      className="rounded-lg border border-rule bg-paper p-space-lg"
     >
-      <legend className="sr-only">{title}</legend>
-      <div className="mb-space-base flex items-start gap-space-md">
+      <legend className="float-left mb-space-base flex w-full items-start gap-space-md">
         <span
           aria-hidden
-          className="flex size-7 shrink-0 items-center justify-center rounded-full border border-ink font-mono text-[0.8125rem] font-medium text-ink"
+          className={cn(
+            "flex size-7 shrink-0 items-center justify-center rounded-full border font-mono text-[0.8125rem] font-medium",
+            disabled ? "border-rule-strong text-text-faint" : "border-ink text-ink",
+          )}
         >
           {number}
         </span>
-        <div>
-          <h2 className="text-[1.0625rem] font-semibold leading-7 text-text">{title}</h2>
-          {hint ? <p className="text-sm leading-6 text-text-muted">{hint}</p> : null}
-        </div>
-      </div>
-      <div className="sm:pl-10">{children}</div>
+        <span>
+          <span className={cn("block text-[1.0625rem] font-semibold leading-7", disabled ? "text-text-faint" : "text-text")}>
+            {title}
+          </span>
+          {disabled && lockedHint ? (
+            <span id={`step-${number}-locked`} className="block text-sm leading-6 text-text-faint">
+              {lockedHint}
+            </span>
+          ) : hint ? (
+            <span className="block text-sm leading-6 text-text-muted">{hint}</span>
+          ) : null}
+        </span>
+      </legend>
+      {disabled ? null : <div className="clear-both sm:pl-10">{children}</div>}
     </fieldset>
   );
 }
