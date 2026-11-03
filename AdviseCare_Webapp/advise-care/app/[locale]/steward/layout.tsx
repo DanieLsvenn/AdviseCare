@@ -1,6 +1,5 @@
 import { getTranslations } from "next-intl/server";
 import { AppShell } from "@/components/layout/app-shell";
-import { ActiveNavTitle } from "@/components/layout/active-nav-title";
 import type { NavItem } from "@/components/layout/sidebar-nav";
 import { getInitials, requireRole } from "@/lib/auth";
 import { localizeRole } from "@/lib/roles";
@@ -49,19 +48,10 @@ export default async function StewardLayout({
     <AppShell
       navItems={navItems}
       navSectionLabel={t("sectionSteward")}
-      brandSubtitle="AdviseCare data protection"
-      title={
-        <ActiveNavTitle items={navItems} fallback={t("steward.purposes")} />
-      }
       accountName={user.fullName}
       accountRole={user.roles.map((role) => localizeRole(role, t)).join(", ")}
       accountInitials={getInitials(user.fullName)}
       roles={user.roles}
-      footerNote={{
-        icon: "shield_person",
-        title: t("stewardFooterTitle"),
-        caption: t("stewardFooterCaption"),
-      }}
     >
       {children}
     </AppShell>

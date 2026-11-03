@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 import { AppShell } from "@/components/layout/app-shell";
-import { ActiveNavTitle } from "@/components/layout/active-nav-title";
 import type { NavItem } from "@/components/layout/sidebar-nav";
 import { getInitials, requireUser } from "@/lib/auth";
 import { localizeRole } from "@/lib/roles";
@@ -31,14 +30,7 @@ export async function GlobalWorkspaceShell({
   return (
     <AppShell
       navItems={navItems}
-      navSectionLabel={common("workspaces")}
-      brandSubtitle={common("workspaces")}
-      title={
-        <ActiveNavTitle
-          items={navItems}
-          fallback={common("workspaces")}
-        />
-      }
+      navSectionLabel={nav("sectionGeneral")}
       accountName={user.fullName}
       accountRole={user.roles
         .map((role) => localizeRole(role, nav))

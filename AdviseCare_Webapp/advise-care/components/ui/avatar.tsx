@@ -7,13 +7,14 @@ export function Avatar({
   className,
 }: {
   initials: string;
-  tone?: "primary" | "urgent" | "neutral";
+  tone?: "primary" | "urgent" | "neutral" | "cover";
   className?: string;
 }) {
   const toneClass = {
     primary: "bg-ink-wash text-ink",
     urgent: "bg-status-urgent-surface text-status-urgent-text",
     neutral: "bg-surface-container text-text-muted",
+    cover: "bg-cover-raised text-white ring-1 ring-cover-line",
   }[tone];
 
   return (

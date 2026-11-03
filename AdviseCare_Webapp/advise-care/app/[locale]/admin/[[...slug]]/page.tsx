@@ -10,6 +10,7 @@ const screens: Record<string, WorkspaceScreen> = {
   m05: "admin.activity",
   m06: "admin.roles",
   m07: "admin.sessions",
+  m08: "admin.assignments",
 };
 
 export default async function AdminWorkspacePage({

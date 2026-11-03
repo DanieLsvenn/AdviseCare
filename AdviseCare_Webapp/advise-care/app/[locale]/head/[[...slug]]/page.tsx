@@ -8,6 +8,7 @@ const screens: Record<string, WorkspaceScreen> = {
   "advisor-workload": "head.workload",
   "assignment-changes": "head.cases",
   "programme-overview": "head.cases",
+  cases: "head.cases",
   reports: "head.reports",
 };
 

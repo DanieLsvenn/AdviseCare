@@ -15,7 +15,6 @@ export {
   Checkbox,
 } from "./field";
 export { PageHeader, MetaPill } from "./page-header";
-export { RoutePath } from "./route-path";
 export { LanguageSwitcher } from "./language-switcher";
 export { Tabs, type TabItem } from "./tabs";
 export { Pagination } from "./pagination";

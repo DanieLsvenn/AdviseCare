@@ -11,14 +11,21 @@ const labels: Record<string, string> = { en: "EN", vi: "VI" };
  * The EN | VI toggle is visible on every screen (brand commitment).
  * Segmented control: the active language is a white chip in ink.
  */
-export function LanguageSwitcher({ className }: { className?: string }) {
+export function LanguageSwitcher({
+  className,
+  tone = "paper",
+}: {
+  className?: string;
+  tone?: "paper" | "cover";
+}) {
   const pathname = usePathname();
   const active = useLocale();
 
   return (
     <div
       className={cn(
-        "inline-flex h-8 items-center rounded-md border border-rule bg-paper-tint p-0.5",
+        "inline-flex h-8 items-center rounded-md border p-0.5",
+        tone === "cover" ? "border-cover-line bg-cover-raised" : "border-rule bg-paper-tint",
         className,
       )}
       role="group"
@@ -34,7 +41,9 @@ export function LanguageSwitcher({ className }: { className?: string }) {
             "flex h-6 items-center rounded px-2 text-[0.75rem] font-semibold tracking-wide transition-colors",
             locale === active
               ? "bg-paper text-ink shadow-[0_0_0_1px_var(--color-rule)]"
-              : "text-text-faint hover:text-text",
+              : tone === "cover"
+                ? "text-cover-ink hover:text-white"
+                : "text-text-faint hover:text-text",
           )}
         >
           {labels[locale] ?? locale.toUpperCase()}
