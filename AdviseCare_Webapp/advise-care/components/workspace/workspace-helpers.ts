@@ -143,8 +143,12 @@ export function extractRecords(
     const records = payload[key];
     if (Array.isArray(records)) return records.filter(isRecord);
   }
+  // Fallback: the first array of records. Arrays of plain values (e.g. the
+  // `roles: string[]` of Auth/me) are fields of a single record, not a list.
   for (const value of Object.values(payload)) {
-    if (Array.isArray(value)) return value.filter(isRecord);
+    if (Array.isArray(value) && (value.length === 0 || value.some(isRecord))) {
+      return value.filter(isRecord);
+    }
   }
   return recordIdentity(payload) ? [payload] : null;
 }

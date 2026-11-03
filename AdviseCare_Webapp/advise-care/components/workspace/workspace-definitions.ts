@@ -602,7 +602,7 @@ export function getWorkspaceDefinitions(
           ],
           {
             globalOperations: [
-              operation("update", "PUT", "Auth/me", [
+              operation("editProfile", "PUT", "Auth/me", [
                 field("userName", "text", true),
                 selectValues(
                   "preferredLanguage",
@@ -612,15 +612,15 @@ export function getWorkspaceDefinitions(
                   ],
                   true,
                 ),
-              ]),
-              operation("update", "POST", "Auth/change-password", [
+              ], { icon: "edit" }),
+              operation("changePassword", "POST", "Auth/change-password", [
                 field("oldPassword", "text", true),
                 field("newPassword", "text", true),
                 field("confirmPassword", "text", true),
-              ]),
-              operation("update", "POST", "Auth/me/avatar", [
+              ], { icon: "lock" }),
+              operation("changeAvatar", "POST", "Auth/me/avatar", [
                 field("avatar", "file", true),
-              ]),
+              ], { icon: "account_circle" }),
             ],
           },
         ),
