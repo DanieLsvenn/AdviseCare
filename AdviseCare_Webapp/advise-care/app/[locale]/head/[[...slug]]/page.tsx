@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { MatchingQueue } from "@/components/head/matching-queue";
 import { WorkspacePage } from "@/components/workspace/workspace-page";
 import type { WorkspaceScreen } from "@/components/workspace/workspace-definitions";
 
@@ -19,7 +20,9 @@ export default async function HeadWorkspacePage({
   params: Promise<{ slug?: string[] }>;
 }) {
   const { slug } = await params;
-  const screen = screens[slug?.join("/") ?? ""];
+  const route = slug?.join("/") ?? "";
+  if (route === "" || route === "matching") return <MatchingQueue />;
+  const screen = screens[route];
   if (!screen) notFound();
   return <WorkspacePage screen={screen} />;
 }

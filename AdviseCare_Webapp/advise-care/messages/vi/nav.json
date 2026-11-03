@@ -43,7 +43,7 @@
     "requestSupport": "Gửi yêu cầu hỗ trợ"
   },
   "head": {
-    "overview": "Hàng đợi phân công",
+    "overview": "Hàng đợi ghép cố vấn",
     "workload": "Khối lượng cố vấn",
     "assignments": "Yêu cầu đổi cố vấn",
     "reports": "Báo cáo ca hỗ trợ",
