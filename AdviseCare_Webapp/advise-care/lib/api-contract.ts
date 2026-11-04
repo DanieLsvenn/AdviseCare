@@ -113,7 +113,9 @@ export function isFormBody(body: ApiBody | undefined): body is FormData {
 export async function apiErrorFromResponse(
   response: Response,
 ): Promise<ApiError> {
-  const text = await response.text();
+  // A body that cannot be read (connection cut mid-stream) must not hide the
+  // status: a wrong password is still a 401, not "API unavailable".
+  const text = await response.text().catch(() => "");
   let payload: unknown;
 
   if (text) {

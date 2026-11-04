@@ -2,8 +2,9 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Icon } from "./icon";
 
-const control =
-  "rounded border border-outline-variant bg-surface-container-lowest px-space-md font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
+export const controlClass =
+  "rounded-md border border-rule-strong bg-paper px-3 text-sm text-text placeholder:text-text-faint transition-colors hover:border-text-faint focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/20 disabled:cursor-not-allowed disabled:bg-paper-tint disabled:text-text-faint aria-[invalid=true]:border-red-ink";
+const control = controlClass;
 
 export function Field({
   label,
@@ -20,13 +21,13 @@ export function Field({
 }) {
   return (
     <label className={cn("block", className)}>
-      <span className="mb-space-xs flex items-center gap-1 font-label-md text-label-md font-medium text-on-surface">
+      <span className="mb-1.5 flex items-center gap-1 text-sm font-semibold text-text">
         {label}
-        {required ? <span className="text-status-urgent-text">*</span> : null}
+        {required ? <span aria-hidden className="text-red-ink">*</span> : null}
       </span>
       {children}
       {hint ? (
-        <span className="mt-space-xs block font-body-sm text-body-sm text-on-surface-variant">
+        <span className="mt-1 block text-[0.8125rem] leading-5 text-text-faint">
           {hint}
         </span>
       ) : null}
@@ -58,7 +59,7 @@ export function SearchInput({
     <div className={cn("relative", className)}>
       <Icon
         name="search"
-        className="pointer-events-none absolute left-space-md top-1/2 -translate-y-1/2 text-[18px] text-on-surface-variant"
+        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-text-faint"
       />
       <input className={cn(control, "h-9 w-full pl-9")} {...rest} />
     </div>
@@ -70,7 +71,7 @@ export function Checkbox({ className, ...rest }: ComponentProps<"input">) {
     <input
       type="checkbox"
       className={cn(
-        "size-4 shrink-0 rounded-sm border border-outline-variant text-primary accent-[#0f766e]",
+        "size-4 shrink-0 rounded-sm border border-rule-strong accent-[#2142b8]",
         className,
       )}
       {...rest}

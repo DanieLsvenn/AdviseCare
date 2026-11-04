@@ -21,6 +21,9 @@ export default async function WelfareWorkspacePage({
   if (route === "referrals") {
     return <WorkspacePage screen="welfare.referrals" />;
   }
+  if (route === "escalations") {
+    return <WorkspacePage screen="welfare.escalations" />;
+  }
   if (route === "external-services") {
     return <WorkspacePage screen="welfare.externalServices" />;
   }

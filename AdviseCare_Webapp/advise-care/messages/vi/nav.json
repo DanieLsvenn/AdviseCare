@@ -20,7 +20,8 @@
     "consentRequests": "Yêu cầu đồng ý",
     "corrections": "Đính chính",
     "referrals": "Chuyển tuyến",
-    "emergencyAccess": "Truy cập khẩn cấp"
+    "emergencyAccess": "Truy cập khẩn cấp",
+    "myCases": "Case của tôi"
   },
   "steward": {
     "purposes": "Mục đích đồng ý",
@@ -34,26 +35,28 @@
   },
   "student": {
     "profile": "Hồ sơ của tôi",
-    "consent": "Đồng ý chia sẻ",
-    "cases": "Yêu cầu hỗ trợ của tôi",
-    "accessHistory": "Lịch sử truy cập",
+    "consent": "Đồng ý",
+    "cases": "Yêu cầu",
+    "accessHistory": "Lịch sử xem",
     "corrections": "Yêu cầu đính chính",
-    "export": "Xuất dữ liệu của tôi"
+    "export": "Xuất dữ liệu của tôi",
+    "requestSupport": "Gửi yêu cầu hỗ trợ"
   },
   "head": {
-    "overview": "Hàng đợi phân công",
+    "overview": "Hàng đợi ghép cố vấn",
     "workload": "Khối lượng cố vấn",
     "assignments": "Yêu cầu đổi cố vấn",
-    "reports": "Báo cáo ca hỗ trợ"
+    "reports": "Báo cáo ca hỗ trợ",
+    "allCases": "Tất cả case",
+    "escalations": "Yêu cầu chuyển cấp"
   },
   "welfare": {
     "referrals": "Yêu cầu được chuyển đến",
-    "cases": "Xử lý công tác sinh viên"
+    "cases": "Xử lý công tác sinh viên",
+    "externalServices": "Dịch vụ bên ngoài",
+    "externalReferrals": "Giới thiệu ra ngoài",
+    "escalations": "Chuyển cấp trên"
   },
-  "welfareFooterTitle": "Công tác sinh viên",
-  "welfareFooterCaption": "API kiểm tra quyền truy cập ca hỗ trợ",
-  "headFooterTitle": "Quản lý chương trình",
-  "headFooterCaption": "Phân công và báo cáo",
   "administrator": {
     "accounts": "Tài khoản và vai trò",
     "faculties": "Danh mục học thuật",
@@ -61,14 +64,11 @@
     "reference": "Danh mục hỗ trợ",
     "health": "Lịch sử hoạt động",
     "restore": "Thông báo",
-    "indicators": "Cài đặt tài khoản"
+    "indicators": "Cài đặt tài khoản",
+    "roles": "Phân vai trò",
+    "sessions": "Phiên đăng nhập",
+    "specialisations": "Chuyên môn cố vấn"
   },
-  "advisorFooterTitle": "Không gian cố vấn",
-  "advisorFooterCaption": "API kiểm tra quyền truy cập ca hỗ trợ",
-  "stewardFooterTitle": "Không gian bảo vệ dữ liệu",
-  "stewardFooterCaption": "Quản lý siêu dữ liệu và kiểm toán",
-  "administratorFooterTitle": "Quản trị hệ thống",
-  "administratorFooterCaption": "Quản lý tài khoản và danh mục",
-  "studentFooterTitle": "Quyền tự quyết dữ liệu sinh viên",
-  "studentFooterCaption": "Quản lý đồng ý và hồ sơ cá nhân"
+  "sectionGeneral": "Tài khoản",
+  "more": "Thêm"
 }

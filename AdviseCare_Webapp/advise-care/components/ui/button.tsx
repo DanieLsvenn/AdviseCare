@@ -1,37 +1,61 @@
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Icon } from "./icon";
 
-type Variant = "primary" | "secondary" | "destructive" | "tertiary";
-type Size = "sm" | "md";
+type Variant = "primary" | "secondary" | "quiet" | "destructive" | "tertiary";
+type Size = "sm" | "md" | "lg";
 
+/* Ballpoint-ink primary; everything else stays on the page's paper. */
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-primary-container text-on-primary hover:bg-primary active:bg-[#134e4a] border border-transparent",
+    "border-transparent bg-ink text-white hover:bg-ink-hover active:bg-cover disabled:border-rule disabled:bg-surface-container disabled:text-text-faint",
   secondary:
-    "bg-surface-container-lowest text-on-surface border border-outline-variant/60 hover:bg-surface-container-low hover:border-outline-variant",
-  destructive:
-    "bg-status-urgent-text text-white border border-transparent hover:bg-[#991b1b]",
+    "border-rule-strong bg-paper text-text hover:border-text-faint hover:bg-paper-tint active:bg-ink-wash",
+  quiet:
+    "border-transparent bg-transparent text-ink hover:bg-ink-wash active:bg-ink-wash",
   tertiary:
-    "bg-transparent text-on-surface-variant border border-transparent hover:bg-surface-container-high hover:text-on-surface",
+    "border-transparent bg-transparent text-text-muted hover:bg-ink-wash hover:text-text",
+  destructive:
+    "border-transparent bg-red-ink text-white hover:bg-[#8c0f18] active:bg-[#700b13]",
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: "h-8 px-space-md text-label-md",
-  md: "h-9 px-3.5 text-label-md",
+  sm: "h-8 gap-1.5 px-3 text-[0.8125rem]",
+  md: "h-9 gap-2 px-3.5 text-sm",
+  lg: "h-11 gap-2 px-5 text-base",
 };
 
 const base =
-  "inline-flex items-center justify-center gap-space-sm rounded font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex shrink-0 items-center justify-center rounded-md border font-semibold whitespace-nowrap transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-80";
 
 interface CommonProps {
   variant?: Variant;
   size?: Size;
   icon?: string;
   iconAfter?: string;
+  loading?: boolean;
   children?: ReactNode;
   className?: string;
+}
+
+function Content({
+  icon,
+  iconAfter,
+  loading,
+  children,
+}: Pick<CommonProps, "icon" | "iconAfter" | "loading" | "children">) {
+  return (
+    <>
+      {loading ? (
+        <Icon name="progress_activity" className="animate-spin text-[18px]" />
+      ) : icon ? (
+        <Icon name={icon} className="text-[18px]" />
+      ) : null}
+      {children}
+      {iconAfter ? <Icon name={iconAfter} className="text-[18px]" /> : null}
+    </>
+  );
 }
 
 export function Button({
@@ -39,19 +63,23 @@ export function Button({
   size = "md",
   icon,
   iconAfter,
+  loading,
   children,
   className,
+  disabled,
   ...rest
 }: CommonProps & ComponentProps<"button">) {
   return (
     <button
       type="button"
+      aria-busy={loading || undefined}
+      disabled={disabled || loading}
       className={cn(base, variantClasses[variant], sizeClasses[size], className)}
       {...rest}
     >
-      {icon ? <Icon name={icon} /> : null}
-      {children}
-      {iconAfter ? <Icon name={iconAfter} /> : null}
+      <Content icon={icon} iconAfter={iconAfter} loading={loading}>
+        {children}
+      </Content>
     </button>
   );
 }
@@ -72,9 +100,9 @@ export function ButtonLink({
       className={cn(base, variantClasses[variant], sizeClasses[size], className)}
       {...rest}
     >
-      {icon ? <Icon name={icon} /> : null}
-      {children}
-      {iconAfter ? <Icon name={iconAfter} /> : null}
+      <Content icon={icon} iconAfter={iconAfter}>
+        {children}
+      </Content>
     </Link>
   );
 }

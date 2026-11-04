@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { StudentCaseList } from "@/components/student/student-case-list";
 import { WorkspacePage } from "@/components/workspace/workspace-page";
 import type { WorkspaceScreen } from "@/components/workspace/workspace-definitions";
 
@@ -15,7 +16,7 @@ export default async function StudentWorkspacePage({
   if (route === "" || route === "profile") {
     screen = "student.profile";
   } else if (route === "cases") {
-    screen = "student.cases";
+    return <StudentCaseList />;
   } else if (route === "support-request") {
     screen = "student.support";
   } else if (route === "consent") {

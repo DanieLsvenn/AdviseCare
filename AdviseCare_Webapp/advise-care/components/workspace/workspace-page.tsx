@@ -1,7 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { ApiDownloadForm } from "@/components/workspace/api-download-form";
 import {
-  ApiOperationForm,
   ApiWorkspace,
   type WorkspaceField,
 } from "@/components/workspace/api-workspace";
@@ -42,32 +41,6 @@ export async function WorkspacePage({
     <div className="flex flex-col gap-space-lg">
       {screen === "student.support" ? <SupportRequestForm /> : null}
       {screen === "admin.studentData" ? <StudentDataImportWorkflow /> : null}
-      {screen === "admin.accounts" ? (
-        <Panel className="p-space-lg">
-          <h2 className="font-headline-md text-headline-md text-on-surface">
-            {t("importAccounts")}
-          </h2>
-          <p className="mt-space-xs font-body-sm text-body-sm text-on-surface-variant">
-            {t("accountImportDescription")}
-          </p>
-          <ApiOperationForm
-            definition={{
-              label: t("import"),
-              method: "POST",
-              path: "Accounts/import",
-              fields: [
-                {
-                  key: "file",
-                  label: t("file"),
-                  type: "file",
-                  required: true,
-                  accept: ".xlsx",
-                },
-              ],
-            }}
-          />
-        </Panel>
-      ) : null}
       {screen === "student.export" ? (
         <ApiDownloadForm
           title={t("export")}
@@ -130,7 +103,7 @@ export async function WorkspacePage({
       ) : null}
       {definitions.map((definition, index) => (
         <ApiWorkspace
-          definition={definition}
+          definition={index > 0 ? { ...definition, embedded: true } : definition}
           key={`${screen}:${definition.listPath}:${index}`}
         />
       ))}

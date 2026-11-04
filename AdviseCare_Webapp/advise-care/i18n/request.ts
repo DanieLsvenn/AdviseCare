@@ -20,6 +20,7 @@ const namespaces = [
   "student",
   "steward",
   "workspace",
+  "ui",
 ] as const;
 
 export default getRequestConfig(async ({ requestLocale }) => {

@@ -71,5 +71,8 @@
   "logoutFailed": "Chưa thể xác nhận đăng xuất. Vui lòng thử lại.",
   "notifications": "Thông báo",
   "settings": "Cài đặt tài khoản",
-  "workspaces": "Không gian làm việc"
+  "workspaces": "Không gian làm việc",
+  "skipToContent": "Bỏ qua đến nội dung",
+  "breadcrumb": "Đường dẫn",
+  "language": "Ngôn ngữ"
 }

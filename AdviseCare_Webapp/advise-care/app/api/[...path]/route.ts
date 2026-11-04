@@ -122,7 +122,7 @@ async function handle(
   }
 
   try {
-    const init: RequestInit & { duplex?: "half" } = {
+    const init: RequestInit = {
       method,
       headers: upstreamHeaders,
       cache: "no-store",
@@ -130,8 +130,10 @@ async function handle(
       signal: controller.signal,
     };
     if (method !== "GET" && method !== "HEAD") {
-      init.body = request.body;
-      init.duplex = "half";
+      // Buffer the body instead of streaming request.body: when the API answers
+      // 401, Node's fetch (undici) wants to be able to resend the body and
+      // fails with "expected non-null body source" if it was a one-shot stream.
+      init.body = await request.arrayBuffer();
     }
 
     const upstream = await fetch(upstreamUrl, init);
@@ -140,6 +142,19 @@ async function handle(
     for (const name of ["content-type", "content-disposition"]) {
       const value = upstream.headers.get(name);
       if (value) headers.set(name, value);
+    }
+
+    // Error bodies are small JSON: read them here, inside the try, instead of
+    // streaming them after the handler returns (a stream that breaks after the
+    // status is sent reaches the browser as a network error).
+    if (!upstream.ok) {
+      const errorBody = await upstream.arrayBuffer();
+      const response = new NextResponse(errorBody, {
+        status: upstream.status,
+        headers,
+      });
+      if (upstream.status === 401 || isLogout) clearSessionCookie(response);
+      return response;
     }
 
     if (upstream.status === 401) {
@@ -199,8 +214,11 @@ async function handle(
       status: upstream.status,
       headers,
     });
-  } catch {
+  } catch (error) {
     const timedOut = controller.signal.aborted;
+    if (process.env.NODE_ENV !== "production") {
+      console.error(`[api proxy] ${method} ${normalizedPath} failed:`, error);
+    }
     const response = NextResponse.json(
       {
         message: timedOut

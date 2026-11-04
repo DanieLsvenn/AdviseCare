@@ -9,11 +9,42 @@ import {
   type FormEvent,
 } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { ApiError, isRecord, type ApiMethod, type ApiQuery } from "@/lib/api-contract";
 import { clientApiGet, clientApiRequest } from "@/lib/client-api";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
+import { moveRowFocus } from "@/lib/keyboard";
+import { formatDate, formatTime, parseDate, shortId } from "@/lib/format";
+import { QUIET_STATES, statusFields, statusKey } from "@/lib/status";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { Drawer } from "@/components/ui/drawer";
+import { controlClass } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
+import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
-import { Panel } from "@/components/ui/panel";
+import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/states";
+import { StatusValue } from "@/components/ui/status-value";
+import {
+  bodyFromRecord,
+  camelCase,
+  createRowKey,
+  displayValue,
+  errorMessage,
+  extractOptions,
+  extractRecords,
+  extractTotal,
+  getPathValue,
+  getScopedQuery,
+  hasRequiredQueryValues,
+  isIdKey,
+  isLongTextKey,
+  makeBody,
+  pascalCase,
+  readRecordValue,
+  recordTitle,
+  resolvePath,
+} from "./workspace-helpers";
 
 export interface WorkspaceField {
   key: string;
@@ -33,6 +64,7 @@ export interface WorkspaceField {
   options?: Array<{ label: string; value: string }>;
   accept?: string;
   placeholder?: string;
+  hint?: string;
   pathOnly?: boolean;
   optionsFrom?: WorkspaceOptionSource;
 }
@@ -44,19 +76,30 @@ export interface WorkspaceOptionSource {
   labelKeys: string[];
   match?: Record<string, string | number | boolean>;
   requiredValueKeys?: string[];
+  query?: ApiQuery;
 }
 
 export interface WorkspaceColumn {
   key: string;
   label: string;
+  /** Override the automatic cell format. */
+  format?: "text" | "status" | "date" | "datetime" | "id" | "number" | "identity" | "label" | "code";
 }
 
 export interface WorkspaceOperation {
   label: string;
+  /** One line under the operation's heading in the record drawer. */
+  description?: string;
   method: ApiMethod;
   path: string;
   fields?: WorkspaceField[];
   confirm?: boolean;
+  /** The operation removes or blocks something (red button, warning dialog). */
+  destructive?: boolean;
+  /** Icon in the record drawer; defaults by method. */
+  icon?: string;
+  /** Only offer the operation when the record is in one of these states. */
+  when?: { key: string; in?: string[]; notIn?: string[] };
   bodyFromRecord?: Record<string, { key: string; asArray?: boolean }>;
 }
 
@@ -70,21 +113,43 @@ export interface ApiWorkspaceDefinition {
   create?: WorkspaceOperation;
   globalOperations?: WorkspaceOperation[];
   rowOperations?: WorkspaceOperation[];
+  /** Rows link to a page of their own instead of opening the drawer. */
+  rowHref?: string;
+  /** Main action of the screen when it lives on another page. */
+  primaryLink?: { label: string; href: string; icon?: string };
   pageSize?: number;
   pathValues?: Record<string, unknown>;
   recordFilter?: { key: string; value: string };
+  /** Copy for the empty list: what will appear here and how it gets here. */
+  emptyTitle?: string;
+  emptyBody?: string;
+  /** Second and later workspaces on a page render without the page title. */
+  embedded?: boolean;
 }
 
+type UiT = ReturnType<typeof useTranslations<"ui">>;
+
+/**
+ * A list screen generated from a definition: title row, one filter toolbar,
+ * the table, and a right-hand drawer to create a record or work on the one
+ * that was clicked. Every API state (loading, empty, error, needs filters)
+ * keeps the list's frame.
+ */
 export function ApiWorkspace({
   definition,
 }: {
   definition: ApiWorkspaceDefinition;
 }) {
   const t = useTranslations("workspace");
-  const listPath = resolvePath(
-    definition.listPath,
-    definition.pathValues ?? {},
-  );
+  const tu = useTranslations("ui");
+  const router = useRouter();
+  const listPath = useMemo(() => {
+    try {
+      return resolvePath(definition.listPath, definition.pathValues ?? {});
+    } catch {
+      return definition.listPath;
+    }
+  }, [definition.listPath, definition.pathValues]);
   const scopedQuery = useMemo(
     () => getScopedQuery(definition.queryFields, definition.pathValues),
     [definition.pathValues, definition.queryFields],
@@ -94,10 +159,7 @@ export function ApiWorkspace({
     () =>
       (definition.queryFields ?? []).filter(
         (field) =>
-          !Object.prototype.hasOwnProperty.call(
-            definition.pathValues ?? {},
-            field.key,
-          ),
+          !Object.prototype.hasOwnProperty.call(definition.pathValues ?? {}, field.key),
       ),
     [definition.pathValues, definition.queryFields],
   );
@@ -106,14 +168,14 @@ export function ApiWorkspace({
     [queryFields],
   );
   const [records, setRecords] = useState<Record<string, unknown>[]>([]);
-  const [selectedRecord, setSelectedRecord] =
-    useState<Record<string, unknown> | null>(null);
+  const [total, setTotal] = useState<number | undefined>(undefined);
+  const [selectedRecord, setSelectedRecord] = useState<Record<string, unknown> | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [globalOperation, setGlobalOperation] = useState<WorkspaceOperation | null>(null);
   const [query, setQuery] = useState<ApiQuery>(() => ({
-      ...scopedQuery,
-      ...(definition.pageSize
-        ? { page: 1, pageSize: definition.pageSize }
-        : {}),
-    }));
+    ...scopedQuery,
+    ...(definition.pageSize ? { page: 1, pageSize: definition.pageSize } : {}),
+  }));
   const requiredQueryValuesPresent = hasRequiredQueryValues(
     query,
     requiredQueryFields,
@@ -121,18 +183,11 @@ export function ApiWorkspace({
   );
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [filterValues, setFilterValues] = useState<Record<string, string | boolean>>({});
 
   const loadRecords = useCallback(
     async (nextQuery: ApiQuery = query) => {
-      if (
-        !hasRequiredQueryValues(
-          nextQuery,
-          requiredQueryFields,
-          scopedQuery,
-        )
-      ) {
-        return;
-      }
+      if (!hasRequiredQueryValues(nextQuery, requiredQueryFields, scopedQuery)) return;
 
       setLoading(true);
       setLoadError("");
@@ -151,33 +206,24 @@ export function ApiWorkspace({
         const visibleRecords = recordFilter
           ? result.filter(
               (record) =>
-                String(readRecordValue(record, recordFilter.key) ?? "") ===
-                recordFilter.value,
+                String(readRecordValue(record, recordFilter.key) ?? "") === recordFilter.value,
             )
           : result;
         setRecords(visibleRecords);
-        setSelectedRecord(null);
+        setTotal(recordFilter ? visibleRecords.length : extractTotal(payload));
       } catch (error) {
         setLoadError(errorMessage(error, t));
         setRecords([]);
+        setTotal(undefined);
       } finally {
         setLoading(false);
       }
     },
-    [
-      definition.collectionKey,
-      listPath,
-      query,
-      requiredQueryFields,
-      recordFilter,
-      scopedQuery,
-      t,
-    ],
+    [definition.collectionKey, listPath, query, requiredQueryFields, recordFilter, scopedQuery, t],
   );
 
   useEffect(() => {
     if (!requiredQueryValuesPresent) return;
-
     let active = true;
     const timer = window.setTimeout(() => {
       if (active) void loadRecords();
@@ -193,20 +239,25 @@ export function ApiWorkspace({
         ...definition.create,
         fields: definition.create.fields?.filter(
           (field) =>
-            !Object.prototype.hasOwnProperty.call(
-              definition.pathValues ?? {},
-              field.key,
-            ),
+            !Object.prototype.hasOwnProperty.call(definition.pathValues ?? {}, field.key),
         ),
       }
     : undefined;
   const columns = definition.columns;
   const rowKeyOccurrences = new Map<string, number>();
-  const [filterValues, setFilterValues] = useState<Record<string, string | boolean>>({});
+  const mobileKeyOccurrences = new Map<string, number>();
+  const hasFiltersApplied = queryFields.some((field) => {
+    const value = query[field.key];
+    return value !== undefined && value !== "" && value !== false;
+  });
+  const recordsAreOpenable = Boolean(definition.rowHref || definition.rowOperations?.length || columns.length);
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const nextQuery: ApiQuery = { ...filterValues };
+    const nextQuery: ApiQuery = {};
+    for (const [key, value] of Object.entries(filterValues)) {
+      if (value !== "" && value !== false) nextQuery[key] = value;
+    }
     if (definition.pageSize) {
       nextQuery.page = 1;
       nextQuery.pageSize = definition.pageSize;
@@ -214,201 +265,238 @@ export function ApiWorkspace({
     setQuery(nextQuery);
   }
 
-  function changePage(page: number) {
-    const nextQuery = {
-      ...query,
-      page,
-      pageSize: definition.pageSize ?? query.pageSize,
-    };
-    setQuery(nextQuery);
+  function clearFilters() {
+    setFilterValues({});
+    setQuery(definition.pageSize ? { page: 1, pageSize: definition.pageSize } : {});
   }
+
+  function changePage(page: number) {
+    setQuery({ ...query, page, pageSize: definition.pageSize ?? query.pageSize });
+  }
+
+  function openRecord(record: Record<string, unknown>) {
+    if (definition.rowHref) {
+      try {
+        router.push(resolvePath(definition.rowHref, record));
+        return;
+      } catch {
+        // fall through to the drawer when the record lacks the id
+      }
+    }
+    setSelectedRecord(record);
+  }
+
+  const page = Number(query.page ?? 1);
+  const pageSize = definition.pageSize;
+  const countLabel =
+    total !== undefined
+      ? tu("workspace.recordCount", { count: total })
+      : tu("workspace.recordCount", { count: records.length });
 
   return (
     <div className="flex flex-col gap-space-lg">
-      <PageHeader title={definition.title} description={definition.description} />
+      {definition.embedded ? null : (
+        <PageHeader
+          title={definition.title}
+          description={definition.description}
+          actions={
+            <>
+              {definition.globalOperations?.map((operation) => (
+                <Button
+                  key={`${operation.method}:${operation.path}`}
+                  variant="secondary"
+                  onClick={() => setGlobalOperation(operation)}
+                >
+                  {operation.label}
+                </Button>
+              ))}
+              {createOperation ? (
+                <Button icon="add" onClick={() => setCreating(true)}>
+                  {createOperation.label}
+                </Button>
+              ) : null}
+              {definition.primaryLink ? (
+                <ButtonLink href={definition.primaryLink.href} icon={definition.primaryLink.icon ?? "add"}>
+                  {definition.primaryLink.label}
+                </ButtonLink>
+              ) : null}
+            </>
+          }
+        />
+      )}
 
-      {queryFields.length ? (
-        <Panel className="p-space-lg">
-          <form
-            className="grid gap-space-md sm:grid-cols-2 xl:grid-cols-4"
-            onSubmit={applyFilters}
-          >
-            {queryFields.map((field) => (
-              <WorkspaceInput
-                field={field}
-                key={field.key}
-                onChange={(value) =>
-                  setFilterValues((current) => ({
-                    ...current,
-                    [field.key]: value as string | boolean,
-                  }))
-                }
-                value={filterValues[field.key] ?? ""}
-              />
-            ))}
-            <div className="flex items-end gap-space-sm">
-              <Button disabled={loading} type="submit">
-                {t("applyFilters")}
+      <section className="overflow-hidden rounded-lg border border-rule bg-paper">
+        <div className="flex flex-wrap items-center gap-x-space-md gap-y-space-sm border-b border-rule px-space-lg py-space-md">
+          {definition.embedded ? (
+            <h2 className="mr-auto text-base font-semibold text-text">{definition.title}</h2>
+          ) : null}
+          {queryFields.length ? (
+            <FilterBar
+              fields={queryFields}
+              values={filterValues}
+              onChange={(key, value) =>
+                setFilterValues((current) => ({ ...current, [key]: value }))
+              }
+              onSubmit={applyFilters}
+              onClear={clearFilters}
+              disabled={loading && requiredQueryValuesPresent}
+              canClear={hasFiltersApplied || Object.keys(filterValues).length > 0}
+            />
+          ) : null}
+          <div className="ml-auto flex items-center gap-space-sm">
+            {requiredQueryValuesPresent && !loading && !loadError ? (
+              <span className="text-[0.8125rem] text-text-faint">{countLabel}</span>
+            ) : null}
+            <Button
+              aria-label={t("refresh")}
+              title={t("refresh")}
+              disabled={loading || !requiredQueryValuesPresent}
+              icon="refresh"
+              onClick={() => void loadRecords()}
+              size="sm"
+              variant="quiet"
+            />
+            {definition.embedded && createOperation ? (
+              <Button icon="add" size="sm" onClick={() => setCreating(true)}>
+                {createOperation.label}
               </Button>
-              <Button
-                onClick={() => {
-                  setFilterValues({});
-                  const emptyQuery = definition.pageSize
-                    ? { page: 1, pageSize: definition.pageSize }
-                    : {};
-                  setQuery(emptyQuery);
-                }}
-                type="button"
-                variant="secondary"
-              >
-                {t("clearFilters")}
-              </Button>
-            </div>
-          </form>
-        </Panel>
-      ) : null}
-
-      {createOperation ? (
-        <Panel className="p-space-lg">
-          <h2 className="font-headline-md text-headline-md text-on-surface">
-            {createOperation.label}
-          </h2>
-          <ApiOperationForm
-            definition={createOperation}
-            bodyDefaults={definition.pathValues}
-            pathValues={definition.pathValues}
-            onComplete={() => loadRecords()}
-          />
-        </Panel>
-      ) : null}
-
-      {definition.globalOperations?.length ? (
-        <Panel className="p-space-lg">
-          <h2 className="font-headline-md text-headline-md text-on-surface">
-            {t("actions")}
-          </h2>
-          <div className="mt-space-md grid gap-space-lg lg:grid-cols-2">
-            {definition.globalOperations.map((operation) => (
-              <section
-                className="rounded border border-outline-variant/40 p-space-md"
-                key={`${operation.method}:${operation.path}`}
-              >
-                <ApiOperationForm
-                  definition={operation}
-                  pathValues={definition.pathValues}
-                  onComplete={() => loadRecords()}
-                />
-              </section>
-            ))}
+            ) : null}
           </div>
-        </Panel>
-      ) : null}
-
-      <Panel className="overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-space-md border-b border-outline-variant/40 px-space-lg py-space-md">
-          <h2 className="font-headline-md text-headline-md text-on-surface">
-            {definition.title}
-          </h2>
-          <Button
-            disabled={loading || !requiredQueryValuesPresent}
-            icon="refresh"
-            onClick={() => void loadRecords()}
-            size="sm"
-            variant="secondary"
-          >
-            {t("refresh")}
-          </Button>
         </div>
 
         {!requiredQueryValuesPresent ? (
-          <p
-            aria-live="polite"
-            className="px-space-lg py-space-xl text-on-surface-variant"
-            role="status"
-          >
+          <EmptyState icon="tune" title={tu("workspace.needsFiltersTitle")}>
             {t("completeRequiredFilters")}
-          </p>
+          </EmptyState>
         ) : loadError ? (
-          <div
-            aria-live="polite"
-            className="m-space-lg rounded border border-status-urgent-border bg-status-urgent-surface p-space-md font-body-sm text-body-sm text-status-urgent-text"
-            role="alert"
-          >
-            <p>{loadError}</p>
-            <Button
-              className="mt-space-sm"
-              onClick={() => void loadRecords()}
-              size="sm"
-              variant="secondary"
-            >
-              {t("retry")}
-            </Button>
-          </div>
+          <ErrorState
+            title={loadError}
+            action={
+              <Button onClick={() => void loadRecords()} size="sm" variant="secondary">
+                {t("retry")}
+              </Button>
+            }
+          />
         ) : loading ? (
-          <p aria-live="polite" className="px-space-lg py-space-xl text-on-surface-variant" role="status">
-            {t("loading")}
-          </p>
+          <SkeletonRows columns={Math.min(columns.length, 6)} label={t("loading")} />
         ) : records.length === 0 ? (
-          <p className="px-space-lg py-space-xl text-on-surface-variant">
-            {t("noRecords")}
-          </p>
+          hasFiltersApplied ? (
+            <EmptyState
+              icon="filter_alt_off"
+              title={tu("workspace.noMatchesTitle")}
+              action={
+                <Button size="sm" variant="secondary" onClick={clearFilters}>
+                  {tu("workspace.clearFilters")}
+                </Button>
+              }
+            >
+              {tu("workspace.noMatchesBody")}
+            </EmptyState>
+          ) : (
+            <EmptyState
+              title={definition.emptyTitle ?? tu("workspace.emptyTitle")}
+              action={
+                createOperation ? (
+                  <Button icon="add" size="sm" onClick={() => setCreating(true)}>
+                    {createOperation.label}
+                  </Button>
+                ) : undefined
+              }
+            >
+              {definition.emptyBody ?? tu("workspace.emptyBody")}
+            </EmptyState>
+          )
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left">
-              <thead className="bg-surface-container-low">
-                <tr>
+          <>
+          {/* Phones: one stacked item per record (identity, then the
+              remaining fields as a caption, states as chips). */}
+          <ul className="divide-y divide-rule sm:hidden" onKeyDown={moveRowFocus}>
+            {records.map((record, index) => (
+              <li key={`m-${createRowKey(record, index, mobileKeyOccurrences)}`}>
+                <button
+                  type="button"
+                  data-row-open
+                  onClick={() => openRecord(record)}
+                  className="flex min-h-14 w-full items-center gap-space-md px-space-base py-space-md text-left transition-colors hover:bg-paper-tint focus-visible:bg-paper-tint focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ink"
+                >
+                  <MobileRecord columns={columns} record={record} tu={tu} />
+                  <Icon name="chevron_right" className="shrink-0 text-[20px] text-rule-strong" />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="relative hidden overflow-x-auto sm:block">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-rule">
                   {columns.map((column) => (
                     <th
-                      className="whitespace-nowrap border-b border-outline-variant/40 px-space-md py-space-sm font-label-sm text-label-sm font-semibold text-on-surface-variant"
+                      className={cn(
+                        "h-10 whitespace-nowrap px-space-md text-[0.8125rem] font-semibold text-text-faint first:pl-space-lg last:pr-space-lg",
+                        columnKind(column) === "number" && "text-right",
+                      )}
                       key={column.key}
                       scope="col"
                     >
                       {column.label}
                     </th>
                   ))}
-                  {definition.rowOperations?.length ? (
-                    <th
-                      className="border-b border-outline-variant/40 px-space-md py-space-sm font-label-sm text-label-sm font-semibold text-on-surface-variant"
-                      scope="col"
-                    >
-                      {t("actions")}
+                  {recordsAreOpenable ? (
+                    <th className="w-10 pr-space-md" scope="col">
+                      <span className="sr-only">{t("actions")}</span>
                     </th>
                   ) : null}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-rule" onKeyDown={moveRowFocus}>
                 {records.map((record, index) => {
                   const key = createRowKey(record, index, rowKeyOccurrences);
                   const isSelected = selectedRecord === record;
                   return (
                     <tr
-                      className={
-                        isSelected
-                          ? "bg-surface-container-low"
-                          : "bg-surface-container-lowest"
-                      }
+                      className={cn(
+                        "group relative cursor-pointer transition-colors duration-100 focus-within:bg-paper-tint focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-ink",
+                        isSelected ? "bg-ink-wash" : "hover:bg-paper-tint",
+                      )}
                       key={key}
+                      onClick={() => openRecord(record)}
                     >
-                      {columns.map((column) => (
+                      {columns.map((column, columnIndex) => (
                         <td
-                          className="max-w-96 border-b border-outline-variant/30 px-space-md py-space-sm align-top font-body-sm text-body-sm text-on-surface"
+                          className={cn(
+                            "h-11 max-w-80 px-space-md py-2 align-middle first:pl-space-lg",
+                            columnKind(column) === "number" && "text-right",
+                          )}
                           key={column.key}
                         >
-                          {displayValue(getPathValue(record, column.key))}
+                          {columnIndex === 0 ? (
+                            // The first cell is the row's one focus stop; its
+                            // ::after stretches over the whole row so a click
+                            // anywhere opens the record, and Tab / j / k move
+                            // between rows instead of between cells.
+                            <button
+                              type="button"
+                              data-row-open
+                              aria-label={`${tu("workspace.openRecord")}: ${recordTitle(record) ?? displayValue(getPathValue(record, column.key))}`}
+                              className="text-left after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openRecord(record);
+                              }}
+                            >
+                              <Cell column={column} record={record} tu={tu} inButton />
+                            </button>
+                          ) : (
+                            <Cell column={column} record={record} tu={tu} />
+                          )}
                         </td>
                       ))}
-                      {definition.rowOperations?.length ? (
-                        <td className="border-b border-outline-variant/30 px-space-md py-space-sm align-top">
-                          <Button
-                            aria-pressed={isSelected}
-                            onClick={() =>
-                              setSelectedRecord(isSelected ? null : record)
-                            }
-                            size="sm"
-                            variant={isSelected ? "primary" : "secondary"}
-                          >
-                            {t("selectRecord")}
-                          </Button>
+                      {recordsAreOpenable ? (
+                        <td className="w-10 pr-space-md text-right align-middle">
+                          <Icon
+                            name="chevron_right"
+                            className="text-[20px] text-rule-strong transition-colors group-hover:text-ink"
+                          />
                         </td>
                       ) : null}
                     </tr>
@@ -417,66 +505,625 @@ export function ApiWorkspace({
               </tbody>
             </table>
           </div>
+          </>
         )}
 
-        {definition.pageSize ? (
-          <div className="flex items-center justify-end gap-space-sm border-t border-outline-variant/40 px-space-lg py-space-md">
-            <Button
-              disabled={loading || Number(query.page ?? 1) <= 1}
-              onClick={() => changePage(Math.max(1, Number(query.page ?? 1) - 1))}
-              size="sm"
-              variant="secondary"
-            >
-              {t("previous")}
-            </Button>
-            <span className="font-caption text-caption text-on-surface-variant">
-              {t("page")} {String(query.page ?? 1)}
+        {pageSize &&
+        requiredQueryValuesPresent &&
+        !loadError &&
+        (page > 1 || (total !== undefined ? total > pageSize : records.length >= pageSize)) ? (
+          <div className="flex items-center justify-between gap-space-sm border-t border-rule px-space-lg py-space-sm">
+            <span className="font-mono text-[0.8125rem] text-text-faint">
+              {total !== undefined && records.length > 0
+                ? tu("workspace.range", {
+                    from: (page - 1) * pageSize + 1,
+                    to: (page - 1) * pageSize + records.length,
+                    total,
+                  })
+                : `${t("page")} ${page}`}
             </span>
-            <Button
-              disabled={loading || records.length < definition.pageSize}
-              onClick={() => changePage(Number(query.page ?? 1) + 1)}
-              size="sm"
-              variant="secondary"
-            >
-              {t("next")}
-            </Button>
+            <div className="flex gap-space-sm">
+              <Button
+                disabled={loading || page <= 1}
+                icon="chevron_left"
+                onClick={() => changePage(Math.max(1, page - 1))}
+                size="sm"
+                variant="secondary"
+              >
+                {t("previous")}
+              </Button>
+              <Button
+                disabled={
+                  loading ||
+                  (total !== undefined
+                    ? page * pageSize >= total
+                    : records.length < pageSize)
+                }
+                iconAfter="chevron_right"
+                onClick={() => changePage(page + 1)}
+                size="sm"
+                variant="secondary"
+              >
+                {t("next")}
+              </Button>
+            </div>
           </div>
         ) : null}
-      </Panel>
+      </section>
 
-      {requiredQueryValuesPresent &&
-      selectedRecord &&
-      definition.rowOperations?.length ? (
-        <Panel className="p-space-lg">
-          <h2 className="font-headline-md text-headline-md text-on-surface">
-            {t("actions")}
-          </h2>
-          <div className="mt-space-md grid gap-space-lg lg:grid-cols-2">
-            {definition.rowOperations.map((operation) => (
-              <section
-                className="rounded border border-outline-variant/40 p-space-md"
-                key={`${operation.method}:${operation.path}`}
-              >
-                <h3 className="font-label-md text-label-md font-semibold text-on-surface">
-                  {operation.label}
-                </h3>
-                <ApiOperationForm
-                  definition={operation}
-                  bodyDefaults={bodyFromRecord(operation, selectedRecord)}
-                  pathValues={{
-                    ...definition.pathValues,
-                    ...selectedRecord,
-                  }}
-                  onComplete={() => loadRecords()}
-                />
-              </section>
-            ))}
+      {createOperation ? (
+        <Drawer
+          open={creating}
+          onClose={() => setCreating(false)}
+          title={createOperation.label}
+          description={createOperation.description ?? definition.title}
+          closeLabel={tu("close")}
+        >
+          <ApiOperationForm
+            definition={createOperation}
+            bodyDefaults={definition.pathValues}
+            pathValues={definition.pathValues}
+            onComplete={async () => {
+              await loadRecords();
+            }}
+          />
+        </Drawer>
+      ) : null}
+
+      {globalOperation ? (
+        <Drawer
+          open
+          onClose={() => setGlobalOperation(null)}
+          title={globalOperation.label}
+          description={globalOperation.description}
+          closeLabel={tu("close")}
+        >
+          <ApiOperationForm
+            definition={globalOperation}
+            pathValues={definition.pathValues}
+            onComplete={() => loadRecords()}
+          />
+        </Drawer>
+      ) : null}
+
+      <Drawer
+        open={selectedRecord !== null}
+        onClose={() => setSelectedRecord(null)}
+        title={
+          selectedRecord
+            ? (recordTitle(selectedRecord) ?? tu("workspace.recordDetails"))
+            : ""
+        }
+        description={
+          selectedRecord ? (
+            <RecordHeadline columns={columns} record={selectedRecord} fallback={definition.title} />
+          ) : (
+            definition.title
+          )
+        }
+        closeLabel={tu("close")}
+        width="lg"
+      >
+        {selectedRecord ? (
+          <RecordDetail
+            columns={columns}
+            record={selectedRecord}
+            operations={definition.rowOperations ?? []}
+            pathValues={definition.pathValues}
+            onComplete={() => loadRecords()}
+          />
+        ) : null}
+      </Drawer>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Filters                                                                   */
+/* ------------------------------------------------------------------------ */
+
+const INLINE_FILTERS = 3;
+
+function FilterBar({
+  fields,
+  values,
+  onChange,
+  onSubmit,
+  onClear,
+  disabled,
+  canClear,
+}: {
+  fields: WorkspaceField[];
+  values: Record<string, string | boolean>;
+  onChange: (key: string, value: string | boolean) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onClear: () => void;
+  disabled: boolean;
+  canClear: boolean;
+}) {
+  const t = useTranslations("workspace");
+  const tu = useTranslations("ui");
+  // Required filters always show; the rest fold after the first three.
+  const ordered = [...fields].sort((a, b) => Number(b.required ?? false) - Number(a.required ?? false));
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? ordered : ordered.slice(0, Math.max(INLINE_FILTERS, ordered.filter((f) => f.required).length));
+  const hidden = ordered.length - visible.length;
+
+  return (
+    <form className="flex min-w-0 flex-1 flex-wrap items-end gap-space-sm" onSubmit={onSubmit}>
+      {visible.map((field) => (
+        <div
+          key={field.key}
+          className={cn(
+            field.type === "checkbox" ? "pb-2" : "w-full sm:w-44",
+            field.type === "date" && "sm:w-40",
+          )}
+        >
+          <WorkspaceInput
+            compact
+            field={field}
+            onChange={(value) => onChange(field.key, value as string | boolean)}
+            value={values[field.key] ?? (field.type === "checkbox" ? false : "")}
+          />
+        </div>
+      ))}
+      <div className="flex items-center gap-1.5">
+        <Button disabled={disabled} type="submit" size="sm" variant="secondary" icon="filter_alt">
+          {t("applyFilters")}
+        </Button>
+        {hidden > 0 || expanded ? (
+          <Button size="sm" variant="quiet" onClick={() => setExpanded(!expanded)}>
+            {expanded ? tu("workspace.fewerFilters") : tu("workspace.moreFilters", { count: hidden })}
+          </Button>
+        ) : null}
+        {canClear ? (
+          <Button size="sm" variant="tertiary" onClick={onClear}>
+            {t("clearFilters")}
+          </Button>
+        ) : null}
+      </div>
+    </form>
+  );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Cells                                                                     */
+/* ------------------------------------------------------------------------ */
+
+
+/** Phone layout of a record: identity first, other text fields as one caption line. */
+function MobileRecord({
+  columns,
+  record,
+  tu,
+}: {
+  columns: WorkspaceColumn[];
+  record: Record<string, unknown>;
+  tu: UiT;
+}) {
+  const value = (column: WorkspaceColumn) =>
+    getPathValue(record, column.key) ?? readRecordValue(record, column.key);
+  const identity =
+    columns.find((column) => columnKind(column) === "identity") ??
+    columns.find((column) => columnKind(column) === "text") ??
+    columns[0];
+  const states = columns.filter((column) => {
+    if (columnKind(column) !== "status") return false;
+    const raw = value(column);
+    return !(typeof raw === "string" && QUIET_STATES.has(statusKey(raw)));
+  });
+  const caption = columns
+    .filter((column) => column !== identity && !states.includes(column))
+    .filter((column) => ["text", "label", "identity"].includes(columnKind(column)))
+    .map((column) => displayValue(value(column)))
+    .filter((text) => text && text !== "—")
+    .slice(0, 2);
+  return (
+    <span className="min-w-0 flex-1">
+      <span className="block truncate font-semibold text-text">
+        {identity ? displayValue(value(identity)) : "—"}
+      </span>
+      {caption.length ? (
+        <span className="block truncate text-[0.8125rem] text-text-muted">{caption.join(" · ")}</span>
+      ) : null}
+      {states.length ? (
+        <span className="mt-1.5 flex flex-wrap gap-1.5">
+          {states.map((column) => {
+            const raw = value(column);
+            return typeof raw === "string" && raw ? (
+              <FormattedValue key={column.key} kind="status" fieldKey={column.key} value={raw} tu={tu} />
+            ) : null;
+          })}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function columnKind(column: WorkspaceColumn): NonNullable<WorkspaceColumn["format"]> {
+  if (column.format) return column.format;
+  if (statusFields.has(column.key)) return "status";
+  if (isIdKey(column.key)) return "id";
+  if (/(At|Date|From|To|Until)$/.test(column.key)) return "datetime";
+  if (/(Count|Cases|Rate|Total|Days|Number)$/.test(column.key) || /^(total|count)/.test(column.key)) {
+    return "number";
+  }
+  if (/^(studentName|fullName|accountName)$/.test(column.key)) return "identity";
+  if (/Code$/.test(column.key)) return "code";
+  if (/(supportType|Type|format|channel)$/.test(column.key)) return "label";
+  return "text";
+}
+
+function Cell({
+  column,
+  record,
+  tu,
+  inButton,
+}: {
+  column: WorkspaceColumn;
+  record: Record<string, unknown>;
+  tu: UiT;
+  /** Rendered inside the row's button: no nested interactive controls. */
+  inButton?: boolean;
+}) {
+  const raw = getPathValue(record, column.key) ?? readRecordValue(record, column.key);
+  if (inButton && columnKind(column) === "id" && typeof raw === "string") {
+    return (
+      <span title={raw} className="font-mono text-[0.8125rem] text-text-muted">
+        {shortId(raw)}
+        {raw.length > 12 ? "…" : ""}
+      </span>
+    );
+  }
+  return <FormattedValue kind={columnKind(column)} fieldKey={column.key} value={raw} tu={tu} />;
+}
+
+function FormattedValue({
+  kind,
+  fieldKey,
+  value,
+  tu,
+  full,
+}: {
+  kind: NonNullable<WorkspaceColumn["format"]>;
+  fieldKey: string;
+  value: unknown;
+  tu: UiT;
+  full?: boolean;
+}) {
+  if (value === null || value === undefined || value === "") {
+    return <span className="text-rule-strong">—</span>;
+  }
+  if (typeof value === "boolean") {
+    return <span className="text-text-muted">{value ? tu("yes") : tu("no")}</span>;
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-rule-strong">—</span>;
+    return (
+      <span className="flex flex-wrap gap-1">
+        {value.map((item, index) => (
+          <span
+            key={index}
+            className="rounded-md border border-rule bg-paper-tint px-1.5 py-0.5 text-[0.8125rem] text-text-muted"
+          >
+            {displayValue(item)}
+          </span>
+        ))}
+      </span>
+    );
+  }
+  if (typeof value === "string" && kind === "status") {
+    // The expected state (an active, linked account) is quiet text; only a
+    // state that needs attention gets a coloured chip.
+    return <StatusValue field={fieldKey} value={value} size="sm" emphasize={full} />;
+  }
+  if (typeof value === "string" && kind === "id") {
+    return full ? (
+      <span className="break-all font-mono text-[0.8125rem] text-text-muted">{value}</span>
+    ) : (
+      <CopyableId value={value} />
+    );
+  }
+  if ((kind === "datetime" || kind === "date") && parseDate(value)) {
+    return (
+      <span className="whitespace-nowrap font-mono text-[0.8125rem] text-text-muted">
+        {formatDate(value)}
+        {kind === "datetime" && typeof value === "string" && value.length > 10 ? (
+          <span className="ml-1.5 text-text-faint">{formatTime(value)}</span>
+        ) : null}
+      </span>
+    );
+  }
+  if (typeof value === "number") {
+    return (
+      <span className="font-mono text-[0.8125rem] tabular-nums text-text">
+        {Number.isInteger(value) ? value.toLocaleString("en-US") : value.toFixed(1)}
+      </span>
+    );
+  }
+  if (isRecord(value)) {
+    return <span className="text-text-faint">—</span>;
+  }
+  const text = String(value);
+  if (kind === "code") {
+    return <span className="font-mono text-[0.8125rem] text-text">{text}</span>;
+  }
+  if (kind === "label") {
+    const key = statusKey(text);
+    return (
+      <span className="text-text-muted">
+        {tu.has(`status.${key}`) ? tu(`status.${key}`) : text}
+      </span>
+    );
+  }
+  if (kind === "identity") {
+    return <span className="font-semibold text-text">{text}</span>;
+  }
+  return (
+    <span className={cn("text-text-muted", full ? "whitespace-pre-line break-words" : "line-clamp-2")}>
+      {text}
+    </span>
+  );
+}
+
+function CopyableId({ value }: { value: string }) {
+  const tu = useTranslations("ui");
+  const [copied, setCopied] = useState(false);
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap">
+      <span title={value} className="font-mono text-[0.8125rem] text-text-muted">
+        {shortId(value)}
+        {value.length > 12 ? "…" : ""}
+      </span>
+      <button
+        type="button"
+        aria-label={copied ? tu("copied") : tu("copy")}
+        title={copied ? tu("copied") : tu("copy")}
+        className="relative z-10 flex size-6 items-center justify-center rounded text-text-faint opacity-0 transition hover:bg-ink-wash hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
+        onClick={(event) => {
+          event.stopPropagation();
+          void navigator.clipboard?.writeText(value).then(() => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1500);
+          });
+        }}
+      >
+        <Icon name={copied ? "check" : "content_copy"} className="text-[14px]" />
+      </button>
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Record drawer                                                             */
+/* ------------------------------------------------------------------------ */
+
+function RecordDetail({
+  columns,
+  record,
+  operations,
+  pathValues,
+  onComplete,
+}: {
+  columns: WorkspaceColumn[];
+  record: Record<string, unknown>;
+  operations: WorkspaceOperation[];
+  pathValues?: Record<string, unknown>;
+  onComplete: () => Promise<void>;
+}) {
+  const tu = useTranslations("ui");
+  const shownKeys = new Set(columns.map((column) => column.key.toLowerCase()));
+  const extraFields = Object.entries(record).filter(
+    ([key, value]) =>
+      !shownKeys.has(key.toLowerCase()) &&
+      (typeof value !== "object" || value === null || Array.isArray(value)),
+  );
+  // Offer only what makes sense for this record's state, and keep the
+  // operations that remove or block access in their own group at the end.
+  const available = operations.filter((operation) => {
+    if (!operation.when) return true;
+    const value = String(readRecordValue(record, operation.when.key) ?? "").toLowerCase();
+    if (operation.when.in && !operation.when.in.includes(value)) return false;
+    if (operation.when.notIn && operation.when.notIn.includes(value)) return false;
+    return true;
+  });
+  const regular = available.filter((operation) => !operation.destructive);
+  const danger = available.filter((operation) => operation.destructive);
+  const [openOperation, setOpenOperation] = useState<string | null>(
+    available.length === 1 ? opKey(available[0]!, 0) : null,
+  );
+
+  return (
+    <div className="flex flex-col gap-space-xl">
+      <FieldList
+        entries={columns
+          .filter((column) => {
+            const kind = columnKind(column);
+            // Name and states are already in the drawer header.
+            return kind !== "status" && !(kind === "identity" && recordTitle(record));
+          })
+          .map((column) => [column.key, column.label, getPathValue(record, column.key) ?? readRecordValue(record, column.key), columnKind(column)])}
+      />
+
+      {extraFields.length ? (
+        <details className="group rounded-lg border border-rule">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-space-base py-space-sm text-sm font-semibold text-text-muted hover:text-text">
+            {tu("workspace.allFields")}
+            <Icon name="expand_more" className="text-[20px] transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="border-t border-rule px-space-base py-space-md">
+            <FieldList
+              entries={extraFields.map(([key, value]) => [
+                key,
+                humanizeKey(key),
+                value,
+                columnKind({ key, label: key }),
+              ])}
+            />
           </div>
-        </Panel>
+        </details>
+      ) : null}
+
+      {regular.length ? (
+        <OperationGroup
+          title={tu("workspace.actions")}
+          operations={regular}
+          openOperation={openOperation}
+          setOpenOperation={setOpenOperation}
+          record={record}
+          pathValues={pathValues}
+          onComplete={onComplete}
+        />
+      ) : null}
+      {danger.length ? (
+        <OperationGroup
+          danger
+          title={tu("workspace.dangerZone")}
+          operations={danger}
+          openOperation={openOperation}
+          setOpenOperation={setOpenOperation}
+          record={record}
+          pathValues={pathValues}
+          onComplete={onComplete}
+        />
       ) : null}
     </div>
   );
 }
+
+function opKey(operation: WorkspaceOperation, index: number): string {
+  return `${operation.method}:${operation.path}:${index}`;
+}
+
+function OperationGroup({
+  title,
+  danger,
+  operations,
+  openOperation,
+  setOpenOperation,
+  record,
+  pathValues,
+  onComplete,
+}: {
+  title: string;
+  danger?: boolean;
+  operations: WorkspaceOperation[];
+  openOperation: string | null;
+  setOpenOperation: (key: string | null) => void;
+  record: Record<string, unknown>;
+  pathValues?: Record<string, unknown>;
+  onComplete: () => Promise<void>;
+}) {
+  return (
+    <section>
+      <h3 className={cn("mb-space-sm text-sm font-semibold", danger ? "text-red-ink" : "text-text")}>{title}</h3>
+      <div className={cn("divide-y rounded-lg border", danger ? "divide-status-urgent-border border-status-urgent-border" : "divide-rule border-rule")}>
+        {operations.map((operation, index) => {
+          const key = opKey(operation, index);
+          const isOpen = openOperation === key;
+          return (
+            <div key={key}>
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() => setOpenOperation(isOpen ? null : key)}
+                className="flex min-h-12 w-full items-center gap-space-md px-space-base py-space-sm text-left transition-colors hover:bg-paper-tint"
+              >
+                <Icon
+                  name={operation.icon ?? operationIcon(operation)}
+                  className={cn("text-[20px]", danger ? "text-red-ink" : "text-ink")}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className={cn("block text-sm font-semibold", danger ? "text-red-ink" : "text-text")}>
+                    {operation.label}
+                  </span>
+                  {operation.description ? (
+                    <span className="block text-[0.8125rem] text-text-faint">{operation.description}</span>
+                  ) : null}
+                </span>
+                <Icon
+                  name="expand_more"
+                  className={cn("text-[20px] text-text-faint transition-transform", isOpen && "rotate-180")}
+                />
+              </button>
+              {isOpen ? (
+                <div className="border-t border-rule bg-paper-tint/60 px-space-base pb-space-base">
+                  <ApiOperationForm
+                    definition={operation}
+                    bodyDefaults={bodyFromRecord(operation, record)}
+                    pathValues={{ ...pathValues, ...record }}
+                    onComplete={onComplete}
+                  />
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/** Drawer subtitle: the record's states as chips, so who and where come first. */
+function RecordHeadline({
+  columns,
+  record,
+  fallback,
+}: {
+  columns: WorkspaceColumn[];
+  record: Record<string, unknown>;
+  fallback: string;
+}) {
+  const tu = useTranslations("ui");
+  const states = columns.filter((column) => columnKind(column) === "status");
+  const chips = states
+    .map((column) => [column, getPathValue(record, column.key) ?? readRecordValue(record, column.key)] as const)
+    .filter(([, raw]) => typeof raw === "string" && raw);
+  if (!chips.length) return <>{fallback}</>;
+  return (
+    <span className="mt-1 flex flex-wrap items-center gap-1.5">
+      {chips.map(([column, raw]) => (
+        <FormattedValue key={column.key} kind="status" fieldKey={column.key} value={raw} tu={tu} full />
+      ))}
+    </span>
+  );
+}
+
+function FieldList({
+  entries,
+}: {
+  entries: Array<[string, string, unknown, NonNullable<WorkspaceColumn["format"]>]>;
+}) {
+  const tu = useTranslations("ui");
+  return (
+    <dl className="grid gap-x-space-lg gap-y-space-md sm:grid-cols-2">
+      {entries.map(([key, label, value, kind]) => (
+        <div key={key} className={cn("min-w-0", isLongTextKey(key) && "sm:col-span-2")}>
+          <dt className="text-[0.8125rem] text-text-faint">{label}</dt>
+          <dd className="mt-0.5 text-sm">
+            <FormattedValue kind={kind} fieldKey={key} value={value} tu={tu} full />
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function humanizeKey(key: string): string {
+  const spaced = key.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
+}
+
+function operationIcon(operation: WorkspaceOperation): string {
+  if (operation.destructive || operation.method === "DELETE") return "block";
+  if (operation.method === "GET") return "visibility";
+  if (operation.method === "POST") return "add_circle";
+  return "edit";
+}
+
+/* ------------------------------------------------------------------------ */
+/* Operation form                                                            */
+/* ------------------------------------------------------------------------ */
 
 export function ApiOperationForm({
   definition,
@@ -490,52 +1137,60 @@ export function ApiOperationForm({
   onComplete?: () => Promise<void>;
 }) {
   const t = useTranslations("workspace");
+  const tu = useTranslations("ui");
+  const { confirm, element: confirmDialog } = useConfirm();
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [pending, setPending] = useState(false);
-  const [feedback, setFeedback] = useState("");
+  const [feedback, setFeedback] = useState<{ ok: boolean; message: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [feedbackIsError, setFeedbackIsError] = useState(false);
-  const [resultDetails, setResultDetails] = useState("");
+  const [result, setResult] = useState<unknown>(undefined);
+  const isRead = definition.method === "GET";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setFeedback("");
-    setResultDetails("");
+    setFeedback(null);
+    setResult(undefined);
     setFieldErrors({});
 
-    if (definition.confirm && !window.confirm(t("confirmAction"))) return;
+    if (definition.confirm || definition.destructive) {
+      const ok = await confirm({
+        title: definition.label,
+        body: definition.description ?? t("confirmAction"),
+        confirmLabel: definition.label,
+        cancelLabel: tu("cancel"),
+        destructive: definition.destructive || definition.method === "DELETE",
+      });
+      if (!ok) return;
+    }
 
     setPending(true);
     try {
-      const body = makeBody(definition.fields ?? [], values, bodyDefaults);
-      const result = await clientApiRequest<unknown>(
+      const body = isRead ? undefined : makeBody(definition.fields ?? [], values, bodyDefaults);
+      const response = await clientApiRequest<unknown>(
         resolvePath(definition.path, { ...pathValues, ...values }),
-        {
-        method: definition.method,
-        body,
-        redirectOnUnauthorized: true,
-        },
+        { method: definition.method, body, redirectOnUnauthorized: true },
       );
-      if (isRecord(result) && result.isSuccess === false) {
-        setFeedback(
-        typeof result.message === "string"
-          ? result.message
-          : t("actionFailed"),
-        );
-        setFeedbackIsError(true);
-        setResultDetails(JSON.stringify(result, null, 2));
+      if (isRecord(response) && response.isSuccess === false) {
+        setFeedback({
+          ok: false,
+          message: typeof response.message === "string" ? response.message : t("actionFailed"),
+        });
         return;
       }
-      setFeedback(t("actionSucceeded"));
-      setFeedbackIsError(false);
-      setResultDetails(
-        result === undefined ? "" : JSON.stringify(result, null, 2),
-      );
-      setValues({});
-      await onComplete?.();
+      setResult(response);
+      if (!isRead) {
+        setFeedback({
+          ok: true,
+          message:
+            isRecord(response) && typeof response.message === "string" && response.message
+              ? response.message
+              : tu("workspace.saved"),
+        });
+        setValues({});
+        await onComplete?.();
+      }
     } catch (error) {
-      setFeedback(errorMessage(error, t));
-      setFeedbackIsError(true);
+      setFeedback({ ok: false, message: errorMessage(error, t) });
       if (error instanceof ApiError) setFieldErrors(error.fieldErrors);
     } finally {
       setPending(false);
@@ -543,112 +1198,137 @@ export function ApiOperationForm({
   }
 
   return (
-    <form className="mt-space-md grid gap-space-md sm:grid-cols-2" onSubmit={submit}>
-      {(definition.fields ?? []).map((field) => (
-        <WorkspaceInput
-          field={field}
-          key={field.key}
-          onChange={(value) =>
-            setValues((current) => ({ ...current, [field.key]: value }))
-          }
-          value={
-            values[field.key] ??
-            bodyDefaults[field.key] ??
-            (field.type === "checkbox" ? false : "")
-          }
-          error={
-            fieldErrors[field.key] ??
-            fieldErrors[pascalCase(field.key)] ??
-            fieldErrors[camelCase(field.key)]
-          }
-        />
-      ))}
-      <div className="flex flex-col items-start gap-space-sm sm:col-span-2">
-        <Button disabled={pending} type="submit">
-          {pending ? t("submitting") : definition.label}
-        </Button>
-        {feedback ? (
-          <p
-            aria-live="polite"
-            className={
-              feedbackIsError
-                ? "font-body-sm text-body-sm text-status-urgent-text"
-                : "font-body-sm text-body-sm text-status-ontrack-text"
-            }
-            role={feedbackIsError ? "alert" : "status"}
+    <>
+      <form className="grid gap-space-md pt-space-md sm:grid-cols-2" onSubmit={submit}>
+        {(definition.fields ?? []).map((field) => (
+          <div
+            key={field.key}
+            className={cn(
+              (field.type === "textarea" || field.type === "list" || field.type === "file") && "sm:col-span-2",
+            )}
           >
-            {feedback}
-          </p>
-        ) : null}
-        {resultDetails ? (
-          <pre className="max-h-80 max-w-full overflow-auto whitespace-pre-wrap break-words rounded bg-surface-container-low p-space-sm font-caption text-caption text-on-surface-variant">
-            {resultDetails}
-          </pre>
-        ) : null}
-      </div>
-    </form>
+            <WorkspaceInput
+              field={field}
+              onChange={(value) => setValues((current) => ({ ...current, [field.key]: value }))}
+              value={
+                values[field.key] ??
+                bodyDefaults[field.key] ??
+                (field.type === "checkbox" ? false : "")
+              }
+              error={
+                fieldErrors[field.key] ??
+                fieldErrors[pascalCase(field.key)] ??
+                fieldErrors[camelCase(field.key)]
+              }
+            />
+          </div>
+        ))}
+        <div className="flex flex-col items-start gap-space-sm sm:col-span-2">
+          <Button
+            loading={pending}
+            type="submit"
+            variant={definition.destructive ? "destructive" : isRead ? "secondary" : "primary"}
+            icon={isRead ? "visibility" : undefined}
+          >
+            {pending ? t("submitting") : isRead ? tu("workspace.load") : definition.label}
+          </Button>
+          {feedback ? (
+            <Notice
+              className="w-full"
+              tone={feedback.ok ? "ontrack" : "urgent"}
+              icon={feedback.ok ? "check_circle" : "error"}
+              title={feedback.message}
+            />
+          ) : null}
+        </div>
+      </form>
+      {isRead && result !== undefined ? <ReadResult value={result} /> : null}
+      {confirmDialog}
+    </>
   );
 }
+
+/** A GET operation's answer, shown as fields or a small table, never raw JSON. */
+function ReadResult({ value }: { value: unknown }) {
+  const tu = useTranslations("ui");
+  const records = Array.isArray(value)
+    ? value.filter(isRecord)
+    : isRecord(value)
+      ? (extractRecords(value) ?? [value])
+      : [];
+  if (records.length === 0) {
+    return <p className="mt-space-md text-sm text-text-faint">{tu("workspace.emptyTitle")}</p>;
+  }
+  return (
+    <div className="mt-space-md flex flex-col gap-space-sm">
+      {records.map((record, index) => (
+        <div key={index} className="rounded-lg border border-rule bg-paper p-space-base">
+          <FieldList
+            entries={Object.entries(record)
+              .filter(([, item]) => !isRecord(item))
+              .map(([key, item]) => [key, humanizeKey(key), item, columnKind({ key, label: key })])}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Inputs                                                                    */
+/* ------------------------------------------------------------------------ */
 
 export function WorkspaceInput({
   field,
   value,
   onChange,
   error,
+  compact,
 }: {
   field: WorkspaceField;
   value: unknown;
   onChange: (value: unknown) => void;
   error?: string;
+  /** Filter-bar density: smaller label and control. */
+  compact?: boolean;
 }) {
   const t = useTranslations("workspace");
   const formId = useId();
   const id = `workspace-${formId}-${field.key}`;
+  const errorId = `${id}-error`;
   const optionSource = field.optionsFrom;
   const [loadedOptions, setLoadedOptions] = useState<{
     source: WorkspaceOptionSource;
     options: Array<{ label: string; value: string }>;
     error?: string;
   } | null>(null);
-  const loadedForSource =
-    loadedOptions?.source === optionSource ? loadedOptions : null;
+  const loadedForSource = loadedOptions?.source === optionSource ? loadedOptions : null;
   const remoteOptions = loadedForSource?.options ?? [];
   const optionsError = loadedForSource?.error ?? "";
-  const optionsLoading =
-    optionSource !== undefined && loadedForSource === null;
-  const baseClass =
-    "w-full rounded border border-outline-variant bg-surface-container-lowest px-space-md py-2 font-body-sm text-body-sm text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  const optionsLoading = optionSource !== undefined && loadedForSource === null;
+  const control = cn(controlClass, "w-full", compact ? "h-8 text-[0.8125rem]" : "h-10");
 
   useEffect(() => {
     if (!optionSource) return;
-
     let active = true;
     const controller = new AbortController();
     void clientApiGet<unknown>(optionSource.path, {
       signal: controller.signal,
+      query: optionSource.query,
     })
       .then((payload) => {
         const options = extractOptions(payload, optionSource);
         if (!active) return;
-        if (!options) {
-          setLoadedOptions({
-            source: optionSource,
-            options: [],
-            error: t("unexpectedResponse"),
-          });
-          return;
-        }
-        setLoadedOptions({ source: optionSource, options });
+        setLoadedOptions(
+          options
+            ? { source: optionSource, options }
+            : { source: optionSource, options: [], error: t("unexpectedResponse") },
+        );
       })
       .catch((loadError: unknown) => {
         if (!active) return;
-        setLoadedOptions({
-          source: optionSource,
-          options: [],
-          error: errorMessage(loadError, t),
-        });
+        setLoadedOptions({ source: optionSource, options: [], error: errorMessage(loadError, t) });
       });
-
     return () => {
       active = false;
       controller.abort();
@@ -657,29 +1337,40 @@ export function WorkspaceInput({
 
   if (field.type === "checkbox") {
     return (
-      <label className="flex items-center gap-space-sm font-body-sm text-body-sm text-on-surface">
+      <label className="flex h-8 items-center gap-2 text-sm text-text">
         <input
           checked={value === true}
+          className="size-4 accent-[#2142b8]"
           id={id}
           name={field.key}
           onChange={(event) => onChange(event.target.checked)}
           type="checkbox"
         />
         {field.label}
-        {error ? <span className="text-status-urgent-text">{error}</span> : null}
+        {error ? <span className="text-red-ink">{error}</span> : null}
       </label>
     );
   }
 
+  const describedBy = error || optionsError ? errorId : undefined;
+
   return (
-    <label className="block">
-      <span className="mb-space-xs block font-label-sm text-label-sm font-medium text-on-surface">
+    <div>
+      <label
+        htmlFor={id}
+        className={cn(
+          "block text-text",
+          compact ? "mb-1 text-[0.75rem] font-semibold text-text-faint" : "mb-1.5 text-sm font-semibold",
+        )}
+      >
         {field.label}
-        {field.required ? <span aria-hidden="true"> *</span> : null}
-      </span>
+        {field.required ? <span aria-hidden className="text-red-ink"> *</span> : null}
+      </label>
       {field.type === "textarea" || field.type === "list" ? (
         <textarea
-          className={`${baseClass} min-h-24`}
+          aria-describedby={describedBy}
+          aria-invalid={error ? true : undefined}
+          className={cn(controlClass, "min-h-28 w-full py-2 leading-6")}
           id={id}
           maxLength={4000}
           name={field.key}
@@ -689,47 +1380,40 @@ export function WorkspaceInput({
           value={typeof value === "string" ? value : ""}
         />
       ) : field.type === "select" ? (
-        <>
-          <select
-            className={baseClass}
-            id={id}
-            name={field.key}
-            onChange={(event) => onChange(event.target.value)}
-            required={field.required}
-            value={typeof value === "string" ? value : ""}
-          >
-            <option value="">
-              {optionSource
-                ? optionsLoading
-                  ? t("loadingStudentDataValues")
-                  : optionsError
-                    ? t("studentDataOptionsUnavailable")
-                    : remoteOptions.length
-                      ? t("selectStudentDataValue")
-                      : t("noCorrectableStudentData")
+        <select
+          aria-describedby={describedBy}
+          aria-invalid={error ? true : undefined}
+          className={cn(control, "pr-8")}
+          id={id}
+          name={field.key}
+          onChange={(event) => onChange(event.target.value)}
+          required={field.required}
+          value={typeof value === "string" ? value : ""}
+        >
+          <option value="">
+            {optionSource
+              ? optionsLoading
+                ? t("loadingStudentDataValues")
+                : optionsError
+                  ? t("studentDataOptionsUnavailable")
+                  : remoteOptions.length
+                    ? t("selectStudentDataValue")
+                    : t("noCorrectableStudentData")
+              : compact
+                ? t("any")
                 : "—"}
+          </option>
+          {(optionSource ? remoteOptions : (field.options ?? [])).map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
             </option>
-            {(optionSource ? remoteOptions : field.options ?? []).map(
-              (option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ),
-            )}
-          </select>
-          {optionsError ? (
-            <span
-              className="mt-1 block font-caption text-caption text-status-urgent-text"
-              role="alert"
-            >
-              {optionsError}
-            </span>
-          ) : null}
-        </>
+          ))}
+        </select>
       ) : field.type === "file" ? (
         <input
           accept={field.accept}
-          className={baseClass}
+          aria-describedby={describedBy}
+          className="block w-full rounded-md border border-dashed border-rule-strong bg-paper-tint px-3 py-3 text-sm text-text-muted file:mr-3 file:rounded-md file:border-0 file:bg-ink file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white hover:border-ink"
           id={id}
           name={field.key}
           onChange={(event) => onChange(event.target.files?.[0] ?? null)}
@@ -738,7 +1422,9 @@ export function WorkspaceInput({
         />
       ) : (
         <input
-          className={baseClass}
+          aria-describedby={describedBy}
+          aria-invalid={error ? true : undefined}
+          className={control}
           id={id}
           maxLength={field.type === "text" || field.type === "email" ? 255 : undefined}
           name={field.key}
@@ -749,341 +1435,15 @@ export function WorkspaceInput({
           value={typeof value === "string" || typeof value === "number" ? value : ""}
         />
       )}
-      {error ? (
-        <span className="mt-1 block font-caption text-caption text-status-urgent-text">
-          {error}
-        </span>
+      {field.hint && !compact ? (
+        <p className="mt-1 text-[0.8125rem] text-text-faint">{field.hint}</p>
       ) : null}
-    </label>
+      {error || optionsError ? (
+        <p id={errorId} role="alert" className="mt-1 text-[0.8125rem] text-red-ink">
+          {error || optionsError}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
-function makeBody(
-  fields: WorkspaceField[],
-  values: Record<string, unknown>,
-  defaults: Record<string, unknown>,
-): FormData | Record<string, unknown> | undefined {
-  if (fields.length === 0 && Object.keys(defaults).length === 0) return undefined;
-  const containsFile = fields.some((field) => field.type === "file");
-  const body: FormData | Record<string, unknown> = containsFile
-    ? new FormData()
-    : { ...defaults };
-
-  if (body instanceof FormData) {
-    for (const [key, value] of Object.entries(defaults)) {
-      body.append(key, typeof value === "string" ? value : JSON.stringify(value));
-    }
-  }
-
-  for (const field of fields) {
-    if (field.pathOnly) continue;
-    const value = values[field.key];
-    if (value === undefined || value === null) continue;
-
-    let normalized: unknown = value;
-    if (field.type === "list") {
-      normalized =
-        typeof value === "string"
-          ? value
-              .split(/[\n,]/)
-              .map((item) => item.trim())
-              .filter(Boolean)
-          : value;
-    } else if (field.type === "number" && typeof value === "string") {
-      normalized = value === "" ? "" : Number(value);
-    }
-
-    if (body instanceof FormData) {
-      if (value instanceof File) {
-        body.append(field.key, value);
-      } else if (normalized !== "") {
-        body.append(
-          field.key,
-          typeof normalized === "string"
-            ? normalized
-            : JSON.stringify(normalized),
-        );
-      }
-    } else {
-      body[field.key] = normalized;
-    }
-  }
-
-  return body;
-}
-
-function hasRequiredQueryValues(
-  query: ApiQuery,
-  requiredFields: WorkspaceField[],
-  scopedQuery: ApiQuery,
-): boolean {
-  return requiredFields.every((field) => {
-    const value = query[field.key] ?? scopedQuery[field.key];
-    return value !== undefined && value !== null && value !== "";
-  });
-}
-
-function getScopedQuery(
-  queryFields: WorkspaceField[] | undefined,
-  pathValues: Record<string, unknown> | undefined,
-): ApiQuery {
-  const query: ApiQuery = {};
-  for (const field of queryFields ?? []) {
-    const value = pathValues?.[field.key];
-    if (
-      typeof value === "string" ||
-      typeof value === "number" ||
-      typeof value === "boolean"
-    ) {
-      query[field.key] = value;
-    }
-  }
-  return query;
-}
-
-function readRecordValue(
-  record: Record<string, unknown>,
-  key: string,
-): unknown {
-  const expected = key.toLowerCase();
-  const entry = Object.entries(record).find(
-    ([name]) => name.toLowerCase() === expected,
-  );
-  return entry?.[1];
-}
-
-function bodyFromRecord(
-  operation: WorkspaceOperation,
-  record: Record<string, unknown>,
-): Record<string, unknown> {
-  const body: Record<string, unknown> = {};
-  const sources = new Map<
-    string,
-    { key: string; asArray?: boolean }
-  >();
-  for (const field of operation.fields ?? []) {
-    sources.set(field.key, { key: field.key });
-  }
-  for (const [field, source] of Object.entries(operation.bodyFromRecord ?? {})) {
-    sources.set(field, source);
-  }
-  for (const [field, source] of sources) {
-    const value = record[source.key];
-    if (value !== undefined && value !== null) {
-      body[field] = source.asArray ? [value] : value;
-    }
-  }
-  return body;
-}
-
-function extractRecords(
-  payload: unknown,
-  collectionKey?: string,
-): Record<string, unknown>[] | null {
-  if (Array.isArray(payload)) {
-    return payload.filter(isRecord);
-  }
-  if (!isRecord(payload)) return null;
-
-  const keys = collectionKey
-    ? [collectionKey, "items", "data", "results", "records", "value"]
-    : ["items", "data", "results", "records", "value"];
-  for (const key of keys) {
-    const records = payload[key];
-    if (Array.isArray(records)) return records.filter(isRecord);
-  }
-  for (const value of Object.values(payload)) {
-    if (Array.isArray(value)) return value.filter(isRecord);
-  }
-  return recordIdentity(payload) ? [payload] : null;
-}
-
-function extractOptions(
-  payload: unknown,
-  source: WorkspaceOptionSource,
-): Array<{ label: string; value: string }> | null {
-  const records = extractRecords(payload, source.collectionKey);
-  if (!records) return null;
-
-  return records.flatMap((record) => {
-    const matches = Object.entries(source.match ?? {}).every(
-      ([key, expected]) => readRecordValue(record, key) === expected,
-    );
-    if (!matches) return [];
-
-    const optionValue = readRecordValue(record, source.valueKey);
-    if (
-      (typeof optionValue !== "string" && typeof optionValue !== "number") ||
-      String(optionValue).length === 0 ||
-      (source.requiredValueKeys ?? []).some((key) => {
-        const requiredValue = readRecordValue(record, key);
-        return (
-          requiredValue === null ||
-          requiredValue === undefined ||
-          requiredValue === ""
-        );
-      })
-    ) {
-      return [];
-    }
-
-    const labelParts = source.labelKeys
-      .map((key) => readRecordValue(record, key))
-      .filter(
-        (value) => value !== null && value !== undefined && value !== "",
-      )
-      .map(displayValue);
-
-    return [
-      {
-        label: labelParts.join(" · ") || String(optionValue),
-        value: String(optionValue),
-      },
-    ];
-  });
-}
-
-function recordIdentity(record: Record<string, unknown>): string | undefined {
-  const accountId = record.accountId;
-  const roleId = record.roleId;
-  if (
-    (typeof accountId === "string" || typeof accountId === "number") &&
-    (typeof roleId === "string" || typeof roleId === "number")
-  ) {
-    return `account-role:${accountId}:${roleId}`;
-  }
-
-  const keys = [
-    "caseNoteId",
-    "caseChangeRequestId",
-    "correctionRequestId",
-    "emergencyAccessRequestId",
-    "dataAttributeId",
-    "consentPurposeId",
-    "accessPolicyId",
-    "studentDataId",
-    "referralId",
-    "erasureRequestId",
-    "notificationId",
-    "externalServiceId",
-    "interventionId",
-    "supportGrantId",
-    "sessionId",
-    "facultyId",
-    "subjectId",
-    "programmeId",
-    "academicTermId",
-    "roleId",
-    "id",
-    "consentId",
-    "caseId",
-    "accountId",
-  ];
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === "string" || typeof value === "number") {
-      return String(value);
-    }
-  }
-  return undefined;
-}
-
-function createRowKey(
-  record: Record<string, unknown>,
-  index: number,
-  occurrences: Map<string, number>,
-): string {
-  const identity = recordIdentity(record);
-  if (identity === undefined) return JSON.stringify([null, index]);
-
-  const occurrence = occurrences.get(identity) ?? 0;
-  occurrences.set(identity, occurrence + 1);
-  return JSON.stringify([identity, occurrence]);
-}
-
-function resolvePath(
-  template: string,
-  record: Record<string, unknown>,
-): string {
-  return template.replace(/:([A-Za-z][A-Za-z0-9]*)/g, (placeholder, key: string) => {
-    const value =
-      record[key] ??
-      record[`${key[0]?.toLowerCase() ?? ""}${key.slice(1)}`] ??
-      record[`${key[0]?.toUpperCase() ?? ""}${key.slice(1)}`];
-    if (typeof value !== "string" && typeof value !== "number") {
-      throw new ApiError({
-        message: "The selected record does not contain the required identifier.",
-        status: 400,
-        code: "missing_record_identifier",
-      });
-    }
-    return encodeURIComponent(String(value));
-  });
-}
-
-function getPathValue(
-  record: Record<string, unknown>,
-  path: string,
-): unknown {
-  return path.split(".").reduce<unknown>((current, key) => {
-    return isRecord(current) ? current[key] : undefined;
-  }, record);
-}
-
-function displayValue(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "—";
-  if (typeof value === "string") {
-    const date = new Date(value);
-    if (
-      value.length >= 20 &&
-      value.includes("T") &&
-      !Number.isNaN(date.getTime())
-    ) {
-      return new Intl.DateTimeFormat(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-        timeZone: "Asia/Ho_Chi_Minh",
-      }).format(date);
-    }
-    return value;
-  }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  if (Array.isArray(value)) return value.map(displayValue).join(", ");
-  return "[record]";
-}
-
-type WorkspaceErrorKey =
-  | "apiError400"
-  | "apiError401"
-  | "apiError403"
-  | "apiError404"
-  | "apiError409"
-  | "apiError5xx"
-  | "apiErrorNetwork"
-  | "actionFailed";
-
-function errorMessage(
-  error: unknown,
-  translate: (key: WorkspaceErrorKey) => string,
-): string {
-  if (!(error instanceof ApiError)) return translate("apiErrorNetwork");
-  if (error.status === 400) return translate("apiError400");
-  if (error.status === 401) return translate("apiError401");
-  if (error.status === 403) return translate("apiError403");
-  if (error.status === 404) return translate("apiError404");
-  if (error.status === 409) return translate("apiError409");
-  if (error.status >= 500 || error.status === 0) {
-    return translate(error.status === 502 ? "apiErrorNetwork" : "apiError5xx");
-  }
-  return error.message || translate("actionFailed");
-}
-
-function pascalCase(value: string): string {
-  return value.length === 0 ? value : `${value[0]?.toUpperCase()}${value.slice(1)}`;
-}
-
-function camelCase(value: string): string {
-  return value.length === 0 ? value : `${value[0]?.toLowerCase()}${value.slice(1)}`;
-}

@@ -20,7 +20,8 @@
     "consentRequests": "Consent requests",
     "corrections": "Corrections",
     "referrals": "Referrals",
-    "emergencyAccess": "Emergency access"
+    "emergencyAccess": "Emergency access",
+    "myCases": "My cases"
   },
   "steward": {
     "purposes": "Consent purposes",
@@ -35,25 +36,27 @@
   "student": {
     "profile": "My profile",
     "consent": "Consent",
-    "cases": "My support cases",
-    "accessHistory": "Access history",
+    "cases": "My requests",
+    "accessHistory": "Access log",
     "corrections": "Corrections",
-    "export": "Export my data"
+    "export": "Export my data",
+    "requestSupport": "Request support"
   },
   "head": {
     "overview": "Matching queue",
     "workload": "Advisor workload",
     "assignments": "Case change requests",
-    "reports": "Case reports"
+    "reports": "Case reports",
+    "allCases": "All cases",
+    "escalations": "Escalations"
   },
   "welfare": {
     "referrals": "Incoming referrals",
-    "cases": "Welfare casework"
+    "cases": "Welfare casework",
+    "externalServices": "External services",
+    "externalReferrals": "External referrals",
+    "escalations": "Escalations"
   },
-  "welfareFooterTitle": "Student welfare",
-  "welfareFooterCaption": "Case access is checked by the API",
-  "headFooterTitle": "Programme governance",
-  "headFooterCaption": "Matching and reports",
   "administrator": {
     "accounts": "Accounts & roles",
     "faculties": "Academic reference data",
@@ -61,14 +64,11 @@
     "reference": "Support categories",
     "health": "Activity history",
     "restore": "Notifications",
-    "indicators": "Account settings"
+    "indicators": "Account settings",
+    "roles": "Role assignments",
+    "sessions": "Active sessions",
+    "specialisations": "Advisor specialisations"
   },
-  "advisorFooterTitle": "Advisor workspace",
-  "advisorFooterCaption": "Case access is checked by the API",
-  "stewardFooterTitle": "Data protection workspace",
-  "stewardFooterCaption": "Metadata and audit operations",
-  "administratorFooterTitle": "System administration",
-  "administratorFooterCaption": "Account and reference data management",
-  "studentFooterTitle": "Student data agency",
-  "studentFooterCaption": "Consent and own-record access"
+  "sectionGeneral": "Account",
+  "more": "More"
 }
