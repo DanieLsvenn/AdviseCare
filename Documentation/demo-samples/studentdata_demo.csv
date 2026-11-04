@@ -1,6 +1,6 @@
 Student email,Data attribute,Value,Term,Valid from
-student@gmail.com,GPA,6.8,Fall 2026,2026-10-15
-student@gmail.com,Attendance rate,72,Fall 2026,2026-10-15
-student@gmail.com,Accommodation status,rented,Fall 2026,2026-09-07
-student@gmail.com,Family income bracket,low,Fall 2026,2026-09-07
-student@gmail.com,Financial difficulty,true,Fall 2026,2026-10-01
+student@gmail.com,GPA,6.8,Fall 2026,10/15/2026
+student@gmail.com,Attendance rate,72,Fall 2026,10/15/2026
+student@gmail.com,Accommodation status,rented,Fall 2026,9/7/2026
+student@gmail.com,Family income bracket,low,Fall 2026,9/7/2026
+student@gmail.com,Financial difficulty,TRUE,Fall 2026,10/1/2026
