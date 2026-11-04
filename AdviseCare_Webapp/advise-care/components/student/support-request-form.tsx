@@ -8,6 +8,7 @@ import { clientApiGet, clientApiPost } from "@/lib/client-api";
 import { cn } from "@/lib/cn";
 import { listOf, str, unwrap } from "@/components/case/case-api";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { controlClass } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
 import { Notice } from "@/components/ui/notice";
@@ -30,7 +31,25 @@ interface Shareable {
 }
 
 const REASON_MAX = 4000;
+const PART_SEPARATOR = "\n\n";
 const DRAFT_KEY = "advisecare.requestDraft";
+
+/**
+ * The API takes one free-text reason, so the overall story and the notes about
+ * each shared item are joined into it, each note under its item's name.
+ */
+function composeReason(
+  general: string,
+  items: Array<{ id: string; name: string }>,
+  notes: Record<string, string>,
+) {
+  const parts = [general.trim()];
+  for (const item of items) {
+    const note = (notes[item.id] ?? "").trim();
+    if (note) parts.push(`${item.name}:\n${note}`);
+  }
+  return parts.filter(Boolean).join(PART_SEPARATOR);
+}
 
 function readDraft(): { type?: string; reason?: string } {
   try {
@@ -61,6 +80,7 @@ function writeDraft(value: { type: string; reason: string } | null) {
 export function SupportRequestForm() {
   const t = useTranslations("ui.request");
   const tw = useTranslations("workspace");
+  const { confirm, element: confirmDialog } = useConfirm();
   const [categories, setCategories] = useState<Category[]>([]);
   const [subjects, setSubjects] = useState<Array<{ id: string; label: string }>>([]);
   const [shareable, setShareable] = useState<Shareable | null>(null);
@@ -69,6 +89,8 @@ export function SupportRequestForm() {
   const [subjectId, setSubjectId] = useState("");
   const [reason, setReason] = useState("");
   const [sharedIds, setSharedIds] = useState<string[]>([]);
+  // Kept per item even when it is unticked, so an accidental untick loses nothing.
+  const [notes, setNotes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [pending, setPending] = useState(false);
@@ -121,10 +143,24 @@ export function SupportRequestForm() {
     return () => window.clearTimeout(timer);
   }, [type, reason, createdCaseId]);
 
+  // What the advisor will actually be able to read: new ticks plus what was already shared.
+  const visibleToAdvisor = (shareable?.attributes ?? []).filter(
+    (attribute) => attribute.alreadyShared || sharedIds.includes(attribute.id),
+  );
+  const composedReason = composeReason(reason, visibleToAdvisor, notes);
+  const reasonRoom = Math.max(0, REASON_MAX - composedReason.length);
+  const reasonTooLong = composedReason.length > REASON_MAX;
+  // An empty field adds nothing yet; once it has text it also brings its own header and separator.
+  const roomFor = (text: string, headerLength = 0) =>
+    text.trim()
+      ? reasonRoom
+      : Math.max(0, reasonRoom - headerLength - (composedReason ? PART_SEPARATOR.length : 0));
+
   async function chooseCategory(nextId: string) {
     setCategoryId(nextId);
     setSubjectId("");
     setSharedIds([]);
+    setNotes({});
     setShareable(null);
     setError("");
     const category = categories.find((item) => item.id === nextId);
@@ -171,13 +207,59 @@ export function SupportRequestForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // A sent request cannot be edited or cancelled, so the student reviews it once more first.
+    const subjectLabel = subjects.find((subject) => subject.id === subjectId)?.label;
+    const confirmed = await confirm({
+      title: t("confirmTitle"),
+      icon: "fact_check",
+      confirmLabel: t("confirmSend"),
+      cancelLabel: t("confirmBack"),
+      body: (
+        <div className="flex flex-col gap-space-md">
+          <p>{t("confirmIntro")}</p>
+          <dl className="flex flex-col gap-space-sm">
+            <ReviewRow label={t("confirmCategory")}>
+              {category ? `${category.name} · ${t(`type.${category.supportType}`)}` : ""}
+            </ReviewRow>
+            {needsSubject ? (
+              <ReviewRow label={t("confirmSubject")}>{subjectLabel ?? t("subjectNone")}</ReviewRow>
+            ) : null}
+            <ReviewRow label={t("confirmShared")}>
+              {visibleToAdvisor.length ? (
+                <ul className="list-disc pl-space-base">
+                  {visibleToAdvisor.map((attribute) => (
+                    <li key={attribute.id}>
+                      {attribute.alreadyShared
+                        ? t("summaryAlready", { name: attribute.name })
+                        : attribute.name}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                t("confirmSharedNone")
+              )}
+            </ReviewRow>
+            <ReviewRow label={t("confirmReason")}>
+              <p className="max-h-32 overflow-y-auto whitespace-pre-line rounded-md border border-rule bg-paper-tint px-space-md py-space-sm">
+                {composedReason}
+              </p>
+            </ReviewRow>
+          </dl>
+          <Notice tone="attention" icon="warning" title={t("confirmWarningTitle")}>
+            {t("confirmWarningBody")}
+          </Notice>
+        </div>
+      ),
+    });
+    if (!confirmed) return;
+
     setPending(true);
     setError("");
     try {
       const response = await clientApiPost<unknown>("Cases", {
         supportCategoryId: categoryId,
         ...(subjectId ? { subjectId } : {}),
-        requestReason: reason.trim(),
+        requestReason: composedReason,
         sharedAttributeIds: sharedIds,
       });
       if (isRecord(response) && response.isSuccess === false) {
@@ -199,11 +281,8 @@ export function SupportRequestForm() {
   const visibleCategories = categories.filter((category) => category.supportType === type);
   const category = categories.find((item) => item.id === categoryId);
   const needsSubject = category?.supportType === "academic";
-  const ready = Boolean(categoryId) && reason.trim().length > 0 && !detailsLoading;
-  // What the advisor will actually be able to read: new ticks plus what was already shared.
-  const visibleToAdvisor = (shareable?.attributes ?? []).filter(
-    (attribute) => attribute.alreadyShared || sharedIds.includes(attribute.id),
-  );
+  const ready =
+    Boolean(categoryId) && reason.trim().length > 0 && !reasonTooLong && !detailsLoading;
 
   if (createdCaseId !== null) {
     return (
@@ -259,6 +338,7 @@ export function SupportRequestForm() {
                     setCategoryId("");
                     setShareable(null);
                     setSharedIds([]);
+                    setNotes({});
                   }}
                   className="mt-1 size-4 accent-[#2142b8]"
                 />
@@ -335,27 +415,8 @@ export function SupportRequestForm() {
           ) : null}
         </Step>
 
-        {/* 3. Reason */}
-        <Step number={3} title={t("reasonTitle")} hint={t("reasonHint")} disabled={!categoryId} lockedHint={t("lockedCategory")}>
-          <textarea
-            aria-label={t("reasonTitle")}
-            className={cn(controlClass, "min-h-36 w-full py-3 text-[0.9375rem] leading-6")}
-            maxLength={REASON_MAX}
-            placeholder={t("reasonPlaceholder")}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            required
-          />
-          <div className="mt-1 flex items-center justify-between gap-space-md text-[0.75rem] text-text-faint">
-            <span>{restored ? t("draftRestored") : t("draftAutosave")}</span>
-            <span className="font-mono">
-              {reason.length}/{REASON_MAX}
-            </span>
-          </div>
-        </Step>
-
-        {/* 4. Data sharing */}
-        <Step number={4} title={t("shareTitle")} disabled={!categoryId} lockedHint={t("lockedCategory")}>
+        {/* 3. Data sharing */}
+        <Step number={3} title={t("shareTitle")} disabled={!categoryId} lockedHint={t("lockedCategory")}>
           {detailsLoading ? (
             <SkeletonRows rows={2} columns={2} label={tw("loading")} />
           ) : shareable && shareable.canShare && shareable.attributes.length ? (
@@ -418,6 +479,67 @@ export function SupportRequestForm() {
           ) : null}
         </Step>
 
+        {/* 4. Reason: one overall story, plus one optional note per item the advisor will see */}
+        <Step number={4} title={t("reasonTitle")} hint={t("reasonHint")} disabled={!categoryId} lockedHint={t("lockedCategory")}>
+          <div className="flex flex-col gap-space-base">
+            <div>
+              {visibleToAdvisor.length ? (
+                <label htmlFor="reason-general" className="mb-1.5 block text-sm font-semibold text-text">
+                  {t("reasonGeneral")}
+                </label>
+              ) : null}
+              <textarea
+                id="reason-general"
+                aria-label={visibleToAdvisor.length ? undefined : t("reasonTitle")}
+                className={cn(controlClass, "w-full py-3 text-[0.9375rem] leading-6", visibleToAdvisor.length ? "min-h-28" : "min-h-36")}
+                maxLength={reason.length + roomFor(reason)}
+                placeholder={t("reasonPlaceholder")}
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                required
+              />
+            </div>
+
+            {visibleToAdvisor.length ? (
+              <div className="flex flex-col gap-space-base border-t border-rule pt-space-base">
+                <div>
+                  <h3 className="text-sm font-semibold text-text">{t("reasonItemsTitle")}</h3>
+                  <p className="mt-0.5 text-[0.8125rem] leading-5 text-text-muted">{t("reasonItemsHint")}</p>
+                </div>
+                {visibleToAdvisor.map((attribute) => {
+                  const note = notes[attribute.id] ?? "";
+                  return (
+                    <div key={attribute.id}>
+                      <label htmlFor={`note-${attribute.id}`} className="mb-1.5 block text-sm font-semibold text-text">
+                        {t("reasonItemLabel", { name: attribute.name })}
+                      </label>
+                      <textarea
+                        id={`note-${attribute.id}`}
+                        className={cn(controlClass, "min-h-20 w-full py-3 text-[0.9375rem] leading-6")}
+                        maxLength={note.length + roomFor(note, attribute.name.length + 2)}
+                        placeholder={t("reasonItemPlaceholder")}
+                        value={note}
+                        onChange={(event) =>
+                          setNotes((current) => ({ ...current, [attribute.id]: event.target.value }))
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            <div className="flex items-center justify-between gap-space-md text-[0.75rem] text-text-faint">
+              <span className={cn(reasonTooLong && "font-semibold text-red-ink")}>
+                {reasonTooLong ? t("reasonTooLong") : restored ? t("draftRestored") : t("draftAutosave")}
+              </span>
+              <span className={cn("font-mono", reasonTooLong && "font-semibold text-red-ink")}>
+                {composedReason.length}/{REASON_MAX}
+              </span>
+            </div>
+          </div>
+        </Step>
+
         {error ? <Notice tone="urgent" icon="error" title={error} /> : null}
 
         <div className="flex flex-wrap items-center justify-between gap-space-md rounded-lg border border-rule bg-paper px-space-lg py-space-base">
@@ -456,6 +578,17 @@ export function SupportRequestForm() {
           </Link>
         </p>
       </section>
+
+      {confirmDialog}
+    </div>
+  );
+}
+
+function ReviewRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <dt className="text-[0.75rem] font-semibold uppercase tracking-wide text-text-faint">{label}</dt>
+      <dd className="mt-0.5 text-text">{children}</dd>
     </div>
   );
 }

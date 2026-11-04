@@ -40,7 +40,8 @@
     "accessHistory": "Access log",
     "corrections": "Corrections",
     "export": "Export my data",
-    "requestSupport": "Request support"
+    "requestSupport": "Request support",
+    "consentRequests": "Data requests"
   },
   "head": {
     "overview": "Matching queue",

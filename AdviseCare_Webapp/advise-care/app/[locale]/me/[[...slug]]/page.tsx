@@ -21,11 +21,11 @@ export default async function StudentWorkspacePage({
     screen = "student.support";
   } else if (route === "consent") {
     screen = "student.consent";
+  } else if (route === "consent/requests") {
+    screen = "student.consentRequests";
   } else if (/^consent\/([^/]+)(?:\/withdraw)?$/.test(route)) {
     screen = "student.consent";
     pathValues = { consentId: slug[1] };
-  } else if (route === "consent/requests") {
-    screen = "student.consentRequests";
   } else if (
     route === "corrections" ||
     route === "corrections/new"

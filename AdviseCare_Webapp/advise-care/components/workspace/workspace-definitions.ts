@@ -5,6 +5,7 @@ import type {
   WorkspaceField,
   WorkspaceOperation,
   WorkspaceColumn,
+  WorkspaceOptionSource,
 } from "@/components/workspace/api-workspace";
 
 type WorkspaceKey = keyof typeof englishWorkspace;
@@ -139,6 +140,104 @@ export function getWorkspaceDefinitions(
     columns: columns(columnKeys),
     ...options,
   });
+  // Pickers: people choose a name from a list, the form still submits the ID.
+  const source = {
+    faculties: (activeOnly = false): WorkspaceOptionSource => ({
+      path: "Faculties/search",
+      valueKey: "facultyId",
+      labelKeys: ["facultyName", "facultyCode"],
+      query: activeOnly ? { status: "active" } : undefined,
+    }),
+    subjects: (activeOnly = false): WorkspaceOptionSource => ({
+      path: "Subjects/search",
+      valueKey: "subjectId",
+      labelKeys: ["subjectCode", "subjectName"],
+      query: activeOnly ? { status: "active" } : undefined,
+    }),
+    roles: {
+      path: "Roles/search",
+      valueKey: "roleId",
+      labelKeys: ["roleName"],
+    } satisfies WorkspaceOptionSource,
+    purposes: (activeOnly = false): WorkspaceOptionSource => ({
+      path: "ConsentPurposes/search",
+      valueKey: "consentPurposeId",
+      labelKeys: ["purposeName"],
+      query: activeOnly ? { status: "active" } : undefined,
+    }),
+    dataAttributes: {
+      path: "DataAttributes/search",
+      valueKey: "dataAttributeId",
+      labelKeys: ["attributeName"],
+    } satisfies WorkspaceOptionSource,
+    purposeAttributes: {
+      path: "ConsentPurposes/purpose-attributes/search",
+      valueKey: "dataAttributeId",
+      labelKeys: ["attributeName"],
+      match: { attributeStatus: "active" },
+      dependsOn: { field: "consentPurposeId", queryKey: "consentPurposeId" },
+      copy: { waiting: t("choosePurposeFirst") },
+    } satisfies WorkspaceOptionSource,
+    supportCategories: {
+      path: "SupportCategories/search",
+      valueKey: "supportCategoryId",
+      labelKeys: ["categoryName"],
+    } satisfies WorkspaceOptionSource,
+    externalServices: {
+      path: "ExternalServices/search",
+      valueKey: "externalServiceId",
+      labelKeys: ["serviceName", "serviceType"],
+      query: { isActive: true },
+    } satisfies WorkspaceOptionSource,
+    students: {
+      path: "StudentProfiles/search",
+      valueKey: "studentId",
+      labelKeys: ["fullName", "studentCode"],
+      detailKeys: ["email", "facultyName"],
+      searchKeys: ["fullName", "studentCode"],
+    } satisfies WorkspaceOptionSource,
+    accounts: (roleName?: string): WorkspaceOptionSource => ({
+      path: "Accounts/search",
+      valueKey: "accountId",
+      labelKeys: ["fullName"],
+      detailKeys: ["email"],
+      searchKeys: ["fullName", "email"],
+      query: roleName ? { roleName } : undefined,
+    }),
+    suggestedAdvisors: {
+      path: "Cases/:caseId/suggested-advisors",
+      valueKey: "advisorId",
+      labelKeys: ["fullName", "facultyName", "matchReasons"],
+      copy: {
+        choose: t("chooseAdvisor"),
+        empty: t("noSuggestedAdvisors"),
+      },
+    } satisfies WorkspaceOptionSource,
+  };
+  const pick = (
+    key: WorkspaceKey,
+    labelKey: WorkspaceKey,
+    optionsFrom: WorkspaceOptionSource,
+    required = false,
+  ): WorkspaceField => ({
+    ...field(key, "select", required),
+    label: t(labelKey),
+    optionsFrom,
+  });
+  const search = (
+    key: WorkspaceKey,
+    labelKey: WorkspaceKey,
+    optionsFrom: WorkspaceOptionSource,
+    placeholderKey: WorkspaceKey,
+    required = false,
+  ): WorkspaceField => ({
+    ...field(key, "search", required),
+    label: t(labelKey),
+    placeholder: t(placeholderKey),
+    optionsFrom,
+  });
+  const studentSearch = (required = false): WorkspaceField =>
+    search("studentId", "student", source.students, "searchStudentPlaceholder", required);
   const caseStageOptions = [
     "pending",
     "assigned",
@@ -168,7 +267,6 @@ export function getWorkspaceDefinitions(
             "fullName",
             "email",
             "userName",
-            "facultyName",
             "roles",
             "status",
             "linkStatus",
@@ -179,7 +277,7 @@ export function getWorkspaceDefinitions(
               field("fullName"),
               field("userName"),
               field("studentCode"),
-              field("facultyId"),
+              pick("facultyId", "faculty", source.faculties()),
               field("roleName"),
               selectValues("academicStatus", academicStatusOptions),
               field("linkStatus"),
@@ -203,7 +301,7 @@ export function getWorkspaceDefinitions(
               field("email", "email", true),
               field("fullName", "text", true),
               field("userName", "text", true),
-              field("facultyId"),
+              pick("facultyId", "faculty", source.faculties(true)),
               field("roleNames", "list", true),
               field("studentCode"),
               selectValues("academicStatus", academicStatusOptions),
@@ -213,7 +311,7 @@ export function getWorkspaceDefinitions(
                 field("email", "email", true),
                 field("fullName", "text", true),
                 field("userName", "text", true),
-                field("facultyId"),
+                pick("facultyId", "faculty", source.faculties()),
               ], {
                 bodyFromRecord: {
                   email: { key: "email" },
@@ -236,7 +334,7 @@ export function getWorkspaceDefinitions(
                 "POST",
                 "Accounts/roles",
                 [
-                  field("roleId", "text", true),
+                  pick("roleId", "role", source.roles, true),
                   field("studentCode"),
                   selectValues("academicStatus", academicStatusOptions),
                 ],
@@ -280,12 +378,21 @@ export function getWorkspaceDefinitions(
         workspace(
           "roleAssignments",
           "Accounts/roles/search",
-          ["accountId", "accountName", "roleId", "roleName", "createdAt"],
+          [
+            "accountId",
+            ["fullName", "accountName"],
+            "roleId",
+            "roleName",
+            ["assignedAt", "assignedAt"],
+          ],
           {
-            queryFields: [field("accountId"), field("roleId")],
+            queryFields: [
+              search("accountId", "account", source.accounts(), "searchAccountPlaceholder"),
+              pick("roleId", "role", source.roles),
+            ],
             create: operation("addRole", "POST", "Accounts/roles", [
-              field("accountId", "text", true),
-              field("roleId", "text", true),
+              search("accountId", "account", source.accounts(), "searchAccountPlaceholder", true),
+              pick("roleId", "role", source.roles, true),
               field("studentCode"),
               selectValues("academicStatus", academicStatusOptions),
             ]),
@@ -332,17 +439,21 @@ export function getWorkspaceDefinitions(
           "Programmes/search",
           ["programmeId", "programmeCode", "programmeName", "facultyId", "status"],
           {
-            queryFields: [field("programmeCode"), field("programmeName"), field("facultyId")],
+            queryFields: [
+              field("programmeCode"),
+              field("programmeName"),
+              pick("facultyId", "faculty", source.faculties()),
+            ],
             create: operation("create", "POST", "Programmes", [
               field("programmeCode", "text", true),
               field("programmeName", "text", true),
-              field("facultyId", "text", true),
+              pick("facultyId", "faculty", source.faculties(true), true),
             ]),
             rowOperations: [
               operation("update", "PUT", "Programmes/:programmeId", [
                 field("programmeCode", "text", true),
                 field("programmeName", "text", true),
-                field("facultyId", "text", true),
+                pick("facultyId", "faculty", source.faculties(), true),
                 select("status", ["active", "archived"], true),
               ], {
                 bodyFromRecord: {
@@ -358,7 +469,7 @@ export function getWorkspaceDefinitions(
         workspace(
           "term",
           "AcademicTerms/search",
-          ["academicTermId", "termName", "startDate", "endDate", "status"],
+          [["termId", "academicTermId"], "termName", "startDate", "endDate", "status"],
           {
             queryFields: [field("termName"), field("status")],
             create: operation("create", "POST", "AcademicTerms", [
@@ -368,7 +479,7 @@ export function getWorkspaceDefinitions(
               select("status", ["upcoming", "current", "past"], true),
             ]),
             rowOperations: [
-              operation("update", "PUT", "AcademicTerms/:academicTermId", [
+              operation("update", "PUT", "AcademicTerms/:termId", [
                 field("termName", "text", true),
                 field("startDate", "date", true),
                 field("endDate", "date", true),
@@ -392,16 +503,16 @@ export function getWorkspaceDefinitions(
             queryFields: [
               field("subjectCode"),
               field("subjectName"),
-              field("facultyId"),
+              pick("facultyId", "faculty", source.faculties()),
             ],
             create: operation("create", "POST", "Subjects", [
-              field("facultyId", "text", true),
+              pick("facultyId", "faculty", source.faculties(true), true),
               field("subjectCode", "text", true),
               field("subjectName", "text", true),
             ]),
             rowOperations: [
               operation("update", "PUT", "Subjects/:subjectId", [
-                field("facultyId", "text", true),
+                pick("facultyId", "faculty", source.faculties(), true),
                 field("subjectCode", "text", true),
                 field("subjectName", "text", true),
                 select("status", ["active", "archived"], true),
@@ -423,12 +534,21 @@ export function getWorkspaceDefinitions(
         workspace(
           "subjectAssignments",
           "Subjects/account-subjects/search",
-          ["accountId", "accountName", "subjectId", "subjectCode", "subjectName"],
+          [
+            "accountId",
+            ["advisorFullName", "accountName"],
+            "subjectId",
+            "subjectCode",
+            "subjectName",
+          ],
           {
-            queryFields: [field("accountId"), field("subjectId")],
+            queryFields: [
+              search("accountId", "advisor", source.accounts("Academic Advisor"), "searchAccountPlaceholder"),
+              pick("subjectId", "subject", source.subjects()),
+            ],
             create: operation("create", "POST", "Subjects/account-subjects", [
-              field("accountId", "text", true),
-              field("subjectId", "text", true),
+              search("accountId", "advisor", source.accounts("Academic Advisor"), "searchAccountPlaceholder", true),
+              pick("subjectId", "subject", source.subjects(true), true),
             ]),
             rowOperations: [
               operation(
@@ -451,17 +571,17 @@ export function getWorkspaceDefinitions(
           [
             "studentDataId",
             "studentId",
-            "dataAttributeName",
+            ["attributeName", "dataAttributeName"],
             "termName",
             "validFrom",
             "status",
             "isMissing",
-            "isErased",
+            ["erasedAt", "erasedAt"],
           ],
           {
             queryFields: [
-              field("studentId"),
-              field("dataAttributeId"),
+              studentSearch(),
+              pick("dataAttributeId", "dataAttribute", source.dataAttributes),
               field("termId"),
               field("status"),
               field("isMissing", "checkbox"),
@@ -480,7 +600,7 @@ export function getWorkspaceDefinitions(
             "supportCategoryId",
             "categoryName",
             "supportType",
-            "consentPurposeName",
+            ["purposeName", "consentPurposeName"],
             "status",
           ],
           {
@@ -493,14 +613,14 @@ export function getWorkspaceDefinitions(
               field("categoryName", "text", true),
               field("description", "textarea"),
               select("supportType", ["academic", "wellbeing"], true),
-              field("consentPurposeId", "text", true),
+              pick("consentPurposeId", "consentPurpose", source.purposes(true), true),
             ]),
             rowOperations: [
               operation("update", "PUT", "SupportCategories/:supportCategoryId", [
                 field("categoryName", "text", true),
                 field("description", "textarea", true),
                 select("supportType", ["academic", "wellbeing"], true),
-                field("consentPurposeId", "text", true),
+                pick("consentPurposeId", "consentPurpose", source.purposes(), true),
                 select("status", ["active", "archived"], true),
               ], {
                 bodyFromRecord: {
@@ -550,9 +670,9 @@ export function getWorkspaceDefinitions(
           [
             "activityLogId",
             "activityType",
-            "actorAccountId",
-            "subjectAccountId",
-            "createdAt",
+            "accountId",
+            ["activityDetail", "details"],
+            ["occurredAt", "occurredAt"],
           ],
           {
             queryFields: [
@@ -570,9 +690,19 @@ export function getWorkspaceDefinitions(
         workspace(
           "sessions",
           "Sessions/search",
-          ["sessionId", "accountName", "deviceInfo", "createdAt", "lastSeenAt", "isActive"],
+          [
+            "sessionId",
+            "accountId",
+            "deviceInfo",
+            ["loginAt", "loginAt"],
+            ["logoutAt", "logoutAt"],
+            "isActive",
+          ],
           {
-            queryFields: [field("accountId"), field("isActive", "checkbox")],
+            queryFields: [
+              search("accountId", "account", source.accounts(), "searchAccountPlaceholder"),
+              field("isActive", "checkbox"),
+            ],
             rowOperations: [
               operation(
                 "revoke",
@@ -647,7 +777,7 @@ export function getWorkspaceDefinitions(
           [
             ["categoryName", "supportCategoryName"],
             "subjectName",
-            "advisorName",
+            ["advisorFullName", "advisorName"],
             "currentStage",
             "openedAt",
           ],
@@ -674,28 +804,37 @@ export function getWorkspaceDefinitions(
           "consent",
           "Consents/me",
           [
-            "consentId",
-            "consentPurposeName",
-            "dataAttributeName",
+            ["purposeName", "consentPurposeName"],
+            ["attributeName", "dataAttributeName"],
             "status",
             "expiresAt",
           ],
           {
-            create: operation("create", "POST", "Consents", [
-              field("consentPurposeId", "text", true),
-              field("dataAttributeIds", "list", true),
-              field("expiresAt", "datetime-local"),
-            ]),
+            expandKey: "attributes",
+            description: t("consentDescription"),
             rowOperations: [
+              operation(
+                "grant",
+                "POST",
+                "Consents",
+                [{ ...field("expiresAt", "datetime-local"), noPrefill: true }],
+                {
+                  bodyFromRecord: {
+                    consentPurposeId: { key: "consentPurposeId" },
+                    dataAttributeIds: { key: "dataAttributeId", asArray: true },
+                  },
+                  when: { key: "status", in: ["none", "expired", "withdrawn"] },
+                },
+              ),
               operation("update", "PUT", "Consents/:consentId", [
                 field("expiresAt", "datetime-local"),
-              ]),
+              ], { when: { key: "status", in: ["granted"] } }),
               operation(
                 "withdraw",
                 "PUT",
                 "Consents/:consentId/withdraw",
                 undefined,
-                { confirm: true },
+                { confirm: true, when: { key: "status", in: ["granted"] } },
               ),
             ],
           },
@@ -709,12 +848,12 @@ export function getWorkspaceDefinitions(
           "ConsentRequests/me/received",
           [
             "consentRequestId",
-            "advisorName",
-            "consentPurposeName",
-            "dataAttributeName",
+            ["advisorFullName", "advisorName"],
+            ["purposeName", "consentPurposeName"],
+            ["attributeName", "dataAttributeName"],
             "purposeStated",
             "status",
-            "createdAt",
+            ["requestedAt", "requestedAt"],
           ],
           {
             rowOperations: [
@@ -739,7 +878,7 @@ export function getWorkspaceDefinitions(
             "studentDataId",
             "proposedValue",
             "status",
-            "createdAt",
+            ["submittedAt", "submittedAt"],
           ],
           {
             create: operation("create", "POST", "CorrectionRequests", [
@@ -759,6 +898,12 @@ export function getWorkspaceDefinitions(
                     isErased: false,
                   },
                   requiredValueKeys: ["value"],
+                  copy: {
+                    loading: t("loadingStudentDataValues"),
+                    choose: t("selectStudentDataValue"),
+                    empty: t("noCorrectableStudentData"),
+                    unavailable: t("studentDataOptionsUnavailable"),
+                  },
                 },
               },
               field("explanation", "textarea", true),
@@ -783,7 +928,7 @@ export function getWorkspaceDefinitions(
           "studentData",
           "StudentData/me",
           [
-            "dataAttributeName",
+            ["attributeName", "dataAttributeName"],
             "value",
             "termName",
             "isMissing",
@@ -801,8 +946,8 @@ export function getWorkspaceDefinitions(
           "AccessLogs/me",
           [
             "accessLogId",
-            "accessorName",
-            "roleName",
+            ["accessorFullName", "accessorName"],
+            ["accessorRoleNames", "roleName"],
             "purposeName",
             "accessedAt",
             "isFlagged",
@@ -832,7 +977,11 @@ export function getWorkspaceDefinitions(
         workspace(
           "activityLog",
           "ActivityLogs/me",
-          ["activityType", "createdAt", "details"],
+          [
+            "activityType",
+            ["activityDetail", "details"],
+            ["occurredAt", "occurredAt"],
+          ],
           { pageSize: 30 },
         ),
       ];
@@ -843,7 +992,7 @@ export function getWorkspaceDefinitions(
           "myCases",
           "Cases/assigned",
           [
-            "studentName",
+            ["studentFullName", "studentName"],
             "studentCode",
             ["categoryName", "supportCategoryName"],
             "subjectName",
@@ -857,6 +1006,7 @@ export function getWorkspaceDefinitions(
             emptyTitle: t("myCasesEmptyTitle"),
             emptyBody: t("myCasesEmptyBody"),
             rowHref: "/advisor/cases/:caseId",
+            primaryLink: { label: t("openOutreachCase"), href: "/advisor/outreach", icon: "add" },
             queryFields: [
               select("currentStage", caseStageOptions),
               select("priority", priorityOptions),
@@ -879,7 +1029,7 @@ export function getWorkspaceDefinitions(
           "Cases/:caseId",
           [
             "caseId",
-            "studentName",
+            ["studentFullName", "studentName"],
             ["categoryName", "supportCategoryName"],
             "supportType",
             "subjectName",
@@ -925,18 +1075,18 @@ export function getWorkspaceDefinitions(
           "ConsentRequests/me/sent",
           [
             "consentRequestId",
-            "studentName",
-            "consentPurposeName",
-            "dataAttributeName",
+            ["studentFullName", "studentName"],
+            ["purposeName", "consentPurposeName"],
+            ["attributeName", "dataAttributeName"],
             "purposeStated",
             "status",
-            "createdAt",
+            ["requestedAt", "requestedAt"],
           ],
           {
             create: operation("create", "POST", "ConsentRequests", [
-              field("consentPurposeId", "text", true),
-              field("dataAttributeId", "text", true),
-              field("studentId", "text", true),
+              pick("consentPurposeId", "consentPurpose", source.purposes(true), true),
+              pick("dataAttributeId", "dataAttribute", source.purposeAttributes, true),
+              studentSearch(true),
               field("purposeStated", "textarea", true),
             ]),
             rowOperations: [
@@ -962,15 +1112,15 @@ export function getWorkspaceDefinitions(
           "CorrectionRequests/search",
           [
             "correctionRequestId",
-            "studentName",
-            "dataAttributeName",
+            ["studentFullName", "studentName"],
+            ["attributeName", "dataAttributeName"],
             "proposedValue",
             "status",
-            "createdAt",
+            ["submittedAt", "submittedAt"],
           ],
           {
             queryFields: [
-              field("studentId"),
+              studentSearch(),
               field("status"),
             ],
             rowOperations: [
@@ -991,9 +1141,9 @@ export function getWorkspaceDefinitions(
           "receivedRequests",
           "Referrals/me/incoming",
           [
-            "studentName",
+            ["studentFullName", "studentName"],
             ["categoryName", "supportCategoryName"],
-            "fromAccountName",
+            ["fromAccountFullName", "fromAccountName"],
             "referralReason",
             "priority",
             "status",
@@ -1019,9 +1169,9 @@ export function getWorkspaceDefinitions(
           "sentRequests",
           "Referrals/me/outgoing",
           [
-            "studentName",
+            ["studentFullName", "studentName"],
             ["categoryName", "supportCategoryName"],
-            "toAccountName",
+            ["toAccountFullName", "toAccountName"],
             "referralReason",
             "priority",
             "status",
@@ -1038,7 +1188,7 @@ export function getWorkspaceDefinitions(
           "EmergencyAccessRequests/me",
           [
             "emergencyAccessRequestId",
-            "studentName",
+            ["studentFullName", "studentName"],
             "justification",
             "status",
             "scopeExpiresAt",
@@ -1046,7 +1196,7 @@ export function getWorkspaceDefinitions(
           ],
           {
             create: operation("request", "POST", "EmergencyAccessRequests", [
-              field("studentId", "text", true),
+              studentSearch(true),
               field("justification", "textarea", true),
             ], { confirm: true }),
             rowOperations: [
@@ -1063,7 +1213,14 @@ export function getWorkspaceDefinitions(
         workspace(
           "studentData",
           "StudentData/students/:studentId",
-          ["dataAttributeName", "value", "termName", "isShared", "isMissing", "validFrom"],
+          [
+            ["attributeName", "dataAttributeName"],
+            "value",
+            "termName",
+            "isShared",
+            "isMissing",
+            "validFrom",
+          ],
           {
             queryFields: [
               field("caseId"),
@@ -1078,7 +1235,14 @@ export function getWorkspaceDefinitions(
         workspace(
           "studentData",
           "StudentData/students/:studentId/as-of",
-          ["dataAttributeName", "value", "termName", "isShared", "isMissing", "validFrom"],
+          [
+            ["attributeName", "dataAttributeName"],
+            "value",
+            "termName",
+            "isShared",
+            "isMissing",
+            "validFrom",
+          ],
           {
             queryFields: [
               field("date", "date", true),
@@ -1095,7 +1259,12 @@ export function getWorkspaceDefinitions(
         workspace(
           "studentData",
           "StudentData/students/:studentId/compare",
-          ["dataAttributeName", "dateA", "dateB", "valueA", "valueB"],
+          [
+            ["attributeName", "dataAttributeName"],
+            "termName",
+            ["dateAValue.value", "valueA"],
+            ["dateBValue.value", "valueB"],
+          ],
           {
             queryFields: [
               field("dateA", "date", true),
@@ -1118,8 +1287,8 @@ export function getWorkspaceDefinitions(
             "fromStage",
             "toStage",
             "reason",
-            "changedByName",
-            "createdAt",
+            ["changedByFullName", "changedByName"],
+            ["changedAt", "changedAt"],
           ],
           { queryFields: [field("caseId", "text", true)] },
         ),
@@ -1131,9 +1300,9 @@ export function getWorkspaceDefinitions(
           "welfareReferrals",
           "Referrals/me/incoming",
           [
-            "studentName",
+            ["studentFullName", "studentName"],
             ["categoryName", "supportCategoryName"],
-            "fromAccountName",
+            ["fromAccountFullName", "fromAccountName"],
             "referralReason",
             "priority",
             "status",
@@ -1187,7 +1356,7 @@ export function getWorkspaceDefinitions(
           [
             "interventionId",
             "caseId",
-            "studentName",
+            ["officerFullName", "officerName"],
             "interventionType",
             "interventionDate",
             "status",
@@ -1196,7 +1365,7 @@ export function getWorkspaceDefinitions(
           {
             queryFields: [
               field("caseId"),
-              field("studentId"),
+              studentSearch(),
               field("status"),
             ],
             create: operation("create", "POST", "Interventions", [
@@ -1239,7 +1408,7 @@ export function getWorkspaceDefinitions(
           "Cases/:caseId",
           [
             "caseId",
-            "studentName",
+            ["studentFullName", "studentName"],
             ["categoryName", "supportCategoryName"],
             "currentStage",
             "status",
@@ -1289,7 +1458,7 @@ export function getWorkspaceDefinitions(
           [
             "externalReferralId",
             "caseId",
-            "serviceName",
+            ["externalServiceName", "serviceName"],
             "status",
             "followUpDueAt",
             "followUpOutcome",
@@ -1298,7 +1467,7 @@ export function getWorkspaceDefinitions(
             queryFields: [field("caseId"), field("isOverdue", "checkbox")],
             create: operation("create", "POST", "ExternalReferrals", [
               field("caseId", "text", true),
-              field("externalServiceId", "text", true),
+              pick("externalServiceId", "externalService", source.externalServices, true),
               field("reason", "textarea", true),
               field("followUpDueAt", "date"),
             ]),
@@ -1353,13 +1522,21 @@ export function getWorkspaceDefinitions(
             "purposeName",
             "dataAttributeId",
             "attributeName",
-            "status",
+            ["attributeStatus", "status"],
           ],
           {
-            queryFields: [field("consentPurposeId"), field("dataAttributeId")],
+            queryFields: [
+              pick("consentPurposeId", "consentPurpose", source.purposes()),
+              pick("dataAttributeId", "dataAttribute", source.dataAttributes),
+            ],
             create: operation("create", "POST", "ConsentPurposes/purpose-attributes", [
-              field("consentPurposeId", "text", true),
-              field("dataAttributeId", "text", true),
+              pick("consentPurposeId", "consentPurpose", source.purposes(true), true),
+              pick(
+                "dataAttributeId",
+                "dataAttribute",
+                { ...source.dataAttributes, query: { status: "active" } },
+                true,
+              ),
             ]),
             rowOperations: [
               operation(
@@ -1382,20 +1559,23 @@ export function getWorkspaceDefinitions(
           [
             "accessPolicyId",
             "roleName",
-            "consentPurposeName",
+            ["purposeName", "consentPurposeName"],
             "status",
-            "createdAt",
           ],
           {
-            queryFields: [field("roleId"), field("consentPurposeId"), field("status")],
+            queryFields: [
+              pick("roleId", "role", source.roles),
+              pick("consentPurposeId", "consentPurpose", source.purposes()),
+              field("status"),
+            ],
             create: operation("create", "POST", "AccessPolicies", [
-              field("roleId", "text", true),
-              field("consentPurposeId", "text", true),
+              pick("roleId", "role", source.roles, true),
+              pick("consentPurposeId", "consentPurpose", source.purposes(true), true),
             ]),
             rowOperations: [
               operation("update", "PUT", "AccessPolicies/:accessPolicyId", [
-                field("roleId", "text", true),
-                field("consentPurposeId", "text", true),
+                pick("roleId", "role", source.roles, true),
+                pick("consentPurposeId", "consentPurpose", source.purposes(), true),
               ]),
               operation("activate", "PUT", "AccessPolicies/:accessPolicyId/activate", undefined, {
                 confirm: true,
@@ -1404,7 +1584,7 @@ export function getWorkspaceDefinitions(
                 confirm: true,
               }),
               operation("test", "POST", "AccessPolicies/:accessPolicyId/test", [
-                field("studentId", "text", true),
+                studentSearch(true),
               ]),
             ],
           },
@@ -1431,14 +1611,14 @@ export function getWorkspaceDefinitions(
           [
             "consentHistoryId",
             "consentId",
-            "studentName",
+            ["changedByFullName", "changedByName"],
             "purposeName",
-            "dataAttributeName",
-            "status",
-            "createdAt",
+            ["attributeName", "dataAttributeName"],
+            ["newStatus", "status"],
+            ["changedAt", "changedAt"],
           ],
           {
-            queryFields: [field("studentId"), field("consentId")],
+            queryFields: [studentSearch(), field("consentId")],
           },
         ),
         workspace(
@@ -1446,18 +1626,18 @@ export function getWorkspaceDefinitions(
           "ConsentRequests/search",
           [
             "consentRequestId",
-            "studentName",
-            "advisorName",
+            ["studentFullName", "studentName"],
+            ["advisorFullName", "advisorName"],
             "purposeName",
-            "dataAttributeName",
+            ["attributeName", "dataAttributeName"],
             "status",
           ],
           {
             queryFields: [
-              field("studentId"),
+              studentSearch(),
               field("advisorId"),
-              field("consentPurposeId"),
-              field("dataAttributeId"),
+              pick("consentPurposeId", "consentPurpose", source.purposes()),
+              pick("dataAttributeId", "dataAttribute", source.dataAttributes),
               field("status"),
             ],
           },
@@ -1471,17 +1651,16 @@ export function getWorkspaceDefinitions(
           "AccessLogs/search",
           [
             "accessLogId",
-            "studentName",
-            "accessorName",
-            "roleName",
+            ["recordedUserFullName", "studentName"],
+            ["accessorFullName", "accessorName"],
             "purposeName",
             "accessedAt",
             "isFlagged",
-            "reviewStatus",
+            ["status", "reviewStatus"],
           ],
           {
             queryFields: [
-              field("studentId"),
+              studentSearch(),
               field("recordedUserId"),
               field("fromDate", "date"),
               field("toDate", "date"),
@@ -1507,14 +1686,14 @@ export function getWorkspaceDefinitions(
           "ErasureRequests/search",
           [
             "erasureRequestId",
-            "studentName",
-            "reason",
+            ["studentFullName", "studentName"],
+            "attributeName",
             "status",
             "requestedAt",
-            "reviewedAt",
+            ["executedAt", "executedAt"],
           ],
           {
-            queryFields: [field("studentId"), field("status")],
+            queryFields: [studentSearch(), field("status")],
             rowOperations: [
               operation(
                 "execute",
@@ -1535,15 +1714,15 @@ export function getWorkspaceDefinitions(
           "EmergencyAccessRequests/search",
           [
             "emergencyAccessRequestId",
-            "requestedBy",
-            "studentName",
+            ["requesterFullName", "requestedBy"],
+            ["studentFullName", "studentName"],
             "justification",
             "status",
             "scopeExpiresAt",
             "isExpired",
           ],
           {
-            queryFields: [field("studentId"), field("status")],
+            queryFields: [studentSearch(), field("status")],
             rowOperations: [
               operation("approve", "PUT", "EmergencyAccessRequests/:emergencyAccessRequestId/approve", [
                 field("scopeExpiresAt", "datetime-local", true),
@@ -1565,12 +1744,15 @@ export function getWorkspaceDefinitions(
             "attributeKeyId",
             "dataAttributeId",
             "attributeName",
-            "keyVersion",
+            ["masterKeyVersion", "keyVersion"],
             "status",
             "createdAt",
           ],
           {
-            queryFields: [field("dataAttributeId"), field("status")],
+            queryFields: [
+              pick("dataAttributeId", "dataAttribute", source.dataAttributes),
+              field("status"),
+            ],
             globalOperations: [
               operation("rewrap", "PUT", "AttributeKeys/rewrap", undefined, {
                 confirm: true,
@@ -1587,7 +1769,7 @@ export function getWorkspaceDefinitions(
           "Cases/matching-queue",
           [
             "caseId",
-            "studentName",
+            ["studentFullName", "studentName"],
             ["categoryName", "supportCategoryName"],
             "supportType",
             "subjectName",
@@ -1598,11 +1780,11 @@ export function getWorkspaceDefinitions(
             rowOperations: [
               operation("preview", "GET", "Cases/:caseId/suggested-advisors"),
               operation("assign", "PUT", "Cases/:caseId/assign", [
-                field("advisorId", "text", true),
+                pick("advisorId", "advisor", source.suggestedAdvisors, true),
                 field("reason", "textarea"),
               ], { confirm: true }),
               operation("update", "PUT", "Cases/:caseId/reassign", [
-                field("advisorId", "text", true),
+                pick("advisorId", "advisor", source.suggestedAdvisors, true),
                 field("reason", "textarea", true),
               ], { confirm: true }),
             ],
@@ -1616,8 +1798,8 @@ export function getWorkspaceDefinitions(
           "allCases",
           "Cases/search",
           [
-            "studentName",
-            "advisorName",
+            ["studentFullName", "studentName"],
+            ["advisorFullName", "advisorName"],
             ["categoryName", "supportCategoryName"],
             "supportType",
             "currentStage",
@@ -1631,13 +1813,13 @@ export function getWorkspaceDefinitions(
               select("priority", priorityOptions),
               select("supportType", ["academic", "wellbeing"]),
               select("status", caseStatusOptions),
-              field("studentId"),
+              studentSearch(),
               field("advisorId"),
-              field("supportCategoryId"),
+              pick("supportCategoryId", "supportCategory", source.supportCategories),
             ],
             rowOperations: [
               operation("reassign", "PUT", "Cases/:caseId/reassign", [
-                field("advisorId", "text", true),
+                pick("advisorId", "advisor", source.suggestedAdvisors, true),
                 field("reason", "textarea", true),
               ], { confirm: true }),
             ],
@@ -1652,11 +1834,11 @@ export function getWorkspaceDefinitions(
           "caseChangeRequests",
           "CaseChangeRequests/search",
           [
-            "studentName",
+            ["studentFullName", "studentName"],
             ["categoryName", "supportCategoryName"],
-            "currentAdvisorName",
-            "proposedAdvisorName",
-            "requestedByName",
+            ["currentAdvisorFullName", "currentAdvisorName"],
+            ["proposedAdvisorFullName", "proposedAdvisorName"],
+            ["requestedByFullName", "requestedByName"],
             "reason",
             "status",
             "requestedAt",
@@ -1705,8 +1887,8 @@ export function getWorkspaceDefinitions(
           "Reports/cases",
           [
             "caseId",
-            "studentName",
-            "advisorName",
+            ["studentFullName", "studentName"],
+            ["advisorFullName", "advisorName"],
             "supportType",
             "currentStage",
             "status",
@@ -1719,7 +1901,7 @@ export function getWorkspaceDefinitions(
               field("to", "date", true),
               field("advisorId"),
               field("supportType"),
-              field("subjectId"),
+              pick("subjectId", "subject", source.subjects()),
               field("currentStage"),
             ],
           },
@@ -1727,7 +1909,13 @@ export function getWorkspaceDefinitions(
         workspace(
           "caseReports",
           "Reports/caseload-closure",
-          ["advisorName", "totalCases", "closedCases", "closureRate"],
+          [
+            ["advisorFullName", "advisorName"],
+            "totalCases",
+            "closedCases",
+            ["openCases", "openCases"],
+            ["averageDaysToClose", "averageDaysToClose"],
+          ],
           { queryFields: [field("from", "date", true), field("to", "date", true)] },
         ),
       ];
@@ -1737,7 +1925,13 @@ export function getWorkspaceDefinitions(
         workspace(
           "advisorWorkload",
           "Reports/caseload-closure",
-          ["advisorName", "totalCases", "closedCases", "closureRate"],
+          [
+            ["advisorFullName", "advisorName"],
+            "totalCases",
+            "closedCases",
+            ["openCases", "openCases"],
+            ["averageDaysToClose", "averageDaysToClose"],
+          ],
           { queryFields: [field("from", "date", true), field("to", "date", true)] },
         ),
       ];

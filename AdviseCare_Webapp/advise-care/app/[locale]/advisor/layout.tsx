@@ -14,7 +14,7 @@ export default async function AdvisorLayout({
   const t = await getTranslations("nav");
   const user = await requireRole(locale, ["Academic Advisor", "Wellbeing Advisor"]);
   const navItems: NavItem[] = [
-    { href: "/advisor/caseload", label: t("advisor.myCases"), icon: "folder_open", match: ["/advisor/cases", "/advisor/students"] },
+    { href: "/advisor/caseload", label: t("advisor.myCases"), icon: "folder_open", match: ["/advisor/cases", "/advisor/students", "/advisor/outreach"] },
     { href: "/advisor/referrals", label: t("advisor.referrals"), icon: "forward_to_inbox" },
     { href: "/advisor/consent-requests", label: t("advisor.consentRequests"), icon: "rule" },
     { href: "/advisor/corrections", label: t("advisor.corrections"), icon: "edit_note" },

@@ -16,6 +16,7 @@ export default async function StudentLayout({
   const navItems: NavItem[] = [
     { href: "/me/cases", label: t("student.cases"), icon: "folder_open", match: ["/me/support-request"] },
     { href: "/me/consent", label: t("student.consent"), icon: "verified_user" },
+    { href: "/me/consent/requests", label: t("student.consentRequests"), icon: "mark_email_unread" },
     { href: "/me/access-history", label: t("student.accessHistory"), icon: "history" },
   ];
   const moreNavItems: NavItem[] = [

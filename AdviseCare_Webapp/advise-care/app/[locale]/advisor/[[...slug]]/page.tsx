@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { OutreachForm } from "@/components/advisor/outreach-form";
+import { getCurrentUser } from "@/lib/auth";
 import { WorkspacePage } from "@/components/workspace/workspace-page";
 import type { WorkspaceScreen } from "@/components/workspace/workspace-definitions";
 
@@ -11,6 +13,15 @@ export default async function AdvisorWorkspacePage({
   const route = slug.join("/");
   let screen: WorkspaceScreen;
   let pathValues: Record<string, unknown> | undefined;
+
+  if (route === "outreach") {
+    const { roles } = await getCurrentUser();
+    const allowedTypes = [
+      ...(roles.includes("Academic Advisor") ? (["academic"] as const) : []),
+      ...(roles.includes("Wellbeing Advisor") ? (["wellbeing"] as const) : []),
+    ];
+    return <OutreachForm allowedTypes={allowedTypes} />;
+  }
 
   if (route === "" || route === "caseload" || route === "cases") {
     screen = "advisor.caseload";

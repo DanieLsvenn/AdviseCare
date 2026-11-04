@@ -3,6 +3,7 @@ import { formatDateTime, parseDate } from "@/lib/format";
 import type {
   WorkspaceField,
   WorkspaceOperation,
+  WorkspaceOption,
   WorkspaceOptionSource,
 } from "./api-workspace";
 
@@ -113,7 +114,7 @@ export function bodyFromRecord(
     { key: string; asArray?: boolean }
   >();
   for (const field of operation.fields ?? []) {
-    sources.set(field.key, { key: field.key });
+    if (!field.noPrefill) sources.set(field.key, { key: field.key });
   }
   for (const [field, source] of Object.entries(operation.bodyFromRecord ?? {})) {
     sources.set(field, source);
@@ -125,6 +126,28 @@ export function bodyFromRecord(
     }
   }
   return body;
+}
+
+/**
+ * Turns records that nest their rows (a purpose with its attributes) into one
+ * row per nested item. Each row keeps the parent's own fields, and the item's
+ * fields win on a name clash.
+ */
+export function expandRecords(
+  records: Record<string, unknown>[],
+  key: string,
+): Record<string, unknown>[] {
+  const expected = key.toLowerCase();
+  return records.flatMap((parent) => {
+    const nested = Object.entries(parent).find(
+      ([name]) => name.toLowerCase() === expected,
+    );
+    if (!nested || !Array.isArray(nested[1])) return [];
+    const inherited = Object.fromEntries(
+      Object.entries(parent).filter(([name]) => name !== nested[0]),
+    );
+    return nested[1].filter(isRecord).map((child) => ({ ...inherited, ...child }));
+  });
 }
 
 export function extractRecords(
@@ -156,7 +179,7 @@ export function extractRecords(
 export function extractOptions(
   payload: unknown,
   source: WorkspaceOptionSource,
-): Array<{ label: string; value: string }> | null {
+): WorkspaceOption[] | null {
   const records = extractRecords(payload, source.collectionKey);
   if (!records) return null;
 
@@ -182,17 +205,21 @@ export function extractOptions(
       return [];
     }
 
-    const labelParts = source.labelKeys
-      .map((key) => readRecordValue(record, key))
-      .filter(
-        (value) => value !== null && value !== undefined && value !== "",
-      )
-      .map(displayValue);
+    const joinParts = (keys: string[]) =>
+      keys
+        .map((key) => readRecordValue(record, key))
+        .filter(
+          (value) => value !== null && value !== undefined && value !== "",
+        )
+        .map(displayValue)
+        .join(" · ");
+    const detail = joinParts(source.detailKeys ?? []);
 
     return [
       {
-        label: labelParts.join(" · ") || String(optionValue),
+        label: joinParts(source.labelKeys) || String(optionValue),
         value: String(optionValue),
+        ...(detail ? { detail } : {}),
       },
     ];
   });

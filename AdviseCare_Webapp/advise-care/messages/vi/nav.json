@@ -40,7 +40,8 @@
     "accessHistory": "Lịch sử xem",
     "corrections": "Yêu cầu đính chính",
     "export": "Xuất dữ liệu của tôi",
-    "requestSupport": "Gửi yêu cầu hỗ trợ"
+    "requestSupport": "Gửi yêu cầu hỗ trợ",
+    "consentRequests": "Yêu cầu dữ liệu"
   },
   "head": {
     "overview": "Hàng đợi ghép cố vấn",
