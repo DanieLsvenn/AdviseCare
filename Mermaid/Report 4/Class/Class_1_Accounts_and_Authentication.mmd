@@ -1,10 +1,10 @@
 ---
 title: AdviseCare - Class Diagram - Accounts and Authentication
 ---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
 classDiagram
     direction LR
     class AuthController {
-        <<controller>>
         +Login() POST /login
         +GoogleLogin() POST /google
         +LinkGoogle() POST /link-google
@@ -22,7 +22,6 @@ classDiagram
     AuthController --> IAccountService : uses
     AuthController --> ISessionService : uses
     class AccountsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -42,7 +41,6 @@ classDiagram
     }
     AccountsController --> IAccountService : uses
     class RolesController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -51,7 +49,6 @@ classDiagram
     }
     RolesController --> IRoleService : uses
     class SessionsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -60,7 +57,6 @@ classDiagram
     }
     SessionsController --> ISessionService : uses
     class StudentProfilesController {
-        <<controller>>
         +GetAll() GET /
         +GetMyProfile() GET /me
         +GetById() GET /:studentId
@@ -69,7 +65,6 @@ classDiagram
     }
     StudentProfilesController --> IStudentProfileService : uses
     class ActivityLogsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -79,7 +74,6 @@ classDiagram
     }
     ActivityLogsController --> IActivityLogService : uses
     class IAccountService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllAccountResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllAccountWithPaginationResponse~
         +GetByIdAsync(AccountId) GetAccountByIdResponse
@@ -109,7 +103,6 @@ classDiagram
         +DeleteAccountRoleAsync(AccountId, RoleId) bool
     }
     class AccountService {
-        <<service>>
     }
     AccountService ..|> IAccountService
     AccountService --> Account : IGenericRepository
@@ -125,7 +118,6 @@ classDiagram
     AccountService --> IStorageService : uses
     AccountService --> IExcelReader : uses
     class IStudentProfileService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllStudentProfileResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllStudentProfileWithPaginationResponse~
         +GetByIdAsync(StudentId) GetStudentProfileByIdResponse
@@ -134,13 +126,11 @@ classDiagram
         +GetMyProfileAsync(StudentId) GetMyStudentProfileResponse
     }
     class StudentProfileService {
-        <<service>>
     }
     StudentProfileService ..|> IStudentProfileService
     StudentProfileService --> Studentprofile : IGenericRepository
     StudentProfileService --> IActivityLogService : uses
     class IRoleService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllRoleResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllRoleWithPaginationResponse~
         +GetByIdAsync(RoleId) GetRoleByIdResponse
@@ -149,13 +139,11 @@ classDiagram
         +UpdateAsync(RoleId, request) UpdateRoleResponse
     }
     class RoleService {
-        <<service>>
     }
     RoleService ..|> IRoleService
     RoleService --> Role : IGenericRepository
     RoleService --> IActivityLogService : uses
     class ISessionService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllSessionResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllSessionWithPaginationResponse~
         +GetByIdAsync(SessionId) GetSessionByIdResponse
@@ -167,14 +155,12 @@ classDiagram
         +LogoutOtherSessionsAsync(AccountId, CurrentSessionId) LogoutResponse
     }
     class SessionService {
-        <<service>>
     }
     SessionService ..|> ISessionService
     SessionService --> Session : IGenericRepository
     SessionService --> Account : IGenericRepository
     SessionService --> IActivityLogService : uses
     class IActivityLogService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllActivityLogResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllActivityLogWithPaginationResponse~
         +GetByIdAsync(ActivityLogId) GetActivityLogByIdResponse
@@ -186,7 +172,6 @@ classDiagram
         +LogCurrentAccountAsync(activityType, activityDetail) void
     }
     class ActivityLogService {
-        <<service>>
     }
     ActivityLogService ..|> IActivityLogService
     ActivityLogService --> Activitylog : IGenericRepository
@@ -210,7 +195,6 @@ classDiagram
         <<interface, infrastructure>>
     }
     class Account {
-        <<entity>>
         +Guid accountId
         +Guid? facultyId
         +string avatarUrl
@@ -228,25 +212,21 @@ classDiagram
         +string status
     }
     class Studentprofile {
-        <<entity>>
         +Guid studentProfileId
         +Guid studentId
         +string studentCode
         +string academicStatus
     }
     class AccountRole {
-        <<entity>>
         +Guid accountId
         +Guid roleId
         +DateTime assignedAt
     }
     class Role {
-        <<entity>>
         +Guid roleId
         +string roleName
     }
     class Session {
-        <<entity>>
         +Guid sessionId
         +Guid accountId
         +string deviceInfo
@@ -255,7 +235,6 @@ classDiagram
         +bool isActive
     }
     class Activitylog {
-        <<entity>>
         +Guid activityLogId
         +Guid accountId
         +string activityDetail

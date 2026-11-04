@@ -1,42 +1,40 @@
 import { getTranslations } from "next-intl/server";
 import { AppShell } from "@/components/layout/app-shell";
-import { ActiveNavTitle } from "@/components/layout/active-nav-title";
 import type { NavItem } from "@/components/layout/sidebar-nav";
-import { apiGet } from "@/lib/api";
-import type { Account } from "@/lib/types";
+import { getInitials, requireRole } from "@/lib/auth";
+import { localizeRole } from "@/lib/roles";
 
-export default async function StudentLayout({ children }: LayoutProps<"/[locale]/me">) {
+export const dynamic = "force-dynamic";
+
+export default async function StudentLayout({
+  children,
+  params,
+}: LayoutProps<"/[locale]/me">) {
+  const { locale } = await params;
   const t = await getTranslations("nav");
-  const tc = await getTranslations("common");
-  const session = await apiGet<{ student: Account }>("/api/session");
-
+  const user = await requireRole(locale, ["Student"]);
   const navItems: NavItem[] = [
-    { href: "/me/profile", label: t("student.profile"), icon: "account_circle" },
-    { href: "/me/consent", label: t("student.consent"), icon: "verified_user", badge: "dot" },
+    { href: "/me/cases", label: t("student.cases"), icon: "folder_open", match: ["/me/support-request"] },
+    { href: "/me/consent", label: t("student.consent"), icon: "verified_user" },
+    { href: "/me/consent/requests", label: t("student.consentRequests"), icon: "mark_email_unread" },
     { href: "/me/access-history", label: t("student.accessHistory"), icon: "history" },
+  ];
+  const moreNavItems: NavItem[] = [
+    { href: "/me/profile", label: t("student.profile"), icon: "account_circle" },
     { href: "/me/corrections", label: t("student.corrections"), icon: "edit_note" },
     { href: "/me/export", label: t("student.export"), icon: "download" },
-    { href: "/me/events", label: t("student.events"), icon: "calendar_month" },
   ];
 
   return (
     <AppShell
       variant="student"
       navItems={navItems}
+      moreNavItems={moreNavItems}
       navSectionLabel={t("sectionStudent")}
-      brandSubtitle={tc("studentPortal")}
-      title={<ActiveNavTitle items={navItems} fallback={t("student.profile")} />}
-      contextLabel="Academic Year 2024–2025"
-      purposeLabel="Autonomous privacy active"
-      accountName={session.student.FullName}
-      accountRole="DEMO-001"
-      accountInitials={session.student.Initials}
-      hasAlert
-      footerNote={{
-        icon: "lock",
-        title: t("studentFooterTitle"),
-        caption: t("studentFooterCaption"),
-      }}
+      accountName={user.fullName}
+      accountRole={user.roles.map((role) => localizeRole(role, t)).join(", ")}
+      accountInitials={getInitials(user.fullName)}
+      roles={user.roles}
     >
       {children}
     </AppShell>

@@ -2,30 +2,10 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Icon } from "./icon";
 
-export function Eyebrow({
-  items,
-  className,
-}: {
-  items: string[];
-  className?: string;
-}) {
-  return (
-    <p
-      className={cn(
-        "flex flex-wrap items-center gap-space-sm font-caption text-caption text-on-surface-variant",
-        className,
-      )}
-    >
-      {items.map((item, index) => (
-        <span key={item} className="flex items-center gap-space-sm">
-          {index > 0 ? <span className="text-outline-variant">/</span> : null}
-          {item}
-        </span>
-      ))}
-    </p>
-  );
-}
-
+/**
+ * The title row of a screen. Product UI keeps it at 24px: the data below is
+ * the hero, not the heading. No eyebrow/kicker above the title.
+ */
 export function PageHeader({
   title,
   badge,
@@ -34,7 +14,6 @@ export function PageHeader({
   actions,
   className,
 }: {
-  eyebrow?: string[];
   title: ReactNode;
   badge?: ReactNode;
   description?: ReactNode;
@@ -45,28 +24,26 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "flex flex-wrap items-start justify-between gap-space-lg",
+        "flex flex-wrap items-end justify-between gap-x-space-lg gap-y-space-md",
         className,
       )}
     >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-space-md">
-          <h1 className="font-display-sm text-display-sm text-on-surface">
+          <h1 className="text-2xl font-semibold leading-8 tracking-[-0.01em] text-text">
             {title}
           </h1>
           {badge}
         </div>
         {description ? (
-          <p className="mt-space-sm max-w-3xl font-body-sm text-body-sm text-on-surface-variant">
+          <p className="mt-1 max-w-[68ch] text-[0.9375rem] leading-6 text-text-muted">
             {description}
           </p>
         ) : null}
+        {meta ? <div className="mt-space-sm">{meta}</div> : null}
       </div>
-      {meta || actions ? (
-        <div className="flex flex-col items-start gap-space-sm lg:items-end">
-          {meta}
-          {actions}
-        </div>
+      {actions ? (
+        <div className="flex flex-wrap items-center gap-space-sm">{actions}</div>
       ) : null}
     </header>
   );
@@ -86,10 +63,10 @@ export function MetaPill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded border px-space-md py-1.5 font-label-md text-label-md",
+        "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm",
         tone === "primary"
-          ? "border-transparent bg-primary text-on-primary"
-          : "border-outline-variant/50 bg-surface-container-lowest text-on-surface-variant",
+          ? "border-transparent bg-ink text-white"
+          : "border-rule bg-paper text-text-muted",
       )}
     >
       <Icon name={icon} className="text-[16px]" />
@@ -99,7 +76,7 @@ export function MetaPill({
           <strong
             className={cn(
               "ml-1 font-semibold",
-              tone === "primary" ? "text-on-primary" : "text-on-surface",
+              tone === "primary" ? "text-white" : "text-text",
             )}
           >
             {value}

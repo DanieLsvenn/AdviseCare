@@ -2481,7 +2481,7 @@ INSERT INTO [dbo].[DATAATTRIBUTES] ([dataAttributeId], [attributeDescription], [
     (N'B122CC0A-9AF7-5A24-BF85-53AA657B4109', N'Your scholarship this term (none / partial / full)', N'Scholarship status', N'categorical', N'active'),
     (N'397BDBD1-679B-52F4-B732-883F9FE0FD64', N'Your academic warning this term (none / level1 / level2 / probation)', N'Academic warning level', N'categorical', N'active'),
     (N'A129D94E-85CA-5CE2-AEE4-1561995004D3', N'Your latest English placement result (A2 / B1 / B2 / C1)', N'English level', N'categorical', N'active'),
-    (N'C3D53A5C-68C4-50E5-B460-B628A368394A', N'Your declared family income bracket (low / middle / high)', N'Family income bracket', N'categorical', N'active'),
+    (N'C3D53A5C-68C4-50E5-B460-B628A368394A', N'Your family income bracket on record (low / middle / high)', N'Family income bracket', N'categorical', N'active'),
     (N'D025CFC3-9A36-5206-9AC5-743A92297BBD', N'How you usually travel to campus (motorbike / bus / walk / car / bicycle)', N'Transport mode', N'categorical', N'active'),
     (N'C0CCEDC3-61AB-56EE-92C9-1219F899A3CA', N'Whether you have reported financial difficulty', N'Financial difficulty', N'boolean', N'active'),
     (N'64D9FABF-E417-5FEA-9FFD-F07AC749D566', N'Whether a tuition payment of this term is past its due date', N'Tuition overdue', N'boolean', N'active'),

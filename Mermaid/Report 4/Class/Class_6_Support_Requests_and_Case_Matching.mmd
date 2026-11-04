@@ -1,10 +1,10 @@
 ---
 title: AdviseCare - Class Diagram - Support Requests and Case Matching
 ---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
 classDiagram
     direction LR
     class CasesController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -22,7 +22,6 @@ classDiagram
     }
     CasesController --> ICaseService : uses
     class CaseChangeRequestsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -32,7 +31,6 @@ classDiagram
     }
     CaseChangeRequestsController --> ICaseChangeRequestService : uses
     class ICaseService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllCaseResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllCaseWithPaginationResponse~
         +GetByIdAsync(CallerId, CaseId) GetCaseByIdResponse
@@ -52,7 +50,6 @@ classDiagram
         +SearchCaseStageHistoryAsync(CallerId, request) List~SearchCaseStageHistoryResponse~
     }
     class CaseService {
-        <<service>>
     }
     CaseService ..|> ICaseService
     CaseService --> Case : IGenericRepository
@@ -60,7 +57,6 @@ classDiagram
     CaseService --> Supportcategory : IGenericRepository
     CaseService --> AccountSubject : IGenericRepository
     class ICaseChangeRequestService {
-        <<interface>>
         +GetAll(CallerId) IEnumerable~GetAllCaseChangeRequestResponse~
         +GetAllWithPaginationAsync(CallerId, page, pageSize) IEnumerable~GetAllCaseChangeRequestWithPaginationResponse~
         +GetByIdAsync(CallerId, CaseChangeRequestId) GetCaseChangeRequestByIdResponse
@@ -70,7 +66,6 @@ classDiagram
         +RejectAsync(ProgrammeHeadId, CaseChangeRequestId, request) RejectCaseChangeRequestResponse
     }
     class CaseChangeRequestService {
-        <<service>>
     }
     CaseChangeRequestService ..|> ICaseChangeRequestService
     CaseChangeRequestService --> Casechangerequest : IGenericRepository
@@ -91,7 +86,6 @@ classDiagram
     CaseChangeRequestService --> IActivityLogService : uses
     CaseChangeRequestService --> INotificationService : uses
     class Case {
-        <<entity>>
         +Guid caseId
         +Guid? advisorId
         +Guid openedBy
@@ -106,7 +100,6 @@ classDiagram
         +string status
     }
     class Casechangerequest {
-        <<entity>>
         +Guid caseChangeRequestId
         +Guid caseId
         +Guid? programmeHeadId
@@ -119,7 +112,6 @@ classDiagram
         +string status
     }
     class Casestagehistory {
-        <<entity>>
         +Guid caseStageHistoryId
         +Guid caseId
         +Guid changedBy
@@ -129,7 +121,6 @@ classDiagram
         +string toStage
     }
     class Supportcategory {
-        <<entity>>
         +Guid supportCategoryId
         +Guid consentPurposeId
         +Guid createdBy
@@ -139,13 +130,11 @@ classDiagram
         +string status
     }
     class AccountSubject {
-        <<entity>>
         +Guid accountId
         +Guid subjectId
         +DateTime assignedAt
     }
     class Consent {
-        <<entity>>
         +Guid consentId
         +Guid consentPurposeId
         +Guid dataAttributeId
