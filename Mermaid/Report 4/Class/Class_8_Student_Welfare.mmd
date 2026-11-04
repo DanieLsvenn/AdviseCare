@@ -1,10 +1,10 @@
 ---
 title: AdviseCare - Class Diagram - Student Welfare
 ---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
 classDiagram
     direction LR
     class InterventionsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -14,7 +14,6 @@ classDiagram
     }
     InterventionsController --> IInterventionService : uses
     class SupportGrantsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -23,7 +22,6 @@ classDiagram
     }
     SupportGrantsController --> ISupportGrantService : uses
     class ExternalServicesController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -32,7 +30,6 @@ classDiagram
     }
     ExternalServicesController --> IExternalServiceService : uses
     class ExternalReferralsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -42,7 +39,6 @@ classDiagram
     }
     ExternalReferralsController --> IExternalReferralService : uses
     class EscalationsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -51,7 +47,6 @@ classDiagram
     }
     EscalationsController --> IEscalationService : uses
     class IInterventionService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllInterventionResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllInterventionWithPaginationResponse~
         +GetByIdAsync(InterventionId) GetInterventionByIdResponse
@@ -61,13 +56,11 @@ classDiagram
         +CloseAsync(OfficerId, InterventionId, request) CloseInterventionResponse
     }
     class InterventionService {
-        <<service>>
     }
     InterventionService ..|> IInterventionService
     InterventionService --> Intervention : IGenericRepository
     InterventionService --> Case : IGenericRepository
     class ISupportGrantService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllSupportGrantResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllSupportGrantWithPaginationResponse~
         +GetByIdAsync(SupportGrantId) GetSupportGrantByIdResponse
@@ -76,13 +69,11 @@ classDiagram
         +RevokeAsync(OfficerId, SupportGrantId) bool
     }
     class SupportGrantService {
-        <<service>>
     }
     SupportGrantService ..|> ISupportGrantService
     SupportGrantService --> Supportgrant : IGenericRepository
     SupportGrantService --> Intervention : IGenericRepository
     class IExternalServiceService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllExternalServiceResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllExternalServiceWithPaginationResponse~
         +GetByIdAsync(ExternalServiceId) GetExternalServiceByIdResponse
@@ -91,12 +82,10 @@ classDiagram
         +UpdateAsync(ExternalServiceId, request) UpdateExternalServiceResponse
     }
     class ExternalServiceService {
-        <<service>>
     }
     ExternalServiceService ..|> IExternalServiceService
     ExternalServiceService --> Externalservice : IGenericRepository
     class IExternalReferralService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllExternalReferralResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllExternalReferralWithPaginationResponse~
         +GetByIdAsync(ExternalReferralId) GetExternalReferralByIdResponse
@@ -106,14 +95,12 @@ classDiagram
         +CloseAsync(ExternalReferralId) CloseExternalReferralResponse
     }
     class ExternalReferralService {
-        <<service>>
     }
     ExternalReferralService ..|> IExternalReferralService
     ExternalReferralService --> Externalreferral : IGenericRepository
     ExternalReferralService --> Externalservice : IGenericRepository
     ExternalReferralService --> Case : IGenericRepository
     class IEscalationService {
-        <<interface>>
         +GetAll(AccountId) IEnumerable~GetAllEscalationResponse~
         +GetAllWithPaginationAsync(AccountId, page, pageSize) IEnumerable~GetAllEscalationWithPaginationResponse~
         +GetByIdAsync(AccountId, EscalationId) GetEscalationByIdResponse
@@ -122,7 +109,6 @@ classDiagram
         +RespondAsync(ProgrammeHeadId, EscalationId, request) RespondEscalationResponse
     }
     class EscalationService {
-        <<service>>
     }
     EscalationService ..|> IEscalationService
     EscalationService --> Escalation : IGenericRepository
@@ -141,7 +127,6 @@ classDiagram
     InterventionService --> INotificationService : uses
     SupportGrantService --> IActivityLogService : uses
     class Intervention {
-        <<entity>>
         +Guid interventionId
         +Guid caseId
         +Guid officerId
@@ -153,7 +138,6 @@ classDiagram
         +string status
     }
     class Supportgrant {
-        <<entity>>
         +Guid supportGrantId
         +Guid interventionId
         +string grantDescription
@@ -162,7 +146,6 @@ classDiagram
         +string status
     }
     class Externalservice {
-        <<entity>>
         +Guid externalServiceId
         +string contactInfo
         +string serviceName
@@ -170,7 +153,6 @@ classDiagram
         +bool isActive
     }
     class Externalreferral {
-        <<entity>>
         +Guid externalReferralId
         +Guid caseId
         +Guid externalServiceId
@@ -182,7 +164,6 @@ classDiagram
         +string status
     }
     class Escalation {
-        <<entity>>
         +Guid escalationId
         +Guid caseId
         +Guid escalatedBy
@@ -193,7 +174,6 @@ classDiagram
         +string status
     }
     class Case {
-        <<entity>>
         +Guid caseId
         +Guid? advisorId
         +Guid openedBy

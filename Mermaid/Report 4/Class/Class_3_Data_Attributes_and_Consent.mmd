@@ -1,10 +1,10 @@
 ---
 title: AdviseCare - Class Diagram - Data Attributes and Consent
 ---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
 classDiagram
     direction LR
     class DataAttributesController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -14,7 +14,6 @@ classDiagram
     }
     DataAttributesController --> IDataAttributeService : uses
     class ConsentPurposesController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -31,7 +30,6 @@ classDiagram
     }
     ConsentPurposesController --> IConsentPurposeService : uses
     class AccessPoliciesController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -43,7 +41,6 @@ classDiagram
     }
     AccessPoliciesController --> IAccessPolicyService : uses
     class ConsentsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -59,7 +56,6 @@ classDiagram
     }
     ConsentsController --> IConsentService : uses
     class ConsentRequestsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -73,7 +69,6 @@ classDiagram
     }
     ConsentRequestsController --> IConsentRequestService : uses
     class IDataAttributeService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllDataAttributeResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllDataAttributeWithPaginationResponse~
         +GetByIdAsync(DataAttributeId) GetDataAttributeByIdResponse
@@ -83,12 +78,10 @@ classDiagram
         +ArchiveAsync(DataAttributeId) bool
     }
     class DataAttributeService {
-        <<service>>
     }
     DataAttributeService ..|> IDataAttributeService
     DataAttributeService --> Dataattribute : IGenericRepository
     class IConsentPurposeService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllConsentPurposeResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllConsentPurposeWithPaginationResponse~
         +GetByIdAsync(ConsentPurposeId) GetConsentPurposeByIdResponse
@@ -106,13 +99,11 @@ classDiagram
         +DeletePurposeAttributeAsync(ConsentPurposeId, DataAttributeId) bool
     }
     class ConsentPurposeService {
-        <<service>>
     }
     ConsentPurposeService ..|> IConsentPurposeService
     ConsentPurposeService --> Consentpurpose : IGenericRepository
     ConsentPurposeService --> Dataattribute : IGenericRepository
     class IAccessPolicyService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllAccessPolicyResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllAccessPolicyWithPaginationResponse~
         +GetByIdAsync(AccessPolicyId) GetAccessPolicyByIdResponse
@@ -124,7 +115,6 @@ classDiagram
         +TestAsync(AccessPolicyId, request) TestAccessPolicyResponse
     }
     class AccessPolicyService {
-        <<service>>
     }
     AccessPolicyService ..|> IAccessPolicyService
     AccessPolicyService --> Accesspolicy : IGenericRepository
@@ -132,7 +122,6 @@ classDiagram
     AccessPolicyService --> Role : IGenericRepository
     AccessPolicyService --> Consent : IGenericRepository
     class IConsentService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllConsentResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllConsentWithPaginationResponse~
         +GetByIdAsync(ConsentId) GetConsentByIdResponse
@@ -149,14 +138,12 @@ classDiagram
         +GetMyConsentHistoryAsync(StudentId) List~GetMyConsentHistoryResponse~
     }
     class ConsentService {
-        <<service>>
     }
     ConsentService ..|> IConsentService
     ConsentService --> Consent : IGenericRepository
     ConsentService --> Consenthistory : IGenericRepository
     ConsentService --> Consentpurpose : IGenericRepository
     class IConsentRequestService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllConsentRequestResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllConsentRequestWithPaginationResponse~
         +GetByIdAsync(ConsentRequestId) GetConsentRequestByIdResponse
@@ -170,7 +157,6 @@ classDiagram
         +GetMySentRequestsAsync(AdvisorId) List~GetMyConsentRequestResponse~
     }
     class ConsentRequestService {
-        <<service>>
     }
     ConsentRequestService ..|> IConsentRequestService
     ConsentRequestService --> Consentrequest : IGenericRepository
@@ -192,7 +178,6 @@ classDiagram
     ConsentRequestService --> INotificationService : uses
     DataAttributeService --> IActivityLogService : uses
     class Dataattribute {
-        <<entity>>
         +Guid dataAttributeId
         +string attributeDescription
         +string attributeName
@@ -200,7 +185,6 @@ classDiagram
         +string status
     }
     class Consentpurpose {
-        <<entity>>
         +Guid consentPurposeId
         +Guid createdBy
         +string description
@@ -208,7 +192,6 @@ classDiagram
         +string status
     }
     class Accesspolicy {
-        <<entity>>
         +Guid accessPolicyId
         +Guid consentPurposeId
         +Guid createdBy
@@ -216,7 +199,6 @@ classDiagram
         +string status
     }
     class Consent {
-        <<entity>>
         +Guid consentId
         +Guid consentPurposeId
         +Guid dataAttributeId
@@ -227,7 +209,6 @@ classDiagram
         +string status
     }
     class Consenthistory {
-        <<entity>>
         +Guid consentHistoryId
         +Guid changedBy
         +Guid consentId
@@ -236,7 +217,6 @@ classDiagram
         +string previousStatus
     }
     class Consentrequest {
-        <<entity>>
         +Guid consentRequestId
         +Guid advisorId
         +Guid consentPurposeId
@@ -248,7 +228,6 @@ classDiagram
         +string status
     }
     class Role {
-        <<entity>>
         +Guid roleId
         +string roleName
     }

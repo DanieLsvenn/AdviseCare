@@ -1,10 +1,10 @@
 ---
 title: AdviseCare - Class Diagram - Student Data
 ---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
 classDiagram
     direction LR
     class StudentDataController {
-        <<controller>>
         +GetAll() GET /
         +GetMyData() GET /me
         +ExportMyData() GET /me/export
@@ -19,7 +19,6 @@ classDiagram
     }
     StudentDataController --> IStudentDataService : uses
     class CorrectionRequestsController {
-        <<controller>>
         +GetAll() GET /
         +GetMyAll() GET /me
         +GetMyById() GET /me/:id
@@ -32,7 +31,6 @@ classDiagram
     }
     CorrectionRequestsController --> ICorrectionRequestService : uses
     class IStudentDataService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllStudentDataResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllStudentDataWithPaginationResponse~
         +GetByIdAsync(StudentDataId) GetStudentDataByIdResponse
@@ -47,7 +45,6 @@ classDiagram
         +ExportMyDataAsync(StudentId) ExportMyStudentDataResponse
     }
     class StudentDataService {
-        <<service>>
     }
     StudentDataService ..|> IStudentDataService
     StudentDataService --> Studentdata : IGenericRepository
@@ -57,7 +54,6 @@ classDiagram
     StudentDataService --> IExcelReader : uses
     StudentDataService --> ICsvReader : uses
     class ICorrectionRequestService {
-        <<interface>>
         +GetAll(AdvisorId) IEnumerable~GetAllCorrectionRequestResponse~
         +GetAllWithPaginationAsync(AdvisorId, page, pageSize) IEnumerable~GetAllCorrectionRequestWithPaginationResponse~
         +GetByIdAsync(AdvisorId, CorrectionRequestId) GetCorrectionRequestByIdResponse
@@ -70,7 +66,6 @@ classDiagram
         +GetMyByIdAsync(StudentId, CorrectionRequestId) GetMyCorrectionRequestResponse
     }
     class CorrectionRequestService {
-        <<service>>
     }
     CorrectionRequestService ..|> ICorrectionRequestService
     CorrectionRequestService --> Correctionrequest : IGenericRepository
@@ -109,7 +104,6 @@ classDiagram
         <<interface, infrastructure>>
     }
     class Studentdata {
-        <<entity>>
         +Guid studentDataId
         +Guid? attributeKeyId
         +Guid dataAttributeId
@@ -125,7 +119,6 @@ classDiagram
         +string status
     }
     class Correctionrequest {
-        <<entity>>
         +Guid correctionRequestId
         +Guid? reviewedBy
         +Guid studentDataId
@@ -139,7 +132,6 @@ classDiagram
         +string status
     }
     class Attributekey {
-        <<entity>>
         +Guid attributeKeyId
         +Guid dataAttributeId
         +Guid studentId
@@ -150,7 +142,6 @@ classDiagram
         +string status
     }
     class Dataattribute {
-        <<entity>>
         +Guid dataAttributeId
         +string attributeDescription
         +string attributeName
@@ -158,7 +149,6 @@ classDiagram
         +string status
     }
     class Academicterm {
-        <<entity>>
         +Guid termId
         +DateTime endDate
         +DateTime startDate
@@ -166,7 +156,6 @@ classDiagram
         +string status
     }
     class Studentprofile {
-        <<entity>>
         +Guid studentProfileId
         +Guid studentId
         +string studentCode

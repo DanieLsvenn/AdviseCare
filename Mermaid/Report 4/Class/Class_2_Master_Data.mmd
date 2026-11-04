@@ -1,10 +1,10 @@
 ---
 title: AdviseCare - Class Diagram - Master Data
 ---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
 classDiagram
     direction LR
     class AcademicTermsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -13,7 +13,6 @@ classDiagram
     }
     AcademicTermsController --> IAcademicTermService : uses
     class FacultiesController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -22,7 +21,6 @@ classDiagram
     }
     FacultiesController --> IFacultyService : uses
     class ProgrammesController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -31,7 +29,6 @@ classDiagram
     }
     ProgrammesController --> IProgrammeService : uses
     class SubjectsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -45,7 +42,6 @@ classDiagram
     }
     SubjectsController --> ISubjectService : uses
     class SupportCategoriesController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -55,7 +51,6 @@ classDiagram
     }
     SupportCategoriesController --> ISupportCategoryService : uses
     class IAcademicTermService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllAcademicTermResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllAcademicTermWithPaginationResponse~
         +GetByIdAsync(TermId) GetAcademicTermByIdResponse
@@ -64,12 +59,10 @@ classDiagram
         +UpdateAsync(TermId, request) UpdateAcademicTermResponse
     }
     class AcademicTermService {
-        <<service>>
     }
     AcademicTermService ..|> IAcademicTermService
     AcademicTermService --> Academicterm : IGenericRepository
     class IFacultyService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllFacultyResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllFacultyWithPaginationResponse~
         +GetByIdAsync(FacultyId) GetFacultyByIdResponse
@@ -78,12 +71,10 @@ classDiagram
         +UpdateAsync(FacultyId, request) UpdateFacultyResponse
     }
     class FacultyService {
-        <<service>>
     }
     FacultyService ..|> IFacultyService
     FacultyService --> Faculty : IGenericRepository
     class IProgrammeService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllProgrammeResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllProgrammeWithPaginationResponse~
         +GetByIdAsync(ProgrammeId) GetProgrammeByIdResponse
@@ -92,13 +83,11 @@ classDiagram
         +UpdateAsync(ProgrammeId, request) UpdateProgrammeResponse
     }
     class ProgrammeService {
-        <<service>>
     }
     ProgrammeService ..|> IProgrammeService
     ProgrammeService --> Programme : IGenericRepository
     ProgrammeService --> Faculty : IGenericRepository
     class ISubjectService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllSubjectResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllSubjectWithPaginationResponse~
         +GetByIdAsync(SubjectId) GetSubjectByIdResponse
@@ -113,14 +102,12 @@ classDiagram
         +DeleteAccountSubjectAsync(AccountId, SubjectId) bool
     }
     class SubjectService {
-        <<service>>
     }
     SubjectService ..|> ISubjectService
     SubjectService --> Subject : IGenericRepository
     SubjectService --> Faculty : IGenericRepository
     SubjectService --> AccountSubject : IGenericRepository
     class ISupportCategoryService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllSupportCategoryResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllSupportCategoryWithPaginationResponse~
         +GetByIdAsync(SupportCategoryId) GetSupportCategoryByIdResponse
@@ -130,7 +117,6 @@ classDiagram
         +GetShareableAttributesAsync(AccountId, IsStudent, SupportCategoryId) GetSupportCategoryShareableAttributesResponse
     }
     class SupportCategoryService {
-        <<service>>
     }
     SupportCategoryService ..|> ISupportCategoryService
     SupportCategoryService --> Supportcategory : IGenericRepository
@@ -144,7 +130,6 @@ classDiagram
     SubjectService --> IActivityLogService : uses
     SupportCategoryService --> IActivityLogService : uses
     class Academicterm {
-        <<entity>>
         +Guid termId
         +DateTime endDate
         +DateTime startDate
@@ -152,14 +137,12 @@ classDiagram
         +string status
     }
     class Faculty {
-        <<entity>>
         +Guid facultyId
         +string facultyCode
         +string facultyName
         +string status
     }
     class Programme {
-        <<entity>>
         +Guid programmeId
         +Guid facultyId
         +string programmeCode
@@ -167,7 +150,6 @@ classDiagram
         +string status
     }
     class Subject {
-        <<entity>>
         +Guid subjectId
         +Guid facultyId
         +string subjectCode
@@ -175,13 +157,11 @@ classDiagram
         +string status
     }
     class AccountSubject {
-        <<entity>>
         +Guid accountId
         +Guid subjectId
         +DateTime assignedAt
     }
     class Supportcategory {
-        <<entity>>
         +Guid supportCategoryId
         +Guid consentPurposeId
         +Guid createdBy
@@ -191,7 +171,6 @@ classDiagram
         +string status
     }
     class Consentpurpose {
-        <<entity>>
         +Guid consentPurposeId
         +Guid createdBy
         +string description

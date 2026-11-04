@@ -1,10 +1,10 @@
 ---
 title: AdviseCare - Class Diagram - Case Workflow and Referrals
 ---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
 classDiagram
     direction LR
     class CaseNotesController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -14,7 +14,6 @@ classDiagram
     }
     CaseNotesController --> ICaseNoteService : uses
     class ReferralsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -26,11 +25,9 @@ classDiagram
     }
     ReferralsController --> IReferralService : uses
     class CaseStageHistoriesController {
-        <<controller>>
     }
     CaseStageHistoriesController --> ICaseService : uses
     class ICaseNoteService {
-        <<interface>>
         +GetAll(AuthorId) IEnumerable~GetAllCaseNoteResponse~
         +GetAllWithPaginationAsync(AuthorId, page, pageSize) IEnumerable~GetAllCaseNoteWithPaginationResponse~
         +GetByIdAsync(CallerId, CaseNoteId) GetCaseNoteByIdResponse
@@ -40,14 +37,12 @@ classDiagram
         +FinalizeAsync(AuthorId, CaseNoteId) FinalizeCaseNoteResponse
     }
     class CaseNoteService {
-        <<service>>
     }
     CaseNoteService ..|> ICaseNoteService
     CaseNoteService --> Casenote : IGenericRepository
     CaseNoteService --> Case : IGenericRepository
     CaseNoteService --> Referral : IGenericRepository
     class IReferralService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllReferralResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllReferralWithPaginationResponse~
         +GetByIdAsync(CallerId, ReferralId) GetReferralByIdResponse
@@ -59,7 +54,6 @@ classDiagram
         +ReturnAsync(ReceiverId, ReferralId, request) ReturnReferralResponse
     }
     class ReferralService {
-        <<service>>
     }
     ReferralService ..|> IReferralService
     ReferralService --> Referral : IGenericRepository
@@ -75,7 +69,6 @@ classDiagram
     ReferralService --> IActivityLogService : uses
     ReferralService --> INotificationService : uses
     class Casenote {
-        <<entity>>
         +Guid caseNoteId
         +Guid authorId
         +Guid caseId
@@ -85,7 +78,6 @@ classDiagram
         +bool isFinalized
     }
     class Referral {
-        <<entity>>
         +Guid referralId
         +Guid caseId
         +Guid fromAccountId
@@ -97,7 +89,6 @@ classDiagram
         +string status
     }
     class Casestagehistory {
-        <<entity>>
         +Guid caseStageHistoryId
         +Guid caseId
         +Guid changedBy
@@ -107,7 +98,6 @@ classDiagram
         +string toStage
     }
     class Case {
-        <<entity>>
         +Guid caseId
         +Guid? advisorId
         +Guid openedBy

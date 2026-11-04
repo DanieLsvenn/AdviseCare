@@ -1,10 +1,10 @@
 ---
 title: AdviseCare - Class Diagram - Reports and Notifications
 ---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
 classDiagram
     direction LR
     class ReportsController {
-        <<controller>>
         +GetCaseReport() GET /cases
         +ExportCaseReport() GET /cases/export
         +GetCaseloadClosureReport() GET /caseload-closure
@@ -12,7 +12,6 @@ classDiagram
     }
     ReportsController --> IReportService : uses
     class NotificationsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -28,7 +27,6 @@ classDiagram
     }
     NotificationsController --> INotificationService : uses
     class NotificationPreferencesController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -39,21 +37,18 @@ classDiagram
     }
     NotificationPreferencesController --> INotificationPreferenceService : uses
     class IReportService {
-        <<interface>>
         +GetCaseReportAsync(request) List~GetCaseReportResponse~
         +ExportCaseReportAsync(ProgrammeHeadId, request) ExportCaseReportResponse
         +GetCaseloadClosureReportAsync(request) List~GetCaseloadClosureReportResponse~
         +ExportCaseloadClosureReportAsync(ProgrammeHeadId, request) ExportCaseloadClosureReportResponse
     }
     class ReportService {
-        <<service>>
     }
     ReportService ..|> IReportService
     ReportService --> Case : IGenericRepository
     ReportService --> IExcelWriter : uses
     ReportService --> IPdfWriter : uses
     class INotificationService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllNotificationResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllNotificationWithPaginationResponse~
         +GetByIdAsync(NotificationId) GetNotificationByIdResponse
@@ -70,14 +65,12 @@ classDiagram
         +NotifyAsync(AccountId, title, message, redirectUrl) void
     }
     class NotificationService {
-        <<service>>
     }
     NotificationService ..|> INotificationService
     NotificationService --> Notification : IGenericRepository
     NotificationService --> Notificationpreference : IGenericRepository
     NotificationService --> IEmailService : uses
     class INotificationPreferenceService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllNotificationPreferenceResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllNotificationPreferenceWithPaginationResponse~
         +GetByIdAsync(NotificationPreferenceId) GetNotificationPreferenceByIdResponse
@@ -88,7 +81,6 @@ classDiagram
         +UpdateMyNotificationPreferenceAsync(AccountId, request) UpdateMyNotificationPreferenceResponse
     }
     class NotificationPreferenceService {
-        <<service>>
     }
     NotificationPreferenceService ..|> INotificationPreferenceService
     NotificationPreferenceService --> Notificationpreference : IGenericRepository
@@ -107,7 +99,6 @@ classDiagram
         <<interface, infrastructure>>
     }
     class Notification {
-        <<entity>>
         +Guid notificationId
         +Guid accountId
         +string message
@@ -117,14 +108,12 @@ classDiagram
         +bool isRead
     }
     class Notificationpreference {
-        <<entity>>
         +Guid notificationPreferenceId
         +Guid accountId
         +string channel
         +bool isEnabled
     }
     class Case {
-        <<entity>>
         +Guid caseId
         +Guid? advisorId
         +Guid openedBy

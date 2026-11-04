@@ -1,10 +1,10 @@
 ---
 title: AdviseCare - Class Diagram - Access Control and Data Protection
 ---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
 classDiagram
     direction LR
     class AccessLogsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -16,7 +16,6 @@ classDiagram
     }
     AccessLogsController --> IAccessLogService : uses
     class EmergencyAccessRequestsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -28,7 +27,6 @@ classDiagram
     }
     EmergencyAccessRequestsController --> IEmergencyAccessRequestService : uses
     class ErasureRequestsController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -36,7 +34,6 @@ classDiagram
     }
     ErasureRequestsController --> IErasureRequestService : uses
     class AttributeKeysController {
-        <<controller>>
         +GetAll() GET /
         +GetById() GET /:id
         +Search() GET /search
@@ -44,14 +41,12 @@ classDiagram
     }
     AttributeKeysController --> IAttributeKeyService : uses
     class IAccessGuardService {
-        <<interface>>
         +CheckAccessAsync(AccessorId, StudentId, DataAttributeIds, ConsentPurposeId) List~AccessDecision~
         +CheckAccessForStudentsAsync(AccessorId, StudentIds, DataAttributeIds) List~AccessDecision~
         +LogAccessAsync(AccessorId, StudentId, StudentDataId, ConsentPurposeId, AccessedResource) void
         +LogAccessBatchAsync(AccessorId, Entries) void
     }
     class AccessGuardService {
-        <<service>>
     }
     AccessGuardService ..|> IAccessGuardService
     AccessGuardService --> Accesspolicy : IGenericRepository
@@ -59,7 +54,6 @@ classDiagram
     AccessGuardService --> Accesslog : IGenericRepository
     AccessGuardService --> Emergencyaccessrequest : IGenericRepository
     class IAccessLogService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllAccessLogResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllAccessLogWithPaginationResponse~
         +GetByIdAsync(AccessLogId) GetAccessLogByIdResponse
@@ -71,13 +65,11 @@ classDiagram
         +ExportProcessingRecordAsync(request) ExportProcessingRecordResponse
     }
     class AccessLogService {
-        <<service>>
     }
     AccessLogService ..|> IAccessLogService
     AccessLogService --> Accesslog : IGenericRepository
     AccessLogService --> IExcelWriter : uses
     class IEmergencyAccessRequestService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllEmergencyAccessRequestResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllEmergencyAccessRequestWithPaginationResponse~
         +GetByIdAsync(EmergencyAccessRequestId) GetEmergencyAccessRequestByIdResponse
@@ -89,12 +81,10 @@ classDiagram
         +GetMyRequestsAsync(RequesterId) List~GetMyEmergencyAccessRequestResponse~
     }
     class EmergencyAccessRequestService {
-        <<service>>
     }
     EmergencyAccessRequestService ..|> IEmergencyAccessRequestService
     EmergencyAccessRequestService --> Emergencyaccessrequest : IGenericRepository
     class IErasureRequestService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllErasureRequestResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllErasureRequestWithPaginationResponse~
         +GetByIdAsync(ErasureRequestId) GetErasureRequestByIdResponse
@@ -102,13 +92,11 @@ classDiagram
         +ExecuteAsync(StewardId, ErasureRequestId) bool
     }
     class ErasureRequestService {
-        <<service>>
     }
     ErasureRequestService ..|> IErasureRequestService
     ErasureRequestService --> Erasurerequest : IGenericRepository
     ErasureRequestService --> Consent : IGenericRepository
     class IAttributeKeyService {
-        <<interface>>
         +GetAll() IEnumerable~GetAllAttributeKeyResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllAttributeKeyWithPaginationResponse~
         +GetByIdAsync(AttributeKeyId) GetAttributeKeyByIdResponse
@@ -118,7 +106,6 @@ classDiagram
         +RewrapAsync() RewrapAttributeKeyResponse
     }
     class AttributeKeyService {
-        <<service>>
     }
     AttributeKeyService ..|> IAttributeKeyService
     AttributeKeyService --> Attributekey : IGenericRepository
@@ -143,7 +130,6 @@ classDiagram
         <<interface, infrastructure>>
     }
     class Accesslog {
-        <<entity>>
         +Guid accessLogId
         +Guid accessorId
         +Guid? consentPurposeId
@@ -155,7 +141,6 @@ classDiagram
         +string status
     }
     class Emergencyaccessrequest {
-        <<entity>>
         +Guid emergencyAccessRequestId
         +Guid requestedBy
         +Guid? stewardId
@@ -168,7 +153,6 @@ classDiagram
         +string status
     }
     class Erasurerequest {
-        <<entity>>
         +Guid erasureRequestId
         +Guid attributeKeyId
         +Guid consentId
@@ -178,7 +162,6 @@ classDiagram
         +string status
     }
     class Attributekey {
-        <<entity>>
         +Guid attributeKeyId
         +Guid dataAttributeId
         +Guid studentId
@@ -189,7 +172,6 @@ classDiagram
         +string status
     }
     class Consent {
-        <<entity>>
         +Guid consentId
         +Guid consentPurposeId
         +Guid dataAttributeId
@@ -200,7 +182,6 @@ classDiagram
         +string status
     }
     class Accesspolicy {
-        <<entity>>
         +Guid accessPolicyId
         +Guid consentPurposeId
         +Guid createdBy
