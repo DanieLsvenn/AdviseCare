@@ -1,0 +1,193 @@
+---
+title: AdviseCare - Use Case Diagram (all actors and all use cases)
+---
+flowchart TB
+    ALL(["&laquo;actor&raquo;<br/><b>All authenticated users</b>"])
+    ADM(["&laquo;actor&raquo;<br/><b>System Administrator</b>"])
+    STW(["&laquo;actor&raquo;<br/><b>Data Protection Steward</b>"])
+    PH(["&laquo;actor&raquo;<br/><b>Programme Head</b>"])
+    AA(["&laquo;actor&raquo;<br/><b>Academic Advisor</b>"])
+    WA(["&laquo;actor&raquo;<br/><b>Wellbeing Advisor</b>"])
+    SWO(["&laquo;actor&raquo;<br/><b>Student Welfare Officer</b>"])
+    STU(["&laquo;actor&raquo;<br/><b>Student</b>"])
+    %% generalization: every role is an authenticated user
+    ALL <-.-|"inherits"| ADM
+    ALL <-.-|"inherits"| STW
+    ALL <-.-|"inherits"| PH
+    ALL <-.-|"inherits"| AA
+    ALL <-.-|"inherits"| WA
+    ALL <-.-|"inherits"| SWO
+    ALL <-.-|"inherits"| STU
+    subgraph SYS["AdviseCare"]
+        subgraph ACC["Account and Access Management"]
+            UC01(["UC-01<br/>Link Google Account"])
+            UC02(["UC-02<br/>Sign In"])
+            UC03(["UC-03<br/>Sign Out and Manage Sessions"])
+            UC04(["UC-04<br/>Manage Password"])
+            UC05(["UC-05<br/>Create Account"])
+            UC06(["UC-06<br/>Import Accounts"])
+            UC07(["UC-07<br/>Send Account-Linking Emails"])
+            UC08(["UC-08<br/>Manage Accounts"])
+            UC09(["UC-09<br/>Manage Account Roles"])
+            UC10(["UC-10<br/>Manage Student Profiles"])
+            UC01 ~~~ UC02 ~~~ UC03 ~~~ UC04 ~~~ UC05 ~~~ UC06 ~~~ UC07 ~~~ UC08 ~~~ UC09 ~~~ UC10
+        end
+        subgraph MST["Master Data Management"]
+            UC11(["UC-11<br/>Manage Academic Terms"])
+            UC12(["UC-12<br/>Manage Faculties"])
+            UC13(["UC-13<br/>Manage Subjects and Specialisations"])
+            UC14(["UC-14<br/>Manage Support Categories"])
+            UC11 ~~~ UC12 ~~~ UC13 ~~~ UC14
+        end
+        subgraph NTF["Notifications and Personal Settings"]
+            UC15(["UC-15<br/>View and Manage Notifications"])
+            UC16(["UC-16<br/>Manage Notification Preferences"])
+            UC17(["UC-17<br/>Manage Own Profile and Settings"])
+            UC15 ~~~ UC16 ~~~ UC17
+        end
+        subgraph CON["Consent and Data Protection"]
+            UC18(["UC-18<br/>Manage Data Attributes"])
+            UC19(["UC-19<br/>Manage Consent Purposes"])
+            UC20(["UC-20<br/>Manage Access Policies"])
+            UC21(["UC-21<br/>Manage Own Consent"])
+            UC22(["UC-22<br/>Request Additional Consent"])
+            UC23(["UC-23<br/>Respond to Consent Request"])
+            UC24(["UC-24<br/>Review Access Log"])
+            UC25(["UC-25<br/>View Own Access Log"])
+            UC26(["UC-26<br/>Request Emergency Access"])
+            UC27(["UC-27<br/>Decide Emergency Access"])
+            UC28(["UC-28<br/>Execute Cryptographic Erasure"])
+            UC29(["UC-29<br/>Rotate Master Key"])
+            UC18 ~~~ UC19 ~~~ UC20 ~~~ UC21 ~~~ UC22 ~~~ UC23 ~~~ UC24 ~~~ UC25 ~~~ UC26 ~~~ UC27 ~~~ UC28 ~~~ UC29
+        end
+        subgraph SDA["Student Data Management"]
+            UC30(["UC-30<br/>Import Student Data"])
+            UC31(["UC-31<br/>View Student Data"])
+            UC32(["UC-32<br/>View Student Data at a Past Date"])
+            UC33(["UC-33<br/>View and Export Own Record"])
+            UC34(["UC-34<br/>Request Data Correction"])
+            UC35(["UC-35<br/>Review Correction Request"])
+            UC30 ~~~ UC31 ~~~ UC32 ~~~ UC33 ~~~ UC34 ~~~ UC35
+        end
+        subgraph SUP["Support Requests and Case Matching"]
+            UC36(["UC-36<br/>Request Support"])
+            UC37(["UC-37<br/>Open Case for Student"])
+            UC38(["UC-38<br/>View Own Cases"])
+            UC39(["UC-39<br/>Match Case to Advisor"])
+            UC40(["UC-40<br/>Reassign Case"])
+            UC41(["UC-41<br/>Request Case Advisor Change"])
+            UC42(["UC-42<br/>Decide Case Advisor Change"])
+            UC36 ~~~ UC37 ~~~ UC38 ~~~ UC39 ~~~ UC40 ~~~ UC41 ~~~ UC42
+        end
+        subgraph CWF["Case Workflow and Referrals"]
+            UC43(["UC-43<br/>View Assigned Cases"])
+            UC44(["UC-44<br/>Record Case Notes"])
+            UC45(["UC-45<br/>Advance Case Stage"])
+            UC46(["UC-46<br/>Change Case Priority"])
+            UC47(["UC-47<br/>Refer Case"])
+            UC48(["UC-48<br/>Answer Referral"])
+            UC49(["UC-49<br/>View Case History"])
+            UC43 ~~~ UC44 ~~~ UC45 ~~~ UC46 ~~~ UC47 ~~~ UC48 ~~~ UC49
+        end
+        subgraph WEL["Student Welfare"]
+            UC50(["UC-50<br/>Record Interventions"])
+            UC51(["UC-51<br/>Record Support Grants"])
+            UC52(["UC-52<br/>Manage External Services"])
+            UC53(["UC-53<br/>Refer to External Service"])
+            UC54(["UC-54<br/>Escalate Case"])
+            UC55(["UC-55<br/>Respond to Escalation"])
+            UC50 ~~~ UC51 ~~~ UC52 ~~~ UC53 ~~~ UC54 ~~~ UC55
+        end
+        subgraph RPT["Reporting"]
+            UC56(["UC-56<br/>View Case Report"])
+            UC57(["UC-57<br/>View Caseload and Closure Report"])
+            UC58(["UC-58<br/>Export Report"])
+            UC56 ~~~ UC57 ~~~ UC58
+        end
+    end
+    %% actor - use case associations
+    ALL --- UC01
+    ALL --- UC02
+    ALL --- UC03
+    ALL --- UC04
+    ADM --- UC05
+    ADM --- UC06
+    ADM --- UC07
+    ADM --- UC08
+    ADM --- UC09
+    ADM --- UC10
+    ADM --- UC11
+    ADM --- UC12
+    ADM --- UC13
+    ADM --- UC14
+    ALL --- UC15
+    ALL --- UC16
+    ALL --- UC17
+    STW --- UC18
+    STW --- UC19
+    STW --- UC20
+    STU --- UC21
+    AA --- UC22
+    WA --- UC22
+    STU --- UC23
+    STW --- UC24
+    STU --- UC25
+    AA --- UC26
+    WA --- UC26
+    SWO --- UC26
+    PH --- UC26
+    STW --- UC27
+    STW --- UC28
+    STW --- UC29
+    ADM --- UC30
+    AA --- UC31
+    WA --- UC31
+    SWO --- UC31
+    PH --- UC31
+    AA --- UC32
+    WA --- UC32
+    SWO --- UC32
+    PH --- UC32
+    STU --- UC33
+    STU --- UC34
+    AA --- UC35
+    WA --- UC35
+    STU --- UC36
+    AA --- UC37
+    WA --- UC37
+    STU --- UC38
+    PH --- UC39
+    PH --- UC40
+    STU --- UC41
+    AA --- UC41
+    WA --- UC41
+    PH --- UC42
+    AA --- UC43
+    WA --- UC43
+    AA --- UC44
+    WA --- UC44
+    AA --- UC45
+    WA --- UC45
+    AA --- UC46
+    WA --- UC46
+    SWO --- UC46
+    PH --- UC46
+    AA --- UC47
+    WA --- UC47
+    AA --- UC48
+    WA --- UC48
+    SWO --- UC48
+    STU --- UC49
+    AA --- UC49
+    WA --- UC49
+    SWO --- UC49
+    PH --- UC49
+    SWO --- UC50
+    SWO --- UC51
+    ADM --- UC52
+    SWO --- UC53
+    SWO --- UC54
+    PH --- UC55
+    PH --- UC56
+    PH --- UC57
+    PH --- UC58

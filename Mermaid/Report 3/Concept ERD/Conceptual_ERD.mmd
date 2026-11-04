@@ -1,11 +1,68 @@
 ---
 title: AdviseCare - Conceptual ERD
+config:
+  theme: base
+  look: classic
+  layout: elk
+  themeVariables:
+    primaryColor: "#ffffff"
+    primaryBorderColor: "#000000"
+    primaryTextColor: "#000000"
+    lineColor: "#000000"
+    background: "#ffffff"
+    fontSize: "12px"
+  elk:
+    mergeEdges: true
+    nodePlacementStrategy: NETWORK_SIMPLEX
+  er:
+    minEntityWidth: 120
+    minEntityHeight: 80
 ---
 erDiagram
+    %% entities (upper-case display names)
+    Account["ACCOUNT"]
+    StudentProfile["STUDENT<br/>PROFILE"]
+    Faculty["FACULTY"]
+    Role["ROLE"]
+    Subject["SUBJECT"]
+    Session["SESSION"]
+    Notification["NOTIFICATION"]
+    NotificationPreference["NOTIFICATION<br/>PREFERENCE"]
+    ActivityLog["ACTIVITY LOG"]
+    DataSource["DATA SOURCE"]
+    StudentData["STUDENT DATA"]
+    SupportCategory["SUPPORT<br/>CATEGORY"]
+    CaseChangeRequest["CASE CHANGE<br/>REQUEST"]
+    Case["CASE"]
+    CaseNote["CASE NOTE"]
+    CaseStageHistory["CASE STAGE<br/>HISTORY"]
+    Referral["REFERRAL"]
+    CorrectionRequest["CORRECTION<br/>REQUEST"]
+    Intervention["INTERVENTION"]
+    ExternalReferral["EXTERNAL<br/>REFERRAL"]
+    Escalation["ESCALATION"]
+    ConsentPurpose["CONSENT<br/>PURPOSE"]
+    Consent["CONSENT"]
+    ConsentHistory["CONSENT<br/>HISTORY"]
+    ConsentRequest["CONSENT<br/>REQUEST"]
+    AccessPolicy["ACCESS POLICY"]
+    AccessLog["ACCESS LOG"]
+    EmergencyAccessRequest["EMERGENCY<br/>ACCESS REQUEST"]
+    ErasureRequest["ERASURE<br/>REQUEST"]
+    AttributeKey["ATTRIBUTE KEY"]
+    Report["REPORT"]
+    Backup["BACKUP"]
+    RestoreOperation["RESTORE<br/>OPERATION"]
+    Programme["PROGRAMME"]
+    AcademicTerm["ACADEMIC TERM"]
+    DataAttribute["DATA ATTRIBUTE"]
+    IngestionSchedule["INGESTION<br/>SCHEDULE"]
+    IngestionJob["INGESTION JOB"]
+    SupportGrant["SUPPORT GRANT"]
+    ExternalService["EXTERNAL<br/>SERVICE"]
+    %% relationships: one line per pair of entities
     Account ||--o| StudentProfile : "studentId"
     Faculty |o--o{ Account : "facultyId"
-    Account }o--o{ Role : "has"
-    Account }o--o{ Subject : "specialises in"
     Account ||--o{ Session : "accountId"
     Account ||--o{ Notification : "accountId"
     Account ||--o{ NotificationPreference : "accountId"
@@ -13,33 +70,22 @@ erDiagram
     Account |o--o{ DataSource : "createdBy"
     Account ||--o{ StudentData : "studentId"
     Account ||--o{ SupportCategory : "createdBy"
-    Account |o--o{ CaseChangeRequest : "programmeHeadId"
-    Account ||--o{ CaseChangeRequest : "proposedAdvisorId"
-    Account ||--o{ CaseChangeRequest : "requestedBy"
-    Account |o--o{ Case : "advisorId"
-    Account ||--o{ Case : "openedBy"
-    Account ||--o{ Case : "studentId"
+    Account ||--o{ CaseChangeRequest : "programmeHeadId, proposedAdvisorId, requestedBy"
+    Account ||--o{ Case : "advisorId, openedBy, studentId"
     Account ||--o{ CaseNote : "authorId"
     Account ||--o{ CaseStageHistory : "changedBy"
-    Account ||--o{ Referral : "fromAccountId"
-    Account ||--o{ Referral : "toAccountId"
-    Account |o--o{ CorrectionRequest : "reviewedBy"
-    Account ||--o{ CorrectionRequest : "studentId"
+    Account ||--o{ Referral : "fromAccountId, toAccountId"
+    Account ||--o{ CorrectionRequest : "reviewedBy, studentId"
     Account ||--o{ Intervention : "officerId"
     Account ||--o{ ExternalReferral : "referredBy"
-    Account ||--o{ Escalation : "escalatedBy"
-    Account ||--o{ Escalation : "escalatedTo"
+    Account ||--o{ Escalation : "escalatedBy, escalatedTo"
     Account ||--o{ ConsentPurpose : "createdBy"
     Account ||--o{ Consent : "studentId"
     Account ||--o{ ConsentHistory : "changedBy"
-    Account ||--o{ ConsentRequest : "advisorId"
-    Account ||--o{ ConsentRequest : "studentId"
+    Account ||--o{ ConsentRequest : "advisorId, studentId"
     Account ||--o{ AccessPolicy : "createdBy"
-    Account ||--o{ AccessLog : "accessorId"
-    Account ||--o{ AccessLog : "recordedUserId"
-    Account ||--o{ EmergencyAccessRequest : "requestedBy"
-    Account |o--o{ EmergencyAccessRequest : "stewardId"
-    Account ||--o{ EmergencyAccessRequest : "studentId"
+    Account ||--o{ AccessLog : "accessorId, recordedUserId"
+    Account ||--o{ EmergencyAccessRequest : "requestedBy, stewardId, studentId"
     Account |o--o{ ErasureRequest : "executedBy"
     Account ||--o{ AttributeKey : "studentId"
     Account ||--o{ Report : "generatedBy"
@@ -51,7 +97,6 @@ erDiagram
     AcademicTerm ||--o{ StudentData : "termId"
     AcademicTerm ||--o{ Report : "termId"
     Subject |o--o{ Case : "subjectId"
-    DataAttribute }o--o{ ConsentPurpose : "covers"
     DataAttribute ||--o| DataSource : "dataAttributeId"
     DataAttribute ||--o{ StudentData : "dataAttributeId"
     DataAttribute ||--o{ Consent : "dataAttributeId"
@@ -82,5 +127,9 @@ erDiagram
     Consent ||--o{ ErasureRequest : "consentId"
     AttributeKey ||--o{ ErasureRequest : "attributeKeyId"
     Backup ||--o{ RestoreOperation : "backupId"
+    Account }o--o{ Role : "has"
+    Account }o--o{ Subject : "specialises in"
+    DataAttribute }o--o{ ConsentPurpose : "covers"
 
     %% Future entities (designed, no feature in the current version): Backup, DataSource, IngestionJob, IngestionSchedule, Report, RestoreOperation
+    %% When several FKs link the same two entities, the line shows all of them; it is drawn as mandatory (||) when at least one of them is NOT NULL.
