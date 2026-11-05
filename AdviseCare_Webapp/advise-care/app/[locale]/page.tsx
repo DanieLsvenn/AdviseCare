@@ -16,8 +16,13 @@ export default async function LocaleRootPage({ params }: PageProps<"/[locale]">)
     const user = await getCurrentUser();
     redirect(`/${locale}${landingPathForRoles(user.roles)}`);
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) {
-      redirect(`/${locale}/sign-in`);
+    // 401: phiên hết hạn; 404: token còn hạn nhưng tài khoản không còn (vd. DB vừa nạp lại mock data)
+    if (error instanceof ApiError && (error.status === 401 || error.status === 404)) {
+      redirect(`/${locale}/sign-in?reason=expired`);
+    }
+    // 403: tài khoản bị khoá/vô hiệu hoá, hoặc token trỏ tới tài khoản không còn tồn tại
+    if (error instanceof ApiError && error.status === 403) {
+      redirect(`/${locale}/sign-in?reason=account`);
     }
     throw error;
   }

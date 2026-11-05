@@ -77,7 +77,7 @@ namespace AdviseCare.API.Controllers
         // Import Accounts from an Excel file
         [HttpPost("import")]
         [Consumes("multipart/form-data")]
-        [SwaggerOperation(Summary = "[System Administrator] Import accounts from Excel",
+        [SwaggerOperation(Summary = "[System Administrator] Import accounts from Excel or CSV (.xlsx/.csv)",
             Description = "Uploads an .xlsx file whose first sheet has the header row email, fullName, userName, facultyCode, role, studentCode, academicStatus (role may hold several role names separated by commas). " +
                 "Student rows fill all 7 columns (studentCode unique, academicStatus enrolled/onLeave/withdrawn/graduated) and get a student profile; every other row fills only the first 5 and leaves studentCode and academicStatus empty. " +
                 "Every row is validated (required fields, email format, duplicate email/username/studentCode in the file or the system, faculty code exists and is active, role exists, student fields filled only for Student rows). " +
@@ -85,6 +85,18 @@ namespace AdviseCare.API.Controllers
         public async Task<IActionResult> Import([FromForm] ImportAccountRequest request)
         {
             var response = await _accountService.ImportAsync(request);
+            return Ok(response);
+        }
+
+        // Preview an account import file
+        [HttpPost("import/preview")]
+        [Consumes("multipart/form-data")]
+        [SwaggerOperation(Summary = "[System Administrator] Preview an account import",
+            Description = "Reads every row of an .xlsx or .csv file (same columns as the import) and runs the same checks as the import, without writing anything. " +
+                "Returns the header row, the rows (up to 2000) and the problems per row number, so the web app can show an editable preview and send the corrected rows back as a .csv file.")]
+        public async Task<IActionResult> PreviewImport([FromForm] ImportAccountRequest request)
+        {
+            var response = await _accountService.PreviewImportAsync(request);
             return Ok(response);
         }
 
@@ -181,10 +193,21 @@ namespace AdviseCare.API.Controllers
         [HttpPost("roles")]
         [SwaggerOperation(Summary = "[System Administrator] Add a role to an account",
             Description = "Gives an account one more role. An account can hold several roles; the same role cannot be added twice. The new role is in the JWT from the account's next sign-in. " +
-                "Giving the Student role to an account without a student profile also needs studentCode and academicStatus, which create the profile.")]
+                "Giving the Student role to an account without a student profile also needs studentCode, which creates the profile (academicStatus is optional and defaults to enrolled).")]
         public async Task<IActionResult> CreateAccountRole([FromBody] CreateAccountRoleRequest request)
         {
             var response = await _accountService.CreateAccountRoleAsync(request);
+            return Ok(response);
+        }
+
+        // Change an Account's roles in one step
+        [HttpPut("{id}/roles")]
+        [SwaggerOperation(Summary = "[System Administrator] Change the roles of an account",
+            Description = "Sets the account's roles to exactly roleNames (roles not listed are removed, new ones are added). Adding the Student role to an account without a student profile needs studentCode; " +
+                "the profile starts as enrolled. The last System Administrator role in the system cannot be removed. The change is in the JWT from the account's next sign-in.")]
+        public async Task<IActionResult> UpdateAccountRoles([FromRoute] Guid id, [FromBody] UpdateAccountRolesRequest request)
+        {
+            var response = await _accountService.UpdateAccountRolesAsync(id, request);
             return Ok(response);
         }
 

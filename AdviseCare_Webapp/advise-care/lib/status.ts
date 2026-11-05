@@ -73,6 +73,8 @@ export const statusFields = new Set([
   "consentStatus",
   "keyStatus",
   "decision",
+  "newStatus",
+  "previousStatus",
 ]);
 
 /** Stage-like fields get a leading dot so a pipeline position reads at a glance. */

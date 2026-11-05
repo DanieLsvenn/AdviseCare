@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
   type FormEvent,
+  type ReactNode,
 } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
@@ -25,14 +26,12 @@ import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/states";
 import { StatusValue } from "@/components/ui/status-value";
-import { SearchPicker } from "./search-picker";
 import {
   bodyFromRecord,
   camelCase,
   createRowKey,
   displayValue,
   errorMessage,
-  expandRecords,
   extractOptions,
   extractRecords,
   extractTotal,
@@ -59,50 +58,46 @@ export interface WorkspaceField {
     | "datetime-local"
     | "textarea"
     | "select"
-    | "search"
     | "checkbox"
     | "file"
-    | "list";
+    | "list"
+    | "multiselect";
   required?: boolean;
   options?: Array<{ label: string; value: string }>;
   accept?: string;
   placeholder?: string;
   hint?: string;
   pathOnly?: boolean;
-  /** Start empty instead of taking the row's current value (e.g. a lapsed expiry). */
+  /** Start empty instead of taking the row's current value. */
   noPrefill?: boolean;
   optionsFrom?: WorkspaceOptionSource;
+  /** Only ask for this field while another field's value contains this option (e.g. student code once Student is ticked). */
+  showWhen?: { key: string; includes: string };
+  /** Skip the field when the record already holds a value for it (the value is still sent). */
+  hideWhenPrefilled?: boolean;
 }
 
 export interface WorkspaceOption {
   label: string;
   value: string;
-  /** Second line shown under a search result. */
   detail?: string;
 }
 
 export interface WorkspaceOptionSource {
-  /** May hold ":placeholders" filled from the record being acted on. */
   path: string;
   collectionKey?: string;
   valueKey: string;
   labelKeys: string[];
   detailKeys?: string[];
   match?: Record<string, string | number | boolean>;
+  /** Leave out records whose field holds one of these values (e.g. the Student role). */
+  exclude?: Record<string, Array<string | number | boolean>>;
   requiredValueKeys?: string[];
   query?: ApiQuery;
-  /** Wait for another field of the form, then ask the API for matches of its value. */
-  dependsOn?: { field: string; queryKey: string };
-  /** For type "search": the typed text is sent as each of these query keys and the answers merged. */
+  /** For search pickers, query each of these keys and merge the results. */
   searchKeys?: string[];
-  /** Wording for the empty option; generic text is used for what is left out. */
-  copy?: {
-    loading?: string;
-    choose?: string;
-    empty?: string;
-    unavailable?: string;
-    waiting?: string;
-  };
+  /** Wording of the empty option while loading, on error, ready and with nothing to pick. */
+  labels?: { loading?: string; error?: string; select?: string; empty?: string };
 }
 
 export interface WorkspaceColumn {
@@ -134,8 +129,6 @@ export interface ApiWorkspaceDefinition {
   description?: string;
   listPath: string;
   collectionKey?: string;
-  /** One row per item of this nested array, carrying the parent's own fields. */
-  expandKey?: string;
   columns: WorkspaceColumn[];
   queryFields?: WorkspaceField[];
   create?: WorkspaceOperation;
@@ -153,6 +146,8 @@ export interface ApiWorkspaceDefinition {
   emptyBody?: string;
   /** Second and later workspaces on a page render without the page title. */
   embedded?: boolean;
+  /** Embedded under a tab that already names the list: no heading in the toolbar. */
+  hideToolbarTitle?: boolean;
 }
 
 type UiT = ReturnType<typeof useTranslations<"ui">>;
@@ -165,8 +160,11 @@ type UiT = ReturnType<typeof useTranslations<"ui">>;
  */
 export function ApiWorkspace({
   definition,
+  beforeList,
 }: {
   definition: ApiWorkspaceDefinition;
+  /** A section between the title row and the list (e.g. the import of this list's records). */
+  beforeList?: ReactNode;
 }) {
   const t = useTranslations("workspace");
   const tu = useTranslations("ui");
@@ -223,17 +221,14 @@ export function ApiWorkspace({
         const payload = await clientApiGet<unknown>(listPath, {
           query: { ...nextQuery, ...scopedQuery },
         });
-        const extracted = extractRecords(payload, definition.collectionKey);
-        if (!extracted) {
+        const result = extractRecords(payload, definition.collectionKey);
+        if (!result) {
           throw new ApiError({
             message: t("unexpectedResponse"),
             status: 502,
             code: "unexpected_collection",
           });
         }
-        const result = definition.expandKey
-          ? expandRecords(extracted, definition.expandKey)
-          : extracted;
         const visibleRecords = recordFilter
           ? result.filter(
               (record) =>
@@ -250,16 +245,7 @@ export function ApiWorkspace({
         setLoading(false);
       }
     },
-    [
-      definition.collectionKey,
-      definition.expandKey,
-      listPath,
-      query,
-      requiredQueryFields,
-      recordFilter,
-      scopedQuery,
-      t,
-    ],
+    [definition.collectionKey, listPath, query, requiredQueryFields, recordFilter, scopedQuery, t],
   );
 
   useEffect(() => {
@@ -365,9 +351,11 @@ export function ApiWorkspace({
         />
       )}
 
+      {beforeList}
+
       <section className="overflow-hidden rounded-lg border border-rule bg-paper">
         <div className="flex flex-wrap items-center gap-x-space-md gap-y-space-sm border-b border-rule px-space-lg py-space-md">
-          {definition.embedded ? (
+          {definition.embedded && !definition.hideToolbarTitle ? (
             <h2 className="mr-auto text-base font-semibold text-text">{definition.title}</h2>
           ) : null}
           {queryFields.length ? (
@@ -1185,6 +1173,19 @@ export function ApiOperationForm({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [result, setResult] = useState<unknown>(undefined);
   const isRead = definition.method === "GET";
+  const currentValue = (key: string) => values[key] ?? bodyDefaults[key];
+  const visibleFields = (definition.fields ?? []).filter((field) => {
+    if (field.hideWhenPrefilled) {
+      const prefilled = bodyDefaults[field.key];
+      if (prefilled !== undefined && prefilled !== null && prefilled !== "") return false;
+    }
+    if (!field.showWhen) return true;
+    const value = currentValue(field.showWhen.key);
+    const includes = field.showWhen.includes;
+    return Array.isArray(value)
+      ? value.map(String).includes(includes)
+      : typeof value === "string" && value.split(/[\n,]/).map((item) => item.trim()).includes(includes);
+  });
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1205,7 +1206,7 @@ export function ApiOperationForm({
 
     setPending(true);
     try {
-      const body = isRead ? undefined : makeBody(definition.fields ?? [], values, bodyDefaults);
+      const body = isRead ? undefined : makeBody(visibleFields, values, bodyDefaults);
       const response = await clientApiRequest<unknown>(
         resolvePath(definition.path, { ...pathValues, ...values }),
         { method: definition.method, body, redirectOnUnauthorized: true },
@@ -1240,44 +1241,33 @@ export function ApiOperationForm({
   return (
     <>
       <form className="grid gap-space-md pt-space-md sm:grid-cols-2" onSubmit={submit}>
-        {(definition.fields ?? []).map((field) => {
-          const parentKey = field.optionsFrom?.dependsOn?.field;
-          const parent = parentKey ? (values[parentKey] ?? bodyDefaults[parentKey]) : undefined;
-          return (
-            <div
-              key={field.key}
-              className={cn(
-                (field.type === "textarea" || field.type === "list" || field.type === "file") && "sm:col-span-2",
-              )}
-            >
-              <WorkspaceInput
-                field={field}
-                onChange={(value) =>
-                  setValues((current) => {
-                    const next = { ...current, [field.key]: value };
-                    // A choice that depended on this field no longer applies.
-                    for (const other of definition.fields ?? []) {
-                      if (other.optionsFrom?.dependsOn?.field === field.key) next[other.key] = "";
-                    }
-                    return next;
-                  })
-                }
-                parentValue={typeof parent === "string" ? parent : undefined}
-                pathValues={pathValues}
-                value={
-                  values[field.key] ??
-                  bodyDefaults[field.key] ??
-                  (field.type === "checkbox" ? false : "")
-                }
-                error={
-                  fieldErrors[field.key] ??
-                  fieldErrors[pascalCase(field.key)] ??
-                  fieldErrors[camelCase(field.key)]
-                }
-              />
-            </div>
-          );
-        })}
+        {visibleFields.map((field) => (
+          <div
+            key={field.key}
+            className={cn(
+              (field.type === "textarea" ||
+                field.type === "list" ||
+                field.type === "file" ||
+                field.type === "multiselect") &&
+                "sm:col-span-2",
+            )}
+          >
+            <WorkspaceInput
+              field={field}
+              onChange={(value) => setValues((current) => ({ ...current, [field.key]: value }))}
+              value={
+                values[field.key] ??
+                bodyDefaults[field.key] ??
+                (field.type === "checkbox" ? false : field.type === "multiselect" ? [] : "")
+              }
+              error={
+                fieldErrors[field.key] ??
+                fieldErrors[pascalCase(field.key)] ??
+                fieldErrors[camelCase(field.key)]
+              }
+            />
+          </div>
+        ))}
         <div className="flex flex-col items-start gap-space-sm sm:col-span-2">
           <Button
             loading={pending}
@@ -1339,8 +1329,6 @@ export function WorkspaceInput({
   onChange,
   error,
   compact,
-  pathValues,
-  parentValue,
 }: {
   field: WorkspaceField;
   value: unknown;
@@ -1348,79 +1336,49 @@ export function WorkspaceInput({
   error?: string;
   /** Filter-bar density: smaller label and control. */
   compact?: boolean;
-  /** Fills ":placeholders" in the option source's path (the row being acted on). */
-  pathValues?: Record<string, unknown>;
-  /** Current value of the field this one's options depend on. */
-  parentValue?: string;
 }) {
   const t = useTranslations("workspace");
   const formId = useId();
   const id = `workspace-${formId}-${field.key}`;
   const errorId = `${id}-error`;
   const optionSource = field.optionsFrom;
-  const dependsOn = optionSource?.dependsOn;
-  const waitingForParent = dependsOn !== undefined && !parentValue;
-  const listsOptions = optionSource !== undefined && field.type !== "search";
-  let optionPath: string | null = null;
-  if (listsOptions) {
-    try {
-      optionPath = resolvePath(optionSource.path, pathValues ?? {});
-    } catch {
-      optionPath = null;
-    }
-  }
-  const optionScope = `${optionPath ?? ""}|${parentValue ?? ""}`;
   const [loadedOptions, setLoadedOptions] = useState<{
     source: WorkspaceOptionSource;
-    scope: string;
-    options: WorkspaceOption[];
+    options: Array<{ label: string; value: string }>;
     error?: string;
   } | null>(null);
-  const loadedForSource =
-    loadedOptions !== null &&
-    loadedOptions.source === optionSource &&
-    loadedOptions.scope === optionScope
-      ? loadedOptions
-      : null;
+  const loadedForSource = loadedOptions?.source === optionSource ? loadedOptions : null;
   const remoteOptions = loadedForSource?.options ?? [];
   const optionsError = loadedForSource?.error ?? "";
-  const optionsLoading =
-    listsOptions && !waitingForParent && optionPath !== null && loadedForSource === null;
+  const optionsLoading = optionSource !== undefined && loadedForSource === null;
   const control = cn(controlClass, "w-full", compact ? "h-8 text-[0.8125rem]" : "h-10");
 
   useEffect(() => {
-    if (!listsOptions || optionPath === null || waitingForParent) return;
+    if (!optionSource) return;
     let active = true;
     const controller = new AbortController();
-    void clientApiGet<unknown>(optionPath, {
+    void clientApiGet<unknown>(optionSource.path, {
       signal: controller.signal,
-      query: dependsOn
-        ? { ...optionSource.query, [dependsOn.queryKey]: parentValue }
-        : optionSource.query,
+      query: optionSource.query,
     })
       .then((payload) => {
         const options = extractOptions(payload, optionSource);
         if (!active) return;
         setLoadedOptions(
           options
-            ? { source: optionSource, scope: optionScope, options }
-            : { source: optionSource, scope: optionScope, options: [], error: t("unexpectedResponse") },
+            ? { source: optionSource, options }
+            : { source: optionSource, options: [], error: t("unexpectedResponse") },
         );
       })
       .catch((loadError: unknown) => {
         if (!active) return;
-        setLoadedOptions({
-          source: optionSource,
-          scope: optionScope,
-          options: [],
-          error: errorMessage(loadError, t),
-        });
+        setLoadedOptions({ source: optionSource, options: [], error: errorMessage(loadError, t) });
       });
     return () => {
       active = false;
       controller.abort();
     };
-  }, [listsOptions, optionSource, optionPath, optionScope, dependsOn, parentValue, waitingForParent, t]);
+  }, [optionSource, t]);
 
   if (field.type === "checkbox") {
     return (
@@ -1440,22 +1398,79 @@ export function WorkspaceInput({
   }
 
   const describedBy = error || optionsError ? errorId : undefined;
-  const copy = optionSource?.copy;
-  const emptyOptionLabel = !optionSource
-    ? compact
+  const labels = optionSource?.labels;
+  const placeholderOption = optionSource
+    ? optionsLoading
+      ? (labels?.loading ?? t("loadingOptions"))
+      : optionsError
+        ? (labels?.error ?? t("optionsUnavailable"))
+        : remoteOptions.length
+          ? compact
+            ? t("any")
+            : (labels?.select ?? t("selectOption"))
+          : (labels?.empty ?? t("noOptions"))
+    : compact
       ? t("any")
-      : "—"
-    : waitingForParent
-      ? (copy?.waiting ?? t("chooseFieldFirst"))
-      : optionsLoading
-        ? (copy?.loading ?? t("loadingOptions"))
-        : optionsError || optionPath === null
-          ? (copy?.unavailable ?? t("optionsUnavailable"))
-          : remoteOptions.length === 0
-            ? (copy?.empty ?? t("noOptionsAvailable"))
-            : compact
-              ? t("any")
-              : (copy?.choose ?? t("selectOption"));
+      : "—";
+  const choices = optionSource ? remoteOptions : (field.options ?? []);
+
+  if (field.type === "multiselect") {
+    const selected = Array.isArray(value)
+      ? value.map(String)
+      : typeof value === "string" && value
+        ? value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean)
+        : [];
+    return (
+      <fieldset aria-describedby={describedBy}>
+        <legend className="mb-1.5 block text-sm font-semibold text-text">
+          {field.label}
+          {field.required ? <span aria-hidden className="text-red-ink"> *</span> : null}
+        </legend>
+        {choices.length === 0 ? (
+          <p className="text-[0.8125rem] text-text-faint">{placeholderOption}</p>
+        ) : (
+          <div className="grid gap-x-space-md gap-y-1.5 sm:grid-cols-2">
+            {choices.map((option) => {
+              const checked = selected.includes(option.value);
+              return (
+                <label
+                  key={option.value}
+                  className={cn(
+                    "flex min-h-9 cursor-pointer items-center gap-2 rounded-md border px-2.5 text-sm transition-colors",
+                    checked ? "border-ink bg-ink-wash text-text" : "border-rule bg-paper text-text-muted hover:border-rule-strong",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-[#2142b8]"
+                    name={field.key}
+                    value={option.value}
+                    checked={checked}
+                    onChange={(event) =>
+                      onChange(
+                        event.target.checked
+                          ? [...selected, option.value]
+                          : selected.filter((item) => item !== option.value),
+                      )
+                    }
+                  />
+                  {option.label}
+                </label>
+              );
+            })}
+          </div>
+        )}
+        {field.hint && !compact ? (
+          <p className="mt-1 text-[0.8125rem] text-text-faint">{field.hint}</p>
+        ) : null}
+        {error || optionsError ? (
+          <p id={errorId} role="alert" className="mt-1 text-[0.8125rem] text-red-ink">
+            {error || optionsError}
+          </p>
+        ) : null}
+      </fieldset>
+    );
+  }
 
   return (
     <div>
@@ -1482,32 +1497,19 @@ export function WorkspaceInput({
           required={field.required}
           value={typeof value === "string" ? value : ""}
         />
-      ) : field.type === "search" && optionSource ? (
-        <SearchPicker
-          compact={compact}
-          describedBy={describedBy}
-          id={id}
-          invalid={Boolean(error)}
-          onChange={onChange}
-          placeholder={field.placeholder}
-          required={field.required}
-          source={optionSource}
-          value={typeof value === "string" ? value : ""}
-        />
       ) : field.type === "select" ? (
         <select
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
           className={cn(control, "pr-8")}
-          disabled={waitingForParent}
           id={id}
           name={field.key}
           onChange={(event) => onChange(event.target.value)}
           required={field.required}
           value={typeof value === "string" ? value : ""}
         >
-          <option value="">{emptyOptionLabel}</option>
-          {(optionSource ? remoteOptions : (field.options ?? [])).map((option) => (
+          <option value="">{placeholderOption}</option>
+          {choices.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
@@ -1550,4 +1552,3 @@ export function WorkspaceInput({
     </div>
   );
 }
-
