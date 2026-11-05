@@ -7,6 +7,7 @@ using AdviseCare.Application.Interfaces.Services;
 using AdviseCare.Application.Interfaces.Storage;
 using AdviseCare.Application.Services;
 using AdviseCare.API.BackgroundServices;
+using AdviseCare.API.Errors;
 using AdviseCare.Domain.Models;
 using AdviseCare.Infrastructure.Configuration;
 using AdviseCare.Infrastructure.Email;
@@ -171,6 +172,16 @@ app.UseExceptionHandler(errorApp =>
     {
         var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
         context.Response.ContentType = "application/json";
+
+        // A database constraint that a service did not check first (duplicate code, row still in use...) gets its own message instead of a 500
+        var databaseError = exception == null ? null : DatabaseErrorTranslator.Translate(exception);
+        if (databaseError != null)
+        {
+            context.Response.StatusCode = databaseError.Value.Status;
+            await context.Response.WriteAsJsonAsync(new { message = databaseError.Value.Message });
+            return;
+        }
+
         context.Response.StatusCode = exception switch
         {
             NotFoundException => StatusCodes.Status404NotFound,

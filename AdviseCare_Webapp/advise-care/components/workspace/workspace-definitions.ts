@@ -13,7 +13,6 @@ export type WorkspaceTranslator = (
 ) => string;
 export type WorkspaceScreen =
   | "admin.accounts"
-  | "admin.roles"
   | "admin.masterData"
   | "admin.assignments"
   | "admin.studentData"
@@ -149,6 +148,36 @@ export function getWorkspaceDefinitions(
   ] as WorkspaceKey[];
   const caseStatusOptions = ["open", "closed", "reopened"] as WorkspaceKey[];
   const priorityOptions = ["low", "medium", "high", "urgent"] as WorkspaceKey[];
+  // Pickers backed by the API, so nobody has to type a GUID or a role name.
+  const roleSource = (excludeStudent = false) => ({
+    path: "Roles",
+    valueKey: "roleName",
+    labelKeys: ["roleName"],
+    ...(excludeStudent ? { exclude: { roleName: ["Student"] } } : {}),
+  });
+  const roleIdSource = (excludeStudent = false) => ({
+    ...roleSource(excludeStudent),
+    valueKey: "roleId",
+  });
+  const facultySource = {
+    path: "Faculties",
+    valueKey: "facultyId",
+    labelKeys: ["facultyCode", "facultyName"],
+    match: { status: "active" },
+  };
+  const purposeSource = {
+    path: "ConsentPurposes",
+    valueKey: "consentPurposeId",
+    labelKeys: ["purposeName"],
+    exclude: { status: ["retired"] },
+  };
+  const picker = (
+    key: WorkspaceKey,
+    optionsFrom: WorkspaceField["optionsFrom"],
+    required = false,
+    type: "select" | "multiselect" = "select",
+    labelKey: WorkspaceKey = key,
+  ): WorkspaceField => ({ ...field(key, type, required), label: t(labelKey), optionsFrom });
   const academicStatusOptions: Array<{ label: WorkspaceKey; value: string }> = [
     { label: "enrolled", value: "enrolled" },
     { label: "onLeave", value: "onLeave" },
@@ -179,41 +208,32 @@ export function getWorkspaceDefinitions(
               field("fullName"),
               field("userName"),
               field("studentCode"),
-              field("facultyId"),
-              field("roleName"),
+              picker("facultyId", facultySource, false, "select", "faculty"),
+              picker("roleName", roleSource(), false, "select", "role"),
               selectValues("academicStatus", academicStatusOptions),
               field("linkStatus"),
               select("status", ["active", "inactive", "banned"] as WorkspaceKey[]),
             ],
-            globalOperations: [
-              {
-                ...operation("importAccounts", "POST", "Accounts/import", [
-                  {
-                    key: "file",
-                    label: t("file"),
-                    type: "file",
-                    required: true,
-                    accept: ".xlsx",
-                  },
-                ]),
-                description: t("accountImportDescription"),
-              },
-            ],
+            // Importing has its own page section (AccountImportWorkflow): upload,
+            // an editable preview with the problems of every row, then import.
             create: operation("create", "POST", "Accounts", [
               field("email", "email", true),
               field("fullName", "text", true),
               field("userName", "text", true),
-              field("facultyId"),
-              field("roleNames", "list", true),
-              field("studentCode"),
-              selectValues("academicStatus", academicStatusOptions),
+              picker("facultyId", facultySource, false, "select", "faculty"),
+              { ...picker("roleNames", roleSource(), true, "multiselect", "roles"), hint: t("rolesHint") },
+              {
+                ...field("studentCode", "text", true),
+                showWhen: { key: "roleNames", includes: "Student" },
+                hint: t("studentCodeHint"),
+              },
             ]),
             rowOperations: [
               operation("update", "PUT", "Accounts/:accountId", [
                 field("email", "email", true),
                 field("fullName", "text", true),
                 field("userName", "text", true),
-                field("facultyId"),
+                picker("facultyId", facultySource, false, "select", "faculty"),
               ], {
                 bodyFromRecord: {
                   email: { key: "email" },
@@ -232,16 +252,24 @@ export function getWorkspaceDefinitions(
                 },
               }),
               operation(
-                "addRole",
-                "POST",
-                "Accounts/roles",
+                "changeRoles",
+                "PUT",
+                "Accounts/:accountId/roles",
                 [
-                  field("roleId", "text", true),
-                  field("studentCode"),
-                  selectValues("academicStatus", academicStatusOptions),
+                  { ...picker("roleNames", roleSource(), true, "multiselect", "roles"), hint: t("rolesHint") },
+                  {
+                    ...field("studentCode", "text", true),
+                    showWhen: { key: "roleNames", includes: "Student" },
+                    hideWhenPrefilled: true,
+                    hint: t("studentCodeHint"),
+                  },
                 ],
                 {
-                  bodyFromRecord: { accountId: { key: "accountId" } },
+                  bodyFromRecord: {
+                    roleNames: { key: "roles" },
+                    studentCode: { key: "studentCode" },
+                  },
+                  description: t("changeRolesHint"),
                   icon: "badge",
                 },
               ),
@@ -271,33 +299,6 @@ export function getWorkspaceDefinitions(
               }),
             ],
             pageSize: 20,
-          },
-        ),
-      ];
-
-    case "admin.roles":
-      return [
-        workspace(
-          "roleAssignments",
-          "Accounts/roles/search",
-          ["accountId", "accountName", "roleId", "roleName", "createdAt"],
-          {
-            queryFields: [field("accountId"), field("roleId")],
-            create: operation("addRole", "POST", "Accounts/roles", [
-              field("accountId", "text", true),
-              field("roleId", "text", true),
-              field("studentCode"),
-              selectValues("academicStatus", academicStatusOptions),
-            ]),
-            rowOperations: [
-              operation(
-                "removeRole",
-                "DELETE",
-                "Accounts/:accountId/roles/:roleId",
-                undefined,
-                { confirm: true },
-              ),
-            ],
           },
         ),
       ];
@@ -332,17 +333,17 @@ export function getWorkspaceDefinitions(
           "Programmes/search",
           ["programmeId", "programmeCode", "programmeName", "facultyId", "status"],
           {
-            queryFields: [field("programmeCode"), field("programmeName"), field("facultyId")],
+            queryFields: [field("programmeCode"), field("programmeName"), picker("facultyId", facultySource, false, "select", "faculty")],
             create: operation("create", "POST", "Programmes", [
               field("programmeCode", "text", true),
               field("programmeName", "text", true),
-              field("facultyId", "text", true),
+              picker("facultyId", facultySource, true, "select", "faculty"),
             ]),
             rowOperations: [
               operation("update", "PUT", "Programmes/:programmeId", [
                 field("programmeCode", "text", true),
                 field("programmeName", "text", true),
-                field("facultyId", "text", true),
+                picker("facultyId", facultySource, true, "select", "faculty"),
                 select("status", ["active", "archived"], true),
               ], {
                 bodyFromRecord: {
@@ -358,7 +359,7 @@ export function getWorkspaceDefinitions(
         workspace(
           "term",
           "AcademicTerms/search",
-          ["academicTermId", "termName", "startDate", "endDate", "status"],
+          ["termName", "startDate", "endDate", "status"],
           {
             queryFields: [field("termName"), field("status")],
             create: operation("create", "POST", "AcademicTerms", [
@@ -368,7 +369,7 @@ export function getWorkspaceDefinitions(
               select("status", ["upcoming", "current", "past"], true),
             ]),
             rowOperations: [
-              operation("update", "PUT", "AcademicTerms/:academicTermId", [
+              operation("update", "PUT", "AcademicTerms/:termId", [
                 field("termName", "text", true),
                 field("startDate", "date", true),
                 field("endDate", "date", true),
@@ -392,16 +393,16 @@ export function getWorkspaceDefinitions(
             queryFields: [
               field("subjectCode"),
               field("subjectName"),
-              field("facultyId"),
+              picker("facultyId", facultySource, false, "select", "faculty"),
             ],
             create: operation("create", "POST", "Subjects", [
-              field("facultyId", "text", true),
+              picker("facultyId", facultySource, true, "select", "faculty"),
               field("subjectCode", "text", true),
               field("subjectName", "text", true),
             ]),
             rowOperations: [
               operation("update", "PUT", "Subjects/:subjectId", [
-                field("facultyId", "text", true),
+                picker("facultyId", facultySource, true, "select", "faculty"),
                 field("subjectCode", "text", true),
                 field("subjectName", "text", true),
                 select("status", ["active", "archived"], true),
@@ -449,24 +450,37 @@ export function getWorkspaceDefinitions(
           "dataLedger",
           "StudentData/search",
           [
-            "studentDataId",
-            "studentId",
-            "dataAttributeName",
-            "termName",
-            "validFrom",
-            "status",
-            "isMissing",
-            "isErased",
+            ["studentFullName", "student"],
+            ["attributeName", "dataAttributeName"],
+            ["termName", "term"],
+            ["validFrom", "ledgerValidFrom"],
+            ["transactionFrom", "ledgerRecordedAt"],
+            ["status", "ledgerRowKind"],
+            ["isMissing", "ledgerMissing"],
+            ["erasedAt", "ledgerErasedAt"],
           ],
           {
+            description: t("dataLedgerDescription"),
             queryFields: [
-              field("studentId"),
-              field("dataAttributeId"),
-              field("termId"),
-              field("status"),
+              picker("dataAttributeId", {
+                path: "DataAttributes",
+                valueKey: "dataAttributeId",
+                labelKeys: ["attributeName"],
+              }, false, "select", "dataAttributeName"),
+              picker("termId", {
+                path: "AcademicTerms",
+                valueKey: "termId",
+                labelKeys: ["termName"],
+              }, false, "select", "term"),
+              selectValues("status", [
+                { label: "ledgerOriginal", value: "original" },
+                { label: "ledgerCorrection", value: "correction" },
+              ]),
               field("isMissing", "checkbox"),
+              field("studentId"),
             ],
-            pageSize: 20,
+            emptyTitle: t("dataLedgerEmptyTitle"),
+            emptyBody: t("dataLedgerEmptyBody"),
           },
         ),
       ];
@@ -759,6 +773,12 @@ export function getWorkspaceDefinitions(
                     isErased: false,
                   },
                   requiredValueKeys: ["value"],
+                  labels: {
+                    loading: t("loadingStudentDataValues"),
+                    error: t("studentDataOptionsUnavailable"),
+                    select: t("selectStudentDataValue"),
+                    empty: t("noCorrectableStudentData"),
+                  },
                 },
               },
               field("explanation", "textarea", true),
@@ -1380,32 +1400,42 @@ export function getWorkspaceDefinitions(
           "policies",
           "AccessPolicies/search",
           [
-            "accessPolicyId",
-            "roleName",
-            "consentPurposeName",
+            ["roleName", "role"],
+            ["purposeName", "consentPurpose"],
+            ["creatorFullName", "createdBy"],
             "status",
-            "createdAt",
           ],
           {
-            queryFields: [field("roleId"), field("consentPurposeId"), field("status")],
+            queryFields: [
+              picker("roleId", roleIdSource(true), false, "select", "role"),
+              picker("consentPurposeId", purposeSource, false, "select", "consentPurpose"),
+              selectValues("status", [
+                { label: "draft", value: "draft" },
+                { label: "active", value: "active" },
+                { label: "revoked", value: "revoked" },
+              ]),
+            ],
+            // Students always see their own data, so the Student role never gets a policy.
             create: operation("create", "POST", "AccessPolicies", [
-              field("roleId", "text", true),
-              field("consentPurposeId", "text", true),
+              picker("roleId", roleIdSource(true), true, "select", "role"),
+              picker("consentPurposeId", purposeSource, true, "select", "consentPurpose"),
             ]),
             rowOperations: [
               operation("update", "PUT", "AccessPolicies/:accessPolicyId", [
-                field("roleId", "text", true),
-                field("consentPurposeId", "text", true),
-              ]),
+                picker("roleId", roleIdSource(true), true, "select", "role"),
+                picker("consentPurposeId", purposeSource, true, "select", "consentPurpose"),
+              ], {
+                when: { key: "status", in: ["draft"] },
+              }),
               operation("activate", "PUT", "AccessPolicies/:accessPolicyId/activate", undefined, {
                 confirm: true,
+                when: { key: "status", in: ["draft"] },
               }),
               operation("revoke", "PUT", "AccessPolicies/:accessPolicyId/revoke", undefined, {
                 confirm: true,
+                destructive: true,
+                when: { key: "status", notIn: ["revoked"] },
               }),
-              operation("test", "POST", "AccessPolicies/:accessPolicyId/test", [
-                field("studentId", "text", true),
-              ]),
             ],
           },
         ),
@@ -1429,13 +1459,12 @@ export function getWorkspaceDefinitions(
           "consent",
           "Consents/histories/search",
           [
-            "consentHistoryId",
-            "consentId",
-            "studentName",
-            "purposeName",
-            "dataAttributeName",
-            "status",
-            "createdAt",
+            ["changedAt", "changedAt"],
+            ["changedByFullName", "changedBy"],
+            ["purposeName", "consentPurpose"],
+            ["attributeName", "dataAttributeName"],
+            ["previousStatus", "previousStatus"],
+            ["newStatus", "newStatus"],
           ],
           {
             queryFields: [field("studentId"), field("consentId")],
@@ -1445,20 +1474,24 @@ export function getWorkspaceDefinitions(
           "receivedRequests",
           "ConsentRequests/search",
           [
-            "consentRequestId",
-            "studentName",
-            "advisorName",
-            "purposeName",
-            "dataAttributeName",
+            ["studentFullName", "studentName"],
+            ["advisorFullName", "advisorName"],
+            ["purposeName", "consentPurpose"],
+            ["attributeName", "dataAttributeName"],
             "status",
+            "requestedAt",
           ],
           {
             queryFields: [
+              selectValues("status", [
+                { label: "pending", value: "pending" },
+                { label: "granted", value: "granted" },
+                { label: "denied", value: "denied" },
+                { label: "withdrawn", value: "withdrawn" },
+              ]),
+              picker("consentPurposeId", purposeSource, false, "select", "consentPurpose"),
               field("studentId"),
               field("advisorId"),
-              field("consentPurposeId"),
-              field("dataAttributeId"),
-              field("status"),
             ],
           },
         ),

@@ -89,6 +89,8 @@ namespace AdviseCare.Application.Contracts.Responses.StudentData
     {
         public List<string> Headers { get; set; } = new();
         public List<StudentDataPreviewRowResponse> SampleRows { get; set; } = new();
+        public List<StudentDataPreviewRowResponse> Rows { get; set; } = new();
+        public int TotalRowCount { get; set; } = 0;
     }
 
     public class StudentDataPreviewRowResponse

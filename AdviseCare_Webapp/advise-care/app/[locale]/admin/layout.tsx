@@ -15,7 +15,6 @@ export default async function AdminLayout({
   const user = await requireRole(locale, ["System Administrator"]);
   const navItems: NavItem[] = [
     { href: "/admin/m01", label: t("administrator.accounts"), icon: "manage_accounts" },
-    { href: "/admin/m06", label: t("administrator.roles"), icon: "badge" },
     { href: "/admin/m02", label: t("administrator.faculties"), icon: "account_tree" },
     { href: "/admin/m08", label: t("administrator.specialisations"), icon: "school" },
     { href: "/admin/m04", label: t("administrator.reference"), icon: "category" },

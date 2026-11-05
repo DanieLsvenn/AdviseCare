@@ -55,7 +55,7 @@ namespace AdviseCare.Application.Contracts.Requests.Account
 
     public class ImportAccountRequest
     {
-        [Required(ErrorMessage = "An Excel file (.xlsx) is required.")]
+        [Required(ErrorMessage = "An .xlsx or .csv file is required.")]
         public IFormFile? File { get; set; }
     }
 
@@ -156,5 +156,15 @@ namespace AdviseCare.Application.Contracts.Requests.Account
         [RegularExpression("^(enrolled|onLeave|withdrawn|graduated)?$",
             ErrorMessage = "Academic status must be enrolled, onLeave, withdrawn or graduated.")]
         public string AcademicStatus { get; set; } = string.Empty;
+    }
+
+    public class UpdateAccountRolesRequest
+    {
+        [Required(ErrorMessage = "At least one role is required."), MinLength(1,
+            ErrorMessage = "At least one role is required.")]
+        public List<string> RoleNames { get; set; } = new();
+        // Only when the Student role is added to an account that has no student profile yet
+        [MaxLength(50, ErrorMessage = "Student code must be under 50 characters.")]
+        public string StudentCode { get; set; } = string.Empty;
     }
 }

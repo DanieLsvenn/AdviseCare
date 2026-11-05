@@ -165,6 +165,10 @@ export function extractOptions(
       ([key, expected]) => readRecordValue(record, key) === expected,
     );
     if (!matches) return [];
+    const excluded = Object.entries(source.exclude ?? {}).some(([key, values]) =>
+      values.includes(readRecordValue(record, key) as string | number | boolean),
+    );
+    if (excluded) return [];
 
     const optionValue = readRecordValue(record, source.valueKey);
     if (
@@ -228,6 +232,7 @@ export function recordIdentity(record: Record<string, unknown>): string | undefi
     "subjectId",
     "programmeId",
     "academicTermId",
+    "termId",
     "roleId",
     "id",
     "consentId",
@@ -307,20 +312,55 @@ export type WorkspaceErrorKey =
   | "apiErrorNetwork"
   | "actionFailed";
 
+/* Wording the API or the framework uses when it has nothing specific to say;
+   those fall back to the app's own sentence for the status. */
+const GENERIC_SERVER_MESSAGES = [
+  /^request failed with status/i,
+  /^one or more validation errors occurred/i,
+  /^an unexpected error occurred/i,
+  /^bad request$/i,
+  /^not found$/i,
+  /^conflict$/i,
+  /^forbidden$/i,
+  /^unauthorized$/i,
+];
+
+/** The API's own explanation (e.g. "An account with email 'a@b.c' already exists."), when it gave one. */
+export function specificServerMessage(error: ApiError): string | undefined {
+  const message = error.message?.trim();
+  if (message && !GENERIC_SERVER_MESSAGES.some((pattern) => pattern.test(message))) return message;
+  // Model validation: no message, but the first field error says what is wrong.
+  const firstFieldError = Object.values(error.fieldErrors).find((item) => item.trim());
+  return firstFieldError;
+}
+
+/**
+ * A sentence for a failed request. A 4xx answer carries the API's reason
+ * (duplicate code, wrong state, missing reference…), so that reason is shown
+ * as it is; the app's generic sentence only covers answers without one. The
+ * "someone changed this record" wording is reserved for a real concurrency
+ * conflict and comes from the API itself.
+ */
 export function errorMessage(
   error: unknown,
   translate: (key: WorkspaceErrorKey) => string,
 ): string {
   if (!(error instanceof ApiError)) return translate("apiErrorNetwork");
-  if (error.status === 400) return translate("apiError400");
   if (error.status === 401) return translate("apiError401");
-  if (error.status === 403) return translate("apiError403");
-  if (error.status === 404) return translate("apiError404");
-  if (error.status === 409) return translate("apiError409");
   if (error.status >= 500 || error.status === 0) {
     return translate(error.status === 502 ? "apiErrorNetwork" : "apiError5xx");
   }
-  return error.message || translate("actionFailed");
+  // Requests rejected before they reach the API (bad path, no session) keep the app's wording.
+  const specific =
+    error.code === "invalid_api_path" || error.code === "missing_record_identifier"
+      ? undefined
+      : specificServerMessage(error);
+  if (specific) return specific;
+  if (error.status === 400) return translate("apiError400");
+  if (error.status === 403) return translate("apiError403");
+  if (error.status === 404) return translate("apiError404");
+  if (error.status === 409) return translate("apiError409");
+  return translate("actionFailed");
 }
 
 export function pascalCase(value: string): string {

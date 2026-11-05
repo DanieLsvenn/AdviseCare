@@ -265,7 +265,9 @@ namespace AdviseCare.Application.Services
             };
         }
 
-        // Preview an import file: the header row and up to five sample rows, nothing is written
+        private const int MaxPreviewRows = 2000;
+
+        // Preview an import file: the header row, five sample rows and every row (for the editable preview); nothing is written
         public Task<PreviewStudentDataResponse> PreviewAsync(PreviewStudentDataRequest request)
         {
             var rows = ReadRows(request.File);
@@ -279,7 +281,14 @@ namespace AdviseCare.Application.Services
                 {
                     RowNumber = r.RowNumber,
                     Values = r.Values
-                }).ToList()
+                }).ToList(),
+                // Every row (up to 2000) for the editable preview; the edited rows come back as a .csv file
+                Rows = rows.Take(MaxPreviewRows).Select(r => new StudentDataPreviewRowResponse
+                {
+                    RowNumber = r.RowNumber,
+                    Values = r.Values
+                }).ToList(),
+                TotalRowCount = rows.Count
             });
         }
 
@@ -558,6 +567,9 @@ namespace AdviseCare.Application.Services
             var terms = (await _academicTermRepository.GetAllAsync()).GroupBy(t => t.TermName, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
 
+            // One value per student, data attribute and term in a file: a second row for the same triple is reported, not silently stacked
+            var seenTriples = new Dictionary<(Guid, Guid, Guid), int>();
+
             foreach (var row in rows)
             {
                 var identifier = GetValue(row, mapping.StudentIdentifier);
@@ -598,6 +610,14 @@ namespace AdviseCare.Application.Services
                     check.RejectedRows.Add(new StudentDataRowErrorResponse { RowNumber = row.RowNumber, Messages = { $"data attribute '{dataAttribute.AttributeName}' is archived, so this row was not imported" } });
                     continue;
                 }
+
+                var triple = (matches![0].AccountId, dataAttribute.DataAttributeId, termMatches![0].TermId);
+                if (seenTriples.TryGetValue(triple, out var firstRow))
+                {
+                    check.Errors.Add(new StudentDataRowErrorResponse { RowNumber = row.RowNumber, Messages = { $"row {firstRow} already gives '{dataAttribute.AttributeName}' of student '{identifier}' for term '{termName}'; keep one of the two rows" } });
+                    continue;
+                }
+                seenTriples[triple] = row.RowNumber;
 
                 check.Rows.Add(new ImportRow(matches![0], dataAttribute, termMatches![0], value, validFrom.UtcDateTime));
             }

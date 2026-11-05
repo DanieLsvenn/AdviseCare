@@ -8,7 +8,6 @@ const screens: Record<string, WorkspaceScreen> = {
   m03: "admin.studentData",
   m04: "admin.categories",
   m05: "admin.activity",
-  m06: "admin.roles",
   m07: "admin.sessions",
   m08: "admin.assignments",
 };

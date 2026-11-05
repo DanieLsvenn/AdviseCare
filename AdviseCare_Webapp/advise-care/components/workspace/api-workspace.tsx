@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
   type FormEvent,
+  type ReactNode,
 } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
@@ -59,7 +60,8 @@ export interface WorkspaceField {
     | "select"
     | "checkbox"
     | "file"
-    | "list";
+    | "list"
+    | "multiselect";
   required?: boolean;
   options?: Array<{ label: string; value: string }>;
   accept?: string;
@@ -67,6 +69,10 @@ export interface WorkspaceField {
   hint?: string;
   pathOnly?: boolean;
   optionsFrom?: WorkspaceOptionSource;
+  /** Only ask for this field while another field's value contains this option (e.g. student code once Student is ticked). */
+  showWhen?: { key: string; includes: string };
+  /** Skip the field when the record already holds a value for it (the value is still sent). */
+  hideWhenPrefilled?: boolean;
 }
 
 export interface WorkspaceOptionSource {
@@ -75,8 +81,12 @@ export interface WorkspaceOptionSource {
   valueKey: string;
   labelKeys: string[];
   match?: Record<string, string | number | boolean>;
+  /** Leave out records whose field holds one of these values (e.g. the Student role). */
+  exclude?: Record<string, Array<string | number | boolean>>;
   requiredValueKeys?: string[];
   query?: ApiQuery;
+  /** Wording of the empty option while loading, on error, ready and with nothing to pick. */
+  labels?: { loading?: string; error?: string; select?: string; empty?: string };
 }
 
 export interface WorkspaceColumn {
@@ -125,6 +135,8 @@ export interface ApiWorkspaceDefinition {
   emptyBody?: string;
   /** Second and later workspaces on a page render without the page title. */
   embedded?: boolean;
+  /** Embedded under a tab that already names the list: no heading in the toolbar. */
+  hideToolbarTitle?: boolean;
 }
 
 type UiT = ReturnType<typeof useTranslations<"ui">>;
@@ -137,8 +149,11 @@ type UiT = ReturnType<typeof useTranslations<"ui">>;
  */
 export function ApiWorkspace({
   definition,
+  beforeList,
 }: {
   definition: ApiWorkspaceDefinition;
+  /** A section between the title row and the list (e.g. the import of this list's records). */
+  beforeList?: ReactNode;
 }) {
   const t = useTranslations("workspace");
   const tu = useTranslations("ui");
@@ -325,9 +340,11 @@ export function ApiWorkspace({
         />
       )}
 
+      {beforeList}
+
       <section className="overflow-hidden rounded-lg border border-rule bg-paper">
         <div className="flex flex-wrap items-center gap-x-space-md gap-y-space-sm border-b border-rule px-space-lg py-space-md">
-          {definition.embedded ? (
+          {definition.embedded && !definition.hideToolbarTitle ? (
             <h2 className="mr-auto text-base font-semibold text-text">{definition.title}</h2>
           ) : null}
           {queryFields.length ? (
@@ -1145,6 +1162,19 @@ export function ApiOperationForm({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [result, setResult] = useState<unknown>(undefined);
   const isRead = definition.method === "GET";
+  const currentValue = (key: string) => values[key] ?? bodyDefaults[key];
+  const visibleFields = (definition.fields ?? []).filter((field) => {
+    if (field.hideWhenPrefilled) {
+      const prefilled = bodyDefaults[field.key];
+      if (prefilled !== undefined && prefilled !== null && prefilled !== "") return false;
+    }
+    if (!field.showWhen) return true;
+    const value = currentValue(field.showWhen.key);
+    const includes = field.showWhen.includes;
+    return Array.isArray(value)
+      ? value.map(String).includes(includes)
+      : typeof value === "string" && value.split(/[\n,]/).map((item) => item.trim()).includes(includes);
+  });
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1165,7 +1195,7 @@ export function ApiOperationForm({
 
     setPending(true);
     try {
-      const body = isRead ? undefined : makeBody(definition.fields ?? [], values, bodyDefaults);
+      const body = isRead ? undefined : makeBody(visibleFields, values, bodyDefaults);
       const response = await clientApiRequest<unknown>(
         resolvePath(definition.path, { ...pathValues, ...values }),
         { method: definition.method, body, redirectOnUnauthorized: true },
@@ -1200,11 +1230,15 @@ export function ApiOperationForm({
   return (
     <>
       <form className="grid gap-space-md pt-space-md sm:grid-cols-2" onSubmit={submit}>
-        {(definition.fields ?? []).map((field) => (
+        {visibleFields.map((field) => (
           <div
             key={field.key}
             className={cn(
-              (field.type === "textarea" || field.type === "list" || field.type === "file") && "sm:col-span-2",
+              (field.type === "textarea" ||
+                field.type === "list" ||
+                field.type === "file" ||
+                field.type === "multiselect") &&
+                "sm:col-span-2",
             )}
           >
             <WorkspaceInput
@@ -1213,7 +1247,7 @@ export function ApiOperationForm({
               value={
                 values[field.key] ??
                 bodyDefaults[field.key] ??
-                (field.type === "checkbox" ? false : "")
+                (field.type === "checkbox" ? false : field.type === "multiselect" ? [] : "")
               }
               error={
                 fieldErrors[field.key] ??
@@ -1353,6 +1387,79 @@ export function WorkspaceInput({
   }
 
   const describedBy = error || optionsError ? errorId : undefined;
+  const labels = optionSource?.labels;
+  const placeholderOption = optionSource
+    ? optionsLoading
+      ? (labels?.loading ?? t("loadingOptions"))
+      : optionsError
+        ? (labels?.error ?? t("optionsUnavailable"))
+        : remoteOptions.length
+          ? compact
+            ? t("any")
+            : (labels?.select ?? t("selectOption"))
+          : (labels?.empty ?? t("noOptions"))
+    : compact
+      ? t("any")
+      : "—";
+  const choices = optionSource ? remoteOptions : (field.options ?? []);
+
+  if (field.type === "multiselect") {
+    const selected = Array.isArray(value)
+      ? value.map(String)
+      : typeof value === "string" && value
+        ? value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean)
+        : [];
+    return (
+      <fieldset aria-describedby={describedBy}>
+        <legend className="mb-1.5 block text-sm font-semibold text-text">
+          {field.label}
+          {field.required ? <span aria-hidden className="text-red-ink"> *</span> : null}
+        </legend>
+        {choices.length === 0 ? (
+          <p className="text-[0.8125rem] text-text-faint">{placeholderOption}</p>
+        ) : (
+          <div className="grid gap-x-space-md gap-y-1.5 sm:grid-cols-2">
+            {choices.map((option) => {
+              const checked = selected.includes(option.value);
+              return (
+                <label
+                  key={option.value}
+                  className={cn(
+                    "flex min-h-9 cursor-pointer items-center gap-2 rounded-md border px-2.5 text-sm transition-colors",
+                    checked ? "border-ink bg-ink-wash text-text" : "border-rule bg-paper text-text-muted hover:border-rule-strong",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-[#2142b8]"
+                    name={field.key}
+                    value={option.value}
+                    checked={checked}
+                    onChange={(event) =>
+                      onChange(
+                        event.target.checked
+                          ? [...selected, option.value]
+                          : selected.filter((item) => item !== option.value),
+                      )
+                    }
+                  />
+                  {option.label}
+                </label>
+              );
+            })}
+          </div>
+        )}
+        {field.hint && !compact ? (
+          <p className="mt-1 text-[0.8125rem] text-text-faint">{field.hint}</p>
+        ) : null}
+        {error || optionsError ? (
+          <p id={errorId} role="alert" className="mt-1 text-[0.8125rem] text-red-ink">
+            {error || optionsError}
+          </p>
+        ) : null}
+      </fieldset>
+    );
+  }
 
   return (
     <div>
@@ -1390,20 +1497,8 @@ export function WorkspaceInput({
           required={field.required}
           value={typeof value === "string" ? value : ""}
         >
-          <option value="">
-            {optionSource
-              ? optionsLoading
-                ? t("loadingStudentDataValues")
-                : optionsError
-                  ? t("studentDataOptionsUnavailable")
-                  : remoteOptions.length
-                    ? t("selectStudentDataValue")
-                    : t("noCorrectableStudentData")
-              : compact
-                ? t("any")
-                : "—"}
-          </option>
-          {(optionSource ? remoteOptions : (field.options ?? [])).map((option) => (
+          <option value="">{placeholderOption}</option>
+          {choices.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
