@@ -466,5 +466,6 @@
   "importAccountsReady": "{count, plural, one {# account is ready to create.} other {# accounts are ready to create.}}",
   "importAccountsDone": "{count, plural, one {# account created.} other {# accounts created.}} Send them the linking email from the list.",
   "importStudentDataReady": "{count, plural, one {# value is ready to import.} other {# values are ready to import.}}",
-  "importStudentDataDone": "{inserted} values imported; {missing} missing-value rows added for enrolled students without a value."
+  "importStudentDataDone": "{inserted} values imported; {missing} missing-value rows added for enrolled students without a value.",
+  "importEndpointMissing": "The API server does not have this import step yet. Rebuild and restart AdviseCare_API, then try again."
 }

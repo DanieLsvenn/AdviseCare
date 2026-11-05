@@ -98,6 +98,13 @@ export function ImportEditor({
   const [onlyProblems, setOnlyProblems] = useState(false);
   const [page, setPage] = useState(0);
 
+  // A 404 here means the API server runs a build without the import endpoints,
+  // not that a record is missing.
+  const importErrorMessage = (cause: unknown) =>
+    cause instanceof ApiError && cause.status === 404
+      ? t("importEndpointMissing")
+      : errorMessage(cause, t);
+
   const problemsByRow = useMemo(() => {
     const map = new Map<number, string[]>();
     for (const problem of outcome?.problems ?? []) {
@@ -173,7 +180,7 @@ export function ImportEditor({
         setOutcome(null);
       }
     } catch (cause) {
-      setError(errorMessage(cause, t));
+      setError(importErrorMessage(cause));
     } finally {
       setPending(null);
     }
@@ -189,7 +196,7 @@ export function ImportEditor({
       setCheckedVersion(version);
       if (!checked.ok) setOnlyProblems(checked.problems.some((problem) => problem.rowIndex !== null));
     } catch (cause) {
-      setError(errorMessage(cause, t));
+      setError(importErrorMessage(cause));
     } finally {
       setPending(null);
     }
@@ -206,7 +213,7 @@ export function ImportEditor({
         setCheckedVersion(version);
       }
     } catch (cause) {
-      setError(errorMessage(cause, t));
+      setError(importErrorMessage(cause));
     } finally {
       setPending(null);
     }

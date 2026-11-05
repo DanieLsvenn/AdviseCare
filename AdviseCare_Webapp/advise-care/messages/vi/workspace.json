@@ -466,5 +466,6 @@
   "importAccountsReady": "{count} tài khoản sẵn sàng để tạo.",
   "importAccountsDone": "Đã tạo {count} tài khoản. Gửi email liên kết cho họ từ danh sách.",
   "importStudentDataReady": "{count} giá trị sẵn sàng để nhập.",
-  "importStudentDataDone": "Đã nhập {inserted} giá trị; thêm {missing} dòng thiếu giá trị cho sinh viên đang học chưa có giá trị."
+  "importStudentDataDone": "Đã nhập {inserted} giá trị; thêm {missing} dòng thiếu giá trị cho sinh viên đang học chưa có giá trị.",
+  "importEndpointMissing": "Máy chủ API chưa có bước nhập này. Hãy build lại và khởi động lại AdviseCare_API rồi thử lại."
 }
