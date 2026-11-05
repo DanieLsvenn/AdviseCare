@@ -30,7 +30,8 @@ export async function requireUser(
   try {
     return await getCurrentUser();
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) {
+    // 404 = token còn hạn nhưng tài khoản đã bị xoá (vd. sau khi nạp lại mock data): xử lý như phiên hết hạn
+    if (error instanceof ApiError && (error.status === 401 || error.status === 404)) {
       redirect(`/${locale}/sign-in?reason=expired`);
     }
     if (error instanceof ApiError && error.status === 403) {
