@@ -202,6 +202,27 @@
     },
     "waitingFor": "{count, plural, =0 {Gửi hôm nay} other {Đã chờ # ngày}}"
   },
+  "caseUpdates": {
+    "title": "Cập nhật từ cố vấn",
+    "studentIntro": "Các cập nhật cố vấn chủ động chia sẻ với bạn. Ghi chú nội bộ của case không hiển thị ở đây.",
+    "advisorIntro": "Đăng cập nhật ngắn để sinh viên xem. Mỗi cập nhật được lưu vĩnh viễn và không thể sửa hoặc xóa.",
+    "advisorLabel": "Cố vấn",
+    "emptyStudent": "Chưa có cập nhật từ cố vấn",
+    "emptyStudentHint": "Cố vấn có thể đăng cập nhật tại đây sau khi xem yêu cầu của bạn.",
+    "emptyAdvisor": "Chưa có cập nhật nào được chia sẻ",
+    "emptyAdvisorHint": "Dùng mục này cho các bước tiếp theo, lịch hẹn hoặc giải thích dành cho sinh viên.",
+    "studentFollowUp": "Bạn muốn hỏi thêm hoặc tiếp tục trao đổi? Hãy liên hệ cố vấn qua email trong thẻ thông tin cố vấn ở trên.",
+    "sendLabel": "Gửi cập nhật cho sinh viên",
+    "placeholder": "Ví dụ: Tôi đã xem thông tin bạn chia sẻ. Hãy gửi email cho tôi để thống nhất thời gian trao đổi các bước tiếp theo.",
+    "limitHint": "Tối đa 1.000 ký tự. Cập nhật đã đăng không thể thay đổi.",
+    "send": "Đăng cập nhật",
+    "sent": "Cập nhật đã được lưu và hiển thị trong case của sinh viên.",
+    "closedHint": "Case đã đóng nên không thể đăng cập nhật mới.",
+    "loadError": "Không tải được cập nhật từ cố vấn.",
+    "sendError": "Không thể đăng cập nhật.",
+    "loading": "Đang tải cập nhật từ cố vấn",
+    "retry": "Thử lại"
+  },
   "matching": {
     "title": "Hàng đợi ghép cố vấn",
     "description": "Các yêu cầu hỗ trợ đang chờ cố vấn. Chọn một yêu cầu, xem cố vấn được gợi ý và ghép.",

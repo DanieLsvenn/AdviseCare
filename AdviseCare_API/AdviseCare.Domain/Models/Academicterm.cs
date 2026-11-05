@@ -7,7 +7,7 @@ namespace AdviseCare.Domain.Models;
 
 public partial class Academicterm
 {
-    public Guid TermId { get; set; }
+    public Guid TermId { get; set; } 
 
     public DateTime EndDate { get; set; }
 

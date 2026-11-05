@@ -202,6 +202,27 @@
     },
     "waitingFor": "{count, plural, =0 {Sent today} one {Waiting # day so far} other {Waiting # days so far}}"
   },
+  "caseUpdates": {
+    "title": "Advisor updates",
+    "studentIntro": "Updates your advisor has deliberately shared with you. Private case notes are not shown here.",
+    "advisorIntro": "Publish a short update the student can see. Each update is permanently recorded and cannot be edited or deleted.",
+    "advisorLabel": "Advisor",
+    "emptyStudent": "No advisor updates yet",
+    "emptyStudentHint": "Your advisor can post an update here after reviewing your request.",
+    "emptyAdvisor": "No updates have been shared",
+    "emptyAdvisorHint": "Use this space for short next steps, meeting arrangements, or clarifications for the student.",
+    "studentFollowUp": "Need to ask a question or continue the conversation? Contact your advisor using the email in the advisor card above.",
+    "sendLabel": "Send an update to the student",
+    "placeholder": "For example: I reviewed the information you shared. Please email me to arrange a time to discuss the next steps.",
+    "limitHint": "Up to 1,000 characters. Once published, an update cannot be changed.",
+    "send": "Publish update",
+    "sent": "Update recorded and visible on the student's case.",
+    "closedHint": "This case is closed, so no new updates can be published.",
+    "loadError": "Could not load advisor updates.",
+    "sendError": "Could not publish the update.",
+    "loading": "Loading advisor updates",
+    "retry": "Retry"
+  },
   "matching": {
     "title": "Matching queue",
     "description": "Support requests waiting for an advisor. Pick a request, check the suggested advisors and assign it.",

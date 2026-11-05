@@ -2,14 +2,14 @@
 title: AdviseCare - Use Case Overview (actors and functional modules)
 ---
 flowchart LR
-    ALL(["&laquo;actor&raquo;<br/>All authenticated users"])
-    ADM(["&laquo;actor&raquo;<br/>System Administrator"])
-    STW(["&laquo;actor&raquo;<br/>Data Protection Steward"])
-    AA(["&laquo;actor&raquo;<br/>Academic Advisor"])
-    WA(["&laquo;actor&raquo;<br/>Wellbeing Advisor"])
-    SWO(["&laquo;actor&raquo;<br/>Student Welfare Officer"])
-    STU(["&laquo;actor&raquo;<br/>Student"])
-    PH(["&laquo;actor&raquo;<br/>Programme Head"])
+    ALL["○<br/>╱│╲<br/>╱ ╲<br/>All authenticated users"]
+    ADM["○<br/>╱│╲<br/>╱ ╲<br/>System Administrator"]
+    STW["○<br/>╱│╲<br/>╱ ╲<br/>Data Protection Steward"]
+    AA["○<br/>╱│╲<br/>╱ ╲<br/>Academic Advisor"]
+    WA["○<br/>╱│╲<br/>╱ ╲<br/>Wellbeing Advisor"]
+    SWO["○<br/>╱│╲<br/>╱ ╲<br/>Student Welfare Officer"]
+    STU["○<br/>╱│╲<br/>╱ ╲<br/>Student"]
+    PH["○<br/>╱│╲<br/>╱ ╲<br/>Programme Head"]
     subgraph SYS["AdviseCare"]
         ACC(["Account and Access Management<br/>(10 use cases)"])
         MST(["Master Data Management<br/>(4 use cases)"])
@@ -50,3 +50,6 @@ flowchart LR
     WA --- CWF
     WA --- SDA
     WA --- SUP
+    linkStyle default stroke-width: 1pt;
+    classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
+    class ALL,ADM,STW,AA,WA,SWO,STU,PH actor;

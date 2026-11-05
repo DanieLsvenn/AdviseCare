@@ -78,7 +78,9 @@ builder.Services.AddScoped<IEscalationService, EscalationService>();
 // Member D
 builder.Services.AddScoped<ISupportCategoryService, SupportCategoryService>();
 builder.Services.AddScoped<ICaseService, CaseService>();
+builder.Services.AddScoped<ICaseAccessService, CaseAccessService>();
 builder.Services.AddScoped<ICaseNoteService, CaseNoteService>();
+builder.Services.AddScoped<ICaseAdvisorUpdateService, CaseAdvisorUpdateService>();
 builder.Services.AddScoped<IReferralService, ReferralService>();
 builder.Services.AddScoped<ICaseChangeRequestService, CaseChangeRequestService>();
 builder.Services.AddScoped<IReportService, ReportService>();

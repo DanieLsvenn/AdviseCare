@@ -13,21 +13,18 @@ namespace AdviseCare.Application.Services
     {
         private readonly IGenericRepository<Casenote> _caseNoteRepository;
         private readonly IGenericRepository<Case> _caseRepository;
-        private readonly IGenericRepository<AccountRole> _accountRoleRepository;
-        private readonly IGenericRepository<Referral> _referralRepository;
+        private readonly ICaseAccessService _caseAccessService;
         private readonly IActivityLogService _activityLogService;
 
         public CaseNoteService(
             IGenericRepository<Casenote> caseNoteRepository,
             IGenericRepository<Case> caseRepository,
-            IGenericRepository<AccountRole> accountRoleRepository,
-            IGenericRepository<Referral> referralRepository,
+            ICaseAccessService caseAccessService,
             IActivityLogService activityLogService)
         {
             _caseNoteRepository = caseNoteRepository;
             _caseRepository = caseRepository;
-            _accountRoleRepository = accountRoleRepository;
-            _referralRepository = referralRepository;
+            _caseAccessService = caseAccessService;
             _activityLogService = activityLogService;
         }
 
@@ -78,7 +75,7 @@ namespace AdviseCare.Application.Services
         {
             var note = await _caseNoteRepository.GetByIdAsyncInclude(CaseNoteId, n => n.Author, n => n.Case)
                 ?? throw new NotFoundException("Case note not found.");
-            if (note.AuthorId != CallerId && (!note.IsFinalized || !await CanViewCaseAsStaffAsync(note.Case, CallerId)))
+            if (note.AuthorId != CallerId && (!note.IsFinalized || !await _caseAccessService.CanViewCaseAsStaffAsync(note.Case, CallerId)))
                 throw new NotFoundException("Case note not found.");
 
             return new GetCaseNoteByIdResponse
@@ -99,7 +96,7 @@ namespace AdviseCare.Application.Services
         {
             var caseRecord = await _caseRepository.GetByIdAsync(request.CaseId)
                 ?? throw new NotFoundException("Case not found.");
-            if (!await CanViewCaseAsStaffAsync(caseRecord, CallerId))
+            if (!await _caseAccessService.CanViewCaseAsStaffAsync(caseRecord, CallerId))
                 throw new NotFoundException("Case not found.");
 
             var notes = await _caseNoteRepository.SearchAsyncIncludeOrderBy(n =>
@@ -128,7 +125,7 @@ namespace AdviseCare.Application.Services
                 ?? throw new NotFoundException("Case not found.");
             if (caseRecord.AdvisorId != CreatorId)
             {
-                if (!await CanViewCaseAsStaffAsync(caseRecord, CreatorId))
+                if (!await _caseAccessService.CanViewCaseAsStaffAsync(caseRecord, CreatorId))
                     throw new NotFoundException("Case not found.");
                 throw new ForbiddenException("Only the case's current advisor can write case notes.");
             }
@@ -229,16 +226,5 @@ namespace AdviseCare.Application.Services
             return note;
         }
 
-        // Helper: the staff of a case are its current advisor, the Programme Head, and anyone who sent or received a referral of it (never the student)
-        private async Task<bool> CanViewCaseAsStaffAsync(Case CaseRecord, Guid CallerId)
-        {
-            if (CaseRecord.AdvisorId == CallerId)
-                return true;
-            if (CaseRecord.StudentId == CallerId)
-                return false;
-            if (await _accountRoleRepository.ExistsAsync(ar => ar.AccountId == CallerId && ar.Role.RoleName == "Programme Head"))
-                return true;
-            return await _referralRepository.ExistsAsync(r => r.CaseId == CaseRecord.CaseId && (r.FromAccountId == CallerId || r.ToAccountId == CallerId));
-        }
     }
 }

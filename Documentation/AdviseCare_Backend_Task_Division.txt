@@ -111,5 +111,6 @@ D4.2. Advisor opens a case for a student based on their data (read through Membe
 D4.3. Case notes: draft, edit, finalize (no edits after finalize)
 D4.4. Stage changes with reason (CASESTAGEHISTORIES insert-only); close, reopen
 D4.5. Referrals: to another advisor (same/other type) or to the Welfare Officer; accept / return
+D4.6. Student-visible advisor updates: the current advisor can publish short append-only updates on an open case; the student and authorized case staff can read them; notify the student; keep these separate from private CASE_NOTES
 D5. Case change requests (CASECHANGEREQUESTS): the case's advisor or student requests another advisor for one case, Programme Head approves (CASES.advisorId = proposed advisor) or rejects with decision notes (required)
 D6. Reports (Programme Head; ReportsController + ReportService): cases in a time range with filters, caseload volume and closure time per advisor, export Excel/CSV/PDF generated on the fly (the PDF uses the built-in SimplePdfWriter, which cannot draw Vietnamese diacritics)

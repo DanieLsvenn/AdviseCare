@@ -2,8 +2,8 @@
 title: AdviseCare - Use Cases of Academic Advisor
 ---
 flowchart LR
-    ACT(["&laquo;actor&raquo;<br/><b>Academic Advisor</b>"])
-    GEN(["&laquo;actor&raquo;<br/>All authenticated users"])
+    ACT["○<br/>╱│╲<br/>╱ ╲<br/><b>Academic Advisor</b>"]
+    GEN["○<br/>╱│╲<br/>╱ ╲<br/>All authenticated users"]
     ACT -.->|"inherits"| GEN
     subgraph SYS["AdviseCare"]
         direction TB
@@ -44,3 +44,6 @@ flowchart LR
     ACT --- UC47
     ACT --- UC48
     ACT --- UC49
+    linkStyle default stroke-width: 1pt;
+    classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
+    class ACT,GEN actor;

@@ -44,6 +44,15 @@ export interface CaseNoteRecord {
   isFinalized: boolean;
 }
 
+export interface CaseAdvisorUpdateRecord {
+  caseAdvisorUpdateId: string;
+  caseId: string;
+  authorId: string;
+  authorFullName: string;
+  messageText: string;
+  createdAt: string;
+}
+
 export function str(value: unknown): string {
   return typeof value === "string" ? value : typeof value === "number" ? String(value) : "";
 }
@@ -74,7 +83,7 @@ export function toCase(record: Record<string, unknown>): CaseRecord {
     studentCode: str(record.studentCode),
     studentEmail: str(record.studentEmail),
     advisorId: str(record.advisorId) || null,
-    advisorName: str(record.advisorName),
+    advisorName: str(record.advisorName ?? record.advisorFullName),
     advisorEmail: str(record.advisorEmail),
     openedByName: str(record.openedByName),
     subjectCode: str(record.subjectCode),
@@ -112,6 +121,17 @@ export function toNote(record: Record<string, unknown>): CaseNoteRecord {
     createdAt: str(record.createdAt),
     editedAt: str(record.editedAt) || null,
     isFinalized: record.isFinalized === true,
+  };
+}
+
+export function toCaseAdvisorUpdate(record: Record<string, unknown>): CaseAdvisorUpdateRecord {
+  return {
+    caseAdvisorUpdateId: str(record.caseAdvisorUpdateId),
+    caseId: str(record.caseId),
+    authorId: str(record.authorId),
+    authorFullName: str(record.authorFullName),
+    messageText: str(record.messageText),
+    createdAt: str(record.createdAt),
   };
 }
 

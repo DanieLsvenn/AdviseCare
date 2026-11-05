@@ -583,6 +583,16 @@ status - enum - lifecycle state of the restore (e.g. running/verified/failed)
 43 RESTOREOPERATIONS - 42 BACKUPS: many to one (backupId)
 43 RESTOREOPERATIONS - 1 ACCOUNTS: many to one (executedBy)
 
+44. CASEADVISORUPDATES
+caseAdvisorUpdateId (PK) - uuid - unique identifier for one student-visible advisor update
+authorId (FK) - uuid - the current advisor who published the update
+caseId (FK) - uuid - which support case the update belongs to
+messageText - string (max 1000) - concise next step or clarification intentionally shared with the student
+createdAt - date - when the update was published; updates are append-only in the application
+
+44 CASEADVISORUPDATES - 1 ACCOUNTS: many to one (authorId)
+44 CASEADVISORUPDATES - 20 CASES: many to one (caseId)
+
 
 NOTES (current version)
 

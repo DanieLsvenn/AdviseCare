@@ -180,6 +180,14 @@ Advisor and student decide by themselves how and when to meet (online, offline, 
 + Finalize a note
 + View history of past notes for a student
 
+- Keep the student informed through student-visible advisor updates:
+
+The current advisor can publish a short update after reviewing a request or student data. Updates are attributed and timestamped, are visible to the student and authorized case staff, and cannot be edited or deleted through the application. Internal case notes remain staff-only. The student can follow up using the advisor's contact information.
+
++ Publish and view a student-visible advisor update
++ Notify the student when an update is published
++ Preserve update author and timestamp for accountability
+
 - Advance a case through its stages:
 
 Every case moves through a defined pipeline (pending, assigned, contacted, referred, follow-up, closed), giving a visible status instead of notes scattered across emails.

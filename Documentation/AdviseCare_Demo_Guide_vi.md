@@ -28,11 +28,11 @@
 
 ### 1.1. Khởi động hệ thống
 
-| Thành phần | Lệnh | Địa chỉ |
-|---|---|---|
-| Database | Có sẵn `AdviseCareDB` trong SQL Server (nếu cần dựng lại: chạy `Documentation\AdviseCare_Database_Script.sql`) | — |
-| API (.NET) | Trong thư mục `AdviseCare_API\AdviseCare.API`: `dotnet run --launch-profile https` | https://localhost:7286 (Swagger: `/swagger`) |
-| Web (Next.js) | Trong thư mục `AdviseCare_Webapp\advise-care`: `pnpm dev:local-api` | http://localhost:3000 |
+| Thành phần    | Lệnh                                                                                                           | Địa chỉ                                      |
+| ------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Database      | Có sẵn `AdviseCareDB` trong SQL Server (nếu cần dựng lại: chạy `Documentation\AdviseCare_Database_Script.sql`) | —                                            |
+| API (.NET)    | Trong thư mục `AdviseCare_API\AdviseCare.API`: `dotnet run --launch-profile https`                             | https://localhost:7286 (Swagger: `/swagger`) |
+| Web (Next.js) | Trong thư mục `AdviseCare_Webapp\advise-care`: `pnpm dev:local-api`                                            | http://localhost:3000                        |
 
 Mở trình duyệt: **http://localhost:3000/vi/sign-in** (đuôi `/vi` = giao diện tiếng Việt, đổi thành `/en` để xem tiếng Anh).
 
@@ -40,26 +40,26 @@ Mở trình duyệt: **http://localhost:3000/vi/sign-in** (đuôi `/vi` = giao d
 
 ### 1.2. Tài khoản demo (mật khẩu chung: `123456`)
 
-| Vai trò | Email đăng nhập | Sau khi đăng nhập vào trang |
-|---|---|---|
-| Quản trị viên hệ thống | `admin@gmail.com` (hoặc `admin`) | `/vi/admin/m01` |
-| Cán bộ bảo vệ dữ liệu (Steward) | `steward@gmail.com` | trang Steward |
-| Cố vấn học tập | `academicadvisor@gmail.com` | `/vi/advisor/caseload` |
-| Cố vấn wellbeing | `wellbeingadvisor@gmail.com` | `/vi/advisor/caseload` |
-| Cán bộ công tác sinh viên (Welfare) | `welfareofficer@gmail.com` | `/vi/welfare/referrals` |
-| Sinh viên (SE180001) | `student@gmail.com` | `/vi/me/profile` |
-| Trưởng chương trình | `programmehead@gmail.com` | `/vi/head` |
+| Vai trò                             | Email đăng nhập                  | Sau khi đăng nhập vào trang |
+| ----------------------------------- | -------------------------------- | --------------------------- |
+| Quản trị viên hệ thống              | `admin@gmail.com` (hoặc `admin`) | `/vi/admin/m01`             |
+| Cán bộ bảo vệ dữ liệu (Steward)     | `steward@gmail.com`              | trang Steward               |
+| Cố vấn học tập                      | `academicadvisor@gmail.com`      | `/vi/advisor/caseload`      |
+| Cố vấn wellbeing                    | `wellbeingadvisor@gmail.com`     | `/vi/advisor/caseload`      |
+| Cán bộ công tác sinh viên (Welfare) | `welfareofficer@gmail.com`       | `/vi/welfare/referrals`     |
+| Sinh viên (SE180001)                | `student@gmail.com`              | `/vi/me/profile`            |
+| Trưởng chương trình                 | `programmehead@gmail.com`        | `/vi/head`                  |
 
 > **Mẹo demo hai vai trò cùng lúc:** mở thêm **một cửa sổ ẩn danh** (hoặc profile trình duyệt thứ hai) — cửa sổ 1 là Sinh viên, cửa sổ 2 là Cố vấn/Trưởng chương trình. Không cần đăng xuất qua lại. Muốn đăng xuất: bấm **"Đăng xuất"** ở góc trên.
 
 ### 1.3. File mẫu để import (thư mục [`demo-samples`](./demo-samples))
 
-| File | Dùng ở đâu | Kết quả mong đợi |
-|---|---|---|
-| [`studentdata_demo.csv`](./demo-samples/studentdata_demo.csv) | Admin → "Nhập dữ liệu sinh viên" | **Hợp lệ**: 5 dòng dữ liệu cho `student@gmail.com` (GPA 6.8, Attendance rate 72, Accommodation status rented, Family income bracket low, Financial difficulty true — học kỳ Fall 2026) |
-| [`studentdata_invalid_demo.csv`](./demo-samples/studentdata_invalid_demo.csv) | cùng chỗ trên | **Bị từ chối** với 3 lỗi: email không tồn tại, thuộc tính `Height` không có, giá trị GPA `abc` không phải số |
-| [`accounts_valid_demo.xlsx`](./demo-samples/accounts_valid_demo.xlsx) | Admin → "Tài khoản" → "Nhập từ Excel" | 5 tài khoản (3 sinh viên, 1 cố vấn, 1 nhân sự có 2 vai trò) |
-| [`accounts_invalid_demo.xlsx`](./demo-samples/accounts_invalid_demo.xlsx) | cùng chỗ trên | **Bị từ chối toàn bộ** (có 1 email sai định dạng, 1 mã khoa `XX` không tồn tại) → minh họa nguyên tắc "một dòng lỗi thì không tạo gì cả" |
+| File                                                                          | Dùng ở đâu                            | Kết quả mong đợi                                                                                                                                                                       |
+| ----------------------------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`studentdata_demo.csv`](./demo-samples/studentdata_demo.csv)                 | Admin → "Nhập dữ liệu sinh viên"      | **Hợp lệ**: 5 dòng dữ liệu cho `student@gmail.com` (GPA 6.8, Attendance rate 72, Accommodation status rented, Family income bracket low, Financial difficulty true — học kỳ Fall 2026) |
+| [`studentdata_invalid_demo.csv`](./demo-samples/studentdata_invalid_demo.csv) | cùng chỗ trên                         | **Bị từ chối** với 3 lỗi: email không tồn tại, thuộc tính `Height` không có, giá trị GPA `abc` không phải số                                                                           |
+| [`accounts_valid_demo.xlsx`](./demo-samples/accounts_valid_demo.xlsx)         | Admin → "Tài khoản" → "Nhập từ Excel" | 5 tài khoản (3 sinh viên, 1 cố vấn, 1 nhân sự có 2 vai trò)                                                                                                                            |
+| [`accounts_invalid_demo.xlsx`](./demo-samples/accounts_invalid_demo.xlsx)     | cùng chỗ trên                         | **Bị từ chối toàn bộ** (có 1 email sai định dạng, 1 mã khoa `XX` không tồn tại) → minh họa nguyên tắc "một dòng lỗi thì không tạo gì cả"                                               |
 
 > Các file `.csv`/`.xlsx` mẫu đã được kiểm tra bằng API ở chế độ **kiểm tra thử (dry-run)**. File `accounts_valid_demo.xlsx` **chưa nhập thật** để không làm bẩn DB — nếu bạn nhập, 5 tài khoản mới sẽ ở trạng thái "chưa liên kết" và không đăng nhập được (xem mục 10).
 
@@ -91,13 +91,13 @@ Cố vấn ── đóng ca ─────────────────�
 
 **Bản ngắn (~15 phút) — "xương sống" của app**
 
-| # | Ai | Làm gì | Mục |
-|---|---|---|---|
-| 1 | Admin | Import `studentdata_demo.csv` (để cố vấn có dữ liệu mà xem) | A.5 |
-| 2 | Sinh viên | Gửi yêu cầu hỗ trợ học tập + chia sẻ GPA, Attendance | C.1 |
-| 3 | Trưởng CT | Ghép cố vấn | C.2 |
-| 4 | Cố vấn | Mở ca, xem dữ liệu được chia sẻ, ghi chú, chuyển giai đoạn | C.3 |
-| 5 | Sinh viên | Xem tiến độ ca + "Lịch sử xem" (cố vấn đã xem gì) | C.4 |
+| #   | Ai        | Làm gì                                                      | Mục |
+| --- | --------- | ----------------------------------------------------------- | --- |
+| 1   | Admin     | Import `studentdata_demo.csv` (để cố vấn có dữ liệu mà xem) | A.5 |
+| 2   | Sinh viên | Gửi yêu cầu hỗ trợ học tập + chia sẻ GPA, Attendance        | C.1 |
+| 3   | Trưởng CT | Ghép cố vấn                                                 | C.2 |
+| 4   | Cố vấn    | Mở ca, xem dữ liệu được chia sẻ, ghi chú, chuyển giai đoạn  | C.3 |
+| 5   | Sinh viên | Xem tiến độ ca + "Lịch sử xem" (cố vấn đã xem gì)           | C.4 |
 
 **Bản đầy đủ (30+ phút):** bản ngắn + Phần B (Steward) + Phần D (outreach, yêu cầu đồng ý, chuyển tuyến Welfare, đổi cố vấn) + Phần E (quyền riêng tư) + Phần F (giám sát) + Phần G (báo cáo).
 
@@ -122,25 +122,26 @@ File gồm 7 cột: `email, fullName, userName, facultyCode, role, studentCode, 
 
 **Cách 2 — Tạo từng tài khoản:** bấm **"Tạo"**, điền:
 
-| Ô | Ví dụ | Ghi chú |
-|---|---|---|
-| Email* | `sv.demo@example.com` | |
-| Họ và tên* | `Nguyễn Văn Demo` | |
-| Tên đăng nhập* | `sv_demo` | |
-| Khoa | `SE` | chọn trong danh sách |
-| Tên vai trò* | `Student` | mỗi vai trò một dòng |
-| Mã sinh viên | `SE189999` | **chỉ khi là Student** |
-| Trạng thái học tập | `enrolled` | enrolled / onLeave / withdrawn / graduated |
+| Ô                  | Ví dụ                 | Ghi chú                                    |
+| ------------------ | --------------------- | ------------------------------------------ |
+| Email\*            | `sv.demo@example.com` |                                            |
+| Họ và tên\*        | `Nguyễn Văn Demo`     |                                            |
+| Tên đăng nhập\*    | `sv_demo`             |                                            |
+| Khoa               | `SE`                  | chọn trong danh sách                       |
+| Tên vai trò\*      | `Student`             | mỗi vai trò một dòng                       |
+| Mã sinh viên       | `SE189999`            | **chỉ khi là Student**                     |
+| Trạng thái học tập | `enrolled`            | enrolled / onLeave / withdrawn / graduated |
 
 > Quy tắc: tài khoản sinh viên **bắt buộc** có mã sinh viên + trạng thái học tập; tài khoản nhân sự thì **không được** có mã sinh viên.
 
-**Thao tác trên từng dòng:** Gửi liên kết tài khoản (email hiệu lực 7 ngày — trạng thái chuyển *chưa liên kết → đã gửi email → đã liên kết*), Thêm vai trò, Kích hoạt / Tắt hoạt động, **Cấm tài khoản** (chặn đăng nhập, kết thúc mọi phiên) / Gỡ cấm.
+**Thao tác trên từng dòng:** Gửi liên kết tài khoản (email hiệu lực 7 ngày — trạng thái chuyển _chưa liên kết → đã gửi email → đã liên kết_), Thêm vai trò, Kích hoạt / Tắt hoạt động, **Cấm tài khoản** (chặn đăng nhập, kết thúc mọi phiên) / Gỡ cấm.
 
 ### A.2. Phân công vai trò (`/vi/admin/m06` — "Phân vai trò")
 
-Trả lời câu hỏi "một người có thể có nhiều vai trò không?" — **có**: bảng này là quan hệ nhiều–nhiều giữa tài khoản và vai trò (hiện ~69 dòng cho ~68 tài khoản, vì một vài người có 2 vai trò). Cột: *Mã tài khoản / Tài khoản / Mã vai trò*.
+Trả lời câu hỏi "một người có thể có nhiều vai trò không?" — **có**: bảng này là quan hệ nhiều–nhiều giữa tài khoản và vai trò (hiện ~69 dòng cho ~68 tài khoản, vì một vài người có 2 vai trò). Cột: _Mã tài khoản / Tài khoản / Mã vai trò_.
 
 Bấm **"Thêm vai trò"**:
+
 - **Tài khoản**: gõ tên hoặc email để tìm.
 - **Vai trò**: chọn một trong 7 vai trò.
 - **Mã sinh viên / Trạng thái học tập**: **chỉ hiện khi vai trò là Student** (vì chỉ sinh viên mới có hồ sơ sinh viên).
@@ -151,12 +152,12 @@ Bấm **"Thêm vai trò"**:
 
 4 tab, mỗi tab có nút **"Tạo"**:
 
-| Tab | Các ô | Ví dụ |
-|---|---|---|
-| Khoa | Mã khoa, Tên khoa | `AI` / `Artificial Intelligence` |
-| Chương trình | Mã, Tên, Khoa | `AIE` / `AI Engineering` / chọn khoa |
-| Học kỳ | Tên, Ngày bắt đầu, Ngày kết thúc, Trạng thái | `Winter 2027`, 2027-01-01 → 2027-04-30, `upcoming` |
-| Môn học | Khoa, Mã môn, Tên môn | `SE` / `PRN999` / `Demo Subject` |
+| Tab          | Các ô                                        | Ví dụ                                              |
+| ------------ | -------------------------------------------- | -------------------------------------------------- |
+| Khoa         | Mã khoa, Tên khoa                            | `AI` / `Artificial Intelligence`                   |
+| Chương trình | Mã, Tên, Khoa                                | `AIE` / `AI Engineering` / chọn khoa               |
+| Học kỳ       | Tên, Ngày bắt đầu, Ngày kết thúc, Trạng thái | `Winter 2027`, 2027-01-01 → 2027-04-30, `upcoming` |
+| Môn học      | Khoa, Mã môn, Tên môn                        | `SE` / `PRN999` / `Demo Subject`                   |
 
 Dữ liệu có sẵn: khoa SE, BA, SA; học kỳ Spring 2026 (đã qua), Summer 2026 (đã qua), **Fall 2026 (hiện tại)**, Spring 2027 (sắp tới).
 
@@ -173,13 +174,13 @@ Thao tác (file `.xlsx` hoặc `.csv`):
 1. Bấm chọn file → [`studentdata_demo.csv`](./demo-samples/studentdata_demo.csv) → **"Xem trước"** (chỉ hiện tiêu đề + vài dòng mẫu, **chưa ghi gì**).
 2. **Ghép cột** (5 ô dropdown):
 
-   | Ô | Chọn |
-   |---|---|
-   | Cột định danh sinh viên | `Student email` *(chấp nhận email, tên đăng nhập hoặc mã sinh viên)* |
-   | Mục dữ liệu | `Data attribute` |
-   | Cột giá trị | `Value` |
-   | Học kỳ | `Term` |
-   | Có hiệu lực từ | `Valid from` |
+   | Ô                       | Chọn                                                                 |
+   | ----------------------- | -------------------------------------------------------------------- |
+   | Cột định danh sinh viên | `Student email` _(chấp nhận email, tên đăng nhập hoặc mã sinh viên)_ |
+   | Mục dữ liệu             | `Data attribute`                                                     |
+   | Cột giá trị             | `Value`                                                              |
+   | Học kỳ                  | `Term`                                                               |
+   | Có hiệu lực từ          | `Valid from`                                                         |
 
 3. Bấm **"Kiểm tra dữ liệu"** (chạy thử) → kết quả mong đợi: **5 dòng hợp lệ**.
 4. Bấm **"Nhập dữ liệu"** (chỉ bấm được sau khi kiểm tra thành công).
@@ -191,16 +192,16 @@ Thử thêm file [`studentdata_invalid_demo.csv`](./demo-samples/studentdata_inv
 
 ### A.6. Danh mục hỗ trợ (`/vi/admin/m04`)
 
-Gồm 2 phần: **Danh mục hỗ trợ** (8 mục: Academic warning, Course content question, Exam preparation, Study plan, Thesis topic *(đã lưu trữ)*, Accommodation, Money, Stress and balance) và **Thuộc tính dữ liệu** (25 mục).
+Gồm 2 phần: **Danh mục hỗ trợ** (8 mục: Academic warning, Course content question, Exam preparation, Study plan, Thesis topic _(đã lưu trữ)_, Accommodation, Money, Stress and balance) và **Thuộc tính dữ liệu** (25 mục).
 
-Bấm **"Tạo"** ở *Danh mục hỗ trợ*:
+Bấm **"Tạo"** ở _Danh mục hỗ trợ_:
 
-| Ô | Ví dụ |
-|---|---|
-| Tên danh mục* | `Career guidance` |
-| Mô tả | `Định hướng nghề nghiệp` |
-| Loại hỗ trợ* | `academic` (Học tập) hoặc `wellbeing` (Đời sống) |
-| Mục đích đồng ý* | chọn trong danh sách (ví dụ *Academic advising*) |
+| Ô                 | Ví dụ                                            |
+| ----------------- | ------------------------------------------------ |
+| Tên danh mục\*    | `Career guidance`                                |
+| Mô tả             | `Định hướng nghề nghiệp`                         |
+| Loại hỗ trợ\*     | `academic` (Học tập) hoặc `wellbeing` (Đời sống) |
+| Mục đích đồng ý\* | chọn trong danh sách (ví dụ _Academic advising_) |
 
 > ⚠️ **Không demo "Thuộc tính dữ liệu → Tạo" bằng tài khoản Admin** — API trả **403** vì quyền tạo thuộc tính chỉ dành cho Steward (chi tiết mục 10). Hãy dùng 25 thuộc tính có sẵn.
 
@@ -215,23 +216,24 @@ Bấm **"Tạo"** ở *Danh mục hỗ trợ*:
 
 Đăng nhập `steward@gmail.com`. Menu: **Mục đích đồng ý · Chính sách truy cập · Nhật ký truy cập và xử lý · Hàng đợi xóa dữ liệu · Duyệt truy cập khẩn cấp · Thuộc tính dữ liệu · Lịch sử đồng ý · Trạng thái khóa mã hóa.**
 
-**Ý tưởng cốt lõi:** *Mục đích đồng ý* (vì sao cần dữ liệu) ↔ *Thuộc tính dữ liệu* (dữ liệu nào) ↔ *Chính sách truy cập* (vai trò nào được xem theo mục đích nào).
+**Ý tưởng cốt lõi:** _Mục đích đồng ý_ (vì sao cần dữ liệu) ↔ _Thuộc tính dữ liệu_ (dữ liệu nào) ↔ _Chính sách truy cập_ (vai trò nào được xem theo mục đích nào).
 
 Dữ liệu seed đã có sẵn **5 mục đích** và **8 chính sách**, ví dụ:
-- *Academic advising* → Cố vấn học tập
-- *Wellbeing support* → Cố vấn wellbeing
-- *Financial support* → Cố vấn wellbeing và Cán bộ công tác sinh viên
+
+- _Academic advising_ → Cố vấn học tập
+- _Wellbeing support_ → Cố vấn wellbeing
+- _Financial support_ → Cố vấn wellbeing và Cán bộ công tác sinh viên
 
 Nếu muốn demo việc **tạo mới** (thứ tự đúng: mục đích → gắn thuộc tính → kích hoạt → chính sách → kích hoạt → kiểm tra):
 
-| Bước | Trang | Thao tác & ví dụ |
-|---|---|---|
-| B.1 | Mục đích đồng ý → **Tạo** | Tên mục đích\*: `Career support`; Mô tả\*: `Hỗ trợ định hướng nghề nghiệp`. Mục đích mới ở trạng thái **chưa hoạt động**. |
-| B.2 | Cùng trang, mục *purposeAttributes* → **Tạo** | Chọn **Mục đích đồng ý** = `Career support`, rồi chọn **Mục đích dữ liệu** (thuộc tính) = `GPA` *(danh sách chỉ hiện sau khi chọn mục đích)* |
-| B.3 | Mục đích → dòng `Career support` → **Kích hoạt** | Cũng có Vô hiệu, Lưu trữ |
-| B.4 | Chính sách truy cập → **Tạo** | Vai trò = `Academic Advisor`, Mục đích = `Career support` (tạo ra bản **nháp**) |
-| B.5 | Chính sách → **Kích hoạt** | Cũng có **Thu hồi** |
-| B.6 | Chính sách → **Kiểm tra** | Chọn một sinh viên → hệ thống trả từng thuộc tính: `allowed` (được xem) / `allowedOnceActive` / `notShared` (sinh viên chưa chia sẻ). Bước này **không ghi log truy cập** |
+| Bước | Trang                                            | Thao tác & ví dụ                                                                                                                                                          |
+| ---- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B.1  | Mục đích đồng ý → **Tạo**                        | Tên mục đích\*: `Career support`; Mô tả\*: `Hỗ trợ định hướng nghề nghiệp`. Mục đích mới ở trạng thái **chưa hoạt động**.                                                 |
+| B.2  | Cùng trang, mục _purposeAttributes_ → **Tạo**    | Chọn **Mục đích đồng ý** = `Career support`, rồi chọn **Mục đích dữ liệu** (thuộc tính) = `GPA` _(danh sách chỉ hiện sau khi chọn mục đích)_                              |
+| B.3  | Mục đích → dòng `Career support` → **Kích hoạt** | Cũng có Vô hiệu, Lưu trữ                                                                                                                                                  |
+| B.4  | Chính sách truy cập → **Tạo**                    | Vai trò = `Academic Advisor`, Mục đích = `Career support` (tạo ra bản **nháp**)                                                                                           |
+| B.5  | Chính sách → **Kích hoạt**                       | Cũng có **Thu hồi**                                                                                                                                                       |
+| B.6  | Chính sách → **Kiểm tra**                        | Chọn một sinh viên → hệ thống trả từng thuộc tính: `allowed` (được xem) / `allowedOnceActive` / `notShared` (sinh viên chưa chia sẻ). Bước này **không ghi log truy cập** |
 
 > ⚠️ Trang **"Thuộc tính dữ liệu"** của Steward hiện chỉ có danh sách (25 mục), **không có nút "Tạo"** dù API cho phép Steward tạo. Vì vậy khi demo hãy dùng thuộc tính có sẵn.
 
@@ -241,20 +243,44 @@ Nếu muốn demo việc **tạo mới** (thứ tự đúng: mục đích → g�
 
 > Đây là phần nên demo kỹ nhất. Điều kiện: đã làm **A.5** (import dữ liệu sinh viên).
 
+API cần đọc
+StudentDataController
+CorrectionRequestsController
+ExternalReferralOverdueService
+
+Đoạn code cần đọc
+StudentDataService.CreateAsync
+CorrectionRequestService
+InterventionService
+ExternalReferralService
+EscalationService
+
+Lý thuyết của bài
+AesGcmDataEncryptor.cs
+AttributeKeyService.cs
+EncryptionSettings.cs, Program.cs (lines ~95–101)
+ErasureRequestService.cs (line ~159)
+StudentDataService.cs (encrypts on import, decrypts on read) and CorrectionRequestService.cs (encrypts the current and proposed values)
+Studentdata.cs; mapping, default sysutcdatetime() and the time index in AdviseCareContext.cs (lines ~1439–1496)
+CreateAsync in StudentDataService.cs
+ApproveAsync in CorrectionRequestService.cs
+BuildSnapshotAsync (line ~426) in StudentDataService, behind GET students/{id}/as-of and /compare
+
 ### C.1. Sinh viên gửi yêu cầu hỗ trợ
 
 Đăng nhập `student@gmail.com` → menu **"Gửi yêu cầu hỗ trợ"** (`/vi/me/support-request`). Form gồm 4 bước:
 
-| Bước | Ô | Điền gì (ví dụ học tập) |
-|---|---|---|
-| **1. Loại hỗ trợ** | Học tập / Đời sống | Chọn **Học tập** |
-| **2. Danh mục** | Danh mục + Môn học (tùy chọn) | Danh mục: `Course content question`; Môn học: `PRN212` |
-| **3. Chia sẻ dữ liệu** | Tick các thuộc tính cho phép cố vấn xem | Tick **GPA** và **Attendance rate**. **Mỗi ô tick sẽ sinh ra một ô ghi chú riêng** (để sinh viên giải thích số liệu đó) |
-| **4. Lý do** | "Hãy cho cố vấn biết chuyện gì đang xảy ra" (tối đa 4000 ký tự, tự lưu nháp) | `I don't understand dependency injection in PRN212 and failed the progress test. I need help before the final exam.` |
+| Bước                   | Ô                                                                            | Điền gì (ví dụ học tập)                                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **1. Loại hỗ trợ**     | Học tập / Đời sống                                                           | Chọn **Học tập**                                                                                                        |
+| **2. Danh mục**        | Danh mục + Môn học (tùy chọn)                                                | Danh mục: `Course content question`; Môn học: `PRN212`                                                                  |
+| **3. Chia sẻ dữ liệu** | Tick các thuộc tính cho phép cố vấn xem                                      | Tick **GPA** và **Attendance rate**. **Mỗi ô tick sẽ sinh ra một ô ghi chú riêng** (để sinh viên giải thích số liệu đó) |
+| **4. Lý do**           | "Hãy cho cố vấn biết chuyện gì đang xảy ra" (tối đa 4000 ký tự, tự lưu nháp) | `I don't understand dependency injection in PRN212 and failed the progress test. I need help before the final exam.`    |
 
 Ghi chú theo từng mục tick (gợi ý):
-- *GPA*: `GPA học kỳ này giảm còn 6.8 vì trượt bài kiểm tra tiến độ.`
-- *Attendance rate*: `Tôi nghỉ nhiều buổi vì đi làm thêm, tỉ lệ đi học khoảng 72%.`
+
+- _GPA_: `GPA học kỳ này giảm còn 6.8 vì trượt bài kiểm tra tiến độ.`
+- _Attendance rate_: `Tôi nghỉ nhiều buổi vì đi làm thêm, tỉ lệ đi học khoảng 72%.`
 
 Bấm **"Gửi yêu cầu"** → xuất hiện **hộp thoại "Mọi thứ đã đúng chưa?"** tóm tắt lại loại hỗ trợ, danh mục, dữ liệu sẽ chia sẻ và nội dung. Chọn **"Quay lại chỉnh sửa"** hoặc **"Gửi yêu cầu"** để xác nhận.
 
@@ -262,7 +288,7 @@ Bấm **"Gửi yêu cầu"** → xuất hiện **hộp thoại "Mọi thứ đã
 >
 > Những thuộc tính đã tick sẽ **tự tạo đồng ý chia sẻ** khi gửi — không tick gì thì cố vấn **không** xem được dữ liệu nào.
 
-**Kịch bản "Đời sống" (để demo chuyển tuyến ở D.3):** chọn *Đời sống* → danh mục `Money` → tick **Financial difficulty** → lý do: `My family can no longer pay my tuition this term and I may have to drop out.`
+**Kịch bản "Đời sống" (để demo chuyển tuyến ở D.3):** chọn _Đời sống_ → danh mục `Money` → tick **Financial difficulty** → lý do: `My family can no longer pay my tuition this term and I may have to drop out.`
 
 Sau khi gửi, vào **"Yêu cầu"** (`/vi/me/cases`) → mở ca vừa tạo: thấy thanh tiến độ **Chờ ghép → Đã ghép → Đã liên hệ → Đang theo dõi → Đã đóng**, khung **"Nội dung bạn đã gửi"**, bảng **"Lịch sử"**.
 
@@ -271,7 +297,7 @@ Sau khi gửi, vào **"Yêu cầu"** (`/vi/me/cases`) → mở ca vừa tạo: t
 Đăng nhập `programmehead@gmail.com` → **"Hàng đợi ghép cố vấn"** (`/vi/head/matching`).
 
 1. Cột trái là danh sách **"Chờ ghép cố vấn"**, mỗi dòng ghi mức ưu tiên, danh mục, mã sinh viên, thời gian chờ ("Quá hạn · N ngày"). Chọn dòng có mã **SE180001** (yêu cầu vừa gửi). Hàng đợi còn ~6 yêu cầu mẫu của sinh viên khác.
-2. Cột phải hiện **nội dung sinh viên viết** và **"Cố vấn được gợi ý"**. Thứ tự gợi ý: *đang cố vấn cho sinh viên này → chuyên môn đúng môn → cùng khoa → ít ca đang mở nhất*; mỗi người có nhãn lý do ("Specialised in PRN212", "Same faculty as the student", "3 open case(s)").
+2. Cột phải hiện **nội dung sinh viên viết** và **"Cố vấn được gợi ý"**. Thứ tự gợi ý: _đang cố vấn cho sinh viên này → chuyên môn đúng môn → cùng khoa → ít ca đang mở nhất_; mỗi người có nhãn lý do ("Specialised in PRN212", "Same faculty as the student", "3 open case(s)").
 3. Bấm **"Ghép"** cạnh cố vấn muốn chọn → hộp thoại: có thể nhập **lý do (không bắt buộc)** → xác nhận.
    - Để đăng nhập tiếp bằng tài khoản có sẵn, chọn cố vấn có tên **"Academic Advisor"** (= `academicadvisor@gmail.com`) cho yêu cầu học tập; yêu cầu "Đời sống" chọn **"Wellbeing Advisor"** (= `wellbeingadvisor@gmail.com`).
 4. Trạng thái ca chuyển **Chờ ghép → Đã ghép**; cố vấn và sinh viên được thông báo.
@@ -281,17 +307,18 @@ Sau khi gửi, vào **"Yêu cầu"** (`/vi/me/cases`) → mở ca vừa tạo: t
 Đăng nhập `academicadvisor@gmail.com` → **"Danh sách phụ trách"** (`/vi/advisor/caseload`) → mở ca của SE180001 (`/vi/advisor/cases/{id}`).
 
 **(a) Xem dữ liệu sinh viên đã chia sẻ** — khung **"Dữ liệu sinh viên chia sẻ với bạn"** (trong "Thao tác khác"):
+
 - GPA = 6.8, Attendance rate = 72 (kèm ghi chú nguồn) → vì sinh viên **đã tick**.
 - Các thuộc tính khác hiển thị **"có tồn tại nhưng không chia sẻ"** (không lộ giá trị).
 - ⚠️ **Mỗi giá trị hiển thị đều bị ghi vào nhật ký truy cập** (để sinh viên thấy ở bước C.4).
 
 **(b) Chuyển giai đoạn** — khung **"Chuyển giai đoạn"**:
 
-| Thao tác | Chọn | Ô "Điều đã diễn ra" (bắt buộc) |
-|---|---|---|
-| Đã liên hệ | `Đã liên hệ` | `Đã gọi điện cho sinh viên, hẹn gặp 14h thứ Năm tại phòng cố vấn.` |
-| Theo dõi | `Đang theo dõi` | `Sinh viên đã đi học đều 2 tuần; tiếp tục theo dõi điểm bài kiểm tra tiếp theo.` |
-| Đóng ca | `Đã đóng` *(có hộp thoại xác nhận)* | `Sinh viên đã vượt qua bài kiểm tra tiến độ, không cần hỗ trợ thêm.` |
+| Thao tác   | Chọn                                | Ô "Điều đã diễn ra" (bắt buộc)                                                   |
+| ---------- | ----------------------------------- | -------------------------------------------------------------------------------- |
+| Đã liên hệ | `Đã liên hệ`                        | `Đã gọi điện cho sinh viên, hẹn gặp 14h thứ Năm tại phòng cố vấn.`               |
+| Theo dõi   | `Đang theo dõi`                     | `Sinh viên đã đi học đều 2 tuần; tiếp tục theo dõi điểm bài kiểm tra tiếp theo.` |
+| Đóng ca    | `Đã đóng` _(có hộp thoại xác nhận)_ | `Sinh viên đã vượt qua bài kiểm tra tiến độ, không cần hỗ trợ thêm.`             |
 
 Ca đã đóng sẽ có nút **"Mở lại"**.
 
@@ -304,10 +331,11 @@ Ca đã đóng sẽ có nút **"Mở lại"**.
 ### C.4. Sinh viên theo dõi
 
 Quay lại `student@gmail.com`:
+
 - **"Yêu cầu" → mở ca:** thanh tiến độ đã nhảy theo từng giai đoạn; bảng **"Lịch sử"** có các dòng mới; thấy khung **"Cố vấn của bạn"**.
 - **"Lịch sử xem"** (`/vi/me/access-history`): thấy **cố vấn nào đã xem dữ liệu nào, lúc nào, vì mục đích gì**. Lọc theo ngày / vai trò. Bấm **"Đánh dấu"** (flag) nếu thấy truy cập đáng ngờ — Steward sẽ xem xét (Phần F).
 
-> Hạn chế đã biết (nên nói trước khi giảng viên hỏi): sinh viên **không được thông báo** khi ca chuyển *Đã liên hệ/Đang theo dõi*; giai đoạn *Đang theo dõi* **không có ngày hẹn hay nhắc nhở**; sinh viên **không có nút "xác nhận đã giải quyết"** hay "yêu cầu mở lại".
+> Hạn chế đã biết (nên nói trước khi giảng viên hỏi): sinh viên **không được thông báo** khi ca chuyển _Đã liên hệ/Đang theo dõi_; giai đoạn _Đang theo dõi_ **không có ngày hẹn hay nhắc nhở**; sinh viên **không có nút "xác nhận đã giải quyết"** hay "yêu cầu mở lại".
 
 ---
 
@@ -328,12 +356,12 @@ Bấm **"Mở case"** → ca được tạo **ở trạng thái "Đã ghép" lu�
 
 Cố vấn học tập hoặc wellbeing → menu **"Yêu cầu đồng ý"** → **"Tạo"**:
 
-| Ô | Ví dụ |
-|---|---|
-| Mục đích đồng ý | `Academic advising` |
-| Thuộc tính dữ liệu | chọn các thuộc tính (danh sách phụ thuộc vào mục đích đã chọn), ví dụ `Attendance rate`, `Accommodation status` |
-| Sinh viên | `SE180001` |
-| Lý do hiển thị cho sinh viên | `Để cố vấn hiểu hoàn cảnh học tập và nơi ở của em.` |
+| Ô                            | Ví dụ                                                                                                           |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Mục đích đồng ý              | `Academic advising`                                                                                             |
+| Thuộc tính dữ liệu           | chọn các thuộc tính (danh sách phụ thuộc vào mục đích đã chọn), ví dụ `Attendance rate`, `Accommodation status` |
+| Sinh viên                    | `SE180001`                                                                                                      |
+| Lý do hiển thị cho sinh viên | `Để cố vấn hiểu hoàn cảnh học tập và nơi ở của em.`                                                             |
 
 Sau đó sinh viên vào **"Yêu cầu dữ liệu"** (`/vi/me/consent/requests`) → chọn **"Đồng ý chia sẻ"** hoặc **"Từ chối yêu cầu"**. Nếu từ chối, cố vấn vẫn chỉ thấy "có tồn tại nhưng không chia sẻ". Yêu cầu còn **đang chờ** có thể được cố vấn **cập nhật / rút lại**.
 
@@ -343,50 +371,51 @@ Sau đó sinh viên vào **"Yêu cầu dữ liệu"** (`/vi/me/consent/requests`
 
 **1) Cố vấn wellbeing** → mở ca → "Thao tác khác" → **"Chuyển tuyến cho người khác"**:
 
-| Ô | Điền |
-|---|---|
-| ID tài khoản người nhận | **GUID của Welfare:** `0CAA0436-8CFC-5AB5-B05E-025D8C0280C5` *(form này chưa có ô chọn — xem mục 10)* |
-| Lý do | `Gia đình sinh viên gặp khó khăn học phí, cần phương án vay/hỗ trợ tài chính.` |
-| Mức ưu tiên | `Cao` |
+| Ô                       | Điền                                                                                                  |
+| ----------------------- | ----------------------------------------------------------------------------------------------------- |
+| ID tài khoản người nhận | **GUID của Welfare:** `0CAA0436-8CFC-5AB5-B05E-025D8C0280C5` _(form này chưa có ô chọn — xem mục 10)_ |
+| Lý do                   | `Gia đình sinh viên gặp khó khăn học phí, cần phương án vay/hỗ trợ tài chính.`                        |
+| Mức ưu tiên             | `Cao`                                                                                                 |
 
 Bấm **"Gửi chuyển tuyến"** → ca sang giai đoạn **"Đã chuyển tuyến"**.
 
 **2) Cán bộ Welfare** (`welfareofficer@gmail.com`) → **"Yêu cầu được chuyển đến"** (`/vi/welfare/referrals`):
+
 - **"Chấp nhận"**; hoặc **"Đổi mức ưu tiên"**; hoặc **"Trả lại"** (kèm lý do); hoặc **"Chuyển lên Trưởng chương trình"** (xem D.5).
 
 **3) Tạo can thiệp** — menu **"Xử lý công tác sinh viên"** (`/vi/welfare/cases`) → **"Tạo"**:
 
-| Ô | Ví dụ |
-|---|---|
-| Mã ca hỗ trợ\* | dán **ID ca** (lấy ở danh sách, bấm biểu tượng copy cạnh ID) |
+| Ô                | Ví dụ                                                                      |
+| ---------------- | -------------------------------------------------------------------------- |
+| Mã ca hỗ trợ\*   | dán **ID ca** (lấy ở danh sách, bấm biểu tượng copy cạnh ID)               |
 | Loại can thiệp\* | `Thỏa thuận khoản vay` / `Hỗ trợ tài chính` / `Thủ tục ngân hàng` / `Khác` |
-| Ngày can thiệp\* | ngày hôm nay |
-| Ghi chú | `Hẹn tư vấn gói hỗ trợ học phí.` |
-| Trạng thái\* | `Đã lên lịch` hoặc `Đang thực hiện` |
+| Ngày can thiệp\* | ngày hôm nay                                                               |
+| Ghi chú          | `Hẹn tư vấn gói hỗ trợ học phí.`                                           |
+| Trạng thái\*     | `Đã lên lịch` hoặc `Đang thực hiện`                                        |
 
-Trên dòng đã tạo: **Cập nhật** (có thêm ô *Kết quả*), **Đóng** (**bắt buộc** nhập *Kết quả*, ví dụ `Đã được giảm 30% học phí`). **Khi Welfare đóng can thiệp, ca quay lại cho cố vấn** để tiếp tục.
+Trên dòng đã tạo: **Cập nhật** (có thêm ô _Kết quả_), **Đóng** (**bắt buộc** nhập _Kết quả_, ví dụ `Đã được giảm 30% học phí`). **Khi Welfare đóng can thiệp, ca quay lại cho cố vấn** để tiếp tục.
 
 **4) Giới thiệu ra ngoài** — menu **"Giới thiệu ra ngoài"** → **"Tạo"**:
 
-| Ô | Ví dụ |
-|---|---|
-| Mã ca hỗ trợ\* | dán ID ca |
-| Dịch vụ bên ngoài\* | chọn 1 trong **6 dịch vụ có sẵn** |
-| Lý do\* | `Cần tư vấn tâm lý chuyên sâu ngoài trường.` |
-| Hạn theo dõi | một ngày trong tương lai |
+| Ô                   | Ví dụ                                        |
+| ------------------- | -------------------------------------------- |
+| Mã ca hỗ trợ\*      | dán ID ca                                    |
+| Dịch vụ bên ngoài\* | chọn 1 trong **6 dịch vụ có sẵn**            |
+| Lý do\*             | `Cần tư vấn tâm lý chuyên sâu ngoài trường.` |
+| Hạn theo dõi        | một ngày trong tương lai                     |
 
 Dòng có thể **Cập nhật** (Hạn theo dõi / Kết quả theo dõi / Trạng thái) hoặc **Đóng**. Cờ **quá hạn** do tác vụ nền kiểm tra tự động.
 
-> ⚠️ Nút **"Tạo"** ở trang *Dịch vụ bên ngoài* của Welfare trả **403** — đừng demo, hãy dùng 6 dịch vụ sẵn có (mục 10).
+> ⚠️ Nút **"Tạo"** ở trang _Dịch vụ bên ngoài_ của Welfare trả **403** — đừng demo, hãy dùng 6 dịch vụ sẵn có (mục 10).
 
 ### D.4. Cố vấn xin đổi cố vấn khác
 
 Cố vấn → ca → "Thao tác khác" → **"Đề nghị đổi cố vấn"**:
 
-| Ô | Điền |
-|---|---|
+| Ô                           | Điền                                                           |
+| --------------------------- | -------------------------------------------------------------- |
 | ID tài khoản cố vấn đề xuất | ví dụ **Đỗ Thanh Mai**: `E7101E7D-9CD9-553E-B5D9-2F0C7DC19032` |
-| Lý do | `Sinh viên thuộc khoa BA, cố vấn Mai phù hợp hơn.` |
+| Lý do                       | `Sinh viên thuộc khoa BA, cố vấn Mai phù hợp hơn.`             |
 
 Bấm **"Gửi đề nghị"**. Trưởng CT vào **"Yêu cầu đổi cố vấn"** (`/vi/head/assignment-changes`) → **"Chấp thuận"** (ghi chú tùy chọn) hoặc **"Từ chối"** (**bắt buộc** nhập lý do).
 
@@ -396,10 +425,10 @@ Ngoài ra Trưởng CT có thể chủ động **"Phân công lại"** ở **"T�
 
 Welfare → "Yêu cầu được chuyển đến" → **"Chuyển lên Trưởng chương trình"**:
 
-| Ô | Điền |
-|---|---|
-| ID tài khoản Trưởng chương trình | `3978D886-B5A9-5108-89A0-5DD87AA154B4` |
-| Lý do | `Cần quyết định miễn giảm học phí vượt thẩm quyền Welfare.` |
+| Ô                                | Điền                                                        |
+| -------------------------------- | ----------------------------------------------------------- |
+| ID tài khoản Trưởng chương trình | `3978D886-B5A9-5108-89A0-5DD87AA154B4`                      |
+| Lý do                            | `Cần quyết định miễn giảm học phí vượt thẩm quyền Welfare.` |
 
 Trưởng CT → **"Yêu cầu chuyển cấp"** (`/vi/head/escalations`) → **"Phản hồi"** (**bắt buộc** nhập nội dung phản hồi).
 
@@ -408,7 +437,7 @@ Trưởng CT → **"Yêu cầu chuyển cấp"** (`/vi/head/escalations`) → **
 Cố vấn cần xem dữ liệu **mà sinh viên chưa cho phép** trong tình huống khẩn:
 
 1. Cố vấn → **"Truy cập khẩn cấp"** → **"Tạo"** → chọn **Sinh viên**, nhập **"Lý do yêu cầu"** (`Sinh viên có dấu hiệu khủng hoảng, cần xem thông tin liên quan gấp.`).
-2. **Steward** → **"Duyệt truy cập khẩn cấp"** → **"Chấp thuận"** (chọn *Thời điểm hết hạn truy cập*) hoặc **"Từ chối"** (nhập *Lý do từ chối*).
+2. **Steward** → **"Duyệt truy cập khẩn cấp"** → **"Chấp thuận"** (chọn _Thời điểm hết hạn truy cập_) hoặc **"Từ chối"** (nhập _Lý do từ chối_).
 3. Truy cập khẩn cấp **tự hết hạn** và được ghi log.
 
 ---
@@ -417,26 +446,26 @@ Cố vấn cần xem dữ liệu **mà sinh viên chưa cho phép** trong tình 
 
 Đăng nhập `student@gmail.com`.
 
-| Trang | Làm gì |
-|---|---|
-| **Đồng ý** (`/vi/me/consent`) | Danh sách ~26 dòng (mục đích × thuộc tính). Mở một dòng → **"Đồng ý chia sẻ"** (có thể đặt **"Ngày hết hạn đồng ý (không bắt buộc)"**). Dòng đã đồng ý có nút **"Rút"** để thu hồi — cố vấn lập tức không còn thấy giá trị. |
-| **Yêu cầu dữ liệu** (`/vi/me/consent/requests`) | Các yêu cầu từ cố vấn (xem D.2) → **Đồng ý chia sẻ / Từ chối yêu cầu** |
-| **Lịch sử xem** (`/vi/me/access-history`) | Ai đã xem dữ liệu của mình; lọc theo ngày/vai trò; **"Đánh dấu"** để báo nghi vấn |
-| **Hồ sơ** (`/vi/me/profile`) | Thông tin cá nhân, dữ liệu học tập đã import |
-| **Yêu cầu đính chính** (`/vi/me/corrections`) | Xem bên dưới |
-| **Xuất dữ liệu của tôi** | **"Tải xuống"** file JSON chứa toàn bộ dữ liệu cá nhân (quyền "data portability") |
+| Trang                                           | Làm gì                                                                                                                                                                                                                      |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Đồng ý** (`/vi/me/consent`)                   | Danh sách ~26 dòng (mục đích × thuộc tính). Mở một dòng → **"Đồng ý chia sẻ"** (có thể đặt **"Ngày hết hạn đồng ý (không bắt buộc)"**). Dòng đã đồng ý có nút **"Rút"** để thu hồi — cố vấn lập tức không còn thấy giá trị. |
+| **Yêu cầu dữ liệu** (`/vi/me/consent/requests`) | Các yêu cầu từ cố vấn (xem D.2) → **Đồng ý chia sẻ / Từ chối yêu cầu**                                                                                                                                                      |
+| **Lịch sử xem** (`/vi/me/access-history`)       | Ai đã xem dữ liệu của mình; lọc theo ngày/vai trò; **"Đánh dấu"** để báo nghi vấn                                                                                                                                           |
+| **Hồ sơ** (`/vi/me/profile`)                    | Thông tin cá nhân, dữ liệu học tập đã import                                                                                                                                                                                |
+| **Yêu cầu đính chính** (`/vi/me/corrections`)   | Xem bên dưới                                                                                                                                                                                                                |
+| **Xuất dữ liệu của tôi**                        | **"Tải xuống"** file JSON chứa toàn bộ dữ liệu cá nhân (quyền "data portability")                                                                                                                                           |
 
 **Yêu cầu đính chính dữ liệu** — bấm **"Tạo"**:
 
-| Ô | Ví dụ |
-|---|---|
-| Giá trị cần điều chỉnh | chọn trong danh sách các giá trị đã import, ví dụ `GPA = 6.8` |
-| Giải thích\* | `GPA của tôi sau khi phúc khảo là 7.2, hệ thống chưa cập nhật.` |
-| Giá trị đề xuất\* | `7.2` |
+| Ô                      | Ví dụ                                                           |
+| ---------------------- | --------------------------------------------------------------- |
+| Giá trị cần điều chỉnh | chọn trong danh sách các giá trị đã import, ví dụ `GPA = 6.8`   |
+| Giải thích\*           | `GPA của tôi sau khi phúc khảo là 7.2, hệ thống chưa cập nhật.` |
+| Giá trị đề xuất\*      | `7.2`                                                           |
 
 Sinh viên có thể **"Rút"** yêu cầu khi chưa được xử lý.
 
-**Cố vấn xử lý đính chính:** (cố vấn có ca đang mở của sinh viên đó) menu **"Đính chính"** → **"Chấp thuận"** hoặc **"Từ chối"**, mỗi lựa chọn **bắt buộc** nhập *Ghi chú quyết định*.
+**Cố vấn xử lý đính chính:** (cố vấn có ca đang mở của sinh viên đó) menu **"Đính chính"** → **"Chấp thuận"** hoặc **"Từ chối"**, mỗi lựa chọn **bắt buộc** nhập _Ghi chú quyết định_.
 
 > Lưu ý: quy tắc "chỉ cố vấn có ca đang mở mới được xử lý" đã có; còn quy tắc "chỉ sinh viên có ca mở mới được gửi đính chính" mới **nằm trong kế hoạch**, chưa được áp dụng.
 
@@ -446,13 +475,13 @@ Sinh viên có thể **"Rút"** yêu cầu khi chưa được xử lý.
 
 Đăng nhập `steward@gmail.com`:
 
-| Trang | Dùng để demo |
-|---|---|
-| **Lịch sử đồng ý** | Toàn bộ lịch sử cấp/rút đồng ý của sinh viên (~600 dòng) + các yêu cầu đã nhận |
+| Trang                         | Dùng để demo                                                                                                                                                                                |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Lịch sử đồng ý**            | Toàn bộ lịch sử cấp/rút đồng ý của sinh viên (~600 dòng) + các yêu cầu đã nhận                                                                                                              |
 | **Nhật ký truy cập và xử lý** | Mỗi lần ai xem dữ liệu gì. Có bộ lọc. **"Đánh dấu"** để gắn cờ; **"Xem xét"** → chọn `Đã xác nhận hợp lệ` hoặc `Đã xác nhận sự cố`; **"Tải xuống"** để xuất hồ sơ xử lý (phục vụ kiểm toán) |
-| **Hàng đợi xóa dữ liệu** | Yêu cầu xóa; **"Thực hiện xóa"** (sau khi xóa, khóa mã hóa của thuộc tính bị hủy — không khôi phục được) |
-| **Duyệt truy cập khẩn cấp** | Xem D.6 |
-| **Trạng thái khóa mã hóa** | Tình trạng khóa của từng thuộc tính; **"Mã hóa lại khóa"** (rewrap) |
+| **Hàng đợi xóa dữ liệu**      | Yêu cầu xóa; **"Thực hiện xóa"** (sau khi xóa, khóa mã hóa của thuộc tính bị hủy — không khôi phục được)                                                                                    |
+| **Duyệt truy cập khẩn cấp**   | Xem D.6                                                                                                                                                                                     |
+| **Trạng thái khóa mã hóa**    | Tình trạng khóa của từng thuộc tính; **"Mã hóa lại khóa"** (rewrap)                                                                                                                         |
 
 > Đừng bấm "Thực hiện xóa" khi demo trên dữ liệu bạn còn cần — thao tác này **không hoàn tác được**.
 
@@ -477,17 +506,17 @@ Sinh viên có thể **"Rút"** yêu cầu khi chưa được xử lý.
 
 ### 10.1. Bốn điểm "lệch" giữa giao diện và backend (nên tránh hoặc dùng cách vòng)
 
-| # | Hiện tượng | Cách xử lý khi demo |
-|---|---|---|
-| 1 | Form **"Chuyển tuyến cho người khác"** và **"Đề nghị đổi cố vấn"** (trang ca của cố vấn) **vẫn bắt gõ GUID** ("ID tài khoản người nhận", "ID tài khoản cố vấn đề xuất") | Dán GUID từ [Phụ lục 11.1](#111-guid-các-tài-khoản-mẫu), hoặc copy ở Admin → "Phân vai trò" (biểu tượng copy cạnh "Mã tài khoản") |
-| 2 | Các form của **Welfare** vẫn gõ ID: "Mã ca hỗ trợ" (Can thiệp, Giới thiệu ra ngoài), "ID tài khoản Trưởng chương trình" (Chuyển cấp) | Copy ID ca ở danh sách (biểu tượng copy); GUID Trưởng CT ở Phụ lục |
-| 3 | Admin → "Danh mục hỗ trợ" → **Thuộc tính dữ liệu → Tạo** trả **403** (API chỉ cho **Steward**), còn trang của Steward lại **không có nút Tạo** | Dùng 25 thuộc tính có sẵn; không demo tạo thuộc tính |
-| 4 | Welfare → **Dịch vụ bên ngoài → Tạo** trả **403** (API chỉ cho **System Administrator**), mà Admin lại **không có trang** dịch vụ bên ngoài | Chỉ chọn trong 6 dịch vụ có sẵn |
+| #   | Hiện tượng                                                                                                                                                              | Cách xử lý khi demo                                                                                                               |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Form **"Chuyển tuyến cho người khác"** và **"Đề nghị đổi cố vấn"** (trang ca của cố vấn) **vẫn bắt gõ GUID** ("ID tài khoản người nhận", "ID tài khoản cố vấn đề xuất") | Dán GUID từ [Phụ lục 11.1](#111-guid-các-tài-khoản-mẫu), hoặc copy ở Admin → "Phân vai trò" (biểu tượng copy cạnh "Mã tài khoản") |
+| 2   | Các form của **Welfare** vẫn gõ ID: "Mã ca hỗ trợ" (Can thiệp, Giới thiệu ra ngoài), "ID tài khoản Trưởng chương trình" (Chuyển cấp)                                    | Copy ID ca ở danh sách (biểu tượng copy); GUID Trưởng CT ở Phụ lục                                                                |
+| 3   | Admin → "Danh mục hỗ trợ" → **Thuộc tính dữ liệu → Tạo** trả **403** (API chỉ cho **Steward**), còn trang của Steward lại **không có nút Tạo**                          | Dùng 25 thuộc tính có sẵn; không demo tạo thuộc tính                                                                              |
+| 4   | Welfare → **Dịch vụ bên ngoài → Tạo** trả **403** (API chỉ cho **System Administrator**), mà Admin lại **không có trang** dịch vụ bên ngoài                             | Chỉ chọn trong 6 dịch vụ có sẵn                                                                                                   |
 
 ### 10.2. Các hạn chế khác
 
 - Sinh viên **không sửa/hủy** được yêu cầu sau khi gửi.
-- Không có thông báo cho sinh viên khi ca chuyển *Đã liên hệ / Đang theo dõi*; *Đang theo dõi* không có ngày hẹn/nhắc việc.
+- Không có thông báo cho sinh viên khi ca chuyển _Đã liên hệ / Đang theo dõi_; _Đang theo dõi_ không có ngày hẹn/nhắc việc.
 - Sinh viên không thể xác nhận "đã giải quyết" hoặc xin mở lại ca.
 - Giới hạn 4000 ký tự của lý do chỉ có ở **frontend**.
 - Tài khoản tạo bằng Excel/biểu mẫu có trạng thái **"chưa liên kết"** và **không có mật khẩu** → chưa đăng nhập được (cần email liên kết). Vì vậy demo đăng nhập chỉ dùng **7 tài khoản có sẵn**.
@@ -496,14 +525,14 @@ Sinh viên có thể **"Rút"** yêu cầu khi chưa được xử lý.
 
 ### 10.3. Khi gặp sự cố
 
-| Triệu chứng | Nguyên nhân & cách xử lý |
-|---|---|
-| Cố vấn mở ca nhưng **không thấy giá trị GPA** | Chưa import dữ liệu (làm A.5) hoặc sinh viên chưa tick chia sẻ |
-| Trưởng CT không thấy yêu cầu mới trong hàng đợi | Bấm **"Làm mới"**; tìm theo mã **SE180001** (hàng đợi có sẵn ~6 yêu cầu mẫu) |
+| Triệu chứng                                         | Nguyên nhân & cách xử lý                                                                                  |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Cố vấn mở ca nhưng **không thấy giá trị GPA**       | Chưa import dữ liệu (làm A.5) hoặc sinh viên chưa tick chia sẻ                                            |
+| Trưởng CT không thấy yêu cầu mới trong hàng đợi     | Bấm **"Làm mới"**; tìm theo mã **SE180001** (hàng đợi có sẵn ~6 yêu cầu mẫu)                              |
 | Không thấy "Academic Advisor" trong danh sách gợi ý | Chọn một cố vấn khác để ghép; muốn dùng tài khoản demo thì sau đó dùng "Phân công lại" ở `/vi/head/cases` |
-| Lỗi 403 ở một nút | Xem 10.1 (#3, #4) hoặc bạn đang đăng nhập sai vai trò |
-| Trang trắng / lỗi mạng | Kiểm tra API đang chạy ở https://localhost:7286 và đã chấp nhận chứng chỉ HTTPS dev |
-| Dữ liệu demo rối | Reset DB (mục 1.4) |
+| Lỗi 403 ở một nút                                   | Xem 10.1 (#3, #4) hoặc bạn đang đăng nhập sai vai trò                                                     |
+| Trang trắng / lỗi mạng                              | Kiểm tra API đang chạy ở https://localhost:7286 và đã chấp nhận chứng chỉ HTTPS dev                       |
+| Dữ liệu demo rối                                    | Reset DB (mục 1.4)                                                                                        |
 
 ---
 
@@ -511,36 +540,36 @@ Sinh viên có thể **"Rút"** yêu cầu khi chưa được xử lý.
 
 ### 11.1. GUID các tài khoản mẫu
 
-| Tài khoản | Vai trò | accountId |
-|---|---|---|
-| `admin@gmail.com` | Quản trị viên hệ thống | `D2AA2929-437D-50E2-A61D-40EA2B09010E` |
-| `steward@gmail.com` | Cán bộ bảo vệ dữ liệu | `4FA71983-548F-5C26-BEFE-0E089DF4956F` |
-| `academicadvisor@gmail.com` | Cố vấn học tập | `16C05C9C-133D-5FAC-B287-37C15764B71E` |
-| `wellbeingadvisor@gmail.com` | Cố vấn wellbeing | `B6944BEC-089A-5878-9C34-EED3583DAABF` |
-| `welfareofficer@gmail.com` | Cán bộ công tác sinh viên | `0CAA0436-8CFC-5AB5-B05E-025D8C0280C5` |
-| `student@gmail.com` (SE180001) | Sinh viên | `6341514A-BC92-5729-9218-7DA322CDCD4E` |
-| `programmehead@gmail.com` | Trưởng chương trình | `3978D886-B5A9-5108-89A0-5DD87AA154B4` |
+| Tài khoản                      | Vai trò                   | accountId                              |
+| ------------------------------ | ------------------------- | -------------------------------------- |
+| `admin@gmail.com`              | Quản trị viên hệ thống    | `D2AA2929-437D-50E2-A61D-40EA2B09010E` |
+| `steward@gmail.com`            | Cán bộ bảo vệ dữ liệu     | `4FA71983-548F-5C26-BEFE-0E089DF4956F` |
+| `academicadvisor@gmail.com`    | Cố vấn học tập            | `16C05C9C-133D-5FAC-B287-37C15764B71E` |
+| `wellbeingadvisor@gmail.com`   | Cố vấn wellbeing          | `B6944BEC-089A-5878-9C34-EED3583DAABF` |
+| `welfareofficer@gmail.com`     | Cán bộ công tác sinh viên | `0CAA0436-8CFC-5AB5-B05E-025D8C0280C5` |
+| `student@gmail.com` (SE180001) | Sinh viên                 | `6341514A-BC92-5729-9218-7DA322CDCD4E` |
+| `programmehead@gmail.com`      | Trưởng chương trình       | `3978D886-B5A9-5108-89A0-5DD87AA154B4` |
 
 Cố vấn mẫu khác (dùng làm "cố vấn đề xuất" ở D.4):
 
-| Tên | Email | accountId |
-|---|---|---|
-| Đỗ Thanh Mai | `aa.maidt@example.com` | `E7101E7D-9CD9-553E-B5D9-2F0C7DC19032` |
+| Tên             | Email                   | accountId                              |
+| --------------- | ----------------------- | -------------------------------------- |
+| Đỗ Thanh Mai    | `aa.maidt@example.com`  | `E7101E7D-9CD9-553E-B5D9-2F0C7DC19032` |
 | Phạm Thanh Hùng | `aa.hungpt@example.com` | `F9552B17-90D1-5795-BB26-0875EE5BD496` |
-| Nguyễn Thị Lan | `aa.lannt@example.com` | `A6E940DF-7FE9-551A-A267-C50775E7BA4E` |
+| Nguyễn Thị Lan  | `aa.lannt@example.com`  | `A6E940DF-7FE9-551A-A267-C50775E7BA4E` |
 
 > Các tài khoản mock này dùng mật khẩu khác (không có trong tài liệu) nên **không dùng để đăng nhập demo**; chỉ dùng GUID để "ghép/đề xuất".
 
 ### 11.2. Từ điển trạng thái ca hỗ trợ
 
-| Giai đoạn (stage) | Hiển thị | Ai chuyển được |
-|---|---|---|
-| `pending` | Chờ ghép | (tự động khi sinh viên gửi) |
-| `assigned` | Đã ghép | Trưởng CT (ghép) / Cố vấn (outreach) / Welfare đóng can thiệp |
-| `contacted` | Đã liên hệ | Cố vấn |
-| `referred` | Đã chuyển tuyến | Cố vấn (chuyển tuyến) |
-| `followUp` | Đang theo dõi | Cố vấn |
-| `closed` | Đã đóng | Cố vấn (có thể "Mở lại") |
+| Giai đoạn (stage) | Hiển thị        | Ai chuyển được                                                |
+| ----------------- | --------------- | ------------------------------------------------------------- |
+| `pending`         | Chờ ghép        | (tự động khi sinh viên gửi)                                   |
+| `assigned`        | Đã ghép         | Trưởng CT (ghép) / Cố vấn (outreach) / Welfare đóng can thiệp |
+| `contacted`       | Đã liên hệ      | Cố vấn                                                        |
+| `referred`        | Đã chuyển tuyến | Cố vấn (chuyển tuyến)                                         |
+| `followUp`        | Đang theo dõi   | Cố vấn                                                        |
+| `closed`          | Đã đóng         | Cố vấn (có thể "Mở lại")                                      |
 
 Trạng thái tổng: `open` / `closed` / `reopened`. API chuyển giai đoạn của cố vấn **chỉ nhận** `contacted` / `followUp` / `closed`.
 
@@ -553,14 +582,14 @@ Trạng thái tổng: `open` / `closed` / `reopened`. API chuyển giai đoạn 
 
 ### 11.4. Bảng "nên điền gì" nhanh cho các ô hay gặp
 
-| Ô | Gợi ý điền |
-|---|---|
-| Lý do gửi yêu cầu | Một-hai câu mô tả vấn đề (tiếng Anh hoặc tiếng Việt đều được) |
-| Điều đã diễn ra (chuyển giai đoạn) | Việc cố vấn đã làm: gọi điện, họp, nhắc nhở… |
-| Lý do đổi/chuyển tuyến | Vì sao cố vấn hiện tại không phù hợp / vấn đề vượt thẩm quyền |
-| Giải thích đính chính | Dữ liệu hiện tại sai ở đâu và có chứng cứ gì |
-| Kết quả (đóng can thiệp / giới thiệu) | Kết quả cuối: được hỗ trợ gì, còn gì tồn đọng |
+| Ô                                     | Gợi ý điền                                                    |
+| ------------------------------------- | ------------------------------------------------------------- |
+| Lý do gửi yêu cầu                     | Một-hai câu mô tả vấn đề (tiếng Anh hoặc tiếng Việt đều được) |
+| Điều đã diễn ra (chuyển giai đoạn)    | Việc cố vấn đã làm: gọi điện, họp, nhắc nhở…                  |
+| Lý do đổi/chuyển tuyến                | Vì sao cố vấn hiện tại không phù hợp / vấn đề vượt thẩm quyền |
+| Giải thích đính chính                 | Dữ liệu hiện tại sai ở đâu và có chứng cứ gì                  |
+| Kết quả (đóng can thiệp / giới thiệu) | Kết quả cuối: được hỗ trợ gì, còn gì tồn đọng                 |
 
 ---
 
-*Tài liệu này dựa trên bản dev hiện tại của dự án; nếu giao diện/backend thay đổi, hãy đối chiếu lại các nhãn nút và đường dẫn trước khi demo.*
+_Tài liệu này dựa trên bản dev hiện tại của dự án; nếu giao diện/backend thay đổi, hãy đối chiếu lại các nhãn nút và đường dẫn trước khi demo._

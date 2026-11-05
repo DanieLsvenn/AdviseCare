@@ -20,6 +20,7 @@ import {
   type CaseRecord,
   type StageHistoryRecord,
 } from "@/components/case/case-api";
+import { CaseAdvisorUpdates } from "@/components/case/case-advisor-updates";
 import { CaseProgress } from "@/components/case/case-progress";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -206,7 +207,7 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
 
       {/* Act before record: on narrow screens the next step comes right after
           the request; from 1024px the actions are a sticky right rail. */}
-      <div className="grid gap-space-lg lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_auto_1fr] lg:[grid-template-areas:'req_rail'_'notes_rail'_'hist_rail']">
+      <div className="grid gap-space-lg lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_auto_auto_1fr] lg:[grid-template-areas:'req_rail'_'updates_rail'_'notes_rail'_'hist_rail']">
         <section className="rounded-lg border border-rule bg-paper p-space-lg lg:[grid-area:req]">
             <div className="flex flex-wrap items-baseline justify-between gap-space-sm">
               <h2 className="text-base font-semibold text-text">{t("request")}</h2>
@@ -217,6 +218,13 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
               {t("openedBy", { name: record.openedByName || record.studentName })}
             </p>
           </section>
+
+        <CaseAdvisorUpdates
+          caseId={record.caseId}
+          audience="advisor"
+          closed={closed}
+          className="lg:[grid-area:updates]"
+        />
 
         <aside
           aria-label={t("nextSteps")}

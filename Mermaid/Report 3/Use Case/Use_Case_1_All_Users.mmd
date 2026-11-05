@@ -2,7 +2,7 @@
 title: AdviseCare - Use Cases of All authenticated users
 ---
 flowchart LR
-    ACT(["&laquo;actor&raquo;<br/><b>All authenticated users</b>"])
+    ACT["○<br/>╱│╲<br/>╱ ╲<br/><b>All authenticated users</b>"]
     subgraph SYS["AdviseCare"]
         direction TB
         subgraph ACC["Account and Access Management"]
@@ -24,3 +24,6 @@ flowchart LR
     ACT --- UC15
     ACT --- UC16
     ACT --- UC17
+    linkStyle default stroke-width: 1pt;
+    classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
+    class ACT actor;

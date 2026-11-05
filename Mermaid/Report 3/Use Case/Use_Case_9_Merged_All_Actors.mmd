@@ -2,14 +2,14 @@
 title: AdviseCare - Use Case Diagram (all actors and all use cases)
 ---
 flowchart TB
-    ALL(["&laquo;actor&raquo;<br/><b>All authenticated users</b>"])
-    ADM(["&laquo;actor&raquo;<br/><b>System Administrator</b>"])
-    STW(["&laquo;actor&raquo;<br/><b>Data Protection Steward</b>"])
-    PH(["&laquo;actor&raquo;<br/><b>Programme Head</b>"])
-    AA(["&laquo;actor&raquo;<br/><b>Academic Advisor</b>"])
-    WA(["&laquo;actor&raquo;<br/><b>Wellbeing Advisor</b>"])
-    SWO(["&laquo;actor&raquo;<br/><b>Student Welfare Officer</b>"])
-    STU(["&laquo;actor&raquo;<br/><b>Student</b>"])
+    ALL["○<br/>╱│╲<br/>╱ ╲<br/><b>All authenticated users</b>"]
+    ADM["○<br/>╱│╲<br/>╱ ╲<br/><b>System Administrator</b>"]
+    STW["○<br/>╱│╲<br/>╱ ╲<br/><b>Data Protection Steward</b>"]
+    PH["○<br/>╱│╲<br/>╱ ╲<br/><b>Programme Head</b>"]
+    AA["○<br/>╱│╲<br/>╱ ╲<br/><b>Academic Advisor</b>"]
+    WA["○<br/>╱│╲<br/>╱ ╲<br/><b>Wellbeing Advisor</b>"]
+    SWO["○<br/>╱│╲<br/>╱ ╲<br/><b>Student Welfare Officer</b>"]
+    STU["○<br/>╱│╲<br/>╱ ╲<br/><b>Student</b>"]
     %% generalization: every role is an authenticated user
     ALL <-.-|"inherits"| ADM
     ALL <-.-|"inherits"| STW
@@ -191,3 +191,6 @@ flowchart TB
     PH --- UC56
     PH --- UC57
     PH --- UC58
+    linkStyle default stroke-width: 1pt;
+    classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
+    class ALL,ADM,STW,PH,AA,WA,SWO,STU actor;

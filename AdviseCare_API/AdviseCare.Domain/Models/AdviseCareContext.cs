@@ -42,6 +42,8 @@ public partial class AdviseCareContext : DbContext
 
     public virtual DbSet<Casenote> Casenotes { get; set; }
 
+    public virtual DbSet<CaseAdvisorUpdate> CaseAdvisorUpdates { get; set; }
+
     public virtual DbSet<Casestagehistory> Casestagehistories { get; set; }
 
     public virtual DbSet<Consent> Consents { get; set; }
@@ -573,6 +575,38 @@ public partial class AdviseCareContext : DbContext
                 .HasForeignKey(d => d.CaseId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_CASENOTES_caseId");
+        });
+
+        modelBuilder.Entity<CaseAdvisorUpdate>(entity =>
+        {
+            entity.ToTable("CASEADVISORUPDATES");
+
+            entity.Property(e => e.CaseAdvisorUpdateId)
+                .HasDefaultValueSql("(newsequentialid())")
+                .HasColumnName("caseAdvisorUpdateId");
+            entity.Property(e => e.AuthorId).HasColumnName("authorId");
+            entity.Property(e => e.CaseId).HasColumnName("caseId");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("createdAt");
+            entity.Property(e => e.MessageText)
+                .IsRequired()
+                .HasMaxLength(1000)
+                .HasColumnName("messageText");
+
+            entity.HasIndex(e => new { e.CaseId, e.CreatedAt })
+                .HasDatabaseName("IX_CASEADVISORUPDATES_caseId_createdAt");
+
+            entity.HasOne(d => d.Author).WithMany()
+                .HasForeignKey(d => d.AuthorId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CASEADVISORUPDATES_authorId");
+
+            entity.HasOne(d => d.Case).WithMany()
+                .HasForeignKey(d => d.CaseId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CASEADVISORUPDATES_caseId");
         });
 
         modelBuilder.Entity<Casestagehistory>(entity =>
@@ -1621,4 +1655,4 @@ public partial class AdviseCareContext : DbContext
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
-}
+}

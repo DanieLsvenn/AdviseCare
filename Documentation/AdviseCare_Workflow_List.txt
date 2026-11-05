@@ -62,7 +62,9 @@ WF2: Student requests support and gets advised
 6. Advisor and student meet
 6.1. They decide by themselves when and how to meet (online, offline, external messaging app); the app has no scheduling system for now
 6.2. Advisor moves the case to stage = contacted
+6.3. After reviewing the request or shared data, the advisor can publish a short student-visible update with next steps or a meeting suggestion; the student receives a notification and can read the attributed, timestamped update on the case
 7. Advisor records case notes (discussion, agreed actions) and finalizes them
+   Case notes are internal staff records and are not the channel for student-facing communication; public updates are stored separately and cannot be edited or deleted
 8. If the case needs someone else
 8.1. Advisor refers it to another advisor of the same or the other type (see EX4)
 8.2. Wellbeing Advisor refers money matters to the Welfare Officer (see WF2b)

@@ -1173,6 +1173,8 @@ GET /api/Cases/assigned?unreadOnly=true&sortBy=priority&sortDirection=desc&page=
 GET /api/Cases/assigned/unread-count - advisor: how many of my cases have unread notifications (D4.1 badge)
 GET /api/CaseNotes?page=1&pageSize=20 - advisor: the notes I wrote (drafts and finalized)
 GET /api/CaseNotes/{id} - one note (drafts only for their author)
+GET /api/Cases/{caseId}/advisor-updates - student and authorized case staff: the append-only student-visible updates, oldest first
+POST /api/Cases/{caseId}/advisor-updates - current case advisor: publish a student-visible update (messageText, 1-1000 characters); records author/time, adds an activity log entry, and notifies the student; no edit/delete endpoint
 GET /api/Referrals?page=1&pageSize=20 - Programme Head: all referrals
 GET /api/Referrals/me/outgoing?status=pending - advisor: referrals I sent
 GET /api/Referrals/search?caseId={caseId} - staff of the case: all referrals of a case (Programme Head may omit caseId)
@@ -1183,6 +1185,7 @@ Rules worth knowing when testing
 - CASES.advisorId is the only advisor-student link (no ADVISORASSIGNMENTS): an advisor advises a student while holding one of their cases that is not closed
 - Notifications about cases point to /cases/{caseId}, /referrals/{referralId} or /case-change-requests/{id}; opening GET /api/Cases/{id} marks the caller's notifications for that case as read, which drives unreadNotificationCount in /api/Cases/assigned
 - Case notes: only the case's current advisor writes; drafts are private; students never read notes
+- Advisor updates: separate from case notes; only the current advisor may publish (on an open case), and the student, current advisor, Programme Head, and staff involved in a case referral may read; updates are append-only and publishing sends a notification
 - A case with a pending referral cannot change stage, be reassigned or have a change request approved until the receiver accepts or returns it
 - Welfare Officer accepting a referral does not take the case: the advisor keeps it (stage stays referred) and moves it to followUp after the welfare work
 - Advisor outreach (EX3) works for any active student, but only with a category of the advisor's own type

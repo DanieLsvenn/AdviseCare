@@ -17,6 +17,7 @@ import {
   type CaseRecord,
   type StageHistoryRecord,
 } from "@/components/case/case-api";
+import { CaseAdvisorUpdates } from "@/components/case/case-advisor-updates";
 import { CaseProgress } from "@/components/case/case-progress";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -162,6 +163,8 @@ export function StudentCase({ caseId }: { caseId: string }) {
           )}
         </aside>
       </div>
+
+      <CaseAdvisorUpdates caseId={record.caseId} audience="student" />
 
       <section className="rounded-lg border border-rule bg-paper p-space-lg">
         <h2 className="mb-space-md text-base font-semibold text-text">{t("case.history")}</h2>
