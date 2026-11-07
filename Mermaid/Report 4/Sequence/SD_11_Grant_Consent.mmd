@@ -1,0 +1,32 @@
+---
+title: AdviseCare - Sequence Diagram SD-11 - Grant Consent
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor STU as Student
+    participant W as Web App
+    participant C as ConsentsController
+    participant S as ConsentService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    STU->>W: Open consent page
+    W->>C: GET /api/Consents/me
+    C->>S: GetMyConsentsAsync(StudentId)
+    S-->>W: Purposes, attributes and state per attribute
+    STU->>W: Tick attributes of "Wellbeing support", optional expiry date
+    W->>C: POST /api/Consents {consentPurposeId, dataAttributeIds, expiresAt}
+    C->>S: CreateAsync(StudentId, request)
+    S->>R: Check purpose active, attributes active and covered, expiry in the future
+    loop each attribute
+        alt not granted yet
+            S->>R: PrepareCreate Consent (granted) and ConsentHistory (null -> granted)
+        else granted but expired
+            S->>R: PrepareUpdate Consent (renewed) and ConsentHistory
+        end
+    end
+    S->>R: SaveAsync()
+    R->>DB: INSERT/UPDATE CONSENTS, INSERT CONSENTHISTORIES
+    S->>S: Log activity consentGranted
+    S-->>C: List of CreateConsentResponse
+    C-->>W: 200 OK

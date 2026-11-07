@@ -1,0 +1,39 @@
+---
+title: AdviseCare - Sequence Diagram SD-26 - Case Advisor Change Request and Decision
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor RQ as Student or current advisor
+    actor PH as Programme Head
+    participant W as Web App
+    participant C as CaseChangeRequestsController
+    participant S as CaseChangeRequestService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    RQ->>W: Propose another advisor with a reason
+    W->>C: POST /api/CaseChangeRequests {caseId, proposedAdvisorId, reason}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: Caller is the case's student or advisor, case open with an advisor, proposed advisor active with the case's role, no pending request
+    S->>R: CreateAsync(request, status = pending)
+    R->>DB: INSERT CASECHANGEREQUESTS
+    S->>N: NotifyAsync(each Programme Head)
+    PH->>W: Review pending requests
+    W->>C: GET /api/CaseChangeRequests/search?status=pending
+    alt approve
+        W->>C: PUT /api/CaseChangeRequests/{id}/approve {decisionNotes?}
+        C->>S: ApproveAsync(ProgrammeHeadId, Id, request)
+        S->>R: Refuse while a referral of the case is pending
+        S->>R: PrepareUpdate request (approved), PrepareUpdate Case (advisorId = proposed), PrepareCreate CaseStageHistory (same stage, hand-over)
+        S->>R: SaveAsync()
+        R->>DB: UPDATE CASECHANGEREQUESTS, CASES, INSERT CASESTAGEHISTORIES
+        S->>N: NotifyAsync(student, new advisor, old advisor)
+    else reject
+        W->>C: PUT /api/CaseChangeRequests/{id}/reject {decisionNotes}
+        C->>S: RejectAsync(ProgrammeHeadId, Id, request)
+        S->>R: UpdateAsync(rejected, decisionNotes)
+        R->>DB: UPDATE CASECHANGEREQUESTS
+        S->>N: NotifyAsync(requester, student, both advisors, with the reason)
+    end
+    C-->>W: 200 OK

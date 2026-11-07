@@ -43,8 +43,9 @@ WF2: Student requests support and gets advised
 2.4. Chooses which data attributes to share
 2.4.1. Only the attributes covered by the category's consent purpose are offered (defined by the Steward)
 2.4.2. The student may leave it empty
-2.4.3. Each chosen attribute is recorded as consent for that purpose
-2.5. Submits; the case is created with stage = pending
+2.4.3. The student may add a short note to each chosen attribute on why it matters to the request
+2.4.4. Each chosen attribute is recorded as consent for that purpose and, with its note, on the case
+2.5. Submits; the case is created with stage = pending and priority = medium (the student does not set the priority)
 3. Programme Head matches the case (manual for now)
 3.1. Programme Head sees the case in the matching queue
 3.2. Programme Head picks a suitable advisor
@@ -62,7 +63,9 @@ WF2: Student requests support and gets advised
 6. Advisor and student meet
 6.1. They decide by themselves when and how to meet (online, offline, external messaging app); the app has no scheduling system for now
 6.2. Advisor moves the case to stage = contacted
+6.3. Advisor and student can write in the case's message thread (e.g. next steps or a meeting suggestion, and the student's reply); each message notifies the other side
 7. Advisor records case notes (discussion, agreed actions) and finalizes them
+   Case notes are internal staff records and are not the channel for student-facing communication; case messages are stored separately and cannot be edited or deleted
 8. If the case needs someone else
 8.1. Advisor refers it to another advisor of the same or the other type (see EX4)
 8.2. Wellbeing Advisor refers money matters to the Welfare Officer (see WF2b)
@@ -74,7 +77,7 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
 2. Welfare Officer triages it
 2.1. Opens the referral and the advisor's notes
 2.2. Sets the priority
-2.3. Accepts it, or returns it to the advisor with a reason
+2.3. Accepts it (the wellbeing advisor keeps the case and the stage stays referred), or returns it to the advisor with a reason (the case goes back to the stage it had before the referral)
 3. Welfare Officer works with the student (loan arrangement, financial aid, banking documents)
 3.1. Logs each intervention (type, date, notes)
 3.2. Records any support grant issued
@@ -163,7 +166,7 @@ EX4: Referral between advisors
 1. Advisor opens the case and chooses "Refer"
 2. Advisor picks the receiver (advisor of the same or the other type) and writes the reason and priority
 3. Receiver gets a notification
-4. Receiver accepts (becomes the handling advisor) or returns the referral with a reason
+4. Receiver accepts (becomes the handling advisor) or returns the referral with a reason (the case goes back to the stage it had before the referral)
 5. Case stage history records the hand-over
 
 EX5: Escalation to the Programme Head
@@ -177,7 +180,7 @@ EX6: Case advisor change
 2. Programme Head reviews the request
 3. Programme Head approves or rejects it
 3.1. Approved: the case's advisor becomes the proposed advisor
-3.2. Rejected: the reason is recorded
+3.2. Rejected: the Programme Head's reason is recorded (decisionNotes) and the case keeps its advisor
 4. Both advisors and the student are notified
 5. Programme Head can also reassign directly without a request
 
@@ -238,10 +241,11 @@ EX14: Student exports own record
 3. Student downloads it; the export is logged
 
 EX15: Correction request (pending review)
-1. Student selects a value believed to be wrong and explains why
-2. Advisor reviews it against its source
-3. Approved: a corrected value is stored as a new version (the old one stays in history); Rejected: the advisor writes the reason
-4. Student is notified
+A student asks for a wrong value in their own student data (e.g. an attendance rate) to be corrected; directory data (name, student code, academic status) is edited by the admin instead
+1. Student picks the value believed to be wrong (one data attribute for one term), gives the correct value and a reason; only possible while the student has an open case (otherwise the student is asked to open a support case first)
+2. The advisor of one of the student's open cases reviews it against its source (e.g. the lecturer's attendance sheet)
+3. Approved: the corrected value is saved as a new version with the same valid-from date, and the wrong value stays in the history (system time still shows the old value, valid time shows the corrected one); Rejected: the advisor writes the reason
+4. Student is notified; while pending, the student can track or withdraw the request
 
 EX16: Notifications, language and settings
 1. User views notifications, marks them read, clicks through to the item and clears old ones
@@ -258,9 +262,9 @@ FU2: Stored report history (reports are generated and downloaded on the fly for 
 FU3: Backup and restore with integrity check
 FU4: Automated/AI case matching to replace the Programme Head's manual matching
 FU5: Evaluating the effectiveness of advising over a period
-FU6: Importing accounts from a Google Sheet (Excel import only for now)
+FU6: Importing accounts and student data from a Google Sheet (Excel/CSV import only for now)
 FU7: Meeting scheduling inside the app (advisor time slots, students book, advisors swap)
-FU8: In-app chat between advisor and student (possible stretch goal if the scope turns out small)
+FU8: AI assistance in the case thread (e.g. suggested replies or summaries); not agreed by the team yet (the advisor-student thread itself is now in the current version as case messages)
 FU9: Accounts without a Google account on file, created with a one-time activation code
 FU10: Account import that also updates existing accounts (matched by studentCode; a new studentCode creates the account as today)
 FU11: Each student's programme (only needed once there is more than one programme / Programme Head)

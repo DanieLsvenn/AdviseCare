@@ -1,0 +1,23 @@
+---
+title: AdviseCare - Activity Diagram - WF3 Steward Sets Up Consent
+---
+
+flowchart TD
+    S((Start)) --> A1[Steward signs in]
+    A1 --> A2[Create data attributes: name, description, data type]
+    A2 --> A3[Create a consent purpose, it starts inactive]
+    A3 --> A4[Attach the data attributes the purpose covers]
+    A4 --> D1{At least one active attribute?}
+    D1 -->|No| A4
+    D1 -->|Yes| A5[Activate the purpose]
+    A5 --> B1[Create an access policy linking a staff role to the purpose, status draft]
+    B1 --> B2[Test the policy against a sample student]
+    B2 --> D2{Result as expected?}
+    D2 -->|No| B3[Edit the draft policy]
+    B3 --> B2
+    D2 -->|Yes| B4[Activate the policy]
+    B4 --> C1[Admin links each support category to its governing purpose]
+    C1 --> D3{Purpose or policy no longer used?}
+    D3 -->|Yes| C2[Retire the purpose or revoke the policy, never deleted]
+    D3 -->|No| X((End))
+    C2 --> X

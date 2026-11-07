@@ -1,0 +1,29 @@
+---
+title: AdviseCare - Sequence Diagram SD-08 - Create Support Category
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor ADM as System Administrator
+    participant W as Web App
+    participant C as SupportCategoriesController
+    participant S as SupportCategoryService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADM->>W: Fill category name, description, support type, consent purpose
+    W->>C: POST /api/SupportCategories
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: GetByIdAsync(consent purpose)
+    alt purpose missing or retired
+        S-->>C: NotFoundException / ValidationException
+        C-->>W: 404 / 400
+    else name already used for this support type
+        S-->>C: ConflictException
+        C-->>W: 409 Conflict
+    else valid
+        S->>R: CreateAsync(category, status = active)
+        R->>DB: INSERT SUPPORTCATEGORIES
+        S->>S: Log activity supportCategoryCreated
+        S-->>C: CreateSupportCategoryResponse
+        C-->>W: 200 OK
+    end

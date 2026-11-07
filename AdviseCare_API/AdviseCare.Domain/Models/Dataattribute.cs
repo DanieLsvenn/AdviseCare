@@ -19,6 +19,8 @@ public partial class Dataattribute
 
     public virtual ICollection<Attributekey> Attributekeys { get; set; } = new List<Attributekey>();
 
+    public virtual ICollection<CaseAttribute> CaseAttributes { get; set; } = new List<CaseAttribute>();
+
     public virtual ICollection<Consentrequest> Consentrequests { get; set; } = new List<Consentrequest>();
 
     public virtual ICollection<Consent> Consents { get; set; } = new List<Consent>();

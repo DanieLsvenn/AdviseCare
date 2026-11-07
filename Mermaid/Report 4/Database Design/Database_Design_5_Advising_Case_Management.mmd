@@ -1,0 +1,104 @@
+---
+title: AdviseCare - Database Design - Advising / Case Management
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+erDiagram
+    CASES {
+        uniqueidentifier caseId PK "NOT NULL"
+        uniqueidentifier advisorId FK "NULL"
+        uniqueidentifier openedBy FK "NOT NULL"
+        uniqueidentifier studentId FK "NOT NULL"
+        uniqueidentifier subjectId FK "NULL"
+        uniqueidentifier supportCategoryId FK "NOT NULL"
+        nvarchar(max) requestReason "NOT NULL"
+        datetime2(3) closedAt "NULL"
+        datetime2(3) openedAt "NOT NULL"
+        nvarchar(30) currentStage "NOT NULL"
+        nvarchar(30) priority "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    CASECHANGEREQUESTS {
+        uniqueidentifier caseChangeRequestId PK "NOT NULL"
+        uniqueidentifier caseId FK "NOT NULL"
+        uniqueidentifier programmeHeadId FK "NULL"
+        uniqueidentifier proposedAdvisorId FK "NOT NULL"
+        uniqueidentifier requestedBy FK "NOT NULL"
+        nvarchar(max) decisionNotes "NULL"
+        nvarchar(max) reason "NOT NULL"
+        datetime2(3) decidedAt "NULL"
+        datetime2(3) requestedAt "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    CASENOTES {
+        uniqueidentifier caseNoteId PK "NOT NULL"
+        uniqueidentifier authorId FK "NOT NULL"
+        uniqueidentifier caseId FK "NOT NULL"
+        nvarchar(max) noteText "NOT NULL"
+        datetime2(3) createdAt "NOT NULL"
+        datetime2(3) editedAt "NULL"
+        bit isFinalized "NOT NULL"
+    }
+    CASESTAGEHISTORIES {
+        uniqueidentifier caseStageHistoryId PK "NOT NULL"
+        uniqueidentifier caseId FK "NOT NULL"
+        uniqueidentifier changedBy FK "NOT NULL"
+        nvarchar(max) reason "NOT NULL"
+        datetime2(3) changedAt "NOT NULL"
+        nvarchar(30) fromStage "NOT NULL"
+        nvarchar(30) toStage "NOT NULL"
+    }
+    REFERRALS {
+        uniqueidentifier referralId PK "NOT NULL"
+        uniqueidentifier caseId FK "NOT NULL"
+        uniqueidentifier fromAccountId FK "NOT NULL"
+        uniqueidentifier toAccountId FK "NOT NULL"
+        nvarchar(max) referralReason "NOT NULL"
+        datetime2(3) acceptedAt "NULL"
+        datetime2(3) createdAt "NOT NULL"
+        nvarchar(30) priority "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    CORRECTIONREQUESTS {
+        uniqueidentifier correctionRequestId PK "NOT NULL"
+        uniqueidentifier reviewedBy FK "NULL"
+        uniqueidentifier studentDataId FK "NOT NULL"
+        uniqueidentifier studentId FK "NOT NULL"
+        varbinary(max) currentValue "NULL"
+        nvarchar(max) decisionNotes "NULL"
+        nvarchar(max) explanation "NOT NULL"
+        varbinary(max) proposedValue "NULL"
+        datetime2(3) decidedAt "NULL"
+        datetime2(3) submittedAt "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    ACCOUNTS {
+        uniqueidentifier accountId PK "referenced table, see its own section"
+    }
+    STUDENTDATA {
+        uniqueidentifier studentDataId PK "referenced table, see its own section"
+    }
+    SUBJECTS {
+        uniqueidentifier subjectId PK "referenced table, see its own section"
+    }
+    SUPPORTCATEGORIES {
+        uniqueidentifier supportCategoryId PK "referenced table, see its own section"
+    }
+    CASES ||--o{ REFERRALS : "caseId"
+    ACCOUNTS ||--o{ REFERRALS : "fromAccountId"
+    ACCOUNTS ||--o{ REFERRALS : "toAccountId"
+    ACCOUNTS |o--o{ CORRECTIONREQUESTS : "reviewedBy"
+    STUDENTDATA ||--o{ CORRECTIONREQUESTS : "studentDataId"
+    ACCOUNTS ||--o{ CORRECTIONREQUESTS : "studentId"
+    ACCOUNTS |o--o{ CASES : "advisorId"
+    ACCOUNTS ||--o{ CASES : "openedBy"
+    ACCOUNTS ||--o{ CASES : "studentId"
+    SUBJECTS |o--o{ CASES : "subjectId"
+    SUPPORTCATEGORIES ||--o{ CASES : "supportCategoryId"
+    ACCOUNTS ||--o{ CASENOTES : "authorId"
+    CASES ||--o{ CASENOTES : "caseId"
+    CASES ||--o{ CASESTAGEHISTORIES : "caseId"
+    ACCOUNTS ||--o{ CASESTAGEHISTORIES : "changedBy"
+    CASES ||--o{ CASECHANGEREQUESTS : "caseId"
+    ACCOUNTS |o--o{ CASECHANGEREQUESTS : "programmeHeadId"
+    ACCOUNTS ||--o{ CASECHANGEREQUESTS : "proposedAdvisorId"
+    ACCOUNTS ||--o{ CASECHANGEREQUESTS : "requestedBy"

@@ -12,6 +12,9 @@ namespace AdviseCare.Application.Interfaces.Services
         Task<CreateAccountResponse> CreateAsync(CreateAccountRequest request);
         Task<UpdateAccountResponse> UpdateAsync(Guid AccountId, UpdateAccountRequest request);
         Task<ImportAccountResponse> ImportAsync(ImportAccountRequest request);
+        Task<PreviewAccountImportResponse> PreviewImportAsync(ImportAccountRequest request);
+        Task<UpdateAccountRolesResponse> UpdateAccountRolesAsync(Guid AccountId, UpdateAccountRolesRequest request);
+        Task<List<SearchStaffAccountResponse>> SearchStaffAsync(SearchStaffAccountRequest request);
         Task<SendLinkingEmailResponse> SendLinkingEmailsAsync(SendLinkingEmailRequest request);
         Task<bool> ActivateAsync(Guid AccountId);
         Task<bool> DeactivateAsync(Guid ActorId, Guid AccountId);

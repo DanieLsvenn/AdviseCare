@@ -1,0 +1,37 @@
+---
+title: AdviseCare - Sequence Diagram SD-04 - Sign In
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant W as Web App
+    participant C as AuthController
+    participant S as AccountService
+    participant H as IPasswordHasher
+    participant J as IJwtTokenGenerator
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    U->>W: Enter email or username and password
+    W->>C: POST /api/Auth/login {identifier, password, deviceInfo}
+    C->>S: LoginAsync(request)
+    S->>R: Find account by email or username
+    R->>DB: SELECT ACCOUNTS
+    DB-->>R: account
+    S->>H: Verify(password, passwordHash)
+    alt no account, no password yet or wrong password
+        S-->>C: UnauthorizedException (same message for every case)
+        C-->>W: 401 Unauthorized
+    else account deactivated or banned
+        S-->>C: ForbiddenException
+        C-->>W: 403 Forbidden
+    else valid
+        S->>R: PrepareCreate Session, SaveAsync()
+        R->>DB: INSERT SESSIONS
+        S->>J: Generate JWT (accountId, sessionId, roles)
+        S->>S: Log activity signedIn
+        S-->>C: LoginResponse
+        C-->>W: 200 OK (token)
+        W-->>U: Home page of the user's role
+    end
+    Note over W,C: "Sign in with Google" (POST /api/Auth/google) follows the same path after IGoogleTokenValidator, only an account already linked to that Google account is accepted

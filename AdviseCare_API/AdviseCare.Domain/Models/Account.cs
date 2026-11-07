@@ -65,6 +65,8 @@ public partial class Account
 
     public virtual ICollection<Case> CaseStudents { get; set; } = new List<Case>();
 
+    public virtual ICollection<Casemessage> Casemessages { get; set; } = new List<Casemessage>();
+
     public virtual ICollection<Casenote> Casenotes { get; set; } = new List<Casenote>();
 
     public virtual ICollection<Casestagehistory> Casestagehistories { get; set; } = new List<Casestagehistory>();

@@ -72,7 +72,7 @@ Tables owned: STUDENTDATA, CORRECTIONREQUESTS, INTERVENTIONS, SUPPORTGRANTS, EXT
 ==========
 
 C1. Student data import (Admin; StudentDataController)
-C1.1. Upload Excel/CSV (Google Sheet is not built yet); preview the header and sample rows; map columns to data attributes
+C1.1. Upload Excel/CSV (Google Sheet is future, FU6); preview the header and sample rows; map columns to data attributes
 C1.2. Validate the whole file (also as a dry run), all-or-nothing; return the list of invalid rows; rows of archived data attributes are not imported but listed in rejectedRows, and the rest still goes in
 C1.3. Insert new STUDENTDATA rows only (dataSourceId null, provenanceNote = file name + import date); never update; encrypt each value with Member B's IAttributeKeyService.EncryptValuesAsync before saving (new keys are saved by the same SaveAsync)
 C1.4. Flag missing values (isMissing) for every enrolled, active student without a value for an imported attribute and term
@@ -82,7 +82,7 @@ C2.1. Student data API: data attribute values with sources and missing-data noti
 C2.2. Point-in-time view ("way back machine") on both time axes: system time (latest transactionFrom up to the chosen date) and valid time (latest validFrom up to the chosen date, a later recording winning on ties); compare two dates
 C2.3. Student's own data view (no consent needed, not logged)
 C2.4. Student JSON export (own record + own access log), generated on the fly
-C2.5. Correction requests (pending review): submit on one STUDENTDATA row (values stored encrypted), reviewed by the advisor of one of the student's open cases (the values are only shown with consent or emergency access, and logged), approved = new "correction" row with the same validFrom, withdraw
+C2.5. Correction requests (pending review): submit on one STUDENTDATA row (values stored encrypted), only while the student has an open case (to do: refuse with 409 otherwise), reviewed by the advisor of one of the student's open cases (the values are only shown with consent or emergency access, and logged), approved = new "correction" row with the same validFrom, withdraw
 C3. Welfare (Student Welfare Officer)
 C3.1. Interventions: log, update until closed (the outcome is part of the update), close, history per student
 C3.2. Support grants under an intervention; revoke
@@ -95,10 +95,10 @@ MEMBER D - SUPPORT REQUESTS, CASES, MATCHING AND REPORTS
 Tables owned: SUPPORTCATEGORIES, CASES, CASENOTES, CASESTAGEHISTORIES, REFERRALS, CASECHANGEREQUESTS
 ==========
 
-D1. Support categories (Admin): create/edit/archive, academic/wellbeing, governing consent purpose
+D1. Support categories (Admin): create/edit/archive, academic/wellbeing, governing consent purpose; the shareable attributes of a category (its purpose's active attributes)
 D2. Support requests (Student)
 D2.1. Create a case: support type, category, subject (academic), reason
-D2.2. List the attributes the student may share (from the category's purpose) and record the chosen ones as consents (calls Member B's consent table directly through the DbContext, or B's service once ready)
+D2.2. List the attributes the student may share (from the category's purpose) and record the chosen ones as consents (Member B's IConsentService.CreateAsync, saved together with the case)
 D2.3. Student's own cases, stages and history
 D3. Matching (Programme Head)
 D3.1. Queue of unassigned cases
@@ -106,10 +106,11 @@ D3.2. Suggested advisors: by type, subject specialisation, faculty, workload (an
 D3.3. Assign a case: set advisorId (the case's advisor is the only advisor-student link), notify student with the advisor's contact information (NotificationService.NotifyAsync, Member A)
 D3.4. Reassign directly
 D4. Advisor case workflow (Academic and Wellbeing Advisors)
-D4.1. Assigned case list: sort, filter, unread count
+D4.1. Assigned case list: sort, filter, unread notifications per case and the unread-case count
 D4.2. Advisor opens a case for a student based on their data (read through Member C's StudentData API)
 D4.3. Case notes: draft, edit, finalize (no edits after finalize)
 D4.4. Stage changes with reason (CASESTAGEHISTORIES insert-only); close, reopen
 D4.5. Referrals: to another advisor (same/other type) or to the Welfare Officer; accept / return
-D5. Case change requests (CASECHANGEREQUESTS): the case's advisor or student requests another advisor for one case, Programme Head approves (CASES.advisorId = proposed advisor) or rejects
-D6. Reports (Programme Head): cases in a time range with filters, caseload volume and closure time per advisor, export Excel/CSV/PDF generated on the fly
+D4.6. Case messages (CASEMESSAGES): a two-way append-only thread on a case between its student and its current advisor (not on a closed case); the case staff can read it; each message notifies the other side; kept separate from the private CASENOTES
+D5. Case change requests (CASECHANGEREQUESTS): the case's advisor or student requests another advisor for one case, Programme Head approves (CASES.advisorId = proposed advisor) or rejects with decision notes (required)
+D6. Reports (Programme Head; ReportsController + ReportService): cases in a time range with filters, caseload volume and closure time per advisor, export Excel/CSV/PDF generated on the fly (the PDF uses the built-in SimplePdfWriter, which cannot draw Vietnamese diacritics)

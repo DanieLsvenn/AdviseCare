@@ -1,0 +1,29 @@
+---
+title: AdviseCare - Use Cases of All authenticated users
+---
+flowchart LR
+    ACT["○<br/>╱│╲<br/>╱ ╲<br/><b>All authenticated users</b>"]
+    subgraph SYS["AdviseCare"]
+        direction TB
+        subgraph ACC["Account and Access Management"]
+            UC01(["UC-01<br/>Link Google Account"])
+            UC02(["UC-02<br/>Sign In"])
+            UC03(["UC-03<br/>Sign Out and Manage Sessions"])
+            UC04(["UC-04<br/>Manage Password"])
+        end
+        subgraph NTF["Notifications and Personal Settings"]
+            UC15(["UC-15<br/>View and Manage Notifications"])
+            UC16(["UC-16<br/>Manage Notification Preferences"])
+            UC17(["UC-17<br/>Manage Own Profile and Settings"])
+        end
+    end
+    ACT --- UC01
+    ACT --- UC02
+    ACT --- UC03
+    ACT --- UC04
+    ACT --- UC15
+    ACT --- UC16
+    ACT --- UC17
+    linkStyle default stroke-width: 1pt;
+    classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
+    class ACT actor;

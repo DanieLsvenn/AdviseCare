@@ -1,0 +1,248 @@
+---
+title: AdviseCare - Class Diagram - Accounts and Authentication
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+classDiagram
+    direction LR
+    class AuthController {
+        +Login() POST /login
+        +GoogleLogin() POST /google
+        +LinkGoogle() POST /link-google
+        +ForgotPassword() POST /forgot-password
+        +ResetPassword() POST /reset-password
+        +ChangePassword() POST /change-password
+        +Me() GET /me
+        +UpdateMe() PUT /me
+        +UploadAvatar() POST /me/avatar
+        +Logout() POST /logout
+        +GetMySessions() GET /sessions
+        +LogoutSession() POST /sessions/:id/logout
+        +LogoutOtherSessions() POST /sessions/logout-others
+    }
+    AuthController --> IAccountService : uses
+    AuthController --> ISessionService : uses
+    class AccountsController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +Import() POST /import
+        +SendLinkingEmails() POST /linking-emails
+        +Activate() PUT /:id/activate
+        +Deactivate() PUT /:id/deactivate
+        +Ban() PUT /:id/ban
+        +Unban() PUT /:id/unban
+        +GetAllAccountRole() GET /roles
+        +GetAccountRoleById() GET /:accountId/roles/:roleId
+        +SearchAccountRole() GET /roles/search
+        +CreateAccountRole() POST /roles
+        +DeleteAccountRole() DELETE /:accountId/roles/:roleId
+    }
+    AccountsController --> IAccountService : uses
+    class RolesController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+    }
+    RolesController --> IRoleService : uses
+    class SessionsController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+    }
+    SessionsController --> ISessionService : uses
+    class StudentProfilesController {
+        +GetAll() GET /
+        +GetMyProfile() GET /me
+        +GetById() GET /:studentId
+        +Search() GET /search
+        +Update() PUT /:studentId
+    }
+    StudentProfilesController --> IStudentProfileService : uses
+    class ActivityLogsController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +GetMine() GET /me
+    }
+    ActivityLogsController --> IActivityLogService : uses
+    class IAccountService {
+        +GetAll() IEnumerable~GetAllAccountResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllAccountWithPaginationResponse~
+        +GetByIdAsync(AccountId) GetAccountByIdResponse
+        +SearchAsync(request) List~SearchAccountResponse~
+        +CreateAsync(request) CreateAccountResponse
+        +UpdateAsync(AccountId, request) UpdateAccountResponse
+        +ImportAsync(request) ImportAccountResponse
+        +SendLinkingEmailsAsync(request) SendLinkingEmailResponse
+        +ActivateAsync(AccountId) bool
+        +DeactivateAsync(ActorId, AccountId) bool
+        +BanAsync(ActorId, AccountId) bool
+        +UnbanAsync(AccountId) bool
+        +LoginAsync(request) LoginResponse
+        +GoogleLoginAsync(request) LoginResponse
+        +LinkGoogleAccountAsync(request) LoginResponse
+        +ForgotPasswordAsync(request) ForgotPasswordResponse
+        +ResetPasswordAsync(request) ResetPasswordResponse
+        +ChangePasswordAsync(AccountId, CurrentSessionId, request) ChangePasswordResponse
+        +GetMyProfileAsync(AccountId) GetMyProfileResponse
+        +UpdateMyProfileAsync(AccountId, request) UpdateMyProfileResponse
+        +UploadAvatarAsync(AccountId, request) UploadAvatarResponse
+        +GetAllAccountRoleAsync() IEnumerable~GetAllAccountRoleResponse~
+        +GetAllAccountRoleWithPaginationAsync(page, pageSize) IEnumerable~GetAllAccountRoleWithPaginationResponse~
+        +GetAccountRoleByIdAsync(AccountId, RoleId) GetAccountRoleByIdResponse
+        +SearchAccountRoleAsync(request) List~SearchAccountRoleResponse~
+        +CreateAccountRoleAsync(request) CreateAccountRoleResponse
+        +DeleteAccountRoleAsync(AccountId, RoleId) bool
+    }
+    class AccountService {
+    }
+    AccountService ..|> IAccountService
+    AccountService --> Account : IGenericRepository
+    AccountService --> Role : IGenericRepository
+    AccountService --> AccountRole : IGenericRepository
+    AccountService --> Studentprofile : IGenericRepository
+    AccountService --> Session : IGenericRepository
+    AccountService --> IActivityLogService : uses
+    AccountService --> IPasswordHasher : uses
+    AccountService --> IJwtTokenGenerator : uses
+    AccountService --> IGoogleTokenValidator : uses
+    AccountService --> IEmailService : uses
+    AccountService --> IStorageService : uses
+    AccountService --> IExcelReader : uses
+    class IStudentProfileService {
+        +GetAll() IEnumerable~GetAllStudentProfileResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllStudentProfileWithPaginationResponse~
+        +GetByIdAsync(StudentId) GetStudentProfileByIdResponse
+        +SearchAsync(request) List~SearchStudentProfileResponse~
+        +UpdateAsync(StudentId, request) UpdateStudentProfileResponse
+        +GetMyProfileAsync(StudentId) GetMyStudentProfileResponse
+    }
+    class StudentProfileService {
+    }
+    StudentProfileService ..|> IStudentProfileService
+    StudentProfileService --> Studentprofile : IGenericRepository
+    StudentProfileService --> IActivityLogService : uses
+    class IRoleService {
+        +GetAll() IEnumerable~GetAllRoleResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllRoleWithPaginationResponse~
+        +GetByIdAsync(RoleId) GetRoleByIdResponse
+        +SearchAsync(request) List~SearchRoleResponse~
+        +CreateAsync(request) CreateRoleResponse
+        +UpdateAsync(RoleId, request) UpdateRoleResponse
+    }
+    class RoleService {
+    }
+    RoleService ..|> IRoleService
+    RoleService --> Role : IGenericRepository
+    RoleService --> IActivityLogService : uses
+    class ISessionService {
+        +GetAll() IEnumerable~GetAllSessionResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllSessionWithPaginationResponse~
+        +GetByIdAsync(SessionId) GetSessionByIdResponse
+        +SearchAsync(request) List~SearchSessionResponse~
+        +CreateAsync(request) CreateSessionResponse
+        +UpdateAsync(SessionId, request) UpdateSessionResponse
+        +GetMySessionsAsync(AccountId, CurrentSessionId) List~GetMySessionResponse~
+        +LogoutAsync(AccountId, CurrentSessionId, SessionId) LogoutResponse
+        +LogoutOtherSessionsAsync(AccountId, CurrentSessionId) LogoutResponse
+    }
+    class SessionService {
+    }
+    SessionService ..|> ISessionService
+    SessionService --> Session : IGenericRepository
+    SessionService --> Account : IGenericRepository
+    SessionService --> IActivityLogService : uses
+    class IActivityLogService {
+        +GetAll() IEnumerable~GetAllActivityLogResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllActivityLogWithPaginationResponse~
+        +GetByIdAsync(ActivityLogId) GetActivityLogByIdResponse
+        +SearchAsync(request) List~SearchActivityLogResponse~
+        +CreateAsync(request) CreateActivityLogResponse
+        +UpdateAsync(ActivityLogId, request) UpdateActivityLogResponse
+        +GetMyActivityLogsAsync(AccountId) List~GetMyActivityLogResponse~
+        +LogAsync(AccountId, activityType, activityDetail) void
+        +LogCurrentAccountAsync(activityType, activityDetail) void
+    }
+    class ActivityLogService {
+    }
+    ActivityLogService ..|> IActivityLogService
+    ActivityLogService --> Activitylog : IGenericRepository
+    ActivityLogService --> Account : IGenericRepository
+    class IJwtTokenGenerator {
+        <<interface, infrastructure>>
+    }
+    class IGoogleTokenValidator {
+        <<interface, infrastructure>>
+    }
+    class IPasswordHasher {
+        <<interface, infrastructure>>
+    }
+    class IEmailService {
+        <<interface, infrastructure>>
+    }
+    class IExcelReader {
+        <<interface, infrastructure>>
+    }
+    class IStorageService {
+        <<interface, infrastructure>>
+    }
+    class Account {
+        +Guid accountId
+        +Guid? facultyId
+        +string avatarUrl
+        +string email
+        +string fullName
+        +string googleId
+        +string authProvider
+        +string passwordHash
+        +string resetToken
+        +DateTime? resetTokenExpiresAt
+        +string userName
+        +DateTime createdAt
+        +string linkStatus
+        +string preferredLanguage
+        +string status
+    }
+    class Studentprofile {
+        +Guid studentProfileId
+        +Guid studentId
+        +string studentCode
+        +string academicStatus
+    }
+    class AccountRole {
+        +Guid accountId
+        +Guid roleId
+        +DateTime assignedAt
+    }
+    class Role {
+        +Guid roleId
+        +string roleName
+    }
+    class Session {
+        +Guid sessionId
+        +Guid accountId
+        +string deviceInfo
+        +DateTime loginAt
+        +DateTime? logoutAt
+        +bool isActive
+    }
+    class Activitylog {
+        +Guid activityLogId
+        +Guid accountId
+        +string activityDetail
+        +string activityType
+        +DateTime occurredAt
+    }
+    Account "1" -- "*" Studentprofile : studentId
+    Account "1" -- "*" AccountRole : accountId
+    Role "1" -- "*" AccountRole : roleId
+    Account "1" -- "*" Session : accountId
+    Account "1" -- "*" Activitylog : accountId

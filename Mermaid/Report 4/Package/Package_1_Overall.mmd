@@ -1,0 +1,25 @@
+---
+title: AdviseCare - Overall Package Diagram
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+flowchart TB
+    subgraph CLIENT["Web Client"]
+        WEB["AdviseCare_Webapp<br/>Next.js + TypeScript + next-intl"]
+    end
+    subgraph BACKEND["AdviseCare_API solution (ASP.NET Core 8 Web API)"]
+        API["AdviseCare.API<br/>Controllers, BackgroundServices, Program.cs"]
+        APP["AdviseCare.Application<br/>Services, Contracts, DTOs, Interfaces, Exceptions"]
+        DOM["AdviseCare.Domain<br/>Entity models, AdviseCareContext"]
+        INF["AdviseCare.Infrastructure<br/>Repository, Security, Email, Excel, Storage"]
+    end
+    DB[("Microsoft SQL Server<br/>AdviseCareDB on MonsterASP")]
+    EXTS["External services<br/>Google Identity, Gmail SMTP, Supabase Storage"]
+
+    WEB -->|"HTTPS / REST + JWT"| API
+    API -->|"uses"| APP
+    API -->|"composition root registers"| INF
+    APP -->|"uses entities"| DOM
+    INF -.->|"implements interfaces of"| APP
+    INF -->|"uses"| DOM
+    INF -->|"EF Core"| DB
+    INF -->|"HTTPS / SMTP"| EXTS

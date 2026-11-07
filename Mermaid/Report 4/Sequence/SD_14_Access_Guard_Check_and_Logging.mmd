@@ -1,0 +1,31 @@
+---
+title: AdviseCare - Sequence Diagram SD-14 - Access Guard Check and Logging
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    participant SV as Calling service (e.g. StudentDataService)
+    participant G as AccessGuardService
+    participant K as AttributeKeyService
+    participant E as IDataEncryptor
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    SV->>G: CheckAccessAsync(accessorId, studentId, dataAttributeIds, consentPurposeId or null)
+    G->>R: Accessor's roles, active policies, student's granted unexpired consents, active purposes and their attributes
+    R->>DB: SELECT
+    DB-->>R: rows
+    G->>G: Allow attributes covered by a consent under a purpose the roles have an active policy for
+    opt some attributes still refused
+        G->>R: Approved, unexpired emergency access of the accessor for this student
+        G->>G: Allow every attribute (no purpose)
+    end
+    G-->>SV: List of AccessDecision (isAllowed, consentPurposeId, isEmergencyAccess)
+    SV->>K: DecryptValuesAsync(allowed values only)
+    K->>R: Load attribute keys
+    K->>E: Unwrap data key (HKDF-derived wrapping key of the key's master version), then AES-256-GCM decrypt bound to row and field
+    E-->>K: plaintext, or erased when the key was destroyed
+    K-->>SV: AttributeValue list
+    SV->>G: LogAccessBatchAsync(accessorId, entries)
+    G->>R: PrepareCreate one ACCESSLOGS row per value shown, SaveAsync()
+    R->>DB: INSERT ACCESSLOGS
+    Note over SV: Refused attributes are returned as "exists, not shared", never with a value

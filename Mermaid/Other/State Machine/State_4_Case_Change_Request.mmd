@@ -1,0 +1,11 @@
+---
+title: AdviseCare - State Machine - Case Change Request
+---
+
+stateDiagram-v2
+    direction LR
+    [*] --> pending : the case's student or advisor asks for another advisor
+    pending --> approved : Programme Head approves (case moves to the proposed advisor)
+    pending --> rejected : Programme Head rejects with decision notes
+    approved --> [*]
+    rejected --> [*]

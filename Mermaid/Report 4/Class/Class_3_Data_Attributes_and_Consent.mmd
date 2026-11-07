@@ -1,0 +1,241 @@
+---
+title: AdviseCare - Class Diagram - Data Attributes and Consent
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+classDiagram
+    direction LR
+    class DataAttributesController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +Archive() PUT /:id/archive
+    }
+    DataAttributesController --> IDataAttributeService : uses
+    class ConsentPurposesController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +Activate() PUT /:id/activate
+        +Deactivate() PUT /:id/deactivate
+        +Retire() PUT /:id/retire
+        +GetAllPurposeAttribute() GET /purpose-attributes
+        +GetPurposeAttributeById() GET /purpose-attributes/:consentPurposeId/:dataAttributeId
+        +SearchPurposeAttribute() GET /purpose-attributes/search
+        +CreatePurposeAttribute() POST /purpose-attributes
+        +DeletePurposeAttribute() DELETE /purpose-attributes/:consentPurposeId/:dataAttributeId
+    }
+    ConsentPurposesController --> IConsentPurposeService : uses
+    class AccessPoliciesController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +Activate() PUT /:id/activate
+        +Revoke() PUT /:id/revoke
+        +Test() POST /:id/test
+    }
+    AccessPoliciesController --> IAccessPolicyService : uses
+    class ConsentsController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +Withdraw() PUT /:id/withdraw
+        +WithdrawPurpose() PUT /me/purposes/:consentPurposeId/withdraw
+        +GetMine() GET /me
+        +GetAllConsentHistory() GET /histories
+        +GetConsentHistoryById() GET /histories/:id
+        +SearchConsentHistory() GET /histories/search
+        +GetMyConsentHistory() GET /me/histories
+    }
+    ConsentsController --> IConsentService : uses
+    class ConsentRequestsController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +Grant() PUT /:id/grant
+        +Deny() PUT /:id/deny
+        +Withdraw() PUT /:id/withdraw
+        +GetMyReceived() GET /me/received
+        +GetMySent() GET /me/sent
+    }
+    ConsentRequestsController --> IConsentRequestService : uses
+    class IDataAttributeService {
+        +GetAll() IEnumerable~GetAllDataAttributeResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllDataAttributeWithPaginationResponse~
+        +GetByIdAsync(DataAttributeId) GetDataAttributeByIdResponse
+        +SearchAsync(request) List~SearchDataAttributeResponse~
+        +CreateAsync(request) CreateDataAttributeResponse
+        +UpdateAsync(DataAttributeId, request) UpdateDataAttributeResponse
+        +ArchiveAsync(DataAttributeId) bool
+    }
+    class DataAttributeService {
+    }
+    DataAttributeService ..|> IDataAttributeService
+    DataAttributeService --> Dataattribute : IGenericRepository
+    class IConsentPurposeService {
+        +GetAll() IEnumerable~GetAllConsentPurposeResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllConsentPurposeWithPaginationResponse~
+        +GetByIdAsync(ConsentPurposeId) GetConsentPurposeByIdResponse
+        +SearchAsync(request) List~SearchConsentPurposeResponse~
+        +CreateAsync(CreatorId, request) CreateConsentPurposeResponse
+        +UpdateAsync(ConsentPurposeId, request) UpdateConsentPurposeResponse
+        +ActivateAsync(ConsentPurposeId) bool
+        +DeactivateAsync(ConsentPurposeId) bool
+        +RetireAsync(ConsentPurposeId) bool
+        +GetAllPurposeAttributeAsync() IEnumerable~GetAllPurposeAttributeResponse~
+        +GetAllPurposeAttributeWithPaginationAsync(page, pageSize) IEnumerable~GetAllPurposeAttributeWithPaginationResponse~
+        +GetPurposeAttributeByIdAsync(ConsentPurposeId, DataAttributeId) GetPurposeAttributeByIdResponse
+        +SearchPurposeAttributeAsync(request) List~SearchPurposeAttributeResponse~
+        +CreatePurposeAttributeAsync(request) CreatePurposeAttributeResponse
+        +DeletePurposeAttributeAsync(ConsentPurposeId, DataAttributeId) bool
+    }
+    class ConsentPurposeService {
+    }
+    ConsentPurposeService ..|> IConsentPurposeService
+    ConsentPurposeService --> Consentpurpose : IGenericRepository
+    ConsentPurposeService --> Dataattribute : IGenericRepository
+    class IAccessPolicyService {
+        +GetAll() IEnumerable~GetAllAccessPolicyResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllAccessPolicyWithPaginationResponse~
+        +GetByIdAsync(AccessPolicyId) GetAccessPolicyByIdResponse
+        +SearchAsync(request) List~SearchAccessPolicyResponse~
+        +CreateAsync(CreatorId, request) CreateAccessPolicyResponse
+        +UpdateAsync(AccessPolicyId, request) UpdateAccessPolicyResponse
+        +ActivateAsync(AccessPolicyId) bool
+        +RevokeAsync(AccessPolicyId) bool
+        +TestAsync(AccessPolicyId, request) TestAccessPolicyResponse
+    }
+    class AccessPolicyService {
+    }
+    AccessPolicyService ..|> IAccessPolicyService
+    AccessPolicyService --> Accesspolicy : IGenericRepository
+    AccessPolicyService --> Consentpurpose : IGenericRepository
+    AccessPolicyService --> Role : IGenericRepository
+    AccessPolicyService --> Consent : IGenericRepository
+    class IConsentService {
+        +GetAll() IEnumerable~GetAllConsentResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllConsentWithPaginationResponse~
+        +GetByIdAsync(ConsentId) GetConsentByIdResponse
+        +SearchAsync(request) List~SearchConsentResponse~
+        +CreateAsync(StudentId, request) List~CreateConsentResponse~
+        +UpdateAsync(StudentId, ConsentId, request) UpdateConsentResponse
+        +WithdrawAsync(StudentId, ConsentId) bool
+        +WithdrawPurposeAsync(StudentId, ConsentPurposeId) int
+        +GetMyConsentsAsync(StudentId) List~GetMyConsentResponse~
+        +GetAllConsentHistoryAsync() IEnumerable~GetAllConsentHistoryResponse~
+        +GetAllConsentHistoryWithPaginationAsync(page, pageSize) IEnumerable~GetAllConsentHistoryWithPaginationResponse~
+        +GetConsentHistoryByIdAsync(ConsentHistoryId) GetConsentHistoryByIdResponse
+        +SearchConsentHistoryAsync(request) List~SearchConsentHistoryResponse~
+        +GetMyConsentHistoryAsync(StudentId) List~GetMyConsentHistoryResponse~
+    }
+    class ConsentService {
+    }
+    ConsentService ..|> IConsentService
+    ConsentService --> Consent : IGenericRepository
+    ConsentService --> Consenthistory : IGenericRepository
+    ConsentService --> Consentpurpose : IGenericRepository
+    class IConsentRequestService {
+        +GetAll() IEnumerable~GetAllConsentRequestResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllConsentRequestWithPaginationResponse~
+        +GetByIdAsync(ConsentRequestId) GetConsentRequestByIdResponse
+        +SearchAsync(request) List~SearchConsentRequestResponse~
+        +CreateAsync(CreatorId, request) CreateConsentRequestResponse
+        +UpdateAsync(AdvisorId, ConsentRequestId, request) UpdateConsentRequestResponse
+        +GrantAsync(StudentId, ConsentRequestId) bool
+        +DenyAsync(StudentId, ConsentRequestId) bool
+        +WithdrawAsync(AdvisorId, ConsentRequestId) bool
+        +GetMyReceivedRequestsAsync(StudentId) List~GetMyConsentRequestResponse~
+        +GetMySentRequestsAsync(AdvisorId) List~GetMyConsentRequestResponse~
+    }
+    class ConsentRequestService {
+    }
+    ConsentRequestService ..|> IConsentRequestService
+    ConsentRequestService --> Consentrequest : IGenericRepository
+    ConsentRequestService --> Consentpurpose : IGenericRepository
+    ConsentRequestService --> Accesspolicy : IGenericRepository
+    ConsentRequestService --> Consent : IGenericRepository
+    ConsentRequestService --> IConsentService : uses
+    class IActivityLogService {
+        <<interface, other module>>
+    }
+    class INotificationService {
+        <<interface, other module>>
+    }
+    AccessPolicyService --> IActivityLogService : uses
+    ConsentService --> IActivityLogService : uses
+    ConsentService --> INotificationService : uses
+    ConsentPurposeService --> IActivityLogService : uses
+    ConsentRequestService --> IActivityLogService : uses
+    ConsentRequestService --> INotificationService : uses
+    DataAttributeService --> IActivityLogService : uses
+    class Dataattribute {
+        +Guid dataAttributeId
+        +string attributeDescription
+        +string attributeName
+        +string dataType
+        +string status
+    }
+    class Consentpurpose {
+        +Guid consentPurposeId
+        +Guid createdBy
+        +string description
+        +string purposeName
+        +string status
+    }
+    class Accesspolicy {
+        +Guid accessPolicyId
+        +Guid consentPurposeId
+        +Guid createdBy
+        +Guid roleId
+        +string status
+    }
+    class Consent {
+        +Guid consentId
+        +Guid consentPurposeId
+        +Guid dataAttributeId
+        +Guid studentId
+        +DateTime? expiresAt
+        +DateTime grantedAt
+        +DateTime? withdrawnAt
+        +string status
+    }
+    class Consenthistory {
+        +Guid consentHistoryId
+        +Guid changedBy
+        +Guid consentId
+        +DateTime changedAt
+        +string newStatus
+        +string previousStatus
+    }
+    class Consentrequest {
+        +Guid consentRequestId
+        +Guid advisorId
+        +Guid consentPurposeId
+        +Guid dataAttributeId
+        +Guid studentId
+        +string purposeStated
+        +DateTime requestedAt
+        +DateTime? respondedAt
+        +string status
+    }
+    class Role {
+        +Guid roleId
+        +string roleName
+    }
+    Consentpurpose "1" -- "*" Accesspolicy : consentPurposeId
+    Role "1" -- "*" Accesspolicy : roleId
+    Consentpurpose "1" -- "*" Consent : consentPurposeId
+    Dataattribute "1" -- "*" Consent : dataAttributeId
+    Consent "1" -- "*" Consenthistory : consentId
+    Consentpurpose "1" -- "*" Consentrequest : consentPurposeId
+    Dataattribute "1" -- "*" Consentrequest : dataAttributeId
+    Consentpurpose "*" -- "*" Dataattribute : PURPOSE_ATTRIBUTE

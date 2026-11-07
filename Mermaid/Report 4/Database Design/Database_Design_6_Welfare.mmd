@@ -1,0 +1,67 @@
+---
+title: AdviseCare - Database Design - Welfare
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+erDiagram
+    INTERVENTIONS {
+        uniqueidentifier interventionId PK "NOT NULL"
+        uniqueidentifier caseId FK "NOT NULL"
+        uniqueidentifier officerId FK "NOT NULL"
+        nvarchar(max) notes "NULL"
+        nvarchar(max) outcome "NULL"
+        datetime2(3) interventionDate "NOT NULL"
+        nvarchar(30) interventionType "NOT NULL"
+        bit isClosed "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    SUPPORTGRANTS {
+        uniqueidentifier supportGrantId PK "NOT NULL"
+        uniqueidentifier interventionId FK "NOT NULL"
+        nvarchar(max) grantDescription "NULL"
+        nvarchar(255) grantType "NOT NULL"
+        datetime2(3) issuedAt "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    EXTERNALSERVICES {
+        uniqueidentifier externalServiceId PK "NOT NULL"
+        nvarchar(max) contactInfo "NULL"
+        nvarchar(255) serviceName "NOT NULL"
+        nvarchar(255) serviceType "NULL"
+        bit isActive "NOT NULL"
+    }
+    EXTERNALREFERRALS {
+        uniqueidentifier externalReferralId PK "NOT NULL"
+        uniqueidentifier caseId FK "NOT NULL"
+        uniqueidentifier externalServiceId FK "NOT NULL"
+        uniqueidentifier referredBy FK "NOT NULL"
+        datetime2(3) followUpDueAt "NULL"
+        nvarchar(max) followUpOutcome "NULL"
+        datetime2(3) referredAt "NOT NULL"
+        bit isOverdue "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    ESCALATIONS {
+        uniqueidentifier escalationId PK "NOT NULL"
+        uniqueidentifier caseId FK "NOT NULL"
+        uniqueidentifier escalatedBy FK "NOT NULL"
+        uniqueidentifier escalatedTo FK "NOT NULL"
+        nvarchar(max) reason "NOT NULL"
+        nvarchar(max) response "NULL"
+        datetime2(3) escalatedAt "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    ACCOUNTS {
+        uniqueidentifier accountId PK "referenced table, see its own section"
+    }
+    CASES {
+        uniqueidentifier caseId PK "referenced table, see its own section"
+    }
+    INTERVENTIONS ||--o{ SUPPORTGRANTS : "interventionId"
+    CASES ||--o{ ESCALATIONS : "caseId"
+    ACCOUNTS ||--o{ ESCALATIONS : "escalatedBy"
+    ACCOUNTS ||--o{ ESCALATIONS : "escalatedTo"
+    CASES ||--o{ EXTERNALREFERRALS : "caseId"
+    EXTERNALSERVICES ||--o{ EXTERNALREFERRALS : "externalServiceId"
+    ACCOUNTS ||--o{ EXTERNALREFERRALS : "referredBy"
+    CASES ||--o{ INTERVENTIONS : "caseId"
+    ACCOUNTS ||--o{ INTERVENTIONS : "officerId"

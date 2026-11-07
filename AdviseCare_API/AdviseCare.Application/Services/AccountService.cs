@@ -23,6 +23,9 @@ namespace AdviseCare.Application.Services
         private const string SystemAdministratorRole = "System Administrator";
         private const string StudentRole = "Student";
         private static readonly string[] AcademicStatuses = { "enrolled", "onLeave", "withdrawn", "graduated" };
+        // A new Student role starts as enrolled; the academic status is not part of giving or changing roles
+        private const string DefaultAcademicStatus = "enrolled";
+        private const int MaxPreviewRows = 2000;
 
         private readonly IGenericRepository<Account> _accountRepository;
         private readonly IGenericRepository<Role> _roleRepository;
@@ -37,6 +40,7 @@ namespace AdviseCare.Application.Services
         private readonly IEmailService _emailService;
         private readonly IStorageService _storageService;
         private readonly IExcelReader _excelReader;
+        private readonly ICsvReader _csvReader;
 
         public AccountService(
             IGenericRepository<Account> accountRepository,
@@ -51,7 +55,8 @@ namespace AdviseCare.Application.Services
             IGoogleTokenValidator googleTokenValidator,
             IEmailService emailService,
             IStorageService storageService,
-            IExcelReader excelReader)
+            IExcelReader excelReader,
+            ICsvReader csvReader)
         {
             _accountRepository = accountRepository;
             _roleRepository = roleRepository;
@@ -66,6 +71,7 @@ namespace AdviseCare.Application.Services
             _emailService = emailService;
             _storageService = storageService;
             _excelReader = excelReader;
+            _csvReader = csvReader;
         }
 
         // Get all Accounts
@@ -203,7 +209,9 @@ namespace AdviseCare.Application.Services
 
             var roles = await ResolveRolesAsync(request.RoleNames);
             var studentCode = request.StudentCode.Trim();
-            var studentErrors = ValidateStudentFields(roles.Any(r => r.RoleName == StudentRole), studentCode, request.AcademicStatus.Trim());
+            var isStudent = roles.Any(r => r.RoleName == StudentRole);
+            var academicStatus = isStudent && string.IsNullOrWhiteSpace(request.AcademicStatus) ? DefaultAcademicStatus : request.AcademicStatus.Trim();
+            var studentErrors = ValidateStudentFields(isStudent, studentCode, academicStatus);
             if (studentErrors.Count > 0)
                 throw new ValidationException(string.Join("; ", studentErrors) + ".");
             if (!string.IsNullOrEmpty(studentCode) && await _studentProfileRepository.ExistsAsync(p => p.StudentCode == studentCode))
@@ -222,7 +230,7 @@ namespace AdviseCare.Application.Services
                 Status = "active"
             };
             if (!string.IsNullOrEmpty(studentCode))
-                account.Studentprofile = NewStudentProfile(account.AccountId, studentCode, request.AcademicStatus.Trim());
+                account.Studentprofile = NewStudentProfile(account.AccountId, studentCode, academicStatus);
 
             // Staged so the account, its roles and its student profile commit together
             _accountRepository.PrepareCreate(account);
@@ -304,36 +312,85 @@ namespace AdviseCare.Application.Services
             };
         }
 
-        // Import Accounts from an Excel file (columns: email, fullName, userName, facultyCode, role, and for Student rows also studentCode, academicStatus).
-        // All-or-nothing: if any row is invalid nothing is created and every invalid row is returned.
+        // Import Accounts from an .xlsx or .csv file (columns: email, fullName, userName, facultyCode, role, and for Student rows also studentCode,
+        // academicStatus — empty academicStatus means enrolled). All-or-nothing: if any row is invalid nothing is created and every invalid row is returned.
         public async Task<ImportAccountResponse> ImportAsync(ImportAccountRequest request)
         {
-            var file = request.File ?? throw new ValidationException("An Excel file (.xlsx) is required.");
-            if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
-                throw new ValidationException("Only Excel files (.xlsx) can be imported.");
+            var check = await ReadAccountImportAsync(request.File);
+            if (check.Errors.Count > 0)
+                return new ImportAccountResponse { IsSuccess = false, Errors = check.Errors };
 
-            List<ExcelRow> rows;
+            // Staged so every account, role and student profile commits in one save
+            foreach (var (account, accountRoles) in check.Accounts)
+            {
+                _accountRepository.PrepareCreate(account);
+                foreach (var role in accountRoles)
+                    _accountRoleRepository.PrepareCreate(new AccountRole { AccountId = account.AccountId, RoleId = role.RoleId, AssignedAt = DateTime.UtcNow });
+            }
+            await _accountRepository.SaveAsync();
+
+            await _activityLogService.LogCurrentAccountAsync("accountsImported", $"Imported {check.Accounts.Count} account(s) from {request.File!.FileName}");
+
+            return new ImportAccountResponse
+            {
+                IsSuccess = true,
+                CreatedCount = check.Accounts.Count,
+                CreatedAccountIds = check.Accounts.Select(a => a.Account.AccountId).ToList()
+            };
+        }
+
+        // Preview an account import: every row of the file with the problems found in it (the same checks as the import), nothing is written.
+        // The web app shows the rows in an editable table and sends the edited rows back as a .csv file.
+        public async Task<PreviewAccountImportResponse> PreviewImportAsync(ImportAccountRequest request)
+        {
+            var check = await ReadAccountImportAsync(request.File);
+            return new PreviewAccountImportResponse
+            {
+                Headers = check.Headers,
+                Rows = check.Rows.Take(MaxPreviewRows).Select(r => new ImportPreviewRowResponse { RowNumber = r.RowNumber, Values = r.Values }).ToList(),
+                TotalRowCount = check.Rows.Count,
+                ValidRowCount = check.Accounts.Count,
+                Errors = check.Errors,
+                IsValid = check.Errors.Count == 0 && check.Accounts.Count > 0
+            };
+        }
+
+        // Helper: read an account import file and check every row against the system and the other rows of the file
+        private async Task<AccountImportCheck> ReadAccountImportAsync(Microsoft.AspNetCore.Http.IFormFile? file)
+        {
+            if (file == null || file.Length == 0)
+                throw new ValidationException("A non-empty .xlsx or .csv file is required.");
+            var isCsv = file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase);
+            if (!isCsv && !file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+                throw new ValidationException("Only .xlsx and .csv files can be imported.");
+
+            var check = new AccountImportCheck();
             try
             {
                 using var stream = file.OpenReadStream();
-                rows = _excelReader.ReadRows(stream);
+                check.Rows = isCsv ? _csvReader.ReadRows(stream) : _excelReader.ReadRows(stream);
+            }
+            catch (InvalidDataException exception)
+            {
+                throw new ValidationException(exception.Message);
             }
             catch (Exception)
             {
-                throw new ValidationException("The file could not be read as an Excel workbook.");
+                throw new ValidationException(isCsv ? "The file could not be read as CSV data." : "The file could not be read as an Excel workbook.");
             }
 
-            var errors = new List<ImportAccountErrorResponse>();
+            var rows = check.Rows;
+            check.Headers = rows.Count == 0 ? new List<string>() : rows[0].Values.Keys.ToList();
             if (rows.Count == 0)
-                errors.Add(new ImportAccountErrorResponse { RowNumber = 1, Message = "The file has no data rows under the header row." });
+                check.Errors.Add(new ImportAccountErrorResponse { RowNumber = 1, Message = "The file has no data rows under the header row." });
 
             var requiredColumns = new[] { "email", "fullName", "userName", "facultyCode", "role" };
             var missingColumns = rows.Count == 0 ? new List<string>() : requiredColumns.Where(c => !rows[0].Values.ContainsKey(c)).ToList();
             if (missingColumns.Count > 0)
-                errors.Add(new ImportAccountErrorResponse { RowNumber = 1, Message = $"Missing column(s): {string.Join(", ", missingColumns)}." });
+                check.Errors.Add(new ImportAccountErrorResponse { RowNumber = 1, Message = $"Missing column(s): {string.Join(", ", missingColumns)}." });
 
-            if (errors.Count > 0)
-                return new ImportAccountResponse { IsSuccess = false, Errors = errors };
+            if (check.Errors.Count > 0)
+                return check;
 
             // Everything the rows are checked against, loaded once
             var existingAccounts = await _accountRepository.GetAllAsync();
@@ -347,7 +404,6 @@ namespace AdviseCare.Application.Services
             var fileStudentCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var emailValidator = new System.ComponentModel.DataAnnotations.EmailAddressAttribute();
 
-            var accounts = new List<(Account Account, List<Role> Roles)>();
             foreach (var row in rows)
             {
                 var email = row.Values.GetValueOrDefault("email", string.Empty).Trim().ToLowerInvariant();
@@ -386,8 +442,10 @@ namespace AdviseCare.Application.Services
                     else rowErrors.Add($"role '{roleName}' does not exist");
                 }
 
-                // Student rows have 7 fields (+ studentCode, academicStatus), every other row has 5
+                // Student rows also carry studentCode (and academicStatus, enrolled when empty); every other row leaves both empty
                 var isStudent = rowRoles.Any(r => r.RoleName == StudentRole);
+                if (isStudent && string.IsNullOrEmpty(academicStatus))
+                    academicStatus = DefaultAcademicStatus;
                 rowErrors.AddRange(ValidateStudentFields(isStudent, studentCode, academicStatus));
                 if (isStudent && !string.IsNullOrEmpty(studentCode))
                 {
@@ -397,7 +455,7 @@ namespace AdviseCare.Application.Services
 
                 if (rowErrors.Count > 0)
                 {
-                    errors.Add(new ImportAccountErrorResponse { RowNumber = row.RowNumber, Message = string.Join("; ", rowErrors) + "." });
+                    check.Errors.Add(new ImportAccountErrorResponse { RowNumber = row.RowNumber, Message = string.Join("; ", rowErrors) + "." });
                     continue;
                 }
 
@@ -415,29 +473,44 @@ namespace AdviseCare.Application.Services
                 };
                 if (isStudent)
                     account.Studentprofile = NewStudentProfile(account.AccountId, studentCode, academicStatus);
-                accounts.Add((account, rowRoles));
+                check.Accounts.Add((account, rowRoles));
             }
 
-            if (errors.Count > 0)
-                return new ImportAccountResponse { IsSuccess = false, Errors = errors };
+            return check;
+        }
 
-            // Staged so every account, role and student profile commits in one save
-            foreach (var (account, accountRoles) in accounts)
+        private sealed class AccountImportCheck
+        {
+            public List<ExcelRow> Rows { get; set; } = new();
+            public List<string> Headers { get; set; } = new();
+            public List<ImportAccountErrorResponse> Errors { get; } = new();
+            public List<(Account Account, List<Role> Roles)> Accounts { get; } = new();
+        }
+
+        // Search the staff directory: active accounts holding a staff role, by full name or email (contains) and optionally by role names;
+        // directory data only (name, email, roles), used by staff screens to pick a person instead of typing an Id. Students are never listed
+        public async Task<List<SearchStaffAccountResponse>> SearchStaffAsync(SearchStaffAccountRequest request)
+        {
+            var roleNames = request.RoleNames
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(r => r != StudentRole)
+                .ToList();
+            var accounts = await _accountRepository.SearchAsyncOrderBy(a =>
+                a.Status == "active" &&
+                a.AccountRoles.Any(ar => ar.Role.RoleName != StudentRole) &&
+                (string.IsNullOrWhiteSpace(request.FullName) || a.FullName.Contains(request.FullName)) &&
+                (string.IsNullOrWhiteSpace(request.Email) || a.Email.Contains(request.Email)) &&
+                (roleNames.Count == 0 || a.AccountRoles.Any(ar => roleNames.Contains(ar.Role.RoleName))),
+                a => a.FullName, true);
+            var roleLookup = await GetRoleNamesLookupAsync();
+
+            return accounts.Take(50).Select(a => new SearchStaffAccountResponse
             {
-                _accountRepository.PrepareCreate(account);
-                foreach (var role in accountRoles)
-                    _accountRoleRepository.PrepareCreate(new AccountRole { AccountId = account.AccountId, RoleId = role.RoleId, AssignedAt = DateTime.UtcNow });
-            }
-            await _accountRepository.SaveAsync();
-
-            await _activityLogService.LogCurrentAccountAsync("accountsImported", $"Imported {accounts.Count} account(s) from {file.FileName}");
-
-            return new ImportAccountResponse
-            {
-                IsSuccess = true,
-                CreatedCount = accounts.Count,
-                CreatedAccountIds = accounts.Select(a => a.Account.AccountId).ToList()
-            };
+                AccountId = a.AccountId,
+                Email = a.Email,
+                FullName = a.FullName,
+                Roles = roleLookup.GetValueOrDefault(a.AccountId, new List<string>()).Where(r => r != StudentRole).ToList()
+            }).ToList();
         }
 
         // Send (or resend) the account-linking email to Accounts that are not linked yet; linkStatus becomes emailSent
@@ -863,12 +936,13 @@ namespace AdviseCare.Application.Services
             if (role.RoleName == StudentRole && !await _studentProfileRepository.ExistsAsync(p => p.StudentId == account.AccountId))
             {
                 var studentCode = request.StudentCode.Trim();
-                var studentErrors = ValidateStudentFields(true, studentCode, request.AcademicStatus.Trim());
+                var academicStatus = string.IsNullOrWhiteSpace(request.AcademicStatus) ? DefaultAcademicStatus : request.AcademicStatus.Trim();
+                var studentErrors = ValidateStudentFields(true, studentCode, academicStatus);
                 if (studentErrors.Count > 0)
                     throw new ValidationException(string.Join("; ", studentErrors) + ".");
                 if (await _studentProfileRepository.ExistsAsync(p => p.StudentCode == studentCode))
                     throw new ConflictException($"A student with student code '{studentCode}' already exists.");
-                _studentProfileRepository.PrepareCreate(NewStudentProfile(account.AccountId, studentCode, request.AcademicStatus.Trim()));
+                _studentProfileRepository.PrepareCreate(NewStudentProfile(account.AccountId, studentCode, academicStatus));
             }
             await _accountRoleRepository.SaveAsync();
 
@@ -881,6 +955,59 @@ namespace AdviseCare.Application.Services
                 FullName = account.FullName,
                 RoleName = role.RoleName,
                 AssignedAt = accountRole.AssignedAt
+            };
+        }
+
+        // Change an Account's roles in one step: the account ends up with exactly the given roles. Giving the Student role to an account
+        // without a student profile needs a student code (the profile starts as enrolled); a profile kept from an earlier Student role is reused.
+        // The last System Administrator role cannot be removed.
+        public async Task<UpdateAccountRolesResponse> UpdateAccountRolesAsync(Guid AccountId, UpdateAccountRolesRequest request)
+        {
+            var account = await _accountRepository.GetByIdAsync(AccountId)
+                ?? throw new NotFoundException("Account not found.");
+            var wanted = await ResolveRolesAsync(request.RoleNames);
+            if (wanted.Count == 0)
+                throw new ValidationException("An account needs at least one role.");
+
+            var current = (await _accountRoleRepository.SearchAsyncInclude(ar => ar.AccountId == AccountId, ar => ar.Role)).ToList();
+            var toAdd = wanted.Where(r => current.All(c => c.RoleId != r.RoleId)).ToList();
+            var toRemove = current.Where(c => wanted.All(r => r.RoleId != c.RoleId)).ToList();
+            if (toAdd.Count == 0 && toRemove.Count == 0)
+                throw new ValidationException("The account already has exactly these roles.");
+
+            foreach (var removed in toRemove.Where(r => r.Role.RoleName == SystemAdministratorRole))
+            {
+                if (await _accountRoleRepository.CountAsync(ar => ar.RoleId == removed.RoleId) <= 1)
+                    throw new ForbiddenException("The last System Administrator role cannot be removed.");
+            }
+
+            if (toAdd.Any(r => r.RoleName == StudentRole) && !await _studentProfileRepository.ExistsAsync(p => p.StudentId == AccountId))
+            {
+                var studentCode = request.StudentCode.Trim();
+                if (string.IsNullOrEmpty(studentCode))
+                    throw new ValidationException("A student code is required to give this account the Student role.");
+                if (studentCode.Length > 50)
+                    throw new ValidationException("Student code must be under 50 characters.");
+                if (await _studentProfileRepository.ExistsAsync(p => p.StudentCode == studentCode))
+                    throw new ConflictException($"A student with student code '{studentCode}' already exists.");
+                _studentProfileRepository.PrepareCreate(NewStudentProfile(AccountId, studentCode, DefaultAcademicStatus));
+            }
+
+            foreach (var role in toAdd)
+                _accountRoleRepository.PrepareCreate(new AccountRole { AccountId = AccountId, RoleId = role.RoleId, AssignedAt = DateTime.UtcNow });
+            foreach (var removed in toRemove)
+                _accountRoleRepository.PrepareRemove(removed);
+            await _accountRoleRepository.SaveAsync();
+
+            var changes = new List<string>();
+            if (toAdd.Count > 0) changes.Add($"gave {string.Join(", ", toAdd.Select(r => r.RoleName))}");
+            if (toRemove.Count > 0) changes.Add($"removed {string.Join(", ", toRemove.Select(r => r.Role.RoleName))}");
+            await _activityLogService.LogCurrentAccountAsync("accountRolesChanged", $"Changed the roles of {account.Email}: {string.Join("; ", changes)}");
+
+            return new UpdateAccountRolesResponse
+            {
+                AccountId = AccountId,
+                Roles = wanted.Select(r => r.RoleName).ToList()
             };
         }
 

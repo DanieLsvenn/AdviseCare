@@ -1,0 +1,168 @@
+---
+title: AdviseCare - Class Diagram - Student Data
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+classDiagram
+    direction LR
+    class StudentDataController {
+        +GetAll() GET /
+        +GetMyData() GET /me
+        +ExportMyData() GET /me/export
+        +GetById() GET /:id
+        +Search() GET /search
+        +Import() POST /import
+        +PreviewImport() POST /import/preview
+        +ValidateImport() POST /import/validate
+        +GetStudentData() GET /students/:studentId
+        +GetAsOf() GET /students/:studentId/as-of
+        +Compare() GET /students/:studentId/compare
+    }
+    StudentDataController --> IStudentDataService : uses
+    class CorrectionRequestsController {
+        +GetAll() GET /
+        +GetMyAll() GET /me
+        +GetMyById() GET /me/:id
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Approve() PUT /:id/approve
+        +Reject() PUT /:id/reject
+        +Withdraw() PUT /:id/withdraw
+    }
+    CorrectionRequestsController --> ICorrectionRequestService : uses
+    class IStudentDataService {
+        +GetAll() IEnumerable~GetAllStudentDataResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllStudentDataWithPaginationResponse~
+        +GetByIdAsync(StudentDataId) GetStudentDataByIdResponse
+        +SearchAsync(request) List~SearchStudentDataResponse~
+        +CreateAsync(CreatorId, request) CreateStudentDataResponse
+        +PreviewAsync(request) PreviewStudentDataResponse
+        +ValidateAsync(request) ValidateStudentDataResponse
+        +GetStudentDataAsync(AccessorId, StudentId, CaseId, TermId) GetStudentDataOfStudentResponse
+        +GetAsOfAsync(AccessorId, StudentId, request) GetStudentDataAsOfResponse
+        +CompareAsync(AccessorId, StudentId, request) CompareStudentDataResponse
+        +GetMyDataAsync(StudentId, TermId) GetMyStudentDataResponse
+        +ExportMyDataAsync(StudentId) ExportMyStudentDataResponse
+    }
+    class StudentDataService {
+    }
+    StudentDataService ..|> IStudentDataService
+    StudentDataService --> Studentdata : IGenericRepository
+    StudentDataService --> Studentprofile : IGenericRepository
+    StudentDataService --> Dataattribute : IGenericRepository
+    StudentDataService --> Academicterm : IGenericRepository
+    StudentDataService --> IExcelReader : uses
+    StudentDataService --> ICsvReader : uses
+    class ICorrectionRequestService {
+        +GetAll(AdvisorId) IEnumerable~GetAllCorrectionRequestResponse~
+        +GetAllWithPaginationAsync(AdvisorId, page, pageSize) IEnumerable~GetAllCorrectionRequestWithPaginationResponse~
+        +GetByIdAsync(AdvisorId, CorrectionRequestId) GetCorrectionRequestByIdResponse
+        +SearchAsync(AdvisorId, request) List~SearchCorrectionRequestResponse~
+        +CreateAsync(CreatorId, request) CreateCorrectionRequestResponse
+        +ApproveAsync(AdvisorId, CorrectionRequestId, request) ApproveCorrectionRequestResponse
+        +RejectAsync(AdvisorId, CorrectionRequestId, request) RejectCorrectionRequestResponse
+        +WithdrawAsync(StudentId, CorrectionRequestId) bool
+        +GetMyAllAsync(StudentId) List~GetMyCorrectionRequestResponse~
+        +GetMyByIdAsync(StudentId, CorrectionRequestId) GetMyCorrectionRequestResponse
+    }
+    class CorrectionRequestService {
+    }
+    CorrectionRequestService ..|> ICorrectionRequestService
+    CorrectionRequestService --> Correctionrequest : IGenericRepository
+    CorrectionRequestService --> Studentdata : IGenericRepository
+    class IAccessGuardService {
+        <<interface, other module>>
+    }
+    class IAccessLogService {
+        <<interface, other module>>
+    }
+    class IActivityLogService {
+        <<interface, other module>>
+    }
+    class IAttributeKeyService {
+        <<interface, other module>>
+    }
+    class INotificationService {
+        <<interface, other module>>
+    }
+    class IStudentProfileService {
+        <<interface, other module>>
+    }
+    CorrectionRequestService --> IAccessGuardService : uses
+    CorrectionRequestService --> IActivityLogService : uses
+    CorrectionRequestService --> IAttributeKeyService : uses
+    CorrectionRequestService --> INotificationService : uses
+    StudentDataService --> IAccessGuardService : uses
+    StudentDataService --> IAccessLogService : uses
+    StudentDataService --> IActivityLogService : uses
+    StudentDataService --> IAttributeKeyService : uses
+    StudentDataService --> IStudentProfileService : uses
+    class IExcelReader {
+        <<interface, infrastructure>>
+    }
+    class ICsvReader {
+        <<interface, infrastructure>>
+    }
+    class Studentdata {
+        +Guid studentDataId
+        +Guid? attributeKeyId
+        +Guid dataAttributeId
+        +Guid? dataSourceId
+        +Guid studentId
+        +Guid termId
+        +byte[] dataValue
+        +string provenanceNote
+        +DateTime? erasedAt
+        +DateTime transactionFrom
+        +DateTime validFrom
+        +bool isMissing
+        +string status
+    }
+    class Correctionrequest {
+        +Guid correctionRequestId
+        +Guid? reviewedBy
+        +Guid studentDataId
+        +Guid studentId
+        +byte[] currentValue
+        +string decisionNotes
+        +string explanation
+        +byte[] proposedValue
+        +DateTime? decidedAt
+        +DateTime submittedAt
+        +string status
+    }
+    class Attributekey {
+        +Guid attributeKeyId
+        +Guid dataAttributeId
+        +Guid studentId
+        +string wrappedKey
+        +int masterKeyVersion
+        +DateTime createdAt
+        +DateTime? destroyedAt
+        +string status
+    }
+    class Dataattribute {
+        +Guid dataAttributeId
+        +string attributeDescription
+        +string attributeName
+        +string dataType
+        +string status
+    }
+    class Academicterm {
+        +Guid termId
+        +DateTime endDate
+        +DateTime startDate
+        +string termName
+        +string status
+    }
+    class Studentprofile {
+        +Guid studentProfileId
+        +Guid studentId
+        +string studentCode
+        +string academicStatus
+    }
+    Attributekey "0..1" -- "*" Studentdata : attributeKeyId
+    Dataattribute "1" -- "*" Studentdata : dataAttributeId
+    Academicterm "1" -- "*" Studentdata : termId
+    Studentdata "1" -- "*" Correctionrequest : studentDataId
+    Dataattribute "1" -- "*" Attributekey : dataAttributeId

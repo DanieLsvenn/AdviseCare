@@ -1,0 +1,30 @@
+---
+title: AdviseCare - Sequence Diagram SD-35 - Read Notifications
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant W as Web App
+    participant C as NotificationsController
+    participant S as NotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    W->>C: GET /api/Notifications/me/unread-count
+    C->>S: GetMyUnreadCountAsync(AccountId)
+    S-->>W: count for the badge
+    U->>W: Open the notification list
+    W->>C: GET /api/Notifications/me
+    C->>S: GetMyNotificationsAsync(AccountId)
+    S->>R: Own notifications, newest first
+    U->>W: Click a notification
+    W->>C: PUT /api/Notifications/me/{id}/read
+    C->>S: MarkAsReadAsync(AccountId, NotificationId)
+    S->>R: UpdateAsync(isRead = true)
+    R->>DB: UPDATE NOTIFICATIONS
+    W-->>U: Navigate to redirectUrl (e.g. /cases/{caseId})
+    U->>W: "Clear read notifications"
+    W->>C: DELETE /api/Notifications/me/clear
+    C->>S: ClearMyReadNotificationsAsync(AccountId)
+    S->>R: Remove read notifications
+    R->>DB: DELETE NOTIFICATIONS

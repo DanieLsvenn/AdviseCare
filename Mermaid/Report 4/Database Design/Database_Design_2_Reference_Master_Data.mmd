@@ -1,0 +1,41 @@
+---
+title: AdviseCare - Database Design - Reference / Master Data
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+erDiagram
+    FACULTIES {
+        uniqueidentifier facultyId PK "NOT NULL"
+        nvarchar(255) facultyCode UK "NOT NULL"
+        nvarchar(255) facultyName "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    PROGRAMMES {
+        uniqueidentifier programmeId PK "NOT NULL"
+        uniqueidentifier facultyId FK "NOT NULL"
+        nvarchar(255) programmeCode UK "NOT NULL"
+        nvarchar(255) programmeName "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    ACADEMICTERMS {
+        uniqueidentifier termId PK "NOT NULL"
+        datetime2(3) endDate "NOT NULL"
+        datetime2(3) startDate "NOT NULL"
+        nvarchar(255) termName "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    SUBJECTS {
+        uniqueidentifier subjectId PK "NOT NULL"
+        uniqueidentifier facultyId FK "NOT NULL"
+        nvarchar(255) subjectCode UK "NOT NULL"
+        nvarchar(255) subjectName "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    DATAATTRIBUTES {
+        uniqueidentifier dataAttributeId PK "NOT NULL"
+        nvarchar(max) attributeDescription "NULL"
+        nvarchar(255) attributeName UK "NOT NULL"
+        nvarchar(30) dataType "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
+    FACULTIES ||--o{ SUBJECTS : "facultyId"
+    FACULTIES ||--o{ PROGRAMMES : "facultyId"

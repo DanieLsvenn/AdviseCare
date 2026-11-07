@@ -38,7 +38,11 @@ public partial class AdviseCareContext : DbContext
 
     public virtual DbSet<Case> Cases { get; set; }
 
+    public virtual DbSet<CaseAttribute> CaseAttributes { get; set; }
+
     public virtual DbSet<Casechangerequest> Casechangerequests { get; set; }
+
+    public virtual DbSet<Casemessage> Casemessages { get; set; }
 
     public virtual DbSet<Casenote> Casenotes { get; set; }
 
@@ -495,6 +499,33 @@ public partial class AdviseCareContext : DbContext
                 .HasConstraintName("FK_CASES_supportCategoryId");
         });
 
+        modelBuilder.Entity<CaseAttribute>(entity =>
+        {
+            entity.HasKey(e => new { e.CaseId, e.DataAttributeId });
+
+            entity.ToTable("CASE_ATTRIBUTE");
+
+            entity.Property(e => e.CaseId).HasColumnName("caseId");
+            entity.Property(e => e.DataAttributeId).HasColumnName("dataAttributeId");
+            entity.Property(e => e.ShareReason)
+                .HasMaxLength(1000)
+                .HasColumnName("shareReason");
+            entity.Property(e => e.SharedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("sharedAt");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.CaseAttributes)
+                .HasForeignKey(d => d.CaseId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CASE_ATTRIBUTE_caseId");
+
+            entity.HasOne(d => d.DataAttribute).WithMany(p => p.CaseAttributes)
+                .HasForeignKey(d => d.DataAttributeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CASE_ATTRIBUTE_dataAttributeId");
+        });
+
         modelBuilder.Entity<Casechangerequest>(entity =>
         {
             entity.ToTable("CASECHANGEREQUESTS");
@@ -506,6 +537,7 @@ public partial class AdviseCareContext : DbContext
             entity.Property(e => e.DecidedAt)
                 .HasPrecision(3)
                 .HasColumnName("decidedAt");
+            entity.Property(e => e.DecisionNotes).HasColumnName("decisionNotes");
             entity.Property(e => e.ProgrammeHeadId).HasColumnName("programmeHeadId");
             entity.Property(e => e.ProposedAdvisorId).HasColumnName("proposedAdvisorId");
             entity.Property(e => e.Reason)
@@ -540,6 +572,37 @@ public partial class AdviseCareContext : DbContext
                 .HasForeignKey(d => d.RequestedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_CASECHANGEREQUESTS_requestedBy");
+        });
+
+        modelBuilder.Entity<Casemessage>(entity =>
+        {
+            entity.ToTable("CASEMESSAGES");
+
+            entity.HasIndex(e => new { e.CaseId, e.CreatedAt }, "IX_CASEMESSAGES_caseId_createdAt");
+
+            entity.Property(e => e.CaseMessageId)
+                .HasDefaultValueSql("(newsequentialid())")
+                .HasColumnName("caseMessageId");
+            entity.Property(e => e.AuthorId).HasColumnName("authorId");
+            entity.Property(e => e.CaseId).HasColumnName("caseId");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("createdAt");
+            entity.Property(e => e.MessageText)
+                .IsRequired()
+                .HasMaxLength(1000)
+                .HasColumnName("messageText");
+
+            entity.HasOne(d => d.Author).WithMany(p => p.Casemessages)
+                .HasForeignKey(d => d.AuthorId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CASEMESSAGES_authorId");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.Casemessages)
+                .HasForeignKey(d => d.CaseId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CASEMESSAGES_caseId");
         });
 
         modelBuilder.Entity<Casenote>(entity =>

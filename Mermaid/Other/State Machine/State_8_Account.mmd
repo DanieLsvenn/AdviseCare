@@ -1,0 +1,20 @@
+---
+title: AdviseCare - State Machine - Account
+---
+
+stateDiagram-v2
+    direction LR
+    state "Account status" as AS {
+        [*] --> active : account created or imported
+        active --> deactivated : Admin deactivates (sessions ended)
+        deactivated --> active : Admin activates
+        active --> banned : Admin bans (sessions ended)
+        banned --> active : Admin unbans
+    }
+    state "Link status" as LS {
+        [*] --> notLinked : account created
+        notLinked --> emailSent : linking email sent
+        emailSent --> emailSent : email resent (new token)
+        emailSent --> linked : user links the Google account
+        linked --> notLinked : Admin changes the email
+    }

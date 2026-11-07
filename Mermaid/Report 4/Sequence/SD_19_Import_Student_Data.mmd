@@ -1,0 +1,37 @@
+---
+title: AdviseCare - Sequence Diagram SD-19 - Import Student Data
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor ADM as System Administrator
+    participant W as Web App
+    participant C as StudentDataController
+    participant S as StudentDataService
+    participant X as IExcelReader / ICsvReader
+    participant K as IAttributeKeyService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADM->>W: Upload file and map columns
+    W->>C: POST /api/StudentData/import/preview
+    C->>S: PreviewAsync(request)
+    S->>X: Read header and first rows
+    S-->>W: Header and sample rows
+    W->>C: POST /api/StudentData/import {file, mapping}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>X: Read all rows
+    S->>R: Students (email, username, student code), data attributes, terms
+    S->>S: Check every row (student, attribute, value type, term, valid-from), set aside rows of archived attributes
+    alt any invalid row
+        S-->>C: CreateStudentDataResponse (errors, nothing written)
+    else all valid
+        S->>K: EncryptValuesAsync(values) (a student's first value for an attribute creates and stages its key)
+        K-->>S: encrypted payloads
+        S->>R: PrepareCreate STUDENTDATA rows (status = original, provenanceNote = file + date)
+        S->>R: PrepareCreate missing rows for enrolled students without a value
+        S->>R: SaveAsync()
+        R->>DB: INSERT ATTRIBUTEKEYS, STUDENTDATA (one transaction)
+        S->>S: Log activity studentDataImported
+        S-->>C: CreateStudentDataResponse (imported, missing, rejected rows)
+    end
+    C-->>W: 200 OK

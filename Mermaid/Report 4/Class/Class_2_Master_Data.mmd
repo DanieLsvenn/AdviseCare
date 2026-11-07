@@ -1,0 +1,183 @@
+---
+title: AdviseCare - Class Diagram - Master Data
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+classDiagram
+    direction LR
+    class AcademicTermsController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+    }
+    AcademicTermsController --> IAcademicTermService : uses
+    class FacultiesController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+    }
+    FacultiesController --> IFacultyService : uses
+    class ProgrammesController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+    }
+    ProgrammesController --> IProgrammeService : uses
+    class SubjectsController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +GetAllAccountSubject() GET /account-subjects
+        +GetAccountSubjectById() GET /account-subjects/:accountId/:subjectId
+        +SearchAccountSubject() GET /account-subjects/search
+        +CreateAccountSubject() POST /account-subjects
+        +DeleteAccountSubject() DELETE /account-subjects/:accountId/:subjectId
+    }
+    SubjectsController --> ISubjectService : uses
+    class SupportCategoriesController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +GetShareableAttributes() GET /:id/shareable-attributes
+    }
+    SupportCategoriesController --> ISupportCategoryService : uses
+    class IAcademicTermService {
+        +GetAll() IEnumerable~GetAllAcademicTermResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllAcademicTermWithPaginationResponse~
+        +GetByIdAsync(TermId) GetAcademicTermByIdResponse
+        +SearchAsync(request) List~SearchAcademicTermResponse~
+        +CreateAsync(request) CreateAcademicTermResponse
+        +UpdateAsync(TermId, request) UpdateAcademicTermResponse
+    }
+    class AcademicTermService {
+    }
+    AcademicTermService ..|> IAcademicTermService
+    AcademicTermService --> Academicterm : IGenericRepository
+    class IFacultyService {
+        +GetAll() IEnumerable~GetAllFacultyResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllFacultyWithPaginationResponse~
+        +GetByIdAsync(FacultyId) GetFacultyByIdResponse
+        +SearchAsync(request) List~SearchFacultyResponse~
+        +CreateAsync(request) CreateFacultyResponse
+        +UpdateAsync(FacultyId, request) UpdateFacultyResponse
+    }
+    class FacultyService {
+    }
+    FacultyService ..|> IFacultyService
+    FacultyService --> Faculty : IGenericRepository
+    class IProgrammeService {
+        +GetAll() IEnumerable~GetAllProgrammeResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllProgrammeWithPaginationResponse~
+        +GetByIdAsync(ProgrammeId) GetProgrammeByIdResponse
+        +SearchAsync(request) List~SearchProgrammeResponse~
+        +CreateAsync(request) CreateProgrammeResponse
+        +UpdateAsync(ProgrammeId, request) UpdateProgrammeResponse
+    }
+    class ProgrammeService {
+    }
+    ProgrammeService ..|> IProgrammeService
+    ProgrammeService --> Programme : IGenericRepository
+    ProgrammeService --> Faculty : IGenericRepository
+    class ISubjectService {
+        +GetAll() IEnumerable~GetAllSubjectResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllSubjectWithPaginationResponse~
+        +GetByIdAsync(SubjectId) GetSubjectByIdResponse
+        +SearchAsync(request) List~SearchSubjectResponse~
+        +CreateAsync(request) CreateSubjectResponse
+        +UpdateAsync(SubjectId, request) UpdateSubjectResponse
+        +GetAllAccountSubjectAsync() IEnumerable~GetAllAccountSubjectResponse~
+        +GetAllAccountSubjectWithPaginationAsync(page, pageSize) IEnumerable~GetAllAccountSubjectWithPaginationResponse~
+        +GetAccountSubjectByIdAsync(AccountId, SubjectId) GetAccountSubjectByIdResponse
+        +SearchAccountSubjectAsync(request) List~SearchAccountSubjectResponse~
+        +CreateAccountSubjectAsync(request) CreateAccountSubjectResponse
+        +DeleteAccountSubjectAsync(AccountId, SubjectId) bool
+    }
+    class SubjectService {
+    }
+    SubjectService ..|> ISubjectService
+    SubjectService --> Subject : IGenericRepository
+    SubjectService --> Faculty : IGenericRepository
+    SubjectService --> AccountSubject : IGenericRepository
+    class ISupportCategoryService {
+        +GetAll() IEnumerable~GetAllSupportCategoryResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllSupportCategoryWithPaginationResponse~
+        +GetByIdAsync(SupportCategoryId) GetSupportCategoryByIdResponse
+        +SearchAsync(request) List~SearchSupportCategoryResponse~
+        +CreateAsync(CreatorId, request) CreateSupportCategoryResponse
+        +UpdateAsync(SupportCategoryId, request) UpdateSupportCategoryResponse
+        +GetShareableAttributesAsync(AccountId, IsStudent, SupportCategoryId) GetSupportCategoryShareableAttributesResponse
+    }
+    class SupportCategoryService {
+    }
+    SupportCategoryService ..|> ISupportCategoryService
+    SupportCategoryService --> Supportcategory : IGenericRepository
+    SupportCategoryService --> Consentpurpose : IGenericRepository
+    class IActivityLogService {
+        <<interface, other module>>
+    }
+    AcademicTermService --> IActivityLogService : uses
+    FacultyService --> IActivityLogService : uses
+    ProgrammeService --> IActivityLogService : uses
+    SubjectService --> IActivityLogService : uses
+    SupportCategoryService --> IActivityLogService : uses
+    class Academicterm {
+        +Guid termId
+        +DateTime endDate
+        +DateTime startDate
+        +string termName
+        +string status
+    }
+    class Faculty {
+        +Guid facultyId
+        +string facultyCode
+        +string facultyName
+        +string status
+    }
+    class Programme {
+        +Guid programmeId
+        +Guid facultyId
+        +string programmeCode
+        +string programmeName
+        +string status
+    }
+    class Subject {
+        +Guid subjectId
+        +Guid facultyId
+        +string subjectCode
+        +string subjectName
+        +string status
+    }
+    class AccountSubject {
+        +Guid accountId
+        +Guid subjectId
+        +DateTime assignedAt
+    }
+    class Supportcategory {
+        +Guid supportCategoryId
+        +Guid consentPurposeId
+        +Guid createdBy
+        +string categoryName
+        +string description
+        +string supportType
+        +string status
+    }
+    class Consentpurpose {
+        +Guid consentPurposeId
+        +Guid createdBy
+        +string description
+        +string purposeName
+        +string status
+    }
+    Faculty "1" -- "*" Programme : facultyId
+    Faculty "1" -- "*" Subject : facultyId
+    Subject "1" -- "*" AccountSubject : subjectId
+    Consentpurpose "1" -- "*" Supportcategory : consentPurposeId

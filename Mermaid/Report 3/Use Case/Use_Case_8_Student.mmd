@@ -1,0 +1,39 @@
+---
+title: AdviseCare - Use Cases of Student
+---
+flowchart LR
+    ACT["○<br/>╱│╲<br/>╱ ╲<br/><b>Student</b>"]
+    GEN["○<br/>╱│╲<br/>╱ ╲<br/>All authenticated users"]
+    ACT -.->|"inherits"| GEN
+    subgraph SYS["AdviseCare"]
+        direction TB
+        subgraph CON["Consent and Data Protection"]
+            UC21(["UC-21<br/>Manage Own Consent"])
+            UC23(["UC-23<br/>Respond to Consent Request"])
+            UC25(["UC-25<br/>View Own Access Log"])
+        end
+        subgraph SDA["Student Data Management"]
+            UC33(["UC-33<br/>View and Export Own Record"])
+            UC34(["UC-34<br/>Request Data Correction"])
+        end
+        subgraph SUP["Support Requests and Case Matching"]
+            UC36(["UC-36<br/>Request Support"])
+            UC38(["UC-38<br/>View Own Cases"])
+            UC41(["UC-41<br/>Request Case Advisor Change"])
+        end
+        subgraph CWF["Case Workflow and Referrals"]
+            UC49(["UC-49<br/>View Case History"])
+        end
+    end
+    ACT --- UC21
+    ACT --- UC23
+    ACT --- UC25
+    ACT --- UC33
+    ACT --- UC34
+    ACT --- UC36
+    ACT --- UC38
+    ACT --- UC41
+    ACT --- UC49
+    linkStyle default stroke-width: 1pt;
+    classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
+    class ACT,GEN actor;

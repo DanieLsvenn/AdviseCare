@@ -1,0 +1,35 @@
+---
+title: AdviseCare - Sequence Diagram SD-15 - Emergency Access Request and Decision
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor ST as Staff member
+    actor STW as Data Protection Steward
+    participant W as Web App
+    participant C as EmergencyAccessRequestsController
+    participant S as EmergencyAccessRequestService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ST->>W: Request emergency access to a student with a justification
+    W->>C: POST /api/EmergencyAccessRequests {studentId, justification}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: CreateAsync(request, status = pending, stewardId = null)
+    R->>DB: INSERT EMERGENCYACCESSREQUESTS
+    S->>N: NotifyAsync(every active Steward)
+    STW->>W: Open pending requests
+    alt approve
+        W->>C: PUT /api/EmergencyAccessRequests/{id}/approve {scopeExpiresAt}
+        C->>S: ApproveAsync(StewardId, Id, request)
+        S->>R: Load request still pending (decided by another Steward -> 409)
+        S->>R: UpdateAsync(status = approved, stewardId, decidedAt, scopeExpiresAt)
+    else reject
+        W->>C: PUT /api/EmergencyAccessRequests/{id}/reject {rejectionReason}
+        C->>S: RejectAsync(StewardId, Id, request)
+        S->>R: UpdateAsync(status = rejected, stewardId, rejectionReason)
+    end
+    R->>DB: UPDATE EMERGENCYACCESSREQUESTS
+    S->>N: NotifyAsync(requester, decision)
+    C-->>W: 200 OK
+    Note over S,DB: Access ends on its own at scopeExpiresAt, every read is logged with consentPurposeId = null

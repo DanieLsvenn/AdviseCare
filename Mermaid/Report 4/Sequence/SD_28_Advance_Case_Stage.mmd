@@ -1,0 +1,35 @@
+---
+title: AdviseCare - Sequence Diagram SD-28 - Advance Case Stage
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor ADV as Advisor
+    participant W as Web App
+    participant C as CasesController
+    participant S as CaseService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADV->>W: Move case to "closed" with a reason
+    W->>C: PUT /api/Cases/{id}/stage {toStage, reason}
+    C->>S: ChangeStageAsync(AdvisorId, CaseId, request)
+    S->>R: Case visible to the caller and the caller is its advisor
+    alt case closed, same stage, or a referral of the case is pending
+        S-->>C: ConflictException / ValidationException
+        C-->>W: 409 / 400
+    else
+        S->>R: PrepareCreate CaseStageHistory (from -> to, reason)
+        opt toStage = closed
+            S->>S: status = closed, closedAt = now
+        end
+        S->>R: PrepareUpdate Case, SaveAsync()
+        R->>DB: UPDATE CASES, INSERT CASESTAGEHISTORIES
+        S->>S: Log activity caseClosed / caseStageChanged
+        opt closed
+            S->>N: NotifyAsync(student, "Your case has been closed")
+        end
+        S-->>C: ChangeCaseStageResponse
+        C-->>W: 200 OK
+    end
+    Note over W,DB: PUT /api/Cases/{id}/reopen sets status = reopened, stage closed -> assigned, clears closedAt and notifies the student

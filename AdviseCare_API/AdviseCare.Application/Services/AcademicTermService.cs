@@ -98,6 +98,11 @@ namespace AdviseCare.Application.Services
             if (request.EndDate <= request.StartDate)
                 throw new ValidationException("End date must be after start date.");
 
+            // Imports find a term by its name, so two terms may not share one
+            var termName = request.TermName.Trim();
+            if (await _academicTermRepository.ExistsAsync(t => t.TermName == termName))
+                throw new ConflictException($"A term named '{termName}' already exists.");
+
             // Only one term can be current: the previous current term moves to past
             if (request.Status == "current")
                 await MoveCurrentTermToPastAsync(null);
@@ -134,6 +139,10 @@ namespace AdviseCare.Application.Services
                 throw new ValidationException("Start date and end date are required.");
             if (request.EndDate <= request.StartDate)
                 throw new ValidationException("End date must be after start date.");
+
+            var termName = request.TermName.Trim();
+            if (await _academicTermRepository.ExistsAsync(t => t.TermName == termName && t.TermId != TermId))
+                throw new ConflictException($"A term named '{termName}' already exists.");
 
             // Only one term can be current: the previous current term moves to past
             if (request.Status == "current" && academicTerm.Status != "current")

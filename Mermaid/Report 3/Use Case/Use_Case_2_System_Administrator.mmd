@@ -1,0 +1,45 @@
+---
+title: AdviseCare - Use Cases of System Administrator
+---
+flowchart LR
+    ACT["○<br/>╱│╲<br/>╱ ╲<br/><b>System Administrator</b>"]
+    GEN["○<br/>╱│╲<br/>╱ ╲<br/>All authenticated users"]
+    ACT -.->|"inherits"| GEN
+    subgraph SYS["AdviseCare"]
+        direction TB
+        subgraph ACC["Account and Access Management"]
+            UC05(["UC-05<br/>Create Account"])
+            UC06(["UC-06<br/>Import Accounts"])
+            UC07(["UC-07<br/>Send Account-Linking Emails"])
+            UC08(["UC-08<br/>Manage Accounts"])
+            UC09(["UC-09<br/>Manage Account Roles"])
+            UC10(["UC-10<br/>Manage Student Profiles"])
+        end
+        subgraph MST["Master Data Management"]
+            UC11(["UC-11<br/>Manage Academic Terms"])
+            UC12(["UC-12<br/>Manage Faculties"])
+            UC13(["UC-13<br/>Manage Subjects and Specialisations"])
+            UC14(["UC-14<br/>Manage Support Categories"])
+        end
+        subgraph SDA["Student Data Management"]
+            UC30(["UC-30<br/>Import Student Data"])
+        end
+        subgraph WEL["Student Welfare"]
+            UC52(["UC-52<br/>Manage External Services"])
+        end
+    end
+    ACT --- UC05
+    ACT --- UC06
+    ACT --- UC07
+    ACT --- UC08
+    ACT --- UC09
+    ACT --- UC10
+    ACT --- UC11
+    ACT --- UC12
+    ACT --- UC13
+    ACT --- UC14
+    ACT --- UC30
+    ACT --- UC52
+    linkStyle default stroke-width: 1pt;
+    classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
+    class ACT,GEN actor;

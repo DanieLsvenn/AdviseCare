@@ -1,0 +1,129 @@
+---
+title: AdviseCare - Class Diagram - Reports and Notifications
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+classDiagram
+    direction LR
+    class ReportsController {
+        +GetCaseReport() GET /cases
+        +ExportCaseReport() GET /cases/export
+        +GetCaseloadClosureReport() GET /caseload-closure
+        +ExportCaseloadClosureReport() GET /caseload-closure/export
+    }
+    ReportsController --> IReportService : uses
+    class NotificationsController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +Delete() DELETE /:id
+        +GetMine() GET /me
+        +GetMyUnreadCount() GET /me/unread-count
+        +MarkAsRead() PUT /me/:id/read
+        +MarkAllAsRead() PUT /me/read-all
+        +DeleteMine() DELETE /me/:id
+        +ClearMine() DELETE /me/clear
+    }
+    NotificationsController --> INotificationService : uses
+    class NotificationPreferencesController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +GetMine() GET /me
+        +UpdateMine() PUT /me
+    }
+    NotificationPreferencesController --> INotificationPreferenceService : uses
+    class IReportService {
+        +GetCaseReportAsync(request) List~GetCaseReportResponse~
+        +ExportCaseReportAsync(ProgrammeHeadId, request) ExportCaseReportResponse
+        +GetCaseloadClosureReportAsync(request) List~GetCaseloadClosureReportResponse~
+        +ExportCaseloadClosureReportAsync(ProgrammeHeadId, request) ExportCaseloadClosureReportResponse
+    }
+    class ReportService {
+    }
+    ReportService ..|> IReportService
+    ReportService --> Case : IGenericRepository
+    ReportService --> IExcelWriter : uses
+    ReportService --> IPdfWriter : uses
+    class INotificationService {
+        +GetAll() IEnumerable~GetAllNotificationResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllNotificationWithPaginationResponse~
+        +GetByIdAsync(NotificationId) GetNotificationByIdResponse
+        +SearchAsync(request) List~SearchNotificationResponse~
+        +CreateAsync(request) CreateNotificationResponse
+        +UpdateAsync(NotificationId, request) UpdateNotificationResponse
+        +DeleteAsync(NotificationId) bool
+        +GetMyNotificationsAsync(AccountId) List~GetMyNotificationResponse~
+        +GetMyUnreadCountAsync(AccountId) int
+        +MarkAsReadAsync(AccountId, NotificationId) bool
+        +MarkAllAsReadAsync(AccountId) int
+        +DeleteMyNotificationAsync(AccountId, NotificationId) bool
+        +ClearMyReadNotificationsAsync(AccountId) int
+        +NotifyAsync(AccountId, title, message, redirectUrl) void
+    }
+    class NotificationService {
+    }
+    NotificationService ..|> INotificationService
+    NotificationService --> Notification : IGenericRepository
+    NotificationService --> Notificationpreference : IGenericRepository
+    NotificationService --> IEmailService : uses
+    class INotificationPreferenceService {
+        +GetAll() IEnumerable~GetAllNotificationPreferenceResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllNotificationPreferenceWithPaginationResponse~
+        +GetByIdAsync(NotificationPreferenceId) GetNotificationPreferenceByIdResponse
+        +SearchAsync(request) List~SearchNotificationPreferenceResponse~
+        +CreateAsync(request) CreateNotificationPreferenceResponse
+        +UpdateAsync(NotificationPreferenceId, request) UpdateNotificationPreferenceResponse
+        +GetMyNotificationPreferencesAsync(AccountId) List~GetMyNotificationPreferenceResponse~
+        +UpdateMyNotificationPreferenceAsync(AccountId, request) UpdateMyNotificationPreferenceResponse
+    }
+    class NotificationPreferenceService {
+    }
+    NotificationPreferenceService ..|> INotificationPreferenceService
+    NotificationPreferenceService --> Notificationpreference : IGenericRepository
+    class IActivityLogService {
+        <<interface, other module>>
+    }
+    NotificationPreferenceService --> IActivityLogService : uses
+    ReportService --> IActivityLogService : uses
+    class IExcelWriter {
+        <<interface, infrastructure>>
+    }
+    class IPdfWriter {
+        <<interface, infrastructure>>
+    }
+    class IEmailService {
+        <<interface, infrastructure>>
+    }
+    class Notification {
+        +Guid notificationId
+        +Guid accountId
+        +string message
+        +string redirectUrl
+        +string title
+        +DateTime createdAt
+        +bool isRead
+    }
+    class Notificationpreference {
+        +Guid notificationPreferenceId
+        +Guid accountId
+        +string channel
+        +bool isEnabled
+    }
+    class Case {
+        +Guid caseId
+        +Guid? advisorId
+        +Guid openedBy
+        +Guid studentId
+        +Guid? subjectId
+        +Guid supportCategoryId
+        +string requestReason
+        +DateTime? closedAt
+        +DateTime openedAt
+        +string currentStage
+        +string priority
+        +string status
+    }

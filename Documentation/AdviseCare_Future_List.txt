@@ -8,7 +8,7 @@ Same numbering as the FUTURE section of AdviseCare_Workflow_List.txt.
 ==========
 
 FU1: Scheduled data ingestion / live integration with FAP, FLM, LMS
-- What it is: connect to a real data source (database, API) and pull student data automatically on a schedule, instead of the admin uploading Excel/CSV/Google Sheet files
+- What it is: connect to a real data source (database, API) and pull student data automatically on a schedule, instead of the admin uploading Excel/CSV files
 - Already in the ERD: DATASOURCES (one data source per data attribute), INGESTIONSCHEDULES, INGESTIONJOBS, and STUDENTDATA.dataSourceId (null for file imports in the current version)
 - Rules already decided: one upcoming job per schedule, minimum frequency daily, start time works like an alarm, on failure warn/skip/retry, every job is all-or-nothing
 - Why future: the school offers no data source or API for FAP, FLM or LMS
@@ -33,9 +33,9 @@ FU5: Advising effectiveness analysis
 - Already in the ERD: no extra table needed; it would use CASES, CASESTAGEHISTORIES, REFERRALS and INTERVENTIONS
 - Why future: the mentor stated this software matches and tracks; judging effectiveness is not its responsibility
 
-FU6: Importing accounts from a Google Sheet
-- What it is: the admin pastes a Google Sheet link instead of uploading an Excel file; the rows go through the same all-or-nothing validation as the Excel import
-- Already in the ERD: no extra table needed; it creates the same ACCOUNTS and ACCOUNT_ROLE rows as the Excel import
+FU6: Importing accounts and student data from a Google Sheet
+- What it is: the admin pastes a Google Sheet link instead of uploading a file, both for the account import (instead of the Excel file) and for the student data import (instead of the Excel/CSV file); the rows go through the same all-or-nothing validation as the file imports
+- Already in the ERD: no extra table needed; it creates the same ACCOUNTS, ACCOUNT_ROLE and STUDENTPROFILES rows as the account import, and the same STUDENTDATA rows (dataSourceId null) as the student data import
 - Why future: kept simple for now, the admin can download the sheet as an Excel file and upload that
 - Ways to do it later: a sheet shared as "anyone with the link can view" read through its CSV export link (no API key), or a Google service account for private sheets
 
@@ -81,10 +81,10 @@ FU7: In-app meeting scheduling
 - Missing in the ERD: tables for advisor availability and meetings
 - Current version instead: advisor and student decide by themselves when and how to meet; the system only sends the advisor's contact information and the advisor records case notes
 
-FU8: In-app chat between advisor and student
-- What it is: messaging inside the platform instead of external apps
-- Missing in the ERD: tables for conversations and messages
-- Note: possible stretch goal if the scope turns out too small
+FU8: AI assistance in the case thread
+- What it is: AI help inside a case's message thread (e.g. a suggested reply for the advisor or a summary of the thread); not agreed by the team yet
+- Missing in the ERD: a way to mark AI-written or AI-suggested messages in CASEMESSAGES
+- Note: the advisor-student thread itself (in-app messaging) is now in the current version as CASEMESSAGES
 
 FU9: Accounts without a Google account on file (activation code)
 - What it is: the admin creates an account without a Google-linked email. The system shows a one-time activation code, valid for a short time, which the admin gives to the student in person. The student enters the code, sets their own password straight away, and links a Google account later in Settings

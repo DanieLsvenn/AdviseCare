@@ -1,0 +1,31 @@
+---
+title: AdviseCare - Sequence Diagram SD-20 - View Student Data at a Past Date
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor ADV as Advisor
+    participant W as Web App
+    participant C as StudentDataController
+    participant S as StudentDataService
+    participant G as IAccessGuardService
+    participant K as IAttributeKeyService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADV->>W: "View as of" 2026-10-31, time axis = valid
+    W->>C: GET /api/StudentData/students/{studentId}/as-of?date&timeAxis
+    C->>S: GetAsOfAsync(AccessorId, StudentId, request)
+    S->>R: STUDENTDATA rows of the student
+    R->>DB: SELECT
+    alt timeAxis = system
+        S->>S: Per attribute and term: latest row with transactionFrom up to the date
+    else timeAxis = valid
+        S->>S: Among rows with validFrom up to the date: latest validFrom, later transactionFrom wins ties
+    end
+    S->>G: CheckAccessAsync(accessor, student, attributes, null)
+    G-->>S: decisions
+    S->>K: DecryptValuesAsync(allowed rows)
+    S->>G: LogAccessBatchAsync(one row per value shown, with studentDataId)
+    G->>R: INSERT ACCESSLOGS
+    S-->>C: Snapshot (values, sources, missing notices, "exists, not shared")
+    C-->>W: 200 OK

@@ -1,0 +1,28 @@
+---
+title: AdviseCare - Sequence Diagram SD-10 - Create and Activate Access Policy
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor STW as Data Protection Steward
+    participant W as Web App
+    participant C as AccessPoliciesController
+    participant S as AccessPolicyService
+    participant G as IAccessGuardService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    STW->>W: Link role "Wellbeing Advisor" to purpose "Wellbeing support"
+    W->>C: POST /api/AccessPolicies {consentPurposeId, roleId}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: Check purpose not retired, role is not Student, no live policy for the same pair
+    S->>R: CreateAsync(policy, status = draft)
+    R->>DB: INSERT ACCESSPOLICIES
+    W->>C: POST /api/AccessPolicies/{id}/test {studentId}
+    C->>S: TestAsync(AccessPolicyId, request)
+    S->>R: Read the student's consents under the purpose (nothing is logged)
+    S-->>C: Which attributes the role would see
+    W->>C: PUT /api/AccessPolicies/{id}/activate
+    C->>S: ActivateAsync(AccessPolicyId)
+    S->>R: UpdateAsync(status = active)
+    R->>DB: UPDATE ACCESSPOLICIES
+    Note over G: From now on the access guard allows this role to read the attributes students granted under the purpose

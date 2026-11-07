@@ -1,0 +1,16 @@
+---
+title: AdviseCare - State Machine - Referral
+---
+
+stateDiagram-v2
+    direction LR
+    [*] --> pending : advisor refers the case
+    pending --> accepted : receiver accepts
+    pending --> returned : receiver returns it with a reason
+    accepted --> [*]
+    returned --> [*]
+    note right of pending
+        one pending referral per case
+        it blocks stage changes, reassignment
+        and approving a case change request
+    end note

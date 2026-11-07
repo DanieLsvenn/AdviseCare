@@ -1,0 +1,149 @@
+---
+title: AdviseCare - Class Diagram - Support Requests and Case Matching
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+classDiagram
+    direction LR
+    class CasesController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +GetMyAll() GET /me
+        +GetMatchingQueue() GET /matching-queue
+        +GetSuggestedAdvisors() GET /:id/suggested-advisors
+        +Assign() PUT /:id/assign
+        +Reassign() PUT /:id/reassign
+        +GetAssigned() GET /assigned
+        +GetAssignedUnreadCount() GET /assigned/unread-count
+        +ChangeStage() PUT /:id/stage
+        +Reopen() PUT /:id/reopen
+        +ChangePriority() PUT /:id/priority
+    }
+    CasesController --> ICaseService : uses
+    class CaseChangeRequestsController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Approve() PUT /:id/approve
+        +Reject() PUT /:id/reject
+    }
+    CaseChangeRequestsController --> ICaseChangeRequestService : uses
+    class ICaseService {
+        +GetAll() IEnumerable~GetAllCaseResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllCaseWithPaginationResponse~
+        +GetByIdAsync(CallerId, CaseId) GetCaseByIdResponse
+        +SearchAsync(request) List~SearchCaseResponse~
+        +CreateAsync(CreatorId, request) CreateCaseResponse
+        +GetMyAllAsync(StudentId, request) List~GetMyCaseResponse~
+        +GetMatchingQueueAsync() List~GetMatchingQueueCaseResponse~
+        +GetSuggestedAdvisorsAsync(CaseId) List~GetCaseSuggestedAdvisorResponse~
+        +AssignAsync(ProgrammeHeadId, CaseId, request) AssignCaseResponse
+        +ReassignAsync(ProgrammeHeadId, CaseId, request) ReassignCaseResponse
+        +GetAssignedAsync(AdvisorId, request) List~GetAssignedCaseResponse~
+        +GetAssignedWithPaginationAsync(AdvisorId, request, page, pageSize) IEnumerable~GetAssignedCaseWithPaginationResponse~
+        +GetAssignedUnreadCountAsync(AdvisorId) int
+        +ChangeStageAsync(AdvisorId, CaseId, request) ChangeCaseStageResponse
+        +ReopenAsync(AdvisorId, CaseId, request) ReopenCaseResponse
+        +ChangePriorityAsync(CallerId, CaseId, request) ChangeCasePriorityResponse
+        +SearchCaseStageHistoryAsync(CallerId, request) List~SearchCaseStageHistoryResponse~
+    }
+    class CaseService {
+    }
+    CaseService ..|> ICaseService
+    CaseService --> Case : IGenericRepository
+    CaseService --> Casestagehistory : IGenericRepository
+    CaseService --> Supportcategory : IGenericRepository
+    CaseService --> AccountSubject : IGenericRepository
+    class ICaseChangeRequestService {
+        +GetAll(CallerId) IEnumerable~GetAllCaseChangeRequestResponse~
+        +GetAllWithPaginationAsync(CallerId, page, pageSize) IEnumerable~GetAllCaseChangeRequestWithPaginationResponse~
+        +GetByIdAsync(CallerId, CaseChangeRequestId) GetCaseChangeRequestByIdResponse
+        +SearchAsync(CallerId, request) List~SearchCaseChangeRequestResponse~
+        +CreateAsync(CreatorId, request) CreateCaseChangeRequestResponse
+        +ApproveAsync(ProgrammeHeadId, CaseChangeRequestId, request) ApproveCaseChangeRequestResponse
+        +RejectAsync(ProgrammeHeadId, CaseChangeRequestId, request) RejectCaseChangeRequestResponse
+    }
+    class CaseChangeRequestService {
+    }
+    CaseChangeRequestService ..|> ICaseChangeRequestService
+    CaseChangeRequestService --> Casechangerequest : IGenericRepository
+    CaseChangeRequestService --> Case : IGenericRepository
+    CaseChangeRequestService --> Casestagehistory : IGenericRepository
+    class IActivityLogService {
+        <<interface, other module>>
+    }
+    class IConsentService {
+        <<interface, other module>>
+    }
+    class INotificationService {
+        <<interface, other module>>
+    }
+    CaseService --> IActivityLogService : uses
+    CaseService --> IConsentService : uses
+    CaseService --> INotificationService : uses
+    CaseChangeRequestService --> IActivityLogService : uses
+    CaseChangeRequestService --> INotificationService : uses
+    class Case {
+        +Guid caseId
+        +Guid? advisorId
+        +Guid openedBy
+        +Guid studentId
+        +Guid? subjectId
+        +Guid supportCategoryId
+        +string requestReason
+        +DateTime? closedAt
+        +DateTime openedAt
+        +string currentStage
+        +string priority
+        +string status
+    }
+    class Casechangerequest {
+        +Guid caseChangeRequestId
+        +Guid caseId
+        +Guid? programmeHeadId
+        +Guid proposedAdvisorId
+        +Guid requestedBy
+        +string decisionNotes
+        +string reason
+        +DateTime? decidedAt
+        +DateTime requestedAt
+        +string status
+    }
+    class Casestagehistory {
+        +Guid caseStageHistoryId
+        +Guid caseId
+        +Guid changedBy
+        +string reason
+        +DateTime changedAt
+        +string fromStage
+        +string toStage
+    }
+    class Supportcategory {
+        +Guid supportCategoryId
+        +Guid consentPurposeId
+        +Guid createdBy
+        +string categoryName
+        +string description
+        +string supportType
+        +string status
+    }
+    class AccountSubject {
+        +Guid accountId
+        +Guid subjectId
+        +DateTime assignedAt
+    }
+    class Consent {
+        +Guid consentId
+        +Guid consentPurposeId
+        +Guid dataAttributeId
+        +Guid studentId
+        +DateTime? expiresAt
+        +DateTime grantedAt
+        +DateTime? withdrawnAt
+        +string status
+    }
+    Supportcategory "1" -- "*" Case : supportCategoryId
+    Case "1" -- "*" Casechangerequest : caseId
+    Case "1" -- "*" Casestagehistory : caseId

@@ -1,0 +1,49 @@
+---
+title: AdviseCare - Use Cases of Programme Head
+---
+flowchart LR
+    ACT["○<br/>╱│╲<br/>╱ ╲<br/><b>Programme Head</b>"]
+    GEN["○<br/>╱│╲<br/>╱ ╲<br/>All authenticated users"]
+    ACT -.->|"inherits"| GEN
+    subgraph SYS["AdviseCare"]
+        direction TB
+        subgraph CON["Consent and Data Protection"]
+            UC26(["UC-26<br/>Request Emergency Access"])
+        end
+        subgraph SDA["Student Data Management"]
+            UC31(["UC-31<br/>View Student Data"])
+            UC32(["UC-32<br/>View Student Data at a Past Date"])
+        end
+        subgraph SUP["Support Requests and Case Matching"]
+            UC39(["UC-39<br/>Match Case to Advisor"])
+            UC40(["UC-40<br/>Reassign Case"])
+            UC42(["UC-42<br/>Decide Case Advisor Change"])
+        end
+        subgraph CWF["Case Workflow and Referrals"]
+            UC46(["UC-46<br/>Change Case Priority"])
+            UC49(["UC-49<br/>View Case History"])
+        end
+        subgraph WEL["Student Welfare"]
+            UC55(["UC-55<br/>Respond to Escalation"])
+        end
+        subgraph RPT["Reporting"]
+            UC56(["UC-56<br/>View Case Report"])
+            UC57(["UC-57<br/>View Caseload and Closure Report"])
+            UC58(["UC-58<br/>Export Report"])
+        end
+    end
+    ACT --- UC26
+    ACT --- UC31
+    ACT --- UC32
+    ACT --- UC39
+    ACT --- UC40
+    ACT --- UC42
+    ACT --- UC46
+    ACT --- UC49
+    ACT --- UC55
+    ACT --- UC56
+    ACT --- UC57
+    ACT --- UC58
+    linkStyle default stroke-width: 1pt;
+    classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
+    class ACT,GEN actor;

@@ -1,82 +1,105 @@
-# AdviseCare — Web app
+# AdviseCare Web App
 
-Frontend của AdviseCare (Academic Advising & Student Welfare Management System),
-dựng theo bộ prototype trong `Prototype/stitch_advisecare_academic_advising_platform`
-và bộ quy tắc `advisecare_project_design_rules.md`.
+Frontend của AdviseCare Academic Advising & Student Welfare Management System.
+Giao diện hiện tại gọi API .NET thật; các Route Handler mock của prototype đã
+được loại bỏ để không che khuất API backend.
 
 ## Ngăn xếp
 
-| Thành phần | Lựa chọn | Lý do |
-|---|---|---|
-| Framework | Next.js 16.3 (App Router, Turbopack) | Server Components giúp mọi màn đọc dữ liệu ngay trên server, không cần state client cho phần lớn giao diện |
-| UI | React 19 + Tailwind CSS v4 | Token thiết kế khai báo trực tiếp trong `@theme`, không cần file config riêng |
-| i18n | next-intl 4 (`[locale]`, EN/VI) | Design Rule §4.7 bắt buộc mọi màn có toggle EN \| VI |
-| Font | `@fontsource/be-vietnam-pro`, `@fontsource/jetbrains-mono`, `material-symbols` | Tự lưu trữ qua npm — build và chạy được trong mạng nội bộ, không gọi fonts.googleapis.com |
-| Dữ liệu | Route Handlers `/api/*` trả mock | Frontend fetch như thật; khi API .NET sẵn sàng chỉ cần đổi base URL |
+- Next.js 16 App Router và React 19
+- Tailwind CSS v4
+- `next-intl` với tiếng Anh và tiếng Việt
+- TypeScript
 
 ## Chạy dự án
 
-```bash
+```powershell
 pnpm install
-pnpm dev      # http://localhost:3000 → tự chuyển sang /en
-pnpm build
+pnpm dev:local-api
 pnpm lint
+pnpm build
 ```
 
-## Cấu trúc
+`.env.local` đã được cấu hình cho API phát triển tại
+`https://localhost:7286`. Nếu cần đổi môi trường, đặt
+`ADVISECARE_API_BASE_URL` thành origin của ASP.NET Core API, không bao gồm
+đường dẫn `/api`; ví dụ:
 
-```
-app/
-  [locale]/
-    layout.tsx            root layout (html/body, NextIntlClientProvider)
-    sign-in/              C01 — đăng nhập qua SSO
-    advisor/              A01–A14 (shell riêng, sidebar 256px)
-    me/                   S01–S10 (shell sinh viên, sidebar rút gọn)
-    steward/              D01–D06 (shell cán bộ bảo vệ dữ liệu)
-  api/                    Route Handlers trả mock theo đúng tên trường của ERD
-  globals.css             design tokens (@theme) + base layer
-components/
-  ui/                     Button, StatusChip, Panel, DataTable, ImmutableRecord, …
-  layout/                 AppShell, TopBar, SidebarNav, Brand
-  advisor/                thành phần riêng của luồng cố vấn
-i18n/                     routing.ts, request.ts, navigation.ts
-lib/
-  types.ts                kiểu domain bám ERD (PascalCase như schema)
-  api.ts                  lớp truy cập dữ liệu duy nhất
-  mock/                   dữ liệu mẫu
-messages/{en,vi}/         từ điển theo namespace
-proxy.ts                  chuyển hướng "/" → locale (Next 16 đổi tên middleware → proxy)
+```dotenv
+ADVISECARE_API_BASE_URL=https://localhost:7001
 ```
 
-## Những quyết định thiết kế cần nhớ khi bảo vệ đồ án
+Trên Windows, dùng `pnpm dev:local-api` để chạy với API cục bộ. Lệnh này chỉ
+xuất chứng chỉ công khai của ASP.NET Core vào thư mục tạm và cấu hình Node tin
+cậy chứng chỉ đó; xác thực TLS vẫn được bật. Nếu cần chọn cổng frontend khác,
+chạy `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local-api.ps1 -Port 3100`.
 
-1. **Trạng thái không bao giờ chỉ là màu.** `StatusChip` luôn gồm bộ ba token
-   (chữ / nền / viền) và một nhãn chữ. Xem `components/ui/status-chip.tsx`.
-2. **Thuộc tính không có quyền thì vắng mặt hoàn toàn**, không có giá trị bị che
-   kiểu `***`, không có nút "xin quyền". So sánh A02 (có consent) với A09 (sau khi
-   sinh viên rút) để thấy rõ khác biệt.
-3. **Chiều sâu bằng viền, không bằng bóng đổ.** Chỉ dropdown và modal mới có
-   shadow; mọi panel dùng viền 1px trên nền trắng.
-4. **Bản ghi đã chốt không có nút sửa/xóa.** `ImmutableRecord` không nhận prop
-   `onEdit`/`onDelete`; đính chính đi qua addendum (A11, S07).
-5. **Trích dẫn giữ đúng chuỗi đã hiển thị.** `CitationList` in ra `DisplayedValue`
-   kèm valid-time và transaction-time — đây là thứ cho phép tái dựng màn hình tại
-   thời điểm ra quyết định (A07) và phân biệt với "dữ liệu hiện tại nói gì".
-6. **Thiếu dữ liệu là một trạng thái hiển thị được.** Mỗi khối chứng cứ công bố
-   "Sources used" và "Missing sources" ngang hàng nhau (`EvidenceSection`).
-7. **Phạm vi dịch:** toàn bộ chrome giao diện có EN/VI. Nội dung bản ghi (ghi chú
-   tư vấn, lời trình bày của sinh viên) đến từ API và giữ nguyên ngôn ngữ lúc
-   soạn — đó là dữ liệu pháp lý bất biến, không phải chuỗi giao diện.
+Next.js chuyển tiếp yêu cầu `/api/*` qua Route Handler
+`app/api/[...path]/route.ts`. URL upstream được tạo thành
+`{ADVISECARE_API_BASE_URL}/api/{path}`. Biến này chỉ được đọc phía server và
+không nên dùng tiền tố `NEXT_PUBLIC_`.
 
-## Cắm backend thật
+Đăng nhập bằng Google cần thêm Client ID (OAuth Web client) của Google
+Identity Services; nếu không đặt biến này, trang đăng nhập chỉ hiện form mật
+khẩu:
 
-`lib/api.ts` là chỗ duy nhất biết dữ liệu đến từ đâu. Khi `AdviseCare_API` sẵn
-sàng, đặt biến môi trường:
-
-```
-NEXT_PUBLIC_API_BASE_URL=https://api.advisecare.local
+```dotenv
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxxxxxxx.apps.googleusercontent.com
 ```
 
-Payload trong `app/api/*` đã dùng đúng tên trường PascalCase của schema
-(`StudentId`, `ConsentGrantId`, `RecordedAt`, `SupersededAt`…) nên không cần lớp
-ánh xạ khi đổi sang API thật.
+## Thiết kế
+
+Hệ thiết kế "Sổ liên lạc" được mô tả trong `DESIGN.md` (bảng màu, font Source
+Sans 3 / Source Code Pro, mật độ, mẫu "mục có chữ ký" cho mọi lịch sử chỉ
+ghi thêm). `PRODUCT.md` tóm tắt sự thật sản phẩm từ SRS mà mọi màn phải tôn
+trọng. Thành phần dùng chung nằm trong `components/ui`; màn danh sách sinh tự
+động từ `components/workspace/workspace-definitions.ts`.
+
+Các luồng chính có màn thiết kế riêng:
+
+| Luồng | Route |
+|---|---|
+| Đăng nhập, liên kết Google, đặt lại mật khẩu | `/sign-in`, `/link-account?token=`, `/reset-password?token=` |
+| Sinh viên gửi yêu cầu hỗ trợ | `/me/support-request` |
+| Sinh viên xem một yêu cầu | `/me/cases/[caseId]` |
+| Hàng đợi ghép cố vấn (Programme Head) | `/head`, `/head/matching` |
+| Chi tiết case của cố vấn | `/advisor/cases/[caseId]` |
+
+## Tích hợp API và phiên đăng nhập
+
+- Đăng nhập, liên kết Google, khôi phục mật khẩu và thao tác nghiệp vụ gọi API
+  backend qua BFF cùng origin.
+- BFF lưu token trong cookie `HttpOnly`, không trả token trong payload đăng
+  nhập, kiểm tra nguồn gốc của yêu cầu ghi và xóa cookie khi phiên hết hạn.
+- Server Components lấy người dùng hiện tại bằng `Auth/me`; các layout vai trò
+  kiểm tra quyền trước khi hiển thị workspace.
+- Các thao tác CRUD, tìm kiếm, tải lên và xuất dữ liệu dùng DTO/endpoint hiện
+  hành của API. Không có dữ liệu mock làm phương án thay thế khi API không khả
+  dụng; lỗi cấu hình hoặc kết nối được hiển thị rõ trên giao diện.
+
+## Workspace
+
+- **Quản trị:** tài khoản và vai trò; khoa, chương trình, môn học và học kỳ;
+  nhập dữ liệu sinh viên; danh mục hỗ trợ và thuộc tính; lịch sử hoạt động.
+- **Cố vấn:** danh sách ca, chi tiết và lịch sử ca; yêu cầu đồng ý; đính chính;
+  chuyển tuyến; truy cập khẩn cấp; dữ liệu sinh viên theo thời điểm và đối chiếu.
+- **Sinh viên:** hồ sơ, ca hỗ trợ và biểu mẫu gửi ca; đồng ý và yêu cầu đồng ý;
+  yêu cầu đính chính; lịch sử truy cập; hoạt động; xuất dữ liệu cá nhân.
+- **Cán bộ bảo vệ dữ liệu:** mục đích đồng ý, chính sách truy cập, thuộc tính,
+  lịch sử đồng ý, nhật ký truy cập, yêu cầu xóa, truy cập khẩn cấp và khóa mã hóa.
+- **Công tác xã hội:** ca, chuyển tuyến đến và từ dịch vụ bên ngoài, dịch vụ và
+  can thiệp.
+- **Trưởng chương trình:** hàng đợi ghép cố vấn (gợi ý cố vấn, ghép một chạm),
+  yêu cầu đổi cố vấn, yêu cầu chuyển cấp, tất cả case, báo cáo ca và khối
+  lượng cố vấn.
+
+Thông báo và cài đặt tài khoản dùng chung AppShell đã xác thực. Các workspace
+hiển thị kết quả trực tiếp từ API và cung cấp lọc, phân trang, biểu mẫu thao
+tác, trạng thái đang tải/lỗi và chi tiết phản hồi khi endpoint trả dữ liệu.
+
+## Giới hạn theo API hiện tại
+
+Các màn thống kê không có endpoint tương ứng được ghi rõ là chưa khả dụng thay
+vì trình bày dữ liệu giả. Kiểm thử giao diện với dữ liệu thật cần API đang chạy,
+tài khoản/role phù hợp và `ADVISECARE_API_BASE_URL` được cấu hình trong môi
+trường.

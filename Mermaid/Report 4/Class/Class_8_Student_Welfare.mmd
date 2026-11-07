@@ -1,0 +1,194 @@
+---
+title: AdviseCare - Class Diagram - Student Welfare
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+classDiagram
+    direction LR
+    class InterventionsController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +Close() PUT /:id/close
+    }
+    InterventionsController --> IInterventionService : uses
+    class SupportGrantsController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Revoke() PUT /:id/revoke
+    }
+    SupportGrantsController --> ISupportGrantService : uses
+    class ExternalServicesController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+    }
+    ExternalServicesController --> IExternalServiceService : uses
+    class ExternalReferralsController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +Close() PUT /:id/close
+    }
+    ExternalReferralsController --> IExternalReferralService : uses
+    class EscalationsController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Respond() PUT /:id/respond
+    }
+    EscalationsController --> IEscalationService : uses
+    class IInterventionService {
+        +GetAll() IEnumerable~GetAllInterventionResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllInterventionWithPaginationResponse~
+        +GetByIdAsync(InterventionId) GetInterventionByIdResponse
+        +SearchAsync(request) List~SearchInterventionResponse~
+        +CreateAsync(CreatorId, request) CreateInterventionResponse
+        +UpdateAsync(OfficerId, InterventionId, request) UpdateInterventionResponse
+        +CloseAsync(OfficerId, InterventionId, request) CloseInterventionResponse
+    }
+    class InterventionService {
+    }
+    InterventionService ..|> IInterventionService
+    InterventionService --> Intervention : IGenericRepository
+    InterventionService --> Case : IGenericRepository
+    class ISupportGrantService {
+        +GetAll() IEnumerable~GetAllSupportGrantResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllSupportGrantWithPaginationResponse~
+        +GetByIdAsync(SupportGrantId) GetSupportGrantByIdResponse
+        +SearchAsync(request) List~SearchSupportGrantResponse~
+        +CreateAsync(CreatorId, request) CreateSupportGrantResponse
+        +RevokeAsync(OfficerId, SupportGrantId) bool
+    }
+    class SupportGrantService {
+    }
+    SupportGrantService ..|> ISupportGrantService
+    SupportGrantService --> Supportgrant : IGenericRepository
+    SupportGrantService --> Intervention : IGenericRepository
+    class IExternalServiceService {
+        +GetAll() IEnumerable~GetAllExternalServiceResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllExternalServiceWithPaginationResponse~
+        +GetByIdAsync(ExternalServiceId) GetExternalServiceByIdResponse
+        +SearchAsync(request) List~SearchExternalServiceResponse~
+        +CreateAsync(request) CreateExternalServiceResponse
+        +UpdateAsync(ExternalServiceId, request) UpdateExternalServiceResponse
+    }
+    class ExternalServiceService {
+    }
+    ExternalServiceService ..|> IExternalServiceService
+    ExternalServiceService --> Externalservice : IGenericRepository
+    class IExternalReferralService {
+        +GetAll() IEnumerable~GetAllExternalReferralResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllExternalReferralWithPaginationResponse~
+        +GetByIdAsync(ExternalReferralId) GetExternalReferralByIdResponse
+        +SearchAsync(request) List~SearchExternalReferralResponse~
+        +CreateAsync(CreatorId, request) CreateExternalReferralResponse
+        +UpdateAsync(ExternalReferralId, request) UpdateExternalReferralResponse
+        +CloseAsync(ExternalReferralId) CloseExternalReferralResponse
+    }
+    class ExternalReferralService {
+    }
+    ExternalReferralService ..|> IExternalReferralService
+    ExternalReferralService --> Externalreferral : IGenericRepository
+    ExternalReferralService --> Externalservice : IGenericRepository
+    ExternalReferralService --> Case : IGenericRepository
+    class IEscalationService {
+        +GetAll(AccountId) IEnumerable~GetAllEscalationResponse~
+        +GetAllWithPaginationAsync(AccountId, page, pageSize) IEnumerable~GetAllEscalationWithPaginationResponse~
+        +GetByIdAsync(AccountId, EscalationId) GetEscalationByIdResponse
+        +SearchAsync(AccountId, request) List~SearchEscalationResponse~
+        +CreateAsync(CreatorId, request) CreateEscalationResponse
+        +RespondAsync(ProgrammeHeadId, EscalationId, request) RespondEscalationResponse
+    }
+    class EscalationService {
+    }
+    EscalationService ..|> IEscalationService
+    EscalationService --> Escalation : IGenericRepository
+    EscalationService --> Case : IGenericRepository
+    class IActivityLogService {
+        <<interface, other module>>
+    }
+    class INotificationService {
+        <<interface, other module>>
+    }
+    EscalationService --> IActivityLogService : uses
+    EscalationService --> INotificationService : uses
+    ExternalReferralService --> IActivityLogService : uses
+    ExternalServiceService --> IActivityLogService : uses
+    InterventionService --> IActivityLogService : uses
+    InterventionService --> INotificationService : uses
+    SupportGrantService --> IActivityLogService : uses
+    class Intervention {
+        +Guid interventionId
+        +Guid caseId
+        +Guid officerId
+        +string notes
+        +string outcome
+        +DateTime interventionDate
+        +string interventionType
+        +bool isClosed
+        +string status
+    }
+    class Supportgrant {
+        +Guid supportGrantId
+        +Guid interventionId
+        +string grantDescription
+        +string grantType
+        +DateTime issuedAt
+        +string status
+    }
+    class Externalservice {
+        +Guid externalServiceId
+        +string contactInfo
+        +string serviceName
+        +string serviceType
+        +bool isActive
+    }
+    class Externalreferral {
+        +Guid externalReferralId
+        +Guid caseId
+        +Guid externalServiceId
+        +Guid referredBy
+        +DateTime? followUpDueAt
+        +string followUpOutcome
+        +DateTime referredAt
+        +bool isOverdue
+        +string status
+    }
+    class Escalation {
+        +Guid escalationId
+        +Guid caseId
+        +Guid escalatedBy
+        +Guid escalatedTo
+        +string reason
+        +string response
+        +DateTime escalatedAt
+        +string status
+    }
+    class Case {
+        +Guid caseId
+        +Guid? advisorId
+        +Guid openedBy
+        +Guid studentId
+        +Guid? subjectId
+        +Guid supportCategoryId
+        +string requestReason
+        +DateTime? closedAt
+        +DateTime openedAt
+        +string currentStage
+        +string priority
+        +string status
+    }
+    Case "1" -- "*" Intervention : caseId
+    Intervention "1" -- "*" Supportgrant : interventionId
+    Case "1" -- "*" Externalreferral : caseId
+    Externalservice "1" -- "*" Externalreferral : externalServiceId
+    Case "1" -- "*" Escalation : caseId

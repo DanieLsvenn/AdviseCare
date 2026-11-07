@@ -3,50 +3,72 @@
   "sectionSteward": "Data Protection",
   "sectionAdministration": "System Administration",
   "sectionStudent": "My Record",
+  "sectionWelfare": "Student Welfare",
+  "sectionHead": "Programme Governance",
+  "roles": {
+    "systemAdministrator": "System Administrator",
+    "dataProtectionSteward": "Data Protection Steward",
+    "academicAdvisor": "Academic Advisor",
+    "wellbeingAdvisor": "Wellbeing Advisor",
+    "studentWelfareOfficer": "Student Welfare Officer",
+    "student": "Student",
+    "programmeHead": "Programme Head"
+  },
   "advisor": {
     "caseload": "Caseload",
     "cases": "Cases",
     "consentRequests": "Consent requests",
     "corrections": "Corrections",
     "referrals": "Referrals",
-    "emergencyAccess": "Emergency access"
+    "emergencyAccess": "Emergency access",
+    "myCases": "My cases"
   },
   "steward": {
     "purposes": "Consent purposes",
     "policies": "Access policies",
     "accessRecords": "Access & processing records",
     "erasure": "Erasure queue",
-    "emergencyReviews": "Emergency access review"
+    "emergencyReviews": "Emergency access review",
+    "attributes": "Data attributes",
+    "consents": "Consent history",
+    "keys": "Encryption key status"
   },
   "student": {
     "profile": "My profile",
     "consent": "Consent",
-    "accessHistory": "Access history",
+    "cases": "My requests",
+    "accessHistory": "Access log",
     "corrections": "Corrections",
     "export": "Export my data",
-    "events": "Events"
+    "requestSupport": "Request support",
+    "consentRequests": "Data requests"
   },
   "head": {
-    "overview": "Cohort overview",
+    "overview": "Matching queue",
     "workload": "Advisor workload",
-    "assignments": "Assignment changes",
-    "reports": "Term reports"
+    "assignments": "Case change requests",
+    "reports": "Case reports",
+    "allCases": "All cases",
+    "escalations": "Escalations"
   },
-  "advisorFooterTitle": "Demo Advisor 01",
-  "advisorFooterCaption": "Academic Advisor • Online",
-  "stewardFooterTitle": "Demo Steward 01",
-  "stewardFooterCaption": "Data Protection Steward • Online",
-  "administratorFooterTitle": "System Administrator",
-  "administratorFooterCaption": "Institutional Root Trust • Online",
+  "welfare": {
+    "referrals": "Incoming referrals",
+    "cases": "Welfare casework",
+    "externalServices": "External services",
+    "externalReferrals": "External referrals",
+    "escalations": "Escalations"
+  },
   "administrator": {
     "accounts": "Accounts & roles",
-    "faculties": "Faculties & assignments",
-    "sources": "Data sources",
-    "reference": "Reference data",
-    "health": "System health",
-    "restore": "Restore & integrity",
-    "indicators": "Indicator configuration"
+    "faculties": "Academic reference data",
+    "sources": "Student data import",
+    "reference": "Support categories",
+    "health": "Activity history",
+    "restore": "Notifications",
+    "indicators": "Account settings",
+    "sessions": "Active sessions",
+    "specialisations": "Advisor specialisations"
   },
-  "studentFooterTitle": "Student Data Agency",
-  "studentFooterCaption": "Strict Privacy Sealed"
+  "sectionGeneral": "Account",
+  "more": "More"
 }

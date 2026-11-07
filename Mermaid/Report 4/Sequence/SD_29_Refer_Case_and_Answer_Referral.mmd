@@ -1,0 +1,43 @@
+---
+title: AdviseCare - Sequence Diagram SD-29 - Refer Case and Answer Referral
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor ADV as Advisor
+    actor RCV as Receiver
+    participant W as Web App
+    participant C as ReferralsController
+    participant S as ReferralService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADV->>W: Refer case with receiver, reason, priority
+    W->>C: POST /api/Referrals {caseId, toAccountId, referralReason, priority}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: Caller is the case's advisor, case not closed, no pending referral, receiver active advisor or Welfare Officer
+    S->>R: PrepareCreate Referral (pending), PrepareCreate CaseStageHistory (-> referred), PrepareUpdate Case
+    S->>R: SaveAsync()
+    R->>DB: INSERT REFERRALS, CASESTAGEHISTORIES, UPDATE CASES
+    S->>N: NotifyAsync(receiver, "New referral")
+    RCV->>W: Open incoming referrals
+    W->>C: GET /api/Referrals/me/incoming?status=pending
+    alt accept
+        W->>C: PUT /api/Referrals/{id}/accept
+        C->>S: AcceptAsync(ReceiverId, ReferralId)
+        alt receiver is an advisor
+            S->>R: Referral accepted, Case advisorId = receiver, CaseStageHistory (referred -> assigned)
+            S->>N: NotifyAsync(student, new advisor's contact)
+        else receiver is the Welfare Officer
+            S->>R: Referral accepted, case and stage unchanged (stays referred)
+        end
+        S->>N: NotifyAsync(sender, "Referral accepted")
+    else return
+        W->>C: PUT /api/Referrals/{id}/return {reason}
+        C->>S: ReturnAsync(ReceiverId, ReferralId, request)
+        S->>R: Referral returned, CaseStageHistory (referred -> previous stage, with the reason)
+        S->>N: NotifyAsync(sender, "Referral returned" with the reason)
+    end
+    S->>R: SaveAsync()
+    R->>DB: UPDATE REFERRALS, CASES, INSERT CASESTAGEHISTORIES
+    C-->>W: 200 OK

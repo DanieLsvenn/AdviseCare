@@ -1,0 +1,31 @@
+---
+title: AdviseCare - Sequence Diagram SD-32 - Escalate Case and Respond
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor SWO as Student Welfare Officer
+    actor PH as Programme Head
+    participant W as Web App
+    participant C as EscalationsController
+    participant S as EscalationService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    SWO->>W: Escalate case with a reason
+    W->>C: POST /api/Escalations {caseId, escalatedTo, reason}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: Case open and accepted by this officer, target is an active Programme Head
+    S->>R: CreateAsync(escalation, status = pending)
+    R->>DB: INSERT ESCALATIONS
+    S->>N: NotifyAsync(Programme Head)
+    PH->>W: Open pending escalations
+    W->>C: GET /api/Escalations/search?status=pending
+    PH->>W: Record response
+    W->>C: PUT /api/Escalations/{id}/respond {response}
+    C->>S: RespondAsync(ProgrammeHeadId, Id, request)
+    S->>R: Only the receiving Programme Head, only while pending
+    S->>R: UpdateAsync(response, respondedAt, status = responded)
+    R->>DB: UPDATE ESCALATIONS
+    S->>N: NotifyAsync(Welfare Officer)
+    C-->>W: 200 OK

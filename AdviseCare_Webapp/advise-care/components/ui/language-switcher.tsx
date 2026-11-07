@@ -1,6 +1,6 @@
 "use client";
 
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { Link, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
@@ -8,21 +8,29 @@ import { routing } from "@/i18n/routing";
 const labels: Record<string, string> = { en: "EN", vi: "VI" };
 
 /**
- * Design Rule §4.7 — bộ chuyển ngôn ngữ luôn hiện ở header, mọi màn hình.
- * Là segmented toggle: lựa chọn đang bật có nền trắng + viền + chữ teal đậm.
+ * The EN | VI toggle is visible on every screen (brand commitment).
+ * Segmented control: the active language is a white chip in ink.
  */
-export function LanguageSwitcher({ className }: { className?: string }) {
+export function LanguageSwitcher({
+  className,
+  tone = "paper",
+}: {
+  className?: string;
+  tone?: "paper" | "cover";
+}) {
   const pathname = usePathname();
   const active = useLocale();
+  const t = useTranslations("common");
 
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded border border-outline-variant/60 bg-surface-container-low p-0.5",
+        "inline-flex h-8 items-center rounded-md border p-0.5",
+        tone === "cover" ? "border-cover-line bg-cover-raised" : "border-rule bg-paper-tint",
         className,
       )}
       role="group"
-      aria-label="Language"
+      aria-label={t("language")}
     >
       {routing.locales.map((locale) => (
         <Link
@@ -31,10 +39,12 @@ export function LanguageSwitcher({ className }: { className?: string }) {
           locale={locale}
           aria-current={locale === active ? "true" : undefined}
           className={cn(
-            "rounded px-space-sm py-0.5 font-label-sm text-label-sm transition-colors",
+            "flex h-6 items-center rounded px-2 text-[0.75rem] font-semibold tracking-wide transition-colors",
             locale === active
-              ? "border border-outline-variant/60 bg-surface-container-lowest font-bold text-primary"
-              : "border border-transparent text-on-surface-variant hover:text-on-surface",
+              ? "bg-paper text-ink shadow-[0_0_0_1px_var(--color-rule)]"
+              : tone === "cover"
+                ? "text-cover-ink hover:text-white"
+                : "text-text-faint hover:text-text",
           )}
         >
           {labels[locale] ?? locale.toUpperCase()}

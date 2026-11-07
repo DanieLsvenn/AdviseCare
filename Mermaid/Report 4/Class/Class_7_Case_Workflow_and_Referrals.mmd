@@ -1,0 +1,116 @@
+---
+title: AdviseCare - Class Diagram - Case Workflow and Referrals
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+classDiagram
+    direction LR
+    class CaseNotesController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +Update() PUT /:id
+        +Finalize() PUT /:id/finalize
+    }
+    CaseNotesController --> ICaseNoteService : uses
+    class ReferralsController {
+        +GetAll() GET /
+        +GetById() GET /:id
+        +Search() GET /search
+        +Create() POST /
+        +GetMyIncoming() GET /me/incoming
+        +GetMyOutgoing() GET /me/outgoing
+        +Accept() PUT /:id/accept
+        +Return() PUT /:id/return
+    }
+    ReferralsController --> IReferralService : uses
+    class CaseStageHistoriesController {
+    }
+    CaseStageHistoriesController --> ICaseService : uses
+    class ICaseNoteService {
+        +GetAll(AuthorId) IEnumerable~GetAllCaseNoteResponse~
+        +GetAllWithPaginationAsync(AuthorId, page, pageSize) IEnumerable~GetAllCaseNoteWithPaginationResponse~
+        +GetByIdAsync(CallerId, CaseNoteId) GetCaseNoteByIdResponse
+        +SearchAsync(CallerId, request) List~SearchCaseNoteResponse~
+        +CreateAsync(CreatorId, request) CreateCaseNoteResponse
+        +UpdateAsync(AuthorId, CaseNoteId, request) UpdateCaseNoteResponse
+        +FinalizeAsync(AuthorId, CaseNoteId) FinalizeCaseNoteResponse
+    }
+    class CaseNoteService {
+    }
+    CaseNoteService ..|> ICaseNoteService
+    CaseNoteService --> Casenote : IGenericRepository
+    CaseNoteService --> Case : IGenericRepository
+    CaseNoteService --> Referral : IGenericRepository
+    class IReferralService {
+        +GetAll() IEnumerable~GetAllReferralResponse~
+        +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllReferralWithPaginationResponse~
+        +GetByIdAsync(CallerId, ReferralId) GetReferralByIdResponse
+        +SearchAsync(CallerId, request) List~SearchReferralResponse~
+        +CreateAsync(CreatorId, request) CreateReferralResponse
+        +GetMyIncomingAsync(AccountId, request) List~GetMyIncomingReferralResponse~
+        +GetMyOutgoingAsync(AccountId, request) List~GetMyOutgoingReferralResponse~
+        +AcceptAsync(ReceiverId, ReferralId) AcceptReferralResponse
+        +ReturnAsync(ReceiverId, ReferralId, request) ReturnReferralResponse
+    }
+    class ReferralService {
+    }
+    ReferralService ..|> IReferralService
+    ReferralService --> Referral : IGenericRepository
+    ReferralService --> Case : IGenericRepository
+    ReferralService --> Casestagehistory : IGenericRepository
+    class IActivityLogService {
+        <<interface, other module>>
+    }
+    class INotificationService {
+        <<interface, other module>>
+    }
+    CaseNoteService --> IActivityLogService : uses
+    ReferralService --> IActivityLogService : uses
+    ReferralService --> INotificationService : uses
+    class Casenote {
+        +Guid caseNoteId
+        +Guid authorId
+        +Guid caseId
+        +string noteText
+        +DateTime createdAt
+        +DateTime? editedAt
+        +bool isFinalized
+    }
+    class Referral {
+        +Guid referralId
+        +Guid caseId
+        +Guid fromAccountId
+        +Guid toAccountId
+        +string referralReason
+        +DateTime? acceptedAt
+        +DateTime createdAt
+        +string priority
+        +string status
+    }
+    class Casestagehistory {
+        +Guid caseStageHistoryId
+        +Guid caseId
+        +Guid changedBy
+        +string reason
+        +DateTime changedAt
+        +string fromStage
+        +string toStage
+    }
+    class Case {
+        +Guid caseId
+        +Guid? advisorId
+        +Guid openedBy
+        +Guid studentId
+        +Guid? subjectId
+        +Guid supportCategoryId
+        +string requestReason
+        +DateTime? closedAt
+        +DateTime openedAt
+        +string currentStage
+        +string priority
+        +string status
+    }
+    Case "1" -- "*" Casenote : caseId
+    Case "1" -- "*" Referral : caseId
+    Case "1" -- "*" Casestagehistory : caseId

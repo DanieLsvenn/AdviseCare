@@ -1,0 +1,32 @@
+---
+title: AdviseCare - Sequence Diagram SD-17 - Flag and Review Access Log Entry
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor STU as Student
+    actor STW as Data Protection Steward
+    participant W as Web App
+    participant C as AccessLogsController
+    participant S as AccessLogService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    STU->>W: Open own access log (date range, role)
+    W->>C: GET /api/AccessLogs/me?fromDate&toDate&roleName
+    C->>S: GetMyAccessLogsAsync(StudentId, request)
+    S-->>W: Who read which attribute, when and under which purpose
+    STU->>W: Flag an entry
+    W->>C: PUT /api/AccessLogs/me/{id}/flag
+    C->>S: FlagMineAsync(StudentId, AccessLogId)
+    S->>R: UpdateAsync(isFlagged = true, status = unreviewed)
+    R->>DB: UPDATE ACCESSLOGS (review fields only)
+    S->>N: NotifyAsync(every Steward)
+    STW->>W: Open flagged entries
+    W->>C: GET /api/AccessLogs/search?isFlagged=true
+    STW->>W: Mark as cleared (or confirmedIssue)
+    W->>C: PUT /api/AccessLogs/{id}/review {status}
+    C->>S: ReviewAsync(AccessLogId, request)
+    S->>R: UpdateAsync(status, reviewedBy, reviewedAt)
+    R->>DB: UPDATE ACCESSLOGS
+    C-->>W: 200 OK

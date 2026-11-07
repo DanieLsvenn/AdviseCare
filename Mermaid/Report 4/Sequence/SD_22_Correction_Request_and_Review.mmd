@@ -1,0 +1,41 @@
+---
+title: AdviseCare - Sequence Diagram SD-22 - Correction Request and Review
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor STU as Student
+    actor ADV as Advisor
+    participant W as Web App
+    participant C as CorrectionRequestsController
+    participant S as CorrectionRequestService
+    participant G as IAccessGuardService
+    participant K as IAttributeKeyService
+    participant N as INotificationService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    STU->>W: Pick a value, give the correct value and a reason
+    W->>C: POST /api/CorrectionRequests {studentDataId, proposedValue, explanation}
+    C->>S: CreateAsync(CreatorId, request)
+    S->>R: Row must be the student's latest value, not missing or erased, no pending request for it
+    S->>K: EncryptValuesAsync(currentValue, proposedValue)
+    S->>R: CreateAsync(request, status = pending)
+    R->>DB: INSERT CORRECTIONREQUESTS
+    ADV->>W: Open pending correction requests
+    W->>C: GET /api/CorrectionRequests/search?status=pending
+    C->>S: SearchAsync(AdvisorId, request)
+    S->>G: CheckAccessAsync (values only shown when allowed) and LogAccessBatchAsync
+    alt approve
+        W->>C: PUT /api/CorrectionRequests/{id}/approve {decisionNotes}
+        C->>S: ApproveAsync(AdvisorId, Id, request)
+        S->>K: EncryptValuesAsync(proposed value)
+        S->>R: PrepareCreate STUDENTDATA row (status = correction, same validFrom, transactionFrom = now)
+        S->>R: PrepareUpdate request (approved, reviewedBy, decidedAt), SaveAsync()
+    else reject
+        W->>C: PUT /api/CorrectionRequests/{id}/reject {decisionNotes}
+        C->>S: RejectAsync(AdvisorId, Id, request)
+        S->>R: UpdateAsync(rejected, reviewedBy, decidedAt)
+    end
+    R->>DB: INSERT/UPDATE
+    S->>N: NotifyAsync(student, decision)
+    C-->>W: 200 OK

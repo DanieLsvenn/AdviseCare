@@ -40,7 +40,7 @@ Setting up the basic calendar and the shared lookup lists the rest of the system
 
 Since the school has no data source or API to connect to, student data (attendance, grades, ...) comes in as files that the admin uploads. The import is all-or-nothing: if one row is invalid, nothing is imported. Rows of an archived data attribute are the only exception: they are left out and listed, and the other rows are still imported.
 
-+ Upload an Excel/CSV file of student data values (a Google Sheet is future)
++ Upload an Excel/CSV file of student data values (a Google Sheet is future, see FU6 in AdviseCare_Future_List.txt)
 + Preview the file and map its columns (student identifier, data attribute, value, term, valid-from date)
 + Validate the whole file before saving (all-or-nothing); valid values are encrypted and go straight into the student data history, and every enrolled student without a value gets a missing-data notice
 + View the import result and the list of invalid rows when it fails
@@ -180,6 +180,14 @@ Advisor and student decide by themselves how and when to meet (online, offline, 
 + Finalize a note
 + View history of past notes for a student
 
+- Talk with the student in the case thread:
+
+The case has a message thread that the student and the current advisor both write in, e.g. a next step or a meeting suggestion from the advisor and the student's reply. Messages are attributed and timestamped, are visible to the student and the staff of the case, and cannot be edited or deleted. Nothing can be written while the case is closed, and a student can write once an advisor is assigned. Internal case notes remain staff-only.
+
++ Write and read messages in the case thread
++ Notify the other side when a message is written
++ Preserve message author and timestamp for accountability
+
 - Advance a case through its stages:
 
 Every case moves through a defined pipeline (pending, assigned, contacted, referred, follow-up, closed), giving a visible status instead of notes scattered across emails.
@@ -216,6 +224,15 @@ If an advisor needs data the student has not shared, they send a specific named 
 + Send the request to the student
 + View request status (pending/granted/denied)
 + Withdraw a pending request
+
+- Review a student's correction request (pending review):
+
+When a student says one of their data values is wrong, the advisor of one of the student's open cases checks it against its source (e.g. the lecturer's attendance sheet) and decides.
+
++ View pending correction requests of students in own open cases (the values are only shown with consent or emergency access, and the read is logged)
++ Approve with a note: the corrected value is saved as a new version with the same valid-from date, and the wrong value stays in the history
++ Reject with a note explaining why
++ The student is notified of the decision
 
 Student Welfare Officer
 
@@ -264,7 +281,7 @@ The main entry point: the student asks for help, picks the kind of help, explain
 + Choose support type (academic / wellbeing)
 + Choose a category (academic: subject + topic; wellbeing: mental health, accommodation, money, ...)
 + Write the reason
-+ Choose which data attributes to share (only those allowed by the category's consent purpose; can be left empty)
++ Choose which data attributes to share (only those allowed by the category's consent purpose; can be left empty), with an optional note per attribute on why it matters
 + Receive the matched advisor's contact information by email and in-app notification
 + View own cases, their stages and history
 
@@ -296,12 +313,15 @@ The main entry point: the student asks for help, picks the kind of help, explain
 
 + Export own record and access log as a JSON file
 
-- Request correction of an incorrect fact with advisor review (pending review):
+- Ask for a wrong data value to be corrected (pending review):
 
-+ Select the field believed to be incorrect
-+ Submit correction with supporting explanation
-+ Track correction request status
-+ Withdraw a pending correction request
+When one of the student's own data values is wrong (e.g. an attendance rate imported with a mistake), the student can ask for it to be fixed. An advisor checks it against its source. The corrected value is added as a new version, so the old value stays in the history and past views can still show what the system knew at the time. Directory data (name, student code, academic status) is not corrected this way; the admin edits it.
+
++ Pick the value believed to be wrong (one data attribute for one term)
++ Give the correct value and a reason (e.g. evidence from the lecturer)
++ Only possible while the student has an open case, since that case's advisor reviews it; without one, the student is asked to open a support case first
++ Track the request (pending / approved / rejected) and get notified of the decision
++ Withdraw a request that is still pending
 
 Programme Head
 
@@ -320,7 +340,7 @@ For now matching is manual; an automated/AI matching mode is a future plan.
 
 + View pending case change requests (from the student of the case or its current advisor)
 + View reason and proposed advisor
-+ Approve or reject the change (approving moves the case to the proposed advisor)
++ Approve or reject the change (approving moves the case to the proposed advisor; rejecting needs a reason, which is sent to the people involved)
 + View history of past case changes
 
 - Receive and respond to escalations:

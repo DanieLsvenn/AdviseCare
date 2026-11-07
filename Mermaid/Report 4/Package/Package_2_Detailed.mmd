@@ -1,0 +1,68 @@
+---
+title: AdviseCare - Detailed Package Diagram (backend)
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+flowchart TB
+    subgraph API["AdviseCare.API"]
+        direction LR
+        CTRL["Controllers<br/>35 REST controllers"]
+        BG["BackgroundServices<br/>ExternalReferralOverdueService"]
+        ROOT["Composition Root<br/>Program.cs: DI, JWT bearer auth, Swagger, CORS, AppException to HTTP status handler"]
+    end
+    subgraph APP["AdviseCare.Application"]
+        direction LR
+        REQ["Contracts.Requests"]
+        RES["Contracts.Responses"]
+        DTO["DTOs<br/>AccessDecision, AccessLogEntry, AttributeValue, ExcelRow, GoogleUserInfo, DataValueValidator"]
+        EXC["Exceptions<br/>AppException and subtypes"]
+        subgraph IFACE["Interfaces"]
+            ISVC["Services"]
+            IREP["Repository<br/>IGenericRepository&lt;T&gt;"]
+            ISEC["Security<br/>IJwtTokenGenerator, IGoogleTokenValidator, IPasswordHasher, IDataEncryptor"]
+            IEML["Email<br/>IEmailService"]
+            IXLS["Excel<br/>IExcelReader, ICsvReader, IExcelWriter, IPdfWriter"]
+            ISTO["Storage<br/>IStorageService"]
+        end
+        SVC["Services<br/>34 application services"]
+    end
+    subgraph DOM["AdviseCare.Domain"]
+        direction LR
+        MOD["Models<br/>43 entity classes"]
+        CTX["AdviseCareContext<br/>EF Core DbContext"]
+    end
+    subgraph INF["AdviseCare.Infrastructure"]
+        direction LR
+        REPO["Repository<br/>GenericRepository&lt;T&gt;"]
+        SEC["Security<br/>JwtTokenGenerator, GoogleTokenValidator, PasswordHasher, AesGcmDataEncryptor"]
+        EML["Email<br/>EmailService (Gmail SMTP)"]
+        XLS["Excel<br/>ExcelReader, CsvReader, ExcelWriter, SimplePdfWriter"]
+        STO["Storage<br/>SupabaseStorageService"]
+        CFG["Configuration<br/>EncryptionSettings, GmailSettings, SupabaseSettings"]
+    end
+
+    CTRL --> REQ
+    CTRL --> ISVC
+    BG --> ISVC
+    ROOT --> SVC
+    ROOT --> INF
+    SVC -.->|"implements"| ISVC
+    SVC --> REQ
+    SVC --> RES
+    SVC --> DTO
+    SVC --> EXC
+    SVC --> IREP
+    SVC --> ISEC
+    SVC --> IEML
+    SVC --> IXLS
+    SVC --> ISTO
+    SVC --> MOD
+    REPO -.->|"implements"| IREP
+    SEC -.->|"implements"| ISEC
+    EML -.->|"implements"| IEML
+    XLS -.->|"implements"| IXLS
+    STO -.->|"implements"| ISTO
+    REPO --> CTX
+    SEC --> CFG
+    EML --> CFG
+    STO --> CFG
+    CTX --> MOD

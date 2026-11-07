@@ -252,4 +252,35 @@
         public string RoleName { get; set; } = string.Empty;
         public DateTime AssignedAt { get; set; }
     }
+
+    public class SearchStaffAccountResponse
+    {
+        public Guid AccountId { get; set; } = Guid.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public List<string> Roles { get; set; } = new();
+    }
+
+    public class UpdateAccountRolesResponse
+    {
+        public Guid AccountId { get; set; } = Guid.Empty;
+        public List<string> Roles { get; set; } = new();
+    }
+
+    // Every row of an import file with the problems found in it; nothing is written
+    public class PreviewAccountImportResponse
+    {
+        public List<string> Headers { get; set; } = new();
+        public List<ImportPreviewRowResponse> Rows { get; set; } = new();
+        public int TotalRowCount { get; set; } = 0;
+        public int ValidRowCount { get; set; } = 0;
+        public List<ImportAccountErrorResponse> Errors { get; set; } = new();
+        public bool IsValid { get; set; } = false;
+    }
+
+    public class ImportPreviewRowResponse
+    {
+        public int RowNumber { get; set; } = 0;
+        public Dictionary<string, string> Values { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    }
 }

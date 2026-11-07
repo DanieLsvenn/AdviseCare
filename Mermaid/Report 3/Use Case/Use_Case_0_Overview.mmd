@@ -1,0 +1,55 @@
+---
+title: AdviseCare - Use Case Overview (actors and functional modules)
+---
+flowchart LR
+    ALL["○<br/>╱│╲<br/>╱ ╲<br/>All authenticated users"]
+    ADM["○<br/>╱│╲<br/>╱ ╲<br/>System Administrator"]
+    STW["○<br/>╱│╲<br/>╱ ╲<br/>Data Protection Steward"]
+    AA["○<br/>╱│╲<br/>╱ ╲<br/>Academic Advisor"]
+    WA["○<br/>╱│╲<br/>╱ ╲<br/>Wellbeing Advisor"]
+    SWO["○<br/>╱│╲<br/>╱ ╲<br/>Student Welfare Officer"]
+    STU["○<br/>╱│╲<br/>╱ ╲<br/>Student"]
+    PH["○<br/>╱│╲<br/>╱ ╲<br/>Programme Head"]
+    subgraph SYS["AdviseCare"]
+        ACC(["Account and Access Management<br/>(10 use cases)"])
+        MST(["Master Data Management<br/>(4 use cases)"])
+        NTF(["Notifications and Personal Settings<br/>(3 use cases)"])
+        CON(["Consent and Data Protection<br/>(12 use cases)"])
+        SDA(["Student Data Management<br/>(6 use cases)"])
+        SUP(["Support Requests and Case Matching<br/>(7 use cases)"])
+        CWF(["Case Workflow and Referrals<br/>(7 use cases)"])
+        WEL(["Student Welfare<br/>(6 use cases)"])
+        RPT(["Reporting<br/>(3 use cases)"])
+    end
+    AA --- CON
+    AA --- CWF
+    AA --- SDA
+    AA --- SUP
+    ADM --- ACC
+    ADM --- MST
+    ADM --- SDA
+    ADM --- WEL
+    ALL --- ACC
+    ALL --- NTF
+    PH --- CON
+    PH --- CWF
+    PH --- RPT
+    PH --- SDA
+    PH --- SUP
+    PH --- WEL
+    STU --- CON
+    STU --- CWF
+    STU --- SDA
+    STU --- SUP
+    STW --- CON
+    SWO --- CON
+    SWO --- CWF
+    SWO --- SDA
+    SWO --- WEL
+    WA --- CON
+    WA --- CWF
+    WA --- SDA
+    WA --- SUP
+    linkStyle default stroke-width: 1pt;
+    classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
+    class ALL,ADM,STW,AA,WA,SWO,STU,PH actor;

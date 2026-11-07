@@ -7,6 +7,7 @@ using AdviseCare.Application.Interfaces.Services;
 using AdviseCare.Application.Interfaces.Storage;
 using AdviseCare.Application.Services;
 using AdviseCare.API.BackgroundServices;
+using AdviseCare.API.Errors;
 using AdviseCare.Domain.Models;
 using AdviseCare.Infrastructure.Configuration;
 using AdviseCare.Infrastructure.Email;
@@ -27,7 +28,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- Database (SQL Server) ---
 // Enums are stored as NVARCHAR + CHECK in AdviseCareDB and stay as string in code, so no enum mapping is needed here.
-var connectionString = builder.Configuration.GetConnectionString("DBDefault") ?? throw new InvalidOperationException("Connection string 'AdviseCareDB' was not found.");
+var connectionString = builder.Configuration.GetConnectionString("AdviseCareDB") ?? throw new InvalidOperationException("Connection string 'AdviseCareDB' was not found.");
 builder.Services.AddDbContext<AdviseCareContext>(options => options.UseSqlServer(connectionString));
 
 // --- CORS ---
@@ -75,6 +76,16 @@ builder.Services.AddScoped<IInterventionService, InterventionService>();
 builder.Services.AddScoped<ISupportGrantService, SupportGrantService>();
 builder.Services.AddScoped<IEscalationService, EscalationService>();
 
+// Member D
+builder.Services.AddScoped<ISupportCategoryService, SupportCategoryService>();
+builder.Services.AddScoped<ICaseService, CaseService>();
+builder.Services.AddScoped<ICaseAccessService, CaseAccessService>();
+builder.Services.AddScoped<ICaseNoteService, CaseNoteService>();
+builder.Services.AddScoped<ICaseMessageService, CaseMessageService>();
+builder.Services.AddScoped<IReferralService, ReferralService>();
+builder.Services.AddScoped<ICaseChangeRequestService, CaseChangeRequestService>();
+builder.Services.AddScoped<IReportService, ReportService>();
+
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -100,6 +111,7 @@ builder.Services.AddHttpClient<IStorageService, SupabaseStorageService>();
 builder.Services.AddScoped<IExcelReader, ExcelReader>();
 builder.Services.AddScoped<ICsvReader, CsvReader>();
 builder.Services.AddScoped<IExcelWriter, ExcelWriter>();
+builder.Services.AddScoped<IPdfWriter, SimplePdfWriter>();
 
 // -- HttpContextAccessor ---
 builder.Services.AddHttpContextAccessor();
@@ -161,6 +173,16 @@ app.UseExceptionHandler(errorApp =>
     {
         var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
         context.Response.ContentType = "application/json";
+
+        // A database constraint that a service did not check first (duplicate code, row still in use...) gets its own message instead of a 500
+        var databaseError = exception == null ? null : DatabaseErrorTranslator.Translate(exception);
+        if (databaseError != null)
+        {
+            context.Response.StatusCode = databaseError.Value.Status;
+            await context.Response.WriteAsJsonAsync(new { message = databaseError.Value.Message });
+            return;
+        }
+
         context.Response.StatusCode = exception switch
         {
             NotFoundException => StatusCodes.Status404NotFound,
