@@ -13,6 +13,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { ApiError, isRecord, type ApiMethod, type ApiQuery } from "@/lib/api-contract";
 import { clientApiGet, clientApiRequest } from "@/lib/client-api";
+import { SearchPicker } from "@/components/workspace/search-picker";
 import { cn } from "@/lib/cn";
 import { moveRowFocus } from "@/lib/keyboard";
 import { formatDate, formatTime, parseDate, shortId } from "@/lib/format";
@@ -61,7 +62,9 @@ export interface WorkspaceField {
     | "checkbox"
     | "file"
     | "list"
-    | "multiselect";
+    | "multiselect"
+    /** Type part of a name or code and pick a record (optionsFrom with searchKeys); the record's id is sent. */
+    | "search";
   required?: boolean;
   options?: Array<{ label: string; value: string }>;
   accept?: string;
@@ -122,6 +125,8 @@ export interface WorkspaceOperation {
   /** Only offer the operation when the record is in one of these states. */
   when?: { key: string; in?: string[]; notIn?: string[] };
   bodyFromRecord?: Record<string, { key: string; asArray?: boolean }>;
+  /** Fixed values always sent in the body (e.g. isActive = false to end a session). */
+  body?: Record<string, unknown>;
 }
 
 export interface ApiWorkspaceDefinition {
@@ -1078,7 +1083,7 @@ function OperationGroup({
                 <div className="border-t border-rule bg-paper-tint/60 px-space-base pb-space-base">
                   <ApiOperationForm
                     definition={operation}
-                    bodyDefaults={bodyFromRecord(operation, record)}
+                    bodyDefaults={{ ...bodyFromRecord(operation, record), ...operation.body }}
                     pathValues={{ ...pathValues, ...record }}
                     onComplete={onComplete}
                   />
@@ -1350,11 +1355,13 @@ export function WorkspaceInput({
   const loadedForSource = loadedOptions?.source === optionSource ? loadedOptions : null;
   const remoteOptions = loadedForSource?.options ?? [];
   const optionsError = loadedForSource?.error ?? "";
-  const optionsLoading = optionSource !== undefined && loadedForSource === null;
+  // A search field asks the API while typing instead of loading every option first
+  const loadsOptions = optionSource !== undefined && field.type !== "search";
+  const optionsLoading = loadsOptions && loadedForSource === null;
   const control = cn(controlClass, "w-full", compact ? "h-8 text-[0.8125rem]" : "h-10");
 
   useEffect(() => {
-    if (!optionSource) return;
+    if (!optionSource || field.type === "search") return;
     let active = true;
     const controller = new AbortController();
     void clientApiGet<unknown>(optionSource.path, {
@@ -1378,7 +1385,7 @@ export function WorkspaceInput({
       active = false;
       controller.abort();
     };
-  }, [optionSource, t]);
+  }, [optionSource, field.type, t]);
 
   if (field.type === "checkbox") {
     return (
@@ -1496,6 +1503,18 @@ export function WorkspaceInput({
           placeholder={field.placeholder}
           required={field.required}
           value={typeof value === "string" ? value : ""}
+        />
+      ) : field.type === "search" && optionSource ? (
+        <SearchPicker
+          id={id}
+          source={optionSource}
+          value={typeof value === "string" ? value : ""}
+          onChange={(next) => onChange(next)}
+          placeholder={field.placeholder}
+          required={field.required}
+          invalid={Boolean(error)}
+          describedBy={describedBy}
+          compact={compact}
         />
       ) : field.type === "select" ? (
         <select

@@ -4,8 +4,8 @@ File SQL: `AdviseCare_Mock_Data.sql` (sinh bởi `generate_mock_data.py`). Ngày
 
 ## Cách chạy
 
-1. Chạy `AdviseCare_Database_Script.sql` (tạo DB + 43 bảng). Có thể bỏ qua nếu DB đã có đủ bảng.
-2. Chạy `AdviseCare_Mock_Data.sql`: script **xoá toàn bộ dữ liệu của 43 bảng** rồi nạp lại trong một transaction (lỗi thì rollback hết). Chạy lại bao nhiêu lần cũng được.
+1. Chạy `AdviseCare_Database_Script.sql` (tạo DB + 45 bảng). Nếu DB cũ chưa có `CASEMESSAGES` và `CASE_ATTRIBUTE`, chỉ cần chạy `AdviseCare_Case_Messages_And_Attributes_Migration.sql`.
+2. Chạy `AdviseCare_Mock_Data.sql`: script **xoá toàn bộ dữ liệu của 45 bảng** rồi nạp lại (`CASEMESSAGES` và `CASE_ATTRIBUTE` chưa có mock data, được để trống) trong một transaction (lỗi thì rollback hết). Chạy lại bao nhiêu lần cũng được.
    - File ~7 MB: nếu SSMS mở chậm, dùng `sqlcmd -S localhost -E -f 65001 -i AdviseCare_Mock_Data.sql` (hoặc `-U sa -P ...` thay cho `-E`).
 3. API phải dùng **đúng master key đã dùng khi sinh file** (`Encryption:MasterKeys:1` trong `AdviseCare_API/AdviseCare.API/appsettings.json`). Nếu đổi key, chạy lại `python generate_mock_data.py` để sinh file mới, nếu không mọi giá trị dữ liệu sinh viên sẽ báo không giải mã được.
 

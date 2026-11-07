@@ -81,10 +81,10 @@ FU7: In-app meeting scheduling
 - Missing in the ERD: tables for advisor availability and meetings
 - Current version instead: advisor and student decide by themselves when and how to meet; the system only sends the advisor's contact information and the advisor records case notes
 
-FU8: In-app chat between advisor and student
-- What it is: messaging inside the platform instead of external apps
-- Missing in the ERD: tables for conversations and messages
-- Note: possible stretch goal if the scope turns out too small
+FU8: AI assistance in the case thread
+- What it is: AI help inside a case's message thread (e.g. a suggested reply for the advisor or a summary of the thread); not agreed by the team yet
+- Missing in the ERD: a way to mark AI-written or AI-suggested messages in CASEMESSAGES
+- Note: the advisor-student thread itself (in-app messaging) is now in the current version as CASEMESSAGES
 
 FU9: Accounts without a Google account on file (activation code)
 - What it is: the admin creates an account without a Google-linked email. The system shows a one-time activation code, valid for a short time, which the admin gives to the student in person. The student enters the code, sets their own password straight away, and links a Google account later in Settings

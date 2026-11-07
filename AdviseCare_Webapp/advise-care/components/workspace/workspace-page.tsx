@@ -75,7 +75,18 @@ export async function WorkspacePage({
             fallback: "xlsx",
           }}
           fields={[
-            textField(t, "studentId"),
+            {
+              key: "studentId",
+              label: t("student"),
+              type: "search",
+              optionsFrom: {
+                path: "StudentProfiles/search",
+                valueKey: "studentId",
+                labelKeys: ["fullName"],
+                detailKeys: ["studentCode", "email"],
+                searchKeys: ["fullName", "studentCode"],
+              },
+            },
             textField(t, "fromDate", "date"),
             textField(t, "toDate", "date"),
             {
@@ -154,7 +165,7 @@ export async function UnavailableFeaturePage() {
 
 function textField(
   t: Awaited<ReturnType<typeof getTranslations<"workspace">>>,
-  key: "studentId" | "fromDate" | "toDate",
+  key: "fromDate" | "toDate",
   type: WorkspaceField["type"] = "text",
 ): WorkspaceField {
   return { key, label: t(key), type };

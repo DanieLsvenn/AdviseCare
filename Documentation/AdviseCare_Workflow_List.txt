@@ -43,7 +43,8 @@ WF2: Student requests support and gets advised
 2.4. Chooses which data attributes to share
 2.4.1. Only the attributes covered by the category's consent purpose are offered (defined by the Steward)
 2.4.2. The student may leave it empty
-2.4.3. Each chosen attribute is recorded as consent for that purpose
+2.4.3. The student may add a short note to each chosen attribute on why it matters to the request
+2.4.4. Each chosen attribute is recorded as consent for that purpose and, with its note, on the case
 2.5. Submits; the case is created with stage = pending and priority = medium (the student does not set the priority)
 3. Programme Head matches the case (manual for now)
 3.1. Programme Head sees the case in the matching queue
@@ -62,9 +63,9 @@ WF2: Student requests support and gets advised
 6. Advisor and student meet
 6.1. They decide by themselves when and how to meet (online, offline, external messaging app); the app has no scheduling system for now
 6.2. Advisor moves the case to stage = contacted
-6.3. After reviewing the request or shared data, the advisor can publish a short student-visible update with next steps or a meeting suggestion; the student receives a notification and can read the attributed, timestamped update on the case
+6.3. Advisor and student can write in the case's message thread (e.g. next steps or a meeting suggestion, and the student's reply); each message notifies the other side
 7. Advisor records case notes (discussion, agreed actions) and finalizes them
-   Case notes are internal staff records and are not the channel for student-facing communication; public updates are stored separately and cannot be edited or deleted
+   Case notes are internal staff records and are not the channel for student-facing communication; case messages are stored separately and cannot be edited or deleted
 8. If the case needs someone else
 8.1. Advisor refers it to another advisor of the same or the other type (see EX4)
 8.2. Wellbeing Advisor refers money matters to the Welfare Officer (see WF2b)
@@ -263,7 +264,7 @@ FU4: Automated/AI case matching to replace the Programme Head's manual matching
 FU5: Evaluating the effectiveness of advising over a period
 FU6: Importing accounts and student data from a Google Sheet (Excel/CSV import only for now)
 FU7: Meeting scheduling inside the app (advisor time slots, students book, advisors swap)
-FU8: In-app chat between advisor and student (possible stretch goal if the scope turns out small)
+FU8: AI assistance in the case thread (e.g. suggested replies or summaries); not agreed by the team yet (the advisor-student thread itself is now in the current version as case messages)
 FU9: Accounts without a Google account on file, created with a one-time activation code
 FU10: Account import that also updates existing accounts (matched by studentCode; a new studentCode creates the account as today)
 FU11: Each student's programme (only needed once there is more than one programme / Programme Head)

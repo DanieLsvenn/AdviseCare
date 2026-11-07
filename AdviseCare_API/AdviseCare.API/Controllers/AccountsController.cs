@@ -7,16 +7,18 @@ using System.Security.Claims;
 
 namespace AdviseCare.API.Controllers
 {
-    // Account management for the System Administrator (sign-in and own-account endpoints are in AuthController)
+    // Account management for the System Administrator (sign-in and own-account endpoints are in AuthController);
+    // every endpoint is for the System Administrator except the staff directory search
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "System Administrator")]
+    [Authorize]
     public class AccountsController(IAccountService accountService) : ControllerBase
     {
         private readonly IAccountService _accountService = accountService;
 
         // Get all Accounts, with optional pagination
         [HttpGet]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Get all accounts with optional pagination",
             Description = "Retrieves every account, newest first, with its faculty, link status, account status, roles and whether it has a password. Pass page and pageSize together to page the results.")]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
@@ -33,6 +35,7 @@ namespace AdviseCare.API.Controllers
 
         // Get an Account by Id
         [HttpGet("{id}")]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Get account by Id",
             Description = "Retrieves one account by its unique identifier, including its roles.")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
@@ -43,6 +46,7 @@ namespace AdviseCare.API.Controllers
 
         // Search Accounts for the account dashboard
         [HttpGet("search")]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Search/Filter accounts",
             Description = "Filters the account dashboard by email, full name, username or student code (contains), by faculty, by role name, by academic status (enrolled/onLeave/withdrawn/graduated), by link status (notLinked/emailSent/linked) and by account status (active/deactivated/banned). Empty fields are ignored; sorting is done by the web app.")]
         public async Task<IActionResult> Search([FromQuery] SearchAccountRequest request)
@@ -53,6 +57,7 @@ namespace AdviseCare.API.Controllers
 
         // Create a single Account
         [HttpPost]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Create account",
             Description = "Creates one account (email, full name, username, optional faculty, one or more role names) for special cases such as late enrolment or staff. " +
                 "A Student account also needs a unique studentCode and an academicStatus (enrolled/onLeave/withdrawn/graduated), which create its student profile; other accounts must leave both empty. " +
@@ -65,6 +70,7 @@ namespace AdviseCare.API.Controllers
 
         // Update an Account's details
         [HttpPut("{id}")]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Update account",
             Description = "Updates an account's email, full name, username and faculty. Changing the email unlinks the Google account (linkStatus back to notLinked), so the linking email has to be sent again. " +
                 "Roles and status have their own endpoints below.")]
@@ -76,6 +82,7 @@ namespace AdviseCare.API.Controllers
 
         // Import Accounts from an Excel file
         [HttpPost("import")]
+        [Authorize(Roles = "System Administrator")]
         [Consumes("multipart/form-data")]
         [SwaggerOperation(Summary = "[System Administrator] Import accounts from Excel or CSV (.xlsx/.csv)",
             Description = "Uploads an .xlsx file whose first sheet has the header row email, fullName, userName, facultyCode, role, studentCode, academicStatus (role may hold several role names separated by commas). " +
@@ -90,6 +97,7 @@ namespace AdviseCare.API.Controllers
 
         // Preview an account import file
         [HttpPost("import/preview")]
+        [Authorize(Roles = "System Administrator")]
         [Consumes("multipart/form-data")]
         [SwaggerOperation(Summary = "[System Administrator] Preview an account import",
             Description = "Reads every row of an .xlsx or .csv file (same columns as the import) and runs the same checks as the import, without writing anything. " +
@@ -100,8 +108,21 @@ namespace AdviseCare.API.Controllers
             return Ok(response);
         }
 
+        // Search the staff directory
+        [HttpGet("staff/search")]
+        [Authorize(Roles = "System Administrator,Data Protection Steward,Academic Advisor,Wellbeing Advisor,Student Welfare Officer,Programme Head")]
+        [SwaggerOperation(Summary = "[All staff roles] Search the staff directory",
+            Description = "Finds active staff accounts by fullName or email (contains), optionally holding one of roleNames (comma separated, e.g. 'Academic Advisor,Wellbeing Advisor'). " +
+                "Returns directory data only (accountId, full name, email, roles), at most 50 rows, so staff screens can pick a person instead of typing an Id. Students are never listed.")]
+        public async Task<IActionResult> SearchStaff([FromQuery] SearchStaffAccountRequest request)
+        {
+            var response = await _accountService.SearchStaffAsync(request);
+            return Ok(response);
+        }
+
         // Send or resend account-linking emails
         [HttpPost("linking-emails")]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Send account-linking emails",
             Description = "Emails each given account a one-time linking link (valid for 7 days; a new email replaces the old link) and sets linkStatus = emailSent. " +
                 "Accounts that are already linked, not active or not found are skipped; accounts whose email could not be sent are listed as failed.")]
@@ -113,6 +134,7 @@ namespace AdviseCare.API.Controllers
 
         // Activate an Account
         [HttpPut("{id}/activate")]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Activate account",
             Description = "Sets an account's status back to active, for example to restore a deactivated account.")]
         public async Task<IActionResult> Activate([FromRoute] Guid id)
@@ -123,6 +145,7 @@ namespace AdviseCare.API.Controllers
 
         // Deactivate an Account
         [HttpPut("{id}/deactivate")]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Deactivate account",
             Description = "Sets an account's status to deactivated: sign-in is refused and every active session ends immediately. An admin cannot deactivate their own account.")]
         public async Task<IActionResult> Deactivate([FromRoute] Guid id)
@@ -134,6 +157,7 @@ namespace AdviseCare.API.Controllers
 
         // Ban an Account
         [HttpPut("{id}/ban")]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Ban account",
             Description = "Sets an account's status to banned, typically for a policy violation: sign-in is refused and every active session ends immediately. An admin cannot ban their own account.")]
         public async Task<IActionResult> Ban([FromRoute] Guid id)
@@ -145,6 +169,7 @@ namespace AdviseCare.API.Controllers
 
         // Unban an Account
         [HttpPut("{id}/unban")]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Unban account",
             Description = "Reverses a ban, setting the account's status back to active.")]
         public async Task<IActionResult> Unban([FromRoute] Guid id)
@@ -155,6 +180,7 @@ namespace AdviseCare.API.Controllers
 
         // Get all account-role assignments (ACCOUNT_ROLE), with optional pagination
         [HttpGet("roles")]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Get all account roles with optional pagination",
             Description = "Retrieves every account-role assignment with the account's full name, the role name and when it was assigned. Pass page and pageSize together to page the results.")]
         public async Task<IActionResult> GetAllAccountRole([FromQuery] int? page, [FromQuery] int? pageSize)
@@ -171,6 +197,7 @@ namespace AdviseCare.API.Controllers
 
         // Get an account-role assignment (ACCOUNT_ROLE) by account Id and role Id
         [HttpGet("{accountId}/roles/{roleId}")]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Get account role",
             Description = "Retrieves one account-role assignment. Returns 404 when the account does not have that role.")]
         public async Task<IActionResult> GetAccountRoleById([FromRoute] Guid accountId, [FromRoute] Guid roleId)
@@ -181,6 +208,7 @@ namespace AdviseCare.API.Controllers
 
         // Search account-role assignments (ACCOUNT_ROLE) by account or role
         [HttpGet("roles/search")]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Search account roles",
             Description = "Filters account-role assignments by account (accountId) and/or role (roleId), e.g. to list every Programme Head. Empty fields are ignored.")]
         public async Task<IActionResult> SearchAccountRole([FromQuery] SearchAccountRoleRequest request)
@@ -191,6 +219,7 @@ namespace AdviseCare.API.Controllers
 
         // Give an Account a role (ACCOUNT_ROLE)
         [HttpPost("roles")]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Add a role to an account",
             Description = "Gives an account one more role. An account can hold several roles; the same role cannot be added twice. The new role is in the JWT from the account's next sign-in. " +
                 "Giving the Student role to an account without a student profile also needs studentCode, which creates the profile (academicStatus is optional and defaults to enrolled).")]
@@ -202,6 +231,7 @@ namespace AdviseCare.API.Controllers
 
         // Change an Account's roles in one step
         [HttpPut("{id}/roles")]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Change the roles of an account",
             Description = "Sets the account's roles to exactly roleNames (roles not listed are removed, new ones are added). Adding the Student role to an account without a student profile needs studentCode; " +
                 "the profile starts as enrolled. The last System Administrator role in the system cannot be removed. The change is in the JWT from the account's next sign-in.")]
@@ -213,6 +243,7 @@ namespace AdviseCare.API.Controllers
 
         // Remove a role from an Account (ACCOUNT_ROLE)
         [HttpDelete("{accountId}/roles/{roleId}")]
+        [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Remove a role from an account",
             Description = "Removes one role from an account. The last System Administrator role in the system cannot be removed, so the app always keeps an admin.")]
         public async Task<IActionResult> DeleteAccountRole([FromRoute] Guid accountId, [FromRoute] Guid roleId)

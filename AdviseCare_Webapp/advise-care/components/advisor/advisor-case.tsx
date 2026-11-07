@@ -20,7 +20,10 @@ import {
   type CaseRecord,
   type StageHistoryRecord,
 } from "@/components/case/case-api";
-import { CaseAdvisorUpdates } from "@/components/case/case-advisor-updates";
+import { CaseMessages } from "@/components/case/case-messages";
+import { SearchPicker } from "@/components/workspace/search-picker";
+import type { WorkspaceOptionSource } from "@/components/workspace/api-workspace";
+import { CaseSharedData } from "@/components/case/case-shared-data";
 import { CaseProgress } from "@/components/case/case-progress";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -44,7 +47,7 @@ type Send = (
  * change). Left: the request, the notes and the stage history, all as signed
  * ledger entries. Right: what the advisor can do next.
  */
-export function AdvisorCase({ caseId }: { caseId: string }) {
+export function AdvisorCase({ caseId, viewerId }: { caseId: string; viewerId: string }) {
   const t = useTranslations("ui.advisorCase");
   const tu = useTranslations("ui");
   const tw = useTranslations("workspace");
@@ -207,7 +210,7 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
 
       {/* Act before record: on narrow screens the next step comes right after
           the request; from 1024px the actions are a sticky right rail. */}
-      <div className="grid gap-space-lg lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_auto_auto_1fr] lg:[grid-template-areas:'req_rail'_'updates_rail'_'notes_rail'_'hist_rail']">
+      <div className="grid gap-space-lg lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_auto_auto_auto_1fr] lg:[grid-template-areas:'req_rail'_'shared_rail'_'messages_rail'_'notes_rail'_'hist_rail']">
         <section className="rounded-lg border border-rule bg-paper p-space-lg lg:[grid-area:req]">
             <div className="flex flex-wrap items-baseline justify-between gap-space-sm">
               <h2 className="text-base font-semibold text-text">{t("request")}</h2>
@@ -219,11 +222,20 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
             </p>
           </section>
 
-        <CaseAdvisorUpdates
+        <CaseSharedData
+          record={record}
+          audience="staff"
+          canReadValues={record.advisorId === viewerId}
+          className="lg:[grid-area:shared]"
+        />
+
+        <CaseMessages
           caseId={record.caseId}
-          audience="advisor"
+          viewerId={viewerId}
+          audience="staff"
+          canWrite={!closed && record.advisorId === viewerId}
           closed={closed}
-          className="lg:[grid-area:updates]"
+          className="lg:[grid-area:messages]"
         />
 
         <aside
@@ -316,17 +328,8 @@ export function AdvisorCase({ caseId }: { caseId: string }) {
             </ActionCard>
           ) : null}
 
-              <Link
-                href={`/advisor/students/${record.studentId}`}
-                className="flex min-h-12 items-center gap-space-md px-space-base py-space-sm text-sm font-semibold text-ink transition-colors hover:bg-paper-tint"
-              >
-                <Icon name="lab_profile" className="text-[20px]" />
-                <span className="flex-1">{t("studentData")}</span>
-                <Icon name="chevron_right" className="text-[20px]" />
-              </Link>
             </div>
           </details>
-          <p className="px-1 text-[0.75rem] leading-5 text-text-faint">{t("studentDataHint")}</p>
         </aside>
           <NotesSection
             className="lg:[grid-area:notes]"
@@ -552,12 +555,18 @@ function Label({ htmlFor, children }: { htmlFor: string; children: ReactNode }) 
   );
 }
 
-const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Account IDs are typed until the API offers a staff directory: catch typos before sending. */
-function idError(value: string, message: string): string | undefined {
-  const trimmed = value.trim();
-  return trimmed && !GUID.test(trimmed) ? message : undefined;
+// The staff directory (directory data only), searched by name or email, so nobody types an account ID
+function staffSource(roleNames: string[]): WorkspaceOptionSource {
+  return {
+    path: "Accounts/staff/search",
+    valueKey: "accountId",
+    labelKeys: ["fullName"],
+    detailKeys: ["email"],
+    searchKeys: ["fullName", "email"],
+    query: { roleNames: roleNames.join(",") },
+  };
 }
 
 function useSubmit() {
@@ -710,20 +719,16 @@ function ReferForm({
     >
       <div>
         <Label htmlFor="refer-to">{t("receiver")}</Label>
-        <input
+        <SearchPicker
           id="refer-to"
-          required
-          spellCheck={false}
-          autoComplete="off"
-          aria-invalid={idError(receiver, "x") ? true : undefined}
-          aria-describedby="refer-to-hint"
-          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-          className={cn(controlClass, "h-9 w-full font-mono text-[0.8125rem]")}
+          source={staffSource(["Academic Advisor", "Wellbeing Advisor", "Student Welfare Officer"])}
           value={receiver}
-          onChange={(event) => setReceiver(event.target.value)}
+          onChange={setReceiver}
+          required
+          describedBy="refer-to-hint"
         />
-        <p id="refer-to-hint" className={cn("mt-1 text-[0.75rem]", idError(receiver, "x") ? "text-red-ink" : "text-text-faint")}>
-          {idError(receiver, t("idInvalid")) ?? t("receiverHint")}
+        <p id="refer-to-hint" className="mt-1 text-[0.75rem] text-text-faint">
+          {t("receiverHint")}
         </p>
       </div>
       <div>
@@ -740,7 +745,7 @@ function ReferForm({
           ))}
         </select>
       </div>
-      <Button type="submit" variant="secondary" loading={pending} disabled={!receiver.trim() || !reason.trim() || Boolean(idError(receiver, "x"))}>
+      <Button type="submit" variant="secondary" loading={pending} disabled={!receiver.trim() || !reason.trim()}>
         {t("sendReferral")}
       </Button>
     </form>
@@ -765,27 +770,23 @@ function ChangeAdvisorForm({ onSubmit }: { onSubmit: (advisorId: string, reason:
     >
       <div>
         <Label htmlFor="proposed-advisor">{t("proposedAdvisor")}</Label>
-        <input
+        <SearchPicker
           id="proposed-advisor"
-          required
-          spellCheck={false}
-          autoComplete="off"
-          aria-invalid={idError(advisor, "x") ? true : undefined}
-          aria-describedby="proposed-advisor-hint"
-          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-          className={cn(controlClass, "h-9 w-full font-mono text-[0.8125rem]")}
+          source={staffSource(["Academic Advisor", "Wellbeing Advisor"])}
           value={advisor}
-          onChange={(event) => setAdvisor(event.target.value)}
+          onChange={setAdvisor}
+          required
+          describedBy="proposed-advisor-hint"
         />
-        <p id="proposed-advisor-hint" className={cn("mt-1 text-[0.75rem]", idError(advisor, "x") ? "text-red-ink" : "text-text-faint")}>
-          {idError(advisor, t("idInvalid")) ?? t("receiverHint")}
+        <p id="proposed-advisor-hint" className="mt-1 text-[0.75rem] text-text-faint">
+          {t("proposedAdvisorHint")}
         </p>
       </div>
       <div>
         <Label htmlFor="change-reason">{t("reason")}</Label>
         <textarea id="change-reason" required maxLength={4000} className={cn(controlClass, "min-h-20 w-full py-2")} value={reason} onChange={(event) => setReason(event.target.value)} />
       </div>
-      <Button type="submit" variant="secondary" loading={pending} disabled={!advisor.trim() || !reason.trim() || Boolean(idError(advisor, "x"))}>
+      <Button type="submit" variant="secondary" loading={pending} disabled={!advisor.trim() || !reason.trim()}>
         {t("sendChangeRequest")}
       </Button>
     </form>

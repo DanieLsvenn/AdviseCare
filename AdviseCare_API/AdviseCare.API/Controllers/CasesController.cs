@@ -59,9 +59,9 @@ namespace AdviseCare.API.Controllers
         [HttpPost]
         [Authorize(Roles = "Student,Academic Advisor,Wellbeing Advisor")]
         [SwaggerOperation(Summary = "[Student, Academic Advisor, Wellbeing Advisor] Create case",
-            Description = "Student (WF2): leave studentId empty; subjectId only for academic categories; sharedAttributeIds must belong to the category's consent purpose and are granted as consents in the same save. " +
+            Description = "Student (WF2): leave studentId empty; subjectId only for academic categories; sharedAttributes (each a dataAttributeId with an optional shareReason of up to 1000 characters) must belong to the category's consent purpose; they are granted as consents and recorded on the case (CASE_ATTRIBUTE) in the same save, and requestReason holds only the overall story. " +
                 "The case starts at stage pending with priority medium and waits in the matching queue; the Programme Heads are notified.\n\n" +
-                "Advisor (EX3): give the studentId of an active student and a category of your own type; priority optional; sharedAttributeIds must stay empty. " +
+                "Advisor (EX3): give the studentId of an active student and a category of your own type; priority optional; sharedAttributes must stay empty. " +
                 "The case starts at stage assigned with you as its advisor, and the student is notified with your contact information.")]
         public async Task<IActionResult> Create([FromBody] CreateCaseRequest request)
         {

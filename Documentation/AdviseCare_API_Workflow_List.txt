@@ -212,8 +212,9 @@ WF2: Student requests support and gets advised
    GET /api/ConsentPurposes/{purposeAcademicId} [EXISTS]
    Auth: {studentToken}
    Expect: dataAttributes = GPA and Attendance rate (the attributes of Academic advising); only active ones are offered
-2.4.2. The student may leave it empty (sharedAttributeIds = [])
-2.4.3. Each chosen attribute is recorded as consent for that purpose (done by the server in 2.5, through IConsentService.CreateAsync)
+2.4.2. The student may leave it empty (sharedAttributes = [])
+2.4.3. For each chosen attribute the student may add a short note on why it matters (shareReason, optional, up to 1000 characters)
+2.4.4. Each chosen attribute is recorded as consent for that purpose and as a CASE_ATTRIBUTE row of the case with its note (done by the server in 2.5)
 2.5. Submits; the case is created with stage = pending
    POST /api/Cases [EXISTS]
    Auth: {studentToken}
@@ -222,19 +223,22 @@ WF2: Student requests support and gets advised
      "subjectId": "{subjectPrn212Id}",
      "supportCategoryId": "{catCourseContentId}",
      "requestReason": "I don't understand dependency injection in PRN212 and failed the progress test. I need help before the final exam.",
-     "sharedAttributeIds": ["{attrGpaId}", "{attrAttendanceId}"]
+     "sharedAttributes": [
+       { "dataAttributeId": "{attrGpaId}", "shareReason": "My GPA dropped after this subject." },
+       { "dataAttributeId": "{attrAttendanceId}", "shareReason": "" }
+     ]
    }
-   Expect: 200, currentStage = pending, status = open, advisorId = null, openedBy = studentId; 2 CONSENTS rows (purpose Academic advising, status granted); 1 stage history row (pending)
+   Expect: 200, currentStage = pending, status = open, advisorId = null, openedBy = studentId; 2 CONSENTS rows (purpose Academic advising, status granted); 2 CASE_ATTRIBUTE rows (the GPA one with its note, the attendance one with shareReason = null); sharedAttributes in the response; 1 stage history row (pending)
    Save: caseId -> {caseAcademicId}
    Second case for the wellbeing path (used in WF2 step 8.2 and WF2b):
    {
      "subjectId": null,
      "supportCategoryId": "{catMoneyId}",
      "requestReason": "My family can no longer pay my tuition this term and I may have to drop out.",
-     "sharedAttributeIds": ["{attrFinancialId}"]
+     "sharedAttributes": [{ "dataAttributeId": "{attrFinancialId}", "shareReason": "This is why I may have to drop out." }]
    }
    Save: caseId -> {caseWellbeingId}
-   Negative: subjectId with a wellbeing category -> 400; an attribute outside the category's purpose (e.g. {attrAccommodationId} for Course content question) -> 400
+   Negative: subjectId with a wellbeing category -> 400; an attribute outside the category's purpose (e.g. {attrAccommodationId} for Course content question) -> 400; a shareReason over 1000 characters -> 400
 3. Programme Head matches the case (manual for now)
    POST /api/Auth/login [EXISTS]
    Body: { "identifier": "programmehead@gmail.com", "password": "123456", "deviceInfo": "Edge 141 on Windows 11" }
@@ -1173,8 +1177,10 @@ GET /api/Cases/assigned?unreadOnly=true&sortBy=priority&sortDirection=desc&page=
 GET /api/Cases/assigned/unread-count - advisor: how many of my cases have unread notifications (D4.1 badge)
 GET /api/CaseNotes?page=1&pageSize=20 - advisor: the notes I wrote (drafts and finalized)
 GET /api/CaseNotes/{id} - one note (drafts only for their author)
-GET /api/Cases/{caseId}/advisor-updates - student and authorized case staff: the append-only student-visible updates, oldest first
-POST /api/Cases/{caseId}/advisor-updates - current case advisor: publish a student-visible update (messageText, 1-1000 characters); records author/time, adds an activity log entry, and notifies the student; no edit/delete endpoint
+GET /api/CaseMessages/search?caseId={caseId} - student of the case and its staff: the case's message thread, oldest first, each with authorRole (student/advisor)
+POST /api/CaseMessages - the student of the case or its current advisor: { "caseId", "messageText" } (1-1000 characters); not on a closed case, a student only once an advisor is assigned; logs caseMessageSent and notifies the other side; no edit/delete endpoint
+GET /api/CaseMessages?page=1&pageSize=20 - student or advisor: the messages I wrote
+GET /api/Accounts/staff/search?fullName=&email=&roleNames=Academic Advisor,Wellbeing Advisor - any staff role: the staff directory (active staff, name/email/roles only, at most 50) used by the web app's people pickers; students are never listed
 GET /api/Referrals?page=1&pageSize=20 - Programme Head: all referrals
 GET /api/Referrals/me/outgoing?status=pending - advisor: referrals I sent
 GET /api/Referrals/search?caseId={caseId} - staff of the case: all referrals of a case (Programme Head may omit caseId)
@@ -1185,7 +1191,7 @@ Rules worth knowing when testing
 - CASES.advisorId is the only advisor-student link (no ADVISORASSIGNMENTS): an advisor advises a student while holding one of their cases that is not closed
 - Notifications about cases point to /cases/{caseId}, /referrals/{referralId} or /case-change-requests/{id}; opening GET /api/Cases/{id} marks the caller's notifications for that case as read, which drives unreadNotificationCount in /api/Cases/assigned
 - Case notes: only the case's current advisor writes; drafts are private; students never read notes
-- Advisor updates: separate from case notes; only the current advisor may publish (on an open case), and the student, current advisor, Programme Head, and staff involved in a case referral may read; updates are append-only and publishing sends a notification
+- Case messages: a two-way thread separate from case notes; the student and the current advisor write (not on a closed case), and the student, current advisor, Programme Head and staff involved in a case referral read; messages are append-only and each one notifies the other side
 - A case with a pending referral cannot change stage, be reassigned or have a change request approved until the receiver accepts or returns it
 - Welfare Officer accepting a referral does not take the case: the advisor keeps it (stage stays referred) and moves it to followUp after the welfare work
 - Advisor outreach (EX3) works for any active student, but only with a category of the advisor's own type

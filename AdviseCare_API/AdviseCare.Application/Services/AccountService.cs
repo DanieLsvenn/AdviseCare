@@ -487,6 +487,32 @@ namespace AdviseCare.Application.Services
             public List<(Account Account, List<Role> Roles)> Accounts { get; } = new();
         }
 
+        // Search the staff directory: active accounts holding a staff role, by full name or email (contains) and optionally by role names;
+        // directory data only (name, email, roles), used by staff screens to pick a person instead of typing an Id. Students are never listed
+        public async Task<List<SearchStaffAccountResponse>> SearchStaffAsync(SearchStaffAccountRequest request)
+        {
+            var roleNames = request.RoleNames
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(r => r != StudentRole)
+                .ToList();
+            var accounts = await _accountRepository.SearchAsyncOrderBy(a =>
+                a.Status == "active" &&
+                a.AccountRoles.Any(ar => ar.Role.RoleName != StudentRole) &&
+                (string.IsNullOrWhiteSpace(request.FullName) || a.FullName.Contains(request.FullName)) &&
+                (string.IsNullOrWhiteSpace(request.Email) || a.Email.Contains(request.Email)) &&
+                (roleNames.Count == 0 || a.AccountRoles.Any(ar => roleNames.Contains(ar.Role.RoleName))),
+                a => a.FullName, true);
+            var roleLookup = await GetRoleNamesLookupAsync();
+
+            return accounts.Take(50).Select(a => new SearchStaffAccountResponse
+            {
+                AccountId = a.AccountId,
+                Email = a.Email,
+                FullName = a.FullName,
+                Roles = roleLookup.GetValueOrDefault(a.AccountId, new List<string>()).Where(r => r != StudentRole).ToList()
+            }).ToList();
+        }
+
         // Send (or resend) the account-linking email to Accounts that are not linked yet; linkStatus becomes emailSent
         public async Task<SendLinkingEmailResponse> SendLinkingEmailsAsync(SendLinkingEmailRequest request)
         {

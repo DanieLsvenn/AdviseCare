@@ -79,6 +79,16 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
         public string Status { get; set; } = "open";
+        public List<CaseSharedAttributeResponse> SharedAttributes { get; set; } = new();
+    }
+
+    // One data attribute the student shared with the request (CASE_ATTRIBUTE) and the student's note about it
+    public class CaseSharedAttributeResponse
+    {
+        public Guid DataAttributeId { get; set; } = Guid.Empty;
+        public string AttributeName { get; set; } = string.Empty;
+        public string ShareReason { get; set; } = string.Empty;
+        public DateTime SharedAt { get; set; }
     }
 
     public class SearchCaseResponse
@@ -133,6 +143,7 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
         public string Status { get; set; } = "open";
+        public List<CaseSharedAttributeResponse> SharedAttributes { get; set; } = new();
     }
 
     public class GetMyCaseResponse

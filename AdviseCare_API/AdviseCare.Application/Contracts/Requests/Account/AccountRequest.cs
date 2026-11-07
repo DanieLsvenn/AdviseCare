@@ -158,6 +158,14 @@ namespace AdviseCare.Application.Contracts.Requests.Account
         public string AcademicStatus { get; set; } = string.Empty;
     }
 
+    // Staff directory: find active staff by name or email, optionally holding one of the roles (comma separated); students are never listed
+    public class SearchStaffAccountRequest
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string RoleNames { get; set; } = string.Empty;
+    }
+
     public class UpdateAccountRolesRequest
     {
         [Required(ErrorMessage = "At least one role is required."), MinLength(1,

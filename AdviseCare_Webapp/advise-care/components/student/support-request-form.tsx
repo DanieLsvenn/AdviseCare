@@ -31,25 +31,9 @@ interface Shareable {
 }
 
 const REASON_MAX = 4000;
-const PART_SEPARATOR = "\n\n";
+// Each shared attribute carries its own optional note (CASE_ATTRIBUTE.shareReason)
+const NOTE_MAX = 1000;
 const DRAFT_KEY = "advisecare.requestDraft";
-
-/**
- * The API takes one free-text reason, so the overall story and the notes about
- * each shared item are joined into it, each note under its item's name.
- */
-function composeReason(
-  general: string,
-  items: Array<{ id: string; name: string }>,
-  notes: Record<string, string>,
-) {
-  const parts = [general.trim()];
-  for (const item of items) {
-    const note = (notes[item.id] ?? "").trim();
-    if (note) parts.push(`${item.name}:\n${note}`);
-  }
-  return parts.filter(Boolean).join(PART_SEPARATOR);
-}
 
 function readDraft(): { type?: string; reason?: string } {
   try {
@@ -147,14 +131,15 @@ export function SupportRequestForm() {
   const visibleToAdvisor = (shareable?.attributes ?? []).filter(
     (attribute) => attribute.alreadyShared || sharedIds.includes(attribute.id),
   );
-  const composedReason = composeReason(reason, visibleToAdvisor, notes);
-  const reasonRoom = Math.max(0, REASON_MAX - composedReason.length);
-  const reasonTooLong = composedReason.length > REASON_MAX;
-  // An empty field adds nothing yet; once it has text it also brings its own header and separator.
-  const roomFor = (text: string, headerLength = 0) =>
-    text.trim()
-      ? reasonRoom
-      : Math.max(0, reasonRoom - headerLength - (composedReason ? PART_SEPARATOR.length : 0));
+  const reasonTooLong = reason.length > REASON_MAX;
+  // What is sent: every attribute the advisor will see for this request, each with the student's note
+  const sharedAttributes =
+    shareable?.canShare === false
+      ? []
+      : visibleToAdvisor.map((attribute) => ({
+          dataAttributeId: attribute.id,
+          shareReason: (notes[attribute.id] ?? "").trim(),
+        }));
 
   async function chooseCategory(nextId: string) {
     setCategoryId(nextId);
@@ -232,6 +217,9 @@ export function SupportRequestForm() {
                       {attribute.alreadyShared
                         ? t("summaryAlready", { name: attribute.name })
                         : attribute.name}
+                      {(notes[attribute.id] ?? "").trim() ? (
+                        <span className="block whitespace-pre-line text-text-muted">{(notes[attribute.id] ?? "").trim()}</span>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -241,7 +229,7 @@ export function SupportRequestForm() {
             </ReviewRow>
             <ReviewRow label={t("confirmReason")}>
               <p className="max-h-32 overflow-y-auto whitespace-pre-line rounded-md border border-rule bg-paper-tint px-space-md py-space-sm">
-                {composedReason}
+                {reason.trim()}
               </p>
             </ReviewRow>
           </dl>
@@ -259,8 +247,8 @@ export function SupportRequestForm() {
       const response = await clientApiPost<unknown>("Cases", {
         supportCategoryId: categoryId,
         ...(subjectId ? { subjectId } : {}),
-        requestReason: composedReason,
-        sharedAttributeIds: sharedIds,
+        requestReason: reason.trim(),
+        sharedAttributes,
       });
       if (isRecord(response) && response.isSuccess === false) {
         throw new ApiError({
@@ -492,7 +480,7 @@ export function SupportRequestForm() {
                 id="reason-general"
                 aria-label={visibleToAdvisor.length ? undefined : t("reasonTitle")}
                 className={cn(controlClass, "w-full py-3 text-[0.9375rem] leading-6", visibleToAdvisor.length ? "min-h-28" : "min-h-36")}
-                maxLength={reason.length + roomFor(reason)}
+                maxLength={REASON_MAX}
                 placeholder={t("reasonPlaceholder")}
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
@@ -516,7 +504,7 @@ export function SupportRequestForm() {
                       <textarea
                         id={`note-${attribute.id}`}
                         className={cn(controlClass, "min-h-20 w-full py-3 text-[0.9375rem] leading-6")}
-                        maxLength={note.length + roomFor(note, attribute.name.length + 2)}
+                        maxLength={NOTE_MAX}
                         placeholder={t("reasonItemPlaceholder")}
                         value={note}
                         onChange={(event) =>
@@ -534,7 +522,7 @@ export function SupportRequestForm() {
                 {reasonTooLong ? t("reasonTooLong") : restored ? t("draftRestored") : t("draftAutosave")}
               </span>
               <span className={cn("font-mono", reasonTooLong && "font-semibold text-red-ink")}>
-                {composedReason.length}/{REASON_MAX}
+                {reason.length}/{REASON_MAX}
               </span>
             </div>
           </div>

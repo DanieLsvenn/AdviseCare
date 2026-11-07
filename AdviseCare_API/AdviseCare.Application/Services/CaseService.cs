@@ -19,6 +19,7 @@ namespace AdviseCare.Application.Services
 
         private readonly IGenericRepository<Case> _caseRepository;
         private readonly IGenericRepository<Casestagehistory> _caseStageHistoryRepository;
+        private readonly IGenericRepository<CaseAttribute> _caseAttributeRepository;
         private readonly IGenericRepository<Supportcategory> _supportCategoryRepository;
         private readonly IGenericRepository<Subject> _subjectRepository;
         private readonly IGenericRepository<Consentpurpose> _consentPurposeRepository;
@@ -35,6 +36,7 @@ namespace AdviseCare.Application.Services
         public CaseService(
             IGenericRepository<Case> caseRepository,
             IGenericRepository<Casestagehistory> caseStageHistoryRepository,
+            IGenericRepository<CaseAttribute> caseAttributeRepository,
             IGenericRepository<Supportcategory> supportCategoryRepository,
             IGenericRepository<Subject> subjectRepository,
             IGenericRepository<Consentpurpose> consentPurposeRepository,
@@ -50,6 +52,7 @@ namespace AdviseCare.Application.Services
         {
             _caseRepository = caseRepository;
             _caseStageHistoryRepository = caseStageHistoryRepository;
+            _caseAttributeRepository = caseAttributeRepository;
             _supportCategoryRepository = supportCategoryRepository;
             _subjectRepository = subjectRepository;
             _consentPurposeRepository = consentPurposeRepository;
@@ -136,8 +139,8 @@ namespace AdviseCare.Application.Services
                 });
         }
 
-        // Get Case by Id (the student, the current advisor, the Programme Head, or anyone who sent or received a referral of it);
-        // opening a case marks the caller's notifications that point to it as read
+        // Get Case by Id (the student, the current advisor, the Programme Head, or anyone who sent or received a referral of it),
+        // with the data attributes the student shared with the request and their notes; opening a case marks the caller's notifications that point to it as read
         public async Task<GetCaseByIdResponse> GetByIdAsync(Guid CallerId, Guid CaseId)
         {
             var caseRecord = await GetCaseAsync(CaseId);
@@ -151,6 +154,7 @@ namespace AdviseCare.Application.Services
                     notification.IsRead = true;
                 await _notificationRepository.SaveAsync();
             }
+            var sharedAttributes = await GetSharedAttributesAsync(CaseId);
 
             return new GetCaseByIdResponse
             {
@@ -176,7 +180,8 @@ namespace AdviseCare.Application.Services
                 SupportType = caseRecord.SupportCategory.SupportType,
                 CurrentStage = caseRecord.CurrentStage,
                 Priority = caseRecord.Priority,
-                Status = caseRecord.Status
+                Status = caseRecord.Status,
+                SharedAttributes = sharedAttributes
             };
         }
 
@@ -223,7 +228,7 @@ namespace AdviseCare.Application.Services
 
         // Create Case:
         // - a student requests support (WF2): stage pending, priority medium, no advisor; the chosen data attributes of the category's purpose
-        //   are granted as consents in the same save; the Programme Heads are notified
+        //   are granted as consents and recorded on the case with the student's notes (CASE_ATTRIBUTE) in the same save; the Programme Heads are notified
         // - an advisor opens a case for a student (EX3): stage assigned with the advisor; the student is notified with the advisor's contact information
         public async Task<CreateCaseResponse> CreateAsync(Guid CreatorId, CreateCaseRequest request)
         {
@@ -249,7 +254,14 @@ namespace AdviseCare.Application.Services
             }
 
             var isOutreach = request.StudentId != null && request.StudentId != Guid.Empty;
-            var sharedAttributeIds = request.SharedAttributeIds.Where(id => id != Guid.Empty).Distinct().ToList();
+            var sharedAttributes = request.SharedAttributes
+                .Where(a => a.DataAttributeId != Guid.Empty)
+                .GroupBy(a => a.DataAttributeId)
+                .Select(g => g.First())
+                .ToList();
+            var sharedAttributeIds = sharedAttributes.Select(a => a.DataAttributeId).ToList();
+            if (sharedAttributes.Any(a => (a.ShareReason ?? string.Empty).Trim().Length > 1000))
+                throw new ValidationException("The note for a shared data attribute cannot exceed 1000 characters.");
             Account student;
             string priority;
 
@@ -312,7 +324,20 @@ namespace AdviseCare.Application.Services
 
             if (sharedAttributeIds.Count > 0)
             {
-                // Saves the staged case and its history together with the consent rows (same DbContext, one save)
+                // Insert-only: what the student offered with this request and why; access is still decided by the consents
+                foreach (var shared in sharedAttributes)
+                {
+                    var shareReason = (shared.ShareReason ?? string.Empty).Trim();
+                    _caseAttributeRepository.PrepareCreate(new CaseAttribute
+                    {
+                        CaseId = caseRecord.CaseId,
+                        DataAttributeId = shared.DataAttributeId,
+                        ShareReason = shareReason.Length == 0 ? null : shareReason,
+                        SharedAt = now
+                    });
+                }
+
+                // Saves the staged case, its history and its shared attributes together with the consent rows (same DbContext, one save)
                 await _consentService.CreateAsync(student.AccountId, new CreateConsentRequest
                 {
                     ConsentPurposeId = category.ConsentPurposeId,
@@ -368,7 +393,8 @@ namespace AdviseCare.Application.Services
                 SupportType = created.SupportCategory.SupportType,
                 CurrentStage = created.CurrentStage,
                 Priority = created.Priority,
-                Status = created.Status
+                Status = created.Status,
+                SharedAttributes = await GetSharedAttributesAsync(created.CaseId)
             };
         }
 
@@ -845,6 +871,22 @@ namespace AdviseCare.Application.Services
         {
             return await _caseRepository.SearchAsyncIncludeOrderBy(Predicate, c => c.OpenedAt, false,
                 c => c.Student.Studentprofile, c => c.Advisor, c => c.OpenedByNavigation, c => c.Subject, c => c.SupportCategory);
+        }
+
+        // Helper: the data attributes the student shared with a Case (CASE_ATTRIBUTE), in the order of their names
+        private async Task<List<CaseSharedAttributeResponse>> GetSharedAttributesAsync(Guid CaseId)
+        {
+            var shared = await _caseAttributeRepository.SearchAsyncInclude(a => a.CaseId == CaseId, a => a.DataAttribute);
+
+            return shared
+                .OrderBy(a => a.DataAttribute?.AttributeName)
+                .Select(a => new CaseSharedAttributeResponse
+                {
+                    DataAttributeId = a.DataAttributeId,
+                    AttributeName = a.DataAttribute?.AttributeName ?? string.Empty,
+                    ShareReason = a.ShareReason ?? string.Empty,
+                    SharedAt = a.SharedAt
+                }).ToList();
         }
 
         // Helper: load one Case with its details

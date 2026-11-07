@@ -17,6 +17,7 @@ export interface CaseRecord {
   categoryName: string;
   supportType: string;
   requestReason: string;
+  sharedAttributes: CaseSharedAttributeRecord[];
   openedAt: string;
   closedAt: string | null;
   currentStage: string;
@@ -44,11 +45,21 @@ export interface CaseNoteRecord {
   isFinalized: boolean;
 }
 
-export interface CaseAdvisorUpdateRecord {
-  caseAdvisorUpdateId: string;
+/** One data attribute the student shared with the request (CASE_ATTRIBUTE) and the student's note about it. */
+export interface CaseSharedAttributeRecord {
+  dataAttributeId: string;
+  attributeName: string;
+  shareReason: string;
+  sharedAt: string;
+}
+
+/** One message of the case thread (CASEMESSAGES). */
+export interface CaseMessageRecord {
+  caseMessageId: string;
   caseId: string;
   authorId: string;
   authorFullName: string;
+  authorRole: "student" | "advisor";
   messageText: string;
   createdAt: string;
 }
@@ -92,6 +103,12 @@ export function toCase(record: Record<string, unknown>): CaseRecord {
     categoryName: str(record.categoryName),
     supportType: str(record.supportType),
     requestReason: str(record.requestReason),
+    sharedAttributes: listOf(record.sharedAttributes).map((item) => ({
+      dataAttributeId: str(item.dataAttributeId),
+      attributeName: str(item.attributeName),
+      shareReason: str(item.shareReason),
+      sharedAt: str(item.sharedAt),
+    })),
     openedAt: str(record.openedAt),
     closedAt: str(record.closedAt) || null,
     currentStage: str(record.currentStage),
@@ -124,12 +141,13 @@ export function toNote(record: Record<string, unknown>): CaseNoteRecord {
   };
 }
 
-export function toCaseAdvisorUpdate(record: Record<string, unknown>): CaseAdvisorUpdateRecord {
+export function toCaseMessage(record: Record<string, unknown>): CaseMessageRecord {
   return {
-    caseAdvisorUpdateId: str(record.caseAdvisorUpdateId),
+    caseMessageId: str(record.caseMessageId),
     caseId: str(record.caseId),
     authorId: str(record.authorId),
     authorFullName: str(record.authorFullName),
+    authorRole: record.authorRole === "student" ? "student" : "advisor",
     messageText: str(record.messageText),
     createdAt: str(record.createdAt),
   };

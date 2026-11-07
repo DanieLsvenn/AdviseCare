@@ -6,10 +6,15 @@ import type { WorkspaceScreen } from "@/components/workspace/workspace-definitio
 
 export default async function AdvisorWorkspacePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug?: string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { slug = [] } = await params;
+  // Opened from a case page (?caseId=...): the student's data is read for that case, so the case is fixed and not asked for
+  const { caseId } = await searchParams;
+  const fromCase = typeof caseId === "string" && caseId ? { caseId } : {};
   const route = slug.join("/");
   let screen: WorkspaceScreen;
   let pathValues: Record<string, unknown> | undefined;
@@ -42,13 +47,13 @@ export default async function AdvisorWorkspacePage({
     pathValues = { caseId: slug[1] };
   } else if (/^students\/[^/]+(\/current|\/attendance)?$/.test(route)) {
     screen = "advisor.studentData";
-    pathValues = { studentId: slug[1] };
+    pathValues = { studentId: slug[1], ...fromCase };
   } else if (/^students\/[^/]+\/historical(\/erased)?$/.test(route)) {
     screen = "advisor.historical";
-    pathValues = { studentId: slug[1] };
+    pathValues = { studentId: slug[1], ...fromCase };
   } else if (/^students\/[^/]+\/compare$/.test(route)) {
     screen = "advisor.compare";
-    pathValues = { studentId: slug[1] };
+    pathValues = { studentId: slug[1], ...fromCase };
   } else if (/^cases\/[^/]+\/history$/.test(route)) {
     screen = "advisor.caseHistory";
     pathValues = { caseId: slug[1] };

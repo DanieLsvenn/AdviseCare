@@ -14,8 +14,8 @@ namespace AdviseCare.Application.Contracts.Requests.Case
         public string Status { get; set; } = string.Empty;
     }
 
-    // Student (WF2): leave StudentId empty; SharedAttributeIds optional; the priority is always medium.
-    // Advisor (EX3): StudentId required; SharedAttributeIds must stay empty; Priority optional.
+    // Student (WF2): leave StudentId empty; SharedAttributes optional (one per data attribute, each with an optional reason); the priority is always medium.
+    // Advisor (EX3): StudentId required; SharedAttributes must stay empty; Priority optional.
     public class CreateCaseRequest
     {
         public Guid? StudentId { get; set; }
@@ -24,10 +24,19 @@ namespace AdviseCare.Application.Contracts.Requests.Case
         public Guid SupportCategoryId { get; set; } = Guid.Empty;
         [Required(ErrorMessage = "Request reason is required.")]
         public string RequestReason { get; set; } = string.Empty;
-        public List<Guid> SharedAttributeIds { get; set; } = new();
+        public List<CreateCaseSharedAttributeRequest> SharedAttributes { get; set; } = new();
         [RegularExpression("^(low|medium|high|urgent)$",
             ErrorMessage = "Priority must be low, medium, high or urgent.")]
         public string Priority { get; set; } = "medium";
+    }
+
+    // One data attribute the student shares with a support request (CASE_ATTRIBUTE), with an optional note on why it matters
+    public class CreateCaseSharedAttributeRequest
+    {
+        [Required(ErrorMessage = "Data attribute is required.")]
+        public Guid DataAttributeId { get; set; } = Guid.Empty;
+        [StringLength(1000, ErrorMessage = "The note for a shared data attribute cannot exceed 1000 characters.")]
+        public string ShareReason { get; set; } = string.Empty;
     }
 
     public class SearchMyCaseRequest

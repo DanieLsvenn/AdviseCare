@@ -253,6 +253,14 @@
         public DateTime AssignedAt { get; set; }
     }
 
+    public class SearchStaffAccountResponse
+    {
+        public Guid AccountId { get; set; } = Guid.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public List<string> Roles { get; set; } = new();
+    }
+
     public class UpdateAccountRolesResponse
     {
         public Guid AccountId { get; set; } = Guid.Empty;

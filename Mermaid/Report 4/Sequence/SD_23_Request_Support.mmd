@@ -17,13 +17,14 @@ sequenceDiagram
     W->>SC: GET /api/SupportCategories/search?supportType&status=active
     W->>SC: GET /api/SupportCategories/{id}/shareable-attributes
     SC-->>W: Active attributes of the category's purpose
-    STU->>W: Subject (academic), reason, attributes to share
-    W->>C: POST /api/Cases {supportCategoryId, subjectId, requestReason, sharedAttributeIds}
+    STU->>W: Subject (academic), reason, attributes to share and a note per attribute
+    W->>C: POST /api/Cases {supportCategoryId, subjectId, requestReason, sharedAttributes[{dataAttributeId, shareReason}]}
     C->>S: CreateAsync(CreatorId, request)
     S->>R: Check category active, subject only for academic, attributes covered by the active purpose
     S->>R: PrepareCreate Case (stage pending, priority medium, no advisor)
     S->>R: PrepareCreate CaseStageHistory (pending -> pending)
     opt shared attributes chosen
+        S->>R: PrepareCreate CaseAttribute per shared attribute (shareReason, sharedAt)
         S->>CS: CreateAsync(StudentId, consents for the attributes)
         CS->>R: Stage consents and consent histories, SaveAsync() saves the staged case too
     end

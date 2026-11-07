@@ -180,13 +180,13 @@ Advisor and student decide by themselves how and when to meet (online, offline, 
 + Finalize a note
 + View history of past notes for a student
 
-- Keep the student informed through student-visible advisor updates:
+- Talk with the student in the case thread:
 
-The current advisor can publish a short update after reviewing a request or student data. Updates are attributed and timestamped, are visible to the student and authorized case staff, and cannot be edited or deleted through the application. Internal case notes remain staff-only. The student can follow up using the advisor's contact information.
+The case has a message thread that the student and the current advisor both write in, e.g. a next step or a meeting suggestion from the advisor and the student's reply. Messages are attributed and timestamped, are visible to the student and the staff of the case, and cannot be edited or deleted. Nothing can be written while the case is closed, and a student can write once an advisor is assigned. Internal case notes remain staff-only.
 
-+ Publish and view a student-visible advisor update
-+ Notify the student when an update is published
-+ Preserve update author and timestamp for accountability
++ Write and read messages in the case thread
++ Notify the other side when a message is written
++ Preserve message author and timestamp for accountability
 
 - Advance a case through its stages:
 
@@ -281,7 +281,7 @@ The main entry point: the student asks for help, picks the kind of help, explain
 + Choose support type (academic / wellbeing)
 + Choose a category (academic: subject + topic; wellbeing: mental health, accommodation, money, ...)
 + Write the reason
-+ Choose which data attributes to share (only those allowed by the category's consent purpose; can be left empty)
++ Choose which data attributes to share (only those allowed by the category's consent purpose; can be left empty), with an optional note per attribute on why it matters
 + Receive the matched advisor's contact information by email and in-app notification
 + View own cases, their stages and history
 

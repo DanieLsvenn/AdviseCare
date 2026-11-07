@@ -17,7 +17,8 @@ import {
   type CaseRecord,
   type StageHistoryRecord,
 } from "@/components/case/case-api";
-import { CaseAdvisorUpdates } from "@/components/case/case-advisor-updates";
+import { CaseMessages } from "@/components/case/case-messages";
+import { CaseSharedData } from "@/components/case/case-shared-data";
 import { CaseProgress } from "@/components/case/case-progress";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -164,7 +165,16 @@ export function StudentCase({ caseId }: { caseId: string }) {
         </aside>
       </div>
 
-      <CaseAdvisorUpdates caseId={record.caseId} audience="student" />
+      <CaseSharedData record={record} audience="student" />
+
+      <CaseMessages
+        caseId={record.caseId}
+        viewerId={record.studentId}
+        audience="student"
+        canWrite={record.status !== "closed" && Boolean(record.advisorId)}
+        closed={record.status === "closed"}
+        waitingForAdvisor={!record.advisorId}
+      />
 
       <section className="rounded-lg border border-rule bg-paper p-space-lg">
         <h2 className="mb-space-md text-base font-semibold text-text">{t("case.history")}</h2>
