@@ -20,4 +20,6 @@ public partial class Casemessage
     public virtual Account Author { get; set; }
 
     public virtual Case Case { get; set; }
+
+    public virtual ICollection<Casemessageattachment> Casemessageattachments { get; set; } = new List<Casemessageattachment>();
 }

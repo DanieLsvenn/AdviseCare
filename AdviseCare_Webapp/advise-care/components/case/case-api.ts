@@ -62,6 +62,15 @@ export interface CaseMessageRecord {
   authorRole: "student" | "advisor";
   messageText: string;
   createdAt: string;
+  attachments: CaseMessageAttachment[];
+}
+
+/** A file sent with a case message; downloaded through the API by the readers of the thread. */
+export interface CaseMessageAttachment {
+  caseMessageAttachmentId: string;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
 }
 
 export function str(value: unknown): string {
@@ -150,6 +159,12 @@ export function toCaseMessage(record: Record<string, unknown>): CaseMessageRecor
     authorRole: record.authorRole === "student" ? "student" : "advisor",
     messageText: str(record.messageText),
     createdAt: str(record.createdAt),
+    attachments: listOf(record.attachments).map((item) => ({
+      caseMessageAttachmentId: str(item.caseMessageAttachmentId),
+      fileName: str(item.fileName),
+      contentType: str(item.contentType),
+      fileSize: typeof item.fileSize === "number" ? item.fileSize : 0,
+    })),
   };
 }
 

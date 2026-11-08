@@ -1,9 +1,9 @@
-/* =====================================================================
+﻿/* =====================================================================
    AdviseCare - Microsoft SQL Server database script
-   Source: AdviseCare_ERD_Tables.txt (45 tables)
+   Source: AdviseCare_ERD_Tables.txt (46 tables)
    1. Creates database AdviseCareDB if it does not exist
    2. Drops every AdviseCare table that exists, child tables first
-   3. Creates all 45 tables in dependency order (parents first)
+   3. Creates all 46 tables in dependency order (parents first)
    4. Seeds the 7 roles, one test account per role (password 123456) and mock data for every table
       (68 accounts incl. 50 students, 25 data attributes, 48 cases, ...); student data values are loaded through the API import
    WARNING: re-running this script deletes all data in these tables.
@@ -43,6 +43,7 @@ DROP TABLE IF EXISTS [dbo].[STUDENTINDICATORS]; -- older name of STUDENTDATA
 DROP TABLE IF EXISTS [dbo].[ATTRIBUTEKEYS];
 DROP TABLE IF EXISTS [dbo].[REFERRALS];
 DROP TABLE IF EXISTS [dbo].[CASESTAGEHISTORIES];
+DROP TABLE IF EXISTS [dbo].[CASEMESSAGEATTACHMENTS];
 DROP TABLE IF EXISTS [dbo].[CASEMESSAGES];
 DROP TABLE IF EXISTS [dbo].[CASEADVISORUPDATES]; -- older name of CASEMESSAGES
 DROP TABLE IF EXISTS [dbo].[CASENOTES];
@@ -483,6 +484,27 @@ CREATE TABLE [dbo].[CASEMESSAGES] (
 GO
 CREATE INDEX [IX_CASEMESSAGES_caseId_createdAt]
     ON [dbo].[CASEMESSAGES] ([caseId], [createdAt]);
+GO
+
+-- 46. CASEMESSAGEATTACHMENTS (insert-only: files sent with a case message; kept in the database so only readers of the case can download them)
+CREATE TABLE [dbo].[CASEMESSAGEATTACHMENTS] (
+    [caseMessageAttachmentId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASEMESSAGEATTACHMENTS_caseMessageAttachmentId] DEFAULT NEWSEQUENTIALID(),
+    [caseMessageId] UNIQUEIDENTIFIER NOT NULL,
+    [uploadedBy] UNIQUEIDENTIFIER NOT NULL,
+    [contentType] NVARCHAR(255) NOT NULL,
+    [fileContent] VARBINARY(MAX) NOT NULL,
+    [fileName] NVARCHAR(255) NOT NULL,
+    [fileSize] INT NOT NULL,
+    [createdAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_CASEMESSAGEATTACHMENTS_createdAt] DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT [PK_CASEMESSAGEATTACHMENTS] PRIMARY KEY ([caseMessageAttachmentId]),
+    CONSTRAINT [FK_CASEMESSAGEATTACHMENTS_caseMessageId] FOREIGN KEY ([caseMessageId]) REFERENCES [dbo].[CASEMESSAGES]([caseMessageId]),
+    CONSTRAINT [FK_CASEMESSAGEATTACHMENTS_uploadedBy] FOREIGN KEY ([uploadedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [CK_CASEMESSAGEATTACHMENTS_fileSize] CHECK ([fileSize] BETWEEN 1 AND 10485760),
+    CONSTRAINT [CK_CASEMESSAGEATTACHMENTS_fileName] CHECK (LEN(LTRIM(RTRIM([fileName]))) >= 1)
+);
+GO
+CREATE INDEX [IX_CASEMESSAGEATTACHMENTS_caseMessageId]
+    ON [dbo].[CASEMESSAGEATTACHMENTS] ([caseMessageId]);
 GO
 
 -- 25. CASESTAGEHISTORIES

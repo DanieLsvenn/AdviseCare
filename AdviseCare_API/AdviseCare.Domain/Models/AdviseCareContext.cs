@@ -44,6 +44,8 @@ public partial class AdviseCareContext : DbContext
 
     public virtual DbSet<Casemessage> Casemessages { get; set; }
 
+    public virtual DbSet<Casemessageattachment> Casemessageattachments { get; set; }
+
     public virtual DbSet<Casenote> Casenotes { get; set; }
 
     public virtual DbSet<Casestagehistory> Casestagehistories { get; set; }
@@ -603,6 +605,45 @@ public partial class AdviseCareContext : DbContext
                 .HasForeignKey(d => d.CaseId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_CASEMESSAGES_caseId");
+        });
+
+        modelBuilder.Entity<Casemessageattachment>(entity =>
+        {
+            entity.ToTable("CASEMESSAGEATTACHMENTS");
+
+            entity.HasIndex(e => e.CaseMessageId, "IX_CASEMESSAGEATTACHMENTS_caseMessageId");
+
+            entity.Property(e => e.CaseMessageAttachmentId)
+                .HasDefaultValueSql("(newsequentialid())")
+                .HasColumnName("caseMessageAttachmentId");
+            entity.Property(e => e.CaseMessageId).HasColumnName("caseMessageId");
+            entity.Property(e => e.ContentType)
+                .IsRequired()
+                .HasMaxLength(255)
+                .HasColumnName("contentType");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("createdAt");
+            entity.Property(e => e.FileContent)
+                .IsRequired()
+                .HasColumnName("fileContent");
+            entity.Property(e => e.FileName)
+                .IsRequired()
+                .HasMaxLength(255)
+                .HasColumnName("fileName");
+            entity.Property(e => e.FileSize).HasColumnName("fileSize");
+            entity.Property(e => e.UploadedBy).HasColumnName("uploadedBy");
+
+            entity.HasOne(d => d.CaseMessage).WithMany(p => p.Casemessageattachments)
+                .HasForeignKey(d => d.CaseMessageId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CASEMESSAGEATTACHMENTS_caseMessageId");
+
+            entity.HasOne(d => d.UploadedByNavigation).WithMany(p => p.Casemessageattachments)
+                .HasForeignKey(d => d.UploadedBy)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CASEMESSAGEATTACHMENTS_uploadedBy");
         });
 
         modelBuilder.Entity<Casenote>(entity =>

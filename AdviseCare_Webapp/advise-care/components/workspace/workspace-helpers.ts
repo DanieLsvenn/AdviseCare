@@ -44,6 +44,9 @@ export function makeBody(
     } else if (field.type === "number" && typeof value === "string") {
       normalized = value === "" ? "" : Number(value);
     }
+    if (field.asArray && !Array.isArray(normalized)) {
+      normalized = normalized === "" ? [] : [normalized];
+    }
 
     if (body instanceof FormData) {
       if (value instanceof File) {

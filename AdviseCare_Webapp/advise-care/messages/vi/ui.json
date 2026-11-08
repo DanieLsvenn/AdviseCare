@@ -290,7 +290,16 @@
     "nextSteps": "Bước tiếp theo",
     "moreActions": "Thao tác khác",
     "moreActionsHint": "Ưu tiên, chuyển tuyến, đổi cố vấn",
-    "proposedAdvisorHint": "Nhập một phần tên hoặc email của cố vấn. Trưởng chương trình sẽ duyệt thay đổi."
+    "proposedAdvisorHint": "Nhập một phần tên hoặc email của cố vấn. Trưởng chương trình sẽ duyệt thay đổi.",
+    "stageConfirmTitle": "Chuyển case sang {stage}?",
+    "stageConfirmBody": "Sinh viên thấy giai đoạn mới và nội dung bạn ghi trong lịch sử. Lịch sử không thể sửa.",
+    "reopenConfirmBody": "Case quay lại danh sách của bạn và sinh viên được thông báo kèm lý do.",
+    "priorityConfirmTitle": "Đổi mức ưu tiên?",
+    "priorityConfirmBody": "Thứ tự của case trong danh sách và hàng đợi ghép sẽ thay đổi.",
+    "referConfirmTitle": "Gửi chuyển tuyến này?",
+    "referConfirmBody": "Người nhận được thông báo. Case không đổi giai đoạn được cho tới khi họ nhận hoặc trả lại.",
+    "changeConfirmTitle": "Đề nghị đổi cố vấn?",
+    "changeConfirmBody": "Trưởng chương trình sẽ quyết định. Sinh viên và cả hai cố vấn được thông báo kết quả."
   },
   "myRequests": {
     "title": "Yêu cầu hỗ trợ của tôi",
@@ -338,7 +347,16 @@
     "loadError": "Không tải được tin nhắn.",
     "sendError": "Không gửi được tin nhắn.",
     "loading": "Đang tải tin nhắn",
-    "retry": "Thử lại"
+    "retry": "Thử lại",
+    "attach": "Đính kèm tệp",
+    "attachHint": "Tối đa {count} tệp, mỗi tệp 10 MB: PDF, Word, Excel, PowerPoint, văn bản, CSV hoặc hình ảnh.",
+    "attachments": "Tệp đính kèm",
+    "removeFile": "Bỏ tệp",
+    "download": "Tải xuống",
+    "fileTypeError": "Không thể đính kèm {name}. Hãy dùng PDF, Word, Excel, PowerPoint, văn bản, CSV hoặc hình ảnh.",
+    "fileEmptyError": "{name} là tệp rỗng.",
+    "fileSizeError": "{name} lớn hơn 10 MB.",
+    "fileCountError": "Mỗi tin nhắn chỉ đính kèm tối đa {count} tệp."
   },
   "caseShared": {
     "titleStudent": "Dữ liệu bạn đã chia sẻ",

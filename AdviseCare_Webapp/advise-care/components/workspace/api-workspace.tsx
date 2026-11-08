@@ -78,6 +78,8 @@ export interface WorkspaceField {
   showWhen?: { key: string; includes: string };
   /** Skip the field when the record already holds a value for it (the value is still sent). */
   hideWhenPrefilled?: boolean;
+  /** Send a single choice as a one-item list (e.g. one role sent as roleNames: ["Student"]). */
+  asArray?: boolean;
 }
 
 export interface WorkspaceOption {
@@ -117,6 +119,10 @@ export interface WorkspaceOperation {
   method: ApiMethod;
   path: string;
   fields?: WorkspaceField[];
+  /**
+   * Ask before sending. Every operation that changes data asks by default;
+   * set false only for low-stakes actions that are easy to undo.
+   */
   confirm?: boolean;
   /** The operation removes or blocks something (red button, warning dialog). */
   destructive?: boolean;
@@ -144,6 +150,12 @@ export interface ApiWorkspaceDefinition {
   /** Main action of the screen when it lives on another page. */
   primaryLink?: { label: string; href: string; icon?: string };
   pageSize?: number;
+  /**
+   * The API answers with parent records that each hold a list (e.g. a consent
+   * purpose and its attributes): show one row per item of that list, carrying
+   * the parent's fields along.
+   */
+  flattenKey?: string;
   pathValues?: Record<string, unknown>;
   recordFilter?: { key: string; value: string };
   /** Copy for the empty list: what will appear here and how it gets here. */
@@ -215,6 +227,7 @@ export function ApiWorkspace({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [filterValues, setFilterValues] = useState<Record<string, string | boolean>>({});
+  const [clientPage, setClientPage] = useState(1);
 
   const loadRecords = useCallback(
     async (nextQuery: ApiQuery = query) => {
@@ -226,7 +239,10 @@ export function ApiWorkspace({
         const payload = await clientApiGet<unknown>(listPath, {
           query: { ...nextQuery, ...scopedQuery },
         });
-        const result = extractRecords(payload, definition.collectionKey);
+        const extracted = extractRecords(payload, definition.collectionKey);
+        const result = extracted && definition.flattenKey
+          ? flattenRecords(extracted, definition.flattenKey)
+          : extracted;
         if (!result) {
           throw new ApiError({
             message: t("unexpectedResponse"),
@@ -241,6 +257,7 @@ export function ApiWorkspace({
             )
           : result;
         setRecords(visibleRecords);
+        setClientPage(1);
         setTotal(recordFilter ? visibleRecords.length : extractTotal(payload));
       } catch (error) {
         setLoadError(errorMessage(error, t));
@@ -250,7 +267,7 @@ export function ApiWorkspace({
         setLoading(false);
       }
     },
-    [definition.collectionKey, listPath, query, requiredQueryFields, recordFilter, scopedQuery, t],
+    [definition.collectionKey, definition.flattenKey, listPath, query, requiredQueryFields, recordFilter, scopedQuery, t],
   );
 
   useEffect(() => {
@@ -302,6 +319,10 @@ export function ApiWorkspace({
   }
 
   function changePage(page: number) {
+    if (clientPaged) {
+      setClientPage(page);
+      return;
+    }
     setQuery({ ...query, page, pageSize: definition.pageSize ?? query.pageSize });
   }
 
@@ -317,8 +338,13 @@ export function ApiWorkspace({
     setSelectedRecord(record);
   }
 
-  const page = Number(query.page ?? 1);
-  const pageSize = definition.pageSize;
+  // Lists whose endpoint does not page (or ignores page/pageSize) are paged
+  // here, so no screen shows hundreds of rows at once.
+  const pageSize = definition.pageSize ?? DEFAULT_PAGE_SIZE;
+  const clientPaged = records.length > pageSize;
+  const page = clientPaged ? Math.min(clientPage, Math.max(1, Math.ceil(records.length / pageSize))) : Number(query.page ?? 1);
+  const shownRecords = clientPaged ? records.slice((page - 1) * pageSize, page * pageSize) : records;
+  const pageTotal = clientPaged ? records.length : total;
   const countLabel =
     total !== undefined
       ? tu("workspace.recordCount", { count: total })
@@ -444,7 +470,7 @@ export function ApiWorkspace({
           {/* Phones: one stacked item per record (identity, then the
               remaining fields as a caption, states as chips). */}
           <ul className="divide-y divide-rule sm:hidden" onKeyDown={moveRowFocus}>
-            {records.map((record, index) => (
+            {shownRecords.map((record, index) => (
               <li key={`m-${createRowKey(record, index, mobileKeyOccurrences)}`}>
                 <button
                   type="button"
@@ -482,7 +508,7 @@ export function ApiWorkspace({
                 </tr>
               </thead>
               <tbody className="divide-y divide-rule" onKeyDown={moveRowFocus}>
-                {records.map((record, index) => {
+                {shownRecords.map((record, index) => {
                   const key = createRowKey(record, index, rowKeyOccurrences);
                   const isSelected = selectedRecord === record;
                   return (
@@ -541,17 +567,19 @@ export function ApiWorkspace({
           </>
         )}
 
-        {pageSize &&
-        requiredQueryValuesPresent &&
+        {requiredQueryValuesPresent &&
         !loadError &&
-        (page > 1 || (total !== undefined ? total > pageSize : records.length >= pageSize)) ? (
+        !loading &&
+        (clientPaged ||
+          (definition.pageSize &&
+            (page > 1 || (total !== undefined ? total > pageSize : records.length >= pageSize)))) ? (
           <div className="flex items-center justify-between gap-space-sm border-t border-rule px-space-lg py-space-sm">
             <span className="font-mono text-[0.8125rem] text-text-faint">
-              {total !== undefined && records.length > 0
+              {pageTotal !== undefined && shownRecords.length > 0
                 ? tu("workspace.range", {
                     from: (page - 1) * pageSize + 1,
-                    to: (page - 1) * pageSize + records.length,
-                    total,
+                    to: (page - 1) * pageSize + shownRecords.length,
+                    total: pageTotal,
                   })
                 : `${t("page")} ${page}`}
             </span>
@@ -568,9 +596,9 @@ export function ApiWorkspace({
               <Button
                 disabled={
                   loading ||
-                  (total !== undefined
-                    ? page * pageSize >= total
-                    : records.length < pageSize)
+                  (pageTotal !== undefined
+                    ? page * pageSize >= pageTotal
+                    : shownRecords.length < pageSize)
                 }
                 iconAfter="chevron_right"
                 onClick={() => changePage(page + 1)}
@@ -656,6 +684,17 @@ export function ApiWorkspace({
 /* ------------------------------------------------------------------------ */
 
 const INLINE_FILTERS = 3;
+const DEFAULT_PAGE_SIZE = 20;
+
+/** One row per item of each record's `key` list, with the parent's other fields. */
+function flattenRecords(records: Record<string, unknown>[], key: string): Record<string, unknown>[] {
+  return records.flatMap((parent) => {
+    const children = parent[key];
+    if (!Array.isArray(children)) return [];
+    const rest = Object.fromEntries(Object.entries(parent).filter(([name]) => name !== key));
+    return children.filter(isRecord).map((child) => ({ ...rest, ...child }));
+  });
+}
 
 function FilterBar({
   fields,
@@ -1198,10 +1237,19 @@ export function ApiOperationForm({
     setResult(undefined);
     setFieldErrors({});
 
-    if (definition.confirm || definition.destructive) {
+    // Anything that writes asks first (create, update, delete, decisions);
+    // reading never does. An operation opts out with confirm: false.
+    const asks = !isRead && (definition.confirm !== false || definition.destructive);
+    if (asks) {
       const ok = await confirm({
         title: definition.label,
-        body: definition.description ?? t("confirmAction"),
+        body:
+          definition.description ??
+          (definition.destructive || definition.method === "DELETE"
+            ? t("confirmDestructive")
+            : definition.method === "POST"
+              ? t("confirmCreate")
+              : t("confirmAction")),
         confirmLabel: definition.label,
         cancelLabel: tu("cancel"),
         destructive: definition.destructive || definition.method === "DELETE",
@@ -1260,11 +1308,12 @@ export function ApiOperationForm({
             <WorkspaceInput
               field={field}
               onChange={(value) => setValues((current) => ({ ...current, [field.key]: value }))}
-              value={
+              value={singleChoice(
+                field,
                 values[field.key] ??
-                bodyDefaults[field.key] ??
-                (field.type === "checkbox" ? false : field.type === "multiselect" ? [] : "")
-              }
+                  bodyDefaults[field.key] ??
+                  (field.type === "checkbox" ? false : field.type === "multiselect" ? [] : ""),
+              )}
               error={
                 fieldErrors[field.key] ??
                 fieldErrors[pascalCase(field.key)] ??
@@ -1296,6 +1345,12 @@ export function ApiOperationForm({
       {confirmDialog}
     </>
   );
+}
+
+/** A one-choice control prefilled from a list (e.g. the account's roles) shows its first item. */
+function singleChoice(field: WorkspaceField, value: unknown): unknown {
+  if (field.type === "select" && Array.isArray(value)) return value.length ? String(value[0]) : "";
+  return value;
 }
 
 /** A GET operation's answer, shown as fields or a small table, never raw JSON. */

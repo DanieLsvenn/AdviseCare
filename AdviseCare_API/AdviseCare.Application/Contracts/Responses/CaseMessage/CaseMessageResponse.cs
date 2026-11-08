@@ -9,6 +9,7 @@ namespace AdviseCare.Application.Contracts.Responses.CaseMessage
         public string AuthorRole { get; set; } = string.Empty;
         public string MessageText { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
+        public List<CaseMessageAttachmentResponse> Attachments { get; set; } = new();
     }
 
     public class GetAllCaseMessageWithPaginationResponse
@@ -20,6 +21,7 @@ namespace AdviseCare.Application.Contracts.Responses.CaseMessage
         public string AuthorRole { get; set; } = string.Empty;
         public string MessageText { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
+        public List<CaseMessageAttachmentResponse> Attachments { get; set; } = new();
     }
 
     public class GetCaseMessageByIdResponse
@@ -31,6 +33,7 @@ namespace AdviseCare.Application.Contracts.Responses.CaseMessage
         public string AuthorRole { get; set; } = string.Empty;
         public string MessageText { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
+        public List<CaseMessageAttachmentResponse> Attachments { get; set; } = new();
     }
 
     public class SearchCaseMessageResponse
@@ -42,6 +45,7 @@ namespace AdviseCare.Application.Contracts.Responses.CaseMessage
         public string AuthorRole { get; set; } = string.Empty;
         public string MessageText { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
+        public List<CaseMessageAttachmentResponse> Attachments { get; set; } = new();
     }
 
     public class CreateCaseMessageResponse
@@ -53,5 +57,21 @@ namespace AdviseCare.Application.Contracts.Responses.CaseMessage
         public string AuthorRole { get; set; } = string.Empty;
         public string MessageText { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
+        public List<CaseMessageAttachmentResponse> Attachments { get; set; } = new();
+    }
+
+    public class CaseMessageAttachmentResponse
+    {
+        public Guid CaseMessageAttachmentId { get; set; } = Guid.Empty;
+        public string ContentType { get; set; } = string.Empty;
+        public string FileName { get; set; } = string.Empty;
+        public int FileSize { get; set; } = 0;
+    }
+
+    public class DownloadCaseMessageAttachmentResponse
+    {
+        public byte[] Content { get; set; } = Array.Empty<byte>();
+        public string ContentType { get; set; } = string.Empty;
+        public string FileName { get; set; } = string.Empty;
     }
 }

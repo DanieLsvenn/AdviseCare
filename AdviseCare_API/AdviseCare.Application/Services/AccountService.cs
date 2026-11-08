@@ -208,6 +208,7 @@ namespace AdviseCare.Application.Services
                 await EnsureActiveFacultyAsync(request.FacultyId.Value);
 
             var roles = await ResolveRolesAsync(request.RoleNames);
+            EnsureSingleRole(roles);
             var studentCode = request.StudentCode.Trim();
             var isStudent = roles.Any(r => r.RoleName == StudentRole);
             var academicStatus = isStudent && string.IsNullOrWhiteSpace(request.AcademicStatus) ? DefaultAcademicStatus : request.AcademicStatus.Trim();
@@ -436,6 +437,7 @@ namespace AdviseCare.Application.Services
 
                 var rowRoles = new List<Role>();
                 if (roleNames.Length == 0) rowErrors.Add("role is empty");
+                else if (roleNames.Length > 1) rowErrors.Add($"role '{string.Join(", ", roleNames)}' has more than one role; an account has exactly one role");
                 foreach (var roleName in roleNames)
                 {
                     if (roles.TryGetValue(roleName, out var role)) rowRoles.Add(role);
@@ -923,6 +925,10 @@ namespace AdviseCare.Application.Services
 
             if (await _accountRoleRepository.ExistsAsync(ar => ar.AccountId == request.AccountId && ar.RoleId == request.RoleId))
                 throw new ConflictException($"This account already has the role '{role.RoleName}'.");
+            // One role per account: a second role is never added, the current one is changed instead
+            var existingRole = await _accountRoleRepository.FirstOrDefaultAsync(ar => ar.AccountId == request.AccountId, ar => ar.Role);
+            if (existingRole != null)
+                throw new ConflictException($"This account already has the role '{existingRole.Role.RoleName}'. An account has exactly one role; change the role instead of adding another.");
 
             var accountRole = new AccountRole
             {
@@ -968,8 +974,17 @@ namespace AdviseCare.Application.Services
             var wanted = await ResolveRolesAsync(request.RoleNames);
             if (wanted.Count == 0)
                 throw new ValidationException("An account needs at least one role.");
+            EnsureSingleRole(wanted);
 
             var current = (await _accountRoleRepository.SearchAsyncInclude(ar => ar.AccountId == AccountId, ar => ar.Role)).ToList();
+            // A student account stays a student account and a staff account stays staff:
+            // the Student role carries a student profile, data and consents that a staff role must not inherit
+            var wasStudent = current.Any(c => c.Role.RoleName == StudentRole);
+            var willBeStudent = wanted.Any(r => r.RoleName == StudentRole);
+            if (current.Count > 0 && wasStudent != willBeStudent)
+                throw new ValidationException(wasStudent
+                    ? "A Student account cannot be given a staff role. Create a separate staff account instead."
+                    : "A staff account cannot be turned into a Student account. Create a separate Student account instead.");
             var toAdd = wanted.Where(r => current.All(c => c.RoleId != r.RoleId)).ToList();
             var toRemove = current.Where(c => wanted.All(r => r.RoleId != c.RoleId)).ToList();
             if (toAdd.Count == 0 && toRemove.Count == 0)
@@ -1103,6 +1118,13 @@ namespace AdviseCare.Application.Services
         }
 
         // Helper: resolves role names to Role entities, throwing if any role does not exist
+        // Helper: every account has exactly one role (no Student + staff, no two staff roles)
+        private static void EnsureSingleRole(List<Role> roles)
+        {
+            if (roles.Count > 1)
+                throw new ValidationException($"An account has exactly one role, but {roles.Count} were given ({string.Join(", ", roles.Select(r => r.RoleName))}).");
+        }
+
         private async Task<List<Role>> ResolveRolesAsync(List<string> roleNames)
         {
             var resolvedRoles = new List<Role>();

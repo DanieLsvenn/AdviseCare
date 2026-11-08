@@ -10,5 +10,7 @@ namespace AdviseCare.Application.Interfaces.Services
         Task<GetCaseMessageByIdResponse> GetByIdAsync(Guid CallerId, Guid CaseMessageId);
         Task<List<SearchCaseMessageResponse>> SearchAsync(Guid CallerId, SearchCaseMessageRequest request);
         Task<CreateCaseMessageResponse> CreateAsync(Guid CreatorId, CreateCaseMessageRequest request);
+        Task<CreateCaseMessageResponse> CreateWithFilesAsync(Guid CreatorId, CreateCaseMessageWithFilesRequest request);
+        Task<DownloadCaseMessageAttachmentResponse> DownloadAttachmentAsync(Guid CallerId, Guid CaseMessageAttachmentId);
     }
 }

@@ -2177,7 +2177,7 @@ for r in DATA_ROWS:
 # 14. Write the SQL script
 # =====================================================================================================================
 # CASEMESSAGES and CASE_ATTRIBUTE are not generated yet: the script only clears them
-EMPTY_TABLES = ['CASEMESSAGES', 'CASE_ATTRIBUTE']
+EMPTY_TABLES = ['CASEMESSAGEATTACHMENTS', 'CASEMESSAGES', 'CASE_ATTRIBUTE']
 
 SORT_KEY = {'CASES': 'openedAt', 'CASESTAGEHISTORIES': 'changedAt', 'CASENOTES': 'createdAt', 'REFERRALS': 'createdAt', 'NOTIFICATIONS': 'createdAt',
             'ACTIVITYLOGS': 'occurredAt', 'SESSIONS': 'loginAt', 'ACCESSLOGS': 'accessedAt', 'CONSENTS': 'grantedAt', 'CONSENTREQUESTS': 'requestedAt',
@@ -2233,7 +2233,8 @@ def write_sql(path):
         w("USE [AdviseCareDB];\nGO\n\nSET NOCOUNT ON;\nSET XACT_ABORT ON;\n\n")
         w("IF OBJECT_ID(N'dbo.RESTOREOPERATIONS', N'U') IS NULL OR COL_LENGTH(N'dbo.CASECHANGEREQUESTS', N'decisionNotes') IS NULL\n")
         w("   OR OBJECT_ID(N'dbo.CASEMESSAGES', N'U') IS NULL OR OBJECT_ID(N'dbo.CASE_ATTRIBUTE', N'U') IS NULL\n")
-        w("    THROW 50000, N'Run AdviseCare_Database_Script.sql (or AdviseCare_Case_Messages_And_Attributes_Migration.sql) first (the 45 tables, including CASECHANGEREQUESTS.decisionNotes, are needed).', 1;\n\n")
+        w("   OR OBJECT_ID(N'dbo.CASEMESSAGEATTACHMENTS', N'U') IS NULL\n")
+        w("    THROW 50000, N'Run AdviseCare_Database_Script.sql (or the AdviseCare_Case_Messages_And_Attributes and AdviseCare_Case_Message_Attachments migrations) first (the 46 tables, including CASECHANGEREQUESTS.decisionNotes, are needed).', 1;\n\n")
         w("BEGIN TRY\n    BEGIN TRANSACTION;\n\n    /* ---------- 1. Clear every table (children first) ---------- */\n")
         # Tables this generator does not fill yet: cleared first (they point to CASES / DATAATTRIBUTES) and left empty
         for t in EMPTY_TABLES:

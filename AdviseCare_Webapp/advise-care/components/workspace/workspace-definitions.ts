@@ -291,7 +291,8 @@ export function getWorkspaceDefinitions(
               field("fullName", "text", true),
               field("userName", "text", true),
               picker("facultyId", facultySource, false, "select", "faculty"),
-              { ...picker("roleNames", roleSource(), true, "multiselect", "roles"), hint: t("rolesHint") },
+              // One role per account: a Student never holds a staff role, and staff hold one role each.
+              { ...picker("roleNames", roleSource(), true, "select", "role"), asArray: true, hint: t("rolesHint") },
               {
                 ...field("studentCode", "text", true),
                 showWhen: { key: "roleNames", includes: "Student" },
@@ -326,21 +327,16 @@ export function getWorkspaceDefinitions(
                 "PUT",
                 "Accounts/:accountId/roles",
                 [
-                  { ...picker("roleNames", roleSource(), true, "multiselect", "roles"), hint: t("rolesHint") },
-                  {
-                    ...field("studentCode", "text", true),
-                    showWhen: { key: "roleNames", includes: "Student" },
-                    hideWhenPrefilled: true,
-                    hint: t("studentCodeHint"),
-                  },
+                  // Staff move between staff roles only; Student accounts keep the Student role.
+                  { ...picker("roleNames", roleSource(true), true, "select", "role"), asArray: true },
                 ],
                 {
                   bodyFromRecord: {
                     roleNames: { key: "roles" },
-                    studentCode: { key: "studentCode" },
                   },
                   description: t("changeRolesHint"),
                   icon: "badge",
+                  when: { key: "roles", notIn: ["student"] },
                 },
               ),
               operation("activate", "PUT", "Accounts/:accountId/activate", undefined, {
@@ -760,32 +756,49 @@ export function getWorkspaceDefinitions(
 
     case "student.consent":
       return [
+        // Consents/me answers one entry per purpose with its attributes inside;
+        // the list shows one row per purpose + attribute with the student's state.
         workspace(
           "consent",
           "Consents/me",
           [
-            "consentId",
-            "consentPurposeName",
+            ["purposeName", "consentPurpose"],
             ["attributeName", "dataAttributeName"],
             "status",
+            "grantedAt",
             "expiresAt",
           ],
           {
-            create: operation("create", "POST", "Consents", [
-              picker("consentPurposeId", activePurposeSource, true, "select", "consentPurpose"),
-              field("dataAttributeIds", "list", true),
-              field("expiresAt", "datetime-local"),
-            ]),
+            flattenKey: "attributes",
+            emptyBody: t("studentConsentEmpty"),
             rowOperations: [
+              operation("grantConsent", "POST", "Consents", [
+                { ...field("expiresAt", "datetime-local"), noPrefill: true },
+              ], {
+                icon: "verified_user",
+                description: t("grantConsentHint"),
+                bodyFromRecord: {
+                  consentPurposeId: { key: "consentPurposeId" },
+                  dataAttributeIds: { key: "dataAttributeId", asArray: true },
+                },
+                when: { key: "status", in: ["none", "withdrawn", "expired"] },
+              }),
               operation("update", "PUT", "Consents/:consentId", [
                 field("expiresAt", "datetime-local"),
-              ]),
+              ], {
+                when: { key: "status", in: ["granted"] },
+              }),
               operation(
                 "withdraw",
                 "PUT",
                 "Consents/:consentId/withdraw",
                 undefined,
-                { confirm: true },
+                {
+                  confirm: true,
+                  destructive: true,
+                  description: t("withdrawConsentHint"),
+                  when: { key: "status", in: ["granted"] },
+                },
               ),
             ],
           },
@@ -1437,6 +1450,16 @@ export function getWorkspaceDefinitions(
               }),
               operation("archive", "PUT", "ConsentPurposes/:consentPurposeId/retire", undefined, {
                 confirm: true,
+                destructive: true,
+                when: { key: "status", notIn: ["retired"] },
+              }),
+              // Attributes are picked from the database; the purpose comes from the row.
+              operation("addPurposeAttribute", "POST", "ConsentPurposes/purpose-attributes", [
+                picker("dataAttributeId", activeAttributeSource, true, "select", "dataAttributeName"),
+              ], {
+                icon: "playlist_add",
+                bodyFromRecord: { consentPurposeId: { key: "consentPurposeId" } },
+                when: { key: "status", notIn: ["retired"] },
               }),
             ],
           },
@@ -1836,7 +1859,13 @@ export function getWorkspaceDefinitions(
         workspace(
           "caseReports",
           "Reports/caseload-closure",
-          ["advisorName", "totalCases", "closedCases", "closureRate"],
+          [
+            ["advisorFullName", "advisorName"],
+            "totalCases",
+            "openCases",
+            "closedCases",
+            "averageDaysToClose",
+          ],
           { queryFields: [field("from", "date", true), field("to", "date", true)] },
         ),
       ];
@@ -1846,7 +1875,13 @@ export function getWorkspaceDefinitions(
         workspace(
           "advisorWorkload",
           "Reports/caseload-closure",
-          ["advisorName", "totalCases", "closedCases", "closureRate"],
+          [
+            ["advisorFullName", "advisorName"],
+            "totalCases",
+            "openCases",
+            "closedCases",
+            "averageDaysToClose",
+          ],
           { queryFields: [field("from", "date", true), field("to", "date", true)] },
         ),
       ];
@@ -1859,13 +1894,13 @@ export function getWorkspaceDefinitions(
           ["notificationId", "title", "message", "createdAt", "isRead"],
           {
             rowOperations: [
-              operation("markRead", "PUT", "Notifications/me/:notificationId/read"),
+              operation("markRead", "PUT", "Notifications/me/:notificationId/read", undefined, { confirm: false }),
               operation("remove", "DELETE", "Notifications/me/:notificationId", undefined, {
                 confirm: true,
               }),
             ],
             globalOperations: [
-              operation("markAllRead", "PUT", "Notifications/me/read-all"),
+              operation("markAllRead", "PUT", "Notifications/me/read-all", undefined, { confirm: false }),
               operation("clearRead", "DELETE", "Notifications/me/clear", undefined, {
                 confirm: true,
               }),

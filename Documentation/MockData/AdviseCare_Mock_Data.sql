@@ -63,12 +63,14 @@ SET XACT_ABORT ON;
 
 IF OBJECT_ID(N'dbo.RESTOREOPERATIONS', N'U') IS NULL OR COL_LENGTH(N'dbo.CASECHANGEREQUESTS', N'decisionNotes') IS NULL
    OR OBJECT_ID(N'dbo.CASEMESSAGES', N'U') IS NULL OR OBJECT_ID(N'dbo.CASE_ATTRIBUTE', N'U') IS NULL
-    THROW 50000, N'Run AdviseCare_Database_Script.sql (or AdviseCare_Case_Messages_And_Attributes_Migration.sql) first (the 45 tables, including CASECHANGEREQUESTS.decisionNotes, are needed).', 1;
+   OR OBJECT_ID(N'dbo.CASEMESSAGEATTACHMENTS', N'U') IS NULL
+    THROW 50000, N'Run AdviseCare_Database_Script.sql (or the AdviseCare_Case_Messages_And_Attributes and AdviseCare_Case_Message_Attachments migrations) first (the 46 tables, including CASECHANGEREQUESTS.decisionNotes, are needed).', 1;
 
 BEGIN TRY
     BEGIN TRANSACTION;
 
     /* ---------- 1. Clear every table (children first) ---------- */
+    DELETE FROM [dbo].[CASEMESSAGEATTACHMENTS];
     DELETE FROM [dbo].[CASEMESSAGES];
     DELETE FROM [dbo].[CASE_ATTRIBUTE];
     DELETE FROM [dbo].[RESTOREOPERATIONS];

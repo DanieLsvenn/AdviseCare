@@ -50,6 +50,7 @@ status - enum - full lifecycle state (active/deactivated/banned) used by "Ban/Un
 1 ACCOUNTS - 43 REPORTS: one to many (generatedBy)
 1 ACCOUNTS - 44 BACKUPS: one to many (createdBy)
 1 ACCOUNTS - 45 RESTOREOPERATIONS: one to many (executedBy)
+1 ACCOUNTS - 46 CASEMESSAGEATTACHMENTS: one to many (uploadedBy)
 
 2. STUDENTPROFILES
 studentProfileId (PK) - uuid - unique identifier for one student's school record, created together with the Student account (single create, account import, or giving an account the Student role)
@@ -327,6 +328,20 @@ createdAt - date - when the message was written; messages are append-only and no
 
 24 CASEMESSAGES - 1 ACCOUNTS: many to one (authorId)
 24 CASEMESSAGES - 20 CASES: many to one (caseId)
+24 CASEMESSAGES - 46 CASEMESSAGEATTACHMENTS: one to many (caseMessageId)
+
+46. CASEMESSAGEATTACHMENTS
+caseMessageAttachmentId (PK) - uuid - unique identifier for one file sent with a case message
+caseMessageId (FK) - uuid - the message the file was sent with (a message carries at most 5 files)
+uploadedBy (FK) - uuid - who sent the file: the author of the message
+contentType - string - the type the file is served with, decided by the server from the extension (PDF, Word, Excel, PowerPoint, text, CSV, PNG, JPG, GIF, WEBP)
+fileContent - binary - the file itself (max 10 MB), kept in the database so it is downloaded only through the API by the readers of the thread
+fileName - string - the original file name (max 255 characters), shown in the thread and used for the download
+fileSize - int - size in bytes (1 to 10,485,760)
+createdAt - date - when the file was sent (same as its message); insert-only, never edited or deleted
+
+46 CASEMESSAGEATTACHMENTS - 24 CASEMESSAGES: many to one (caseMessageId)
+46 CASEMESSAGEATTACHMENTS - 1 ACCOUNTS: many to one (uploadedBy)
 
 25. CASESTAGEHISTORIES
 caseStageHistoryId (PK) - uuid - unique identifier for one stage transition, giving the case timeline its own queryable record
@@ -641,4 +656,5 @@ NOTES (current version)
   + Data attributes (values in STUDENTDATA, defined by DATAATTRIBUTES): everything else that describes or measures the student. Readable only through the access guard (consent), and every read is logged in ACCESSLOGS, even when consent was given.
   + Case records (CASES, CASE_ATTRIBUTE, CASEMESSAGES, CASENOTES, CASESTAGEHISTORIES, REFERRALS, INTERVENTIONS, SUPPORTGRANTS, EXTERNALREFERRALS, ESCALATIONS): visible to the people working on the case; not consent-based and not written to ACCESSLOGS.
 - STUDENTPROFILES exists only for Student accounts; it is created in the same save as the account (account import, single create, or giving the Student role) and only the admin edits it. The account import sheet always has 5 filled columns for staff rows (email, fullName, userName, facultyCode, role) and 7 for Student rows (+ studentCode, academicStatus), never anything in between.
+- Each account has exactly one role (ACCOUNT_ROLE holds one row per account): a Student account never also holds a staff role, a staff account never becomes a Student account, and staff move from one staff role to another instead of collecting several.
 - Usually one Programme Head for the whole app (the manager), but the system allows more. PROGRAMMES is kept but not used by other tables for now.
