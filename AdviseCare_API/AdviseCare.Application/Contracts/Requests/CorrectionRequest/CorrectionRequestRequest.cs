@@ -4,12 +4,15 @@ namespace AdviseCare.Application.Contracts.Requests.CorrectionRequest
 {
     public class SearchCorrectionRequestRequest
     {
+        public Guid? ConsentPurposeId { get; set; }
         public Guid? StudentId { get; set; }
         public string Status { get; set; } = string.Empty;
     }
 
     public class CreateCorrectionRequestRequest
     {
+        [Required(ErrorMessage = "Consent purpose Id is required.")]
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
         [Required(ErrorMessage = "Student data row is required.")]
         public Guid StudentDataId { get; set; } = Guid.Empty;
         [Required(ErrorMessage = "Explanation is required.")]

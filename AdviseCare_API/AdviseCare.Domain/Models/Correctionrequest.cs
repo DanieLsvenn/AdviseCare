@@ -9,6 +9,8 @@ public partial class Correctionrequest
 {
     public Guid CorrectionRequestId { get; set; }
 
+    public Guid ConsentPurposeId { get; set; }
+
     public Guid? ReviewedBy { get; set; }
 
     public Guid StudentDataId { get; set; }
@@ -28,6 +30,8 @@ public partial class Correctionrequest
     public DateTime SubmittedAt { get; set; }
 
     public string Status { get; set; }
+
+    public virtual Consentpurpose ConsentPurpose { get; set; }
 
     public virtual Account ReviewedByNavigation { get; set; }
 

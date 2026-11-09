@@ -1,11 +1,12 @@
 /* =====================================================================
    AdviseCare - Microsoft SQL Server database script
-   Source: AdviseCare_ERD_Tables.txt (45 tables)
+   Source: AdviseCare_ERD_Tables.txt (48 tables)
    1. Creates database AdviseCareDB if it does not exist
    2. Drops every AdviseCare table that exists, child tables first
-   3. Creates all 45 tables in dependency order (parents first)
+   3. Creates all 48 tables in dependency order (parents first)
    4. Seeds the 7 roles, one test account per role (password 123456) and mock data for every table
-      (68 accounts incl. 50 students, 25 data attributes, 48 cases, ...); student data values are loaded through the API import
+      (68 accounts incl. 50 students, 25 data attributes, 50 cases, early-support indicators, case feedback, ...);
+      student data values are loaded through the API import (AdviseCare_Mock_Data folder)
    WARNING: re-running this script deletes all data in these tables.
    Conventions: uuid -> UNIQUEIDENTIFIER (NEWSEQUENTIALID), date -> DATETIME2(3) in UTC,
    enum -> NVARCHAR(30) + CHECK constraint, bool -> BIT, FK delete rule = NO ACTION.
@@ -21,6 +22,8 @@ USE [AdviseCareDB];
 GO
 
 /* ---------- 2. Drop tables (children first) ---------- */
+-- Clean-up waypoint of 09/11/2026: only the 48 current tables are dropped here. When a later change renames or replaces a table,
+-- add its old name's DROP line below this list (children first), so older databases are still cleaned up.
 DROP TABLE IF EXISTS [dbo].[RESTOREOPERATIONS];
 DROP TABLE IF EXISTS [dbo].[BACKUPS];
 DROP TABLE IF EXISTS [dbo].[REPORTS];
@@ -38,27 +41,25 @@ DROP TABLE IF EXISTS [dbo].[EXTERNALSERVICES];
 DROP TABLE IF EXISTS [dbo].[SUPPORTGRANTS];
 DROP TABLE IF EXISTS [dbo].[INTERVENTIONS];
 DROP TABLE IF EXISTS [dbo].[CORRECTIONREQUESTS];
-DROP TABLE IF EXISTS [dbo].[STUDENTDATA];
-DROP TABLE IF EXISTS [dbo].[STUDENTINDICATORS]; -- older name of STUDENTDATA
-DROP TABLE IF EXISTS [dbo].[ATTRIBUTEKEYS];
+DROP TABLE IF EXISTS [dbo].[INDICATORFLAGS];
 DROP TABLE IF EXISTS [dbo].[REFERRALS];
 DROP TABLE IF EXISTS [dbo].[CASESTAGEHISTORIES];
 DROP TABLE IF EXISTS [dbo].[CASEMESSAGES];
-DROP TABLE IF EXISTS [dbo].[CASEADVISORUPDATES]; -- older name of CASEMESSAGES
 DROP TABLE IF EXISTS [dbo].[CASENOTES];
+DROP TABLE IF EXISTS [dbo].[CASEFEEDBACKS];
 DROP TABLE IF EXISTS [dbo].[CASECHANGEREQUESTS];
-DROP TABLE IF EXISTS [dbo].[ASSIGNMENTCHANGEREQUESTS]; -- older name of CASECHANGEREQUESTS
-DROP TABLE IF EXISTS [dbo].[ADVISORASSIGNMENTS]; -- removed
 DROP TABLE IF EXISTS [dbo].[CASE_ATTRIBUTE];
 DROP TABLE IF EXISTS [dbo].[CASES];
+DROP TABLE IF EXISTS [dbo].[INDICATORS];
 DROP TABLE IF EXISTS [dbo].[SUPPORTCATEGORIES];
 DROP TABLE IF EXISTS [dbo].[CONSENTPURPOSES];
 DROP TABLE IF EXISTS [dbo].[ACCOUNT_SUBJECT];
+DROP TABLE IF EXISTS [dbo].[STUDENTDATA];
+DROP TABLE IF EXISTS [dbo].[ATTRIBUTEKEYS];
 DROP TABLE IF EXISTS [dbo].[INGESTIONJOBS];
 DROP TABLE IF EXISTS [dbo].[INGESTIONSCHEDULES];
 DROP TABLE IF EXISTS [dbo].[DATASOURCES];
 DROP TABLE IF EXISTS [dbo].[SUBJECTS];
-DROP TABLE IF EXISTS [dbo].[INDICATORS]; -- merged into DATAATTRIBUTES
 DROP TABLE IF EXISTS [dbo].[DATAATTRIBUTES];
 DROP TABLE IF EXISTS [dbo].[ACADEMICTERMS];
 DROP TABLE IF EXISTS [dbo].[PROGRAMMES];
@@ -238,7 +239,7 @@ CREATE TABLE [dbo].[DATAATTRIBUTES] (
 );
 GO
 
--- 42. ATTRIBUTEKEYS
+-- 45. ATTRIBUTEKEYS
 CREATE TABLE [dbo].[ATTRIBUTEKEYS] (
     [attributeKeyId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ATTRIBUTEKEYS_attributeKeyId] DEFAULT NEWSEQUENTIALID(),
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
@@ -361,12 +362,13 @@ CREATE TABLE [dbo].[ACCOUNT_SUBJECT] (
 );
 GO
 
--- 33. CONSENTPURPOSES
+-- 36. CONSENTPURPOSES
 CREATE TABLE [dbo].[CONSENTPURPOSES] (
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTPURPOSES_consentPurposeId] DEFAULT NEWSEQUENTIALID(),
     [createdBy] UNIQUEIDENTIFIER NOT NULL,
     [description] NVARCHAR(MAX) NULL,
     [purposeName] NVARCHAR(255) NOT NULL,
+    [isForStatistics] BIT NOT NULL CONSTRAINT [DF_CONSENTPURPOSES_isForStatistics] DEFAULT 0,
     [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_CONSENTPURPOSES_status] DEFAULT N'inactive',
     CONSTRAINT [PK_CONSENTPURPOSES] PRIMARY KEY ([consentPurposeId]),
     CONSTRAINT [FK_CONSENTPURPOSES_createdBy] FOREIGN KEY ([createdBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
@@ -392,7 +394,34 @@ CREATE TABLE [dbo].[SUPPORTCATEGORIES] (
 );
 GO
 
--- 20. CASES
+-- 20. INDICATORS (early-support rules defined by the Data Protection Steward)
+CREATE TABLE [dbo].[INDICATORS] (
+    [indicatorId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_INDICATORS_indicatorId] DEFAULT NEWSEQUENTIALID(),
+    [createdBy] UNIQUEIDENTIFIER NOT NULL,
+    [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
+    [supportCategoryId] UNIQUEIDENTIFIER NOT NULL,
+    [createdAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_INDICATORS_createdAt] DEFAULT SYSUTCDATETIME(),
+    [description] NVARCHAR(1000) NULL,
+    [indicatorName] NVARCHAR(255) NOT NULL,
+    [thresholdValue] NVARCHAR(255) NOT NULL,
+    [updatedAt] DATETIME2(3) NULL,
+    [comparisonOperator] NVARCHAR(30) NOT NULL,
+    [priority] NVARCHAR(30) NOT NULL CONSTRAINT [DF_INDICATORS_priority] DEFAULT N'medium',
+    [severity] NVARCHAR(30) NOT NULL CONSTRAINT [DF_INDICATORS_severity] DEFAULT N'moderate',
+    [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_INDICATORS_status] DEFAULT N'draft',
+    CONSTRAINT [PK_INDICATORS] PRIMARY KEY ([indicatorId]),
+    CONSTRAINT [FK_INDICATORS_createdBy] FOREIGN KEY ([createdBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_INDICATORS_dataAttributeId] FOREIGN KEY ([dataAttributeId]) REFERENCES [dbo].[DATAATTRIBUTES]([dataAttributeId]),
+    CONSTRAINT [FK_INDICATORS_supportCategoryId] FOREIGN KEY ([supportCategoryId]) REFERENCES [dbo].[SUPPORTCATEGORIES]([supportCategoryId]),
+    CONSTRAINT [UQ_INDICATORS_indicatorName] UNIQUE ([indicatorName]),
+    CONSTRAINT [CK_INDICATORS_comparisonOperator] CHECK ([comparisonOperator] IN (N'lessThan', N'lessOrEqual', N'greaterThan', N'greaterOrEqual', N'equal', N'notEqual')),
+    CONSTRAINT [CK_INDICATORS_priority] CHECK ([priority] IN (N'low', N'medium', N'high', N'urgent')),
+    CONSTRAINT [CK_INDICATORS_severity] CHECK ([severity] IN (N'low', N'moderate', N'high', N'critical')),
+    CONSTRAINT [CK_INDICATORS_status] CHECK ([status] IN (N'draft', N'active', N'archived'))
+);
+GO
+
+-- 21. CASES
 CREATE TABLE [dbo].[CASES] (
     [caseId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASES_caseId] DEFAULT NEWSEQUENTIALID(),
     [advisorId] UNIQUEIDENTIFIER NULL,
@@ -418,7 +447,7 @@ CREATE TABLE [dbo].[CASES] (
 );
 GO
 
--- 21. CASE_ATTRIBUTE (insert-only: the data attributes a student shared with a support request, with an optional note each)
+-- 22. CASE_ATTRIBUTE (insert-only: the data attributes a student shared with a support request, with an optional note each)
 CREATE TABLE [dbo].[CASE_ATTRIBUTE] (
     [caseId] UNIQUEIDENTIFIER NOT NULL,
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
@@ -430,7 +459,7 @@ CREATE TABLE [dbo].[CASE_ATTRIBUTE] (
 );
 GO
 
--- 22. CASECHANGEREQUESTS
+-- 23. CASECHANGEREQUESTS
 CREATE TABLE [dbo].[CASECHANGEREQUESTS] (
     [caseChangeRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASECHANGEREQUESTS_caseChangeRequestId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -453,7 +482,25 @@ CREATE TABLE [dbo].[CASECHANGEREQUESTS] (
 );
 GO
 
--- 23. CASENOTES
+-- 24. CASEFEEDBACKS (one rating per closed case, given by its student)
+CREATE TABLE [dbo].[CASEFEEDBACKS] (
+    [caseFeedbackId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASEFEEDBACKS_caseFeedbackId] DEFAULT NEWSEQUENTIALID(),
+    [advisorId] UNIQUEIDENTIFIER NOT NULL,
+    [caseId] UNIQUEIDENTIFIER NOT NULL,
+    [createdBy] UNIQUEIDENTIFIER NOT NULL,
+    [comment] NVARCHAR(1000) NULL,
+    [createdAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_CASEFEEDBACKS_createdAt] DEFAULT SYSUTCDATETIME(),
+    [rating] INT NOT NULL,
+    CONSTRAINT [PK_CASEFEEDBACKS] PRIMARY KEY ([caseFeedbackId]),
+    CONSTRAINT [FK_CASEFEEDBACKS_advisorId] FOREIGN KEY ([advisorId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_CASEFEEDBACKS_caseId] FOREIGN KEY ([caseId]) REFERENCES [dbo].[CASES]([caseId]),
+    CONSTRAINT [FK_CASEFEEDBACKS_createdBy] FOREIGN KEY ([createdBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [UQ_CASEFEEDBACKS_caseId] UNIQUE ([caseId]),
+    CONSTRAINT [CK_CASEFEEDBACKS_rating] CHECK ([rating] BETWEEN 1 AND 5)
+);
+GO
+
+-- 25. CASENOTES
 CREATE TABLE [dbo].[CASENOTES] (
     [caseNoteId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASENOTES_caseNoteId] DEFAULT NEWSEQUENTIALID(),
     [authorId] UNIQUEIDENTIFIER NOT NULL,
@@ -468,7 +515,7 @@ CREATE TABLE [dbo].[CASENOTES] (
 );
 GO
 
--- 24. CASEMESSAGES (append-only two-way thread between the student of a case and its current advisor)
+-- 26. CASEMESSAGES (append-only two-way thread between the student of a case and its current advisor)
 CREATE TABLE [dbo].[CASEMESSAGES] (
     [caseMessageId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASEMESSAGES_caseMessageId] DEFAULT NEWSEQUENTIALID(),
     [authorId] UNIQUEIDENTIFIER NOT NULL,
@@ -485,7 +532,7 @@ CREATE INDEX [IX_CASEMESSAGES_caseId_createdAt]
     ON [dbo].[CASEMESSAGES] ([caseId], [createdAt]);
 GO
 
--- 25. CASESTAGEHISTORIES
+-- 27. CASESTAGEHISTORIES
 CREATE TABLE [dbo].[CASESTAGEHISTORIES] (
     [caseStageHistoryId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASESTAGEHISTORIES_caseStageHistoryId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -502,7 +549,39 @@ CREATE TABLE [dbo].[CASESTAGEHISTORIES] (
 );
 GO
 
--- 26. REFERRALS
+-- 28. INDICATORFLAGS (a student hitting an early-support rule in a term; the value itself is never stored here)
+CREATE TABLE [dbo].[INDICATORFLAGS] (
+    [indicatorFlagId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_INDICATORFLAGS_indicatorFlagId] DEFAULT NEWSEQUENTIALID(),
+    [caseId] UNIQUEIDENTIFIER NULL,
+    [indicatorId] UNIQUEIDENTIFIER NOT NULL,
+    [requestedBy] UNIQUEIDENTIFIER NULL,
+    [resolvedBy] UNIQUEIDENTIFIER NULL,
+    [studentDataId] UNIQUEIDENTIFIER NOT NULL,
+    [studentId] UNIQUEIDENTIFIER NOT NULL,
+    [termId] UNIQUEIDENTIFIER NOT NULL,
+    [dismissReason] NVARCHAR(1000) NULL,
+    [flaggedAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_INDICATORFLAGS_flaggedAt] DEFAULT SYSUTCDATETIME(),
+    [requestedAt] DATETIME2(3) NULL,
+    [resolvedAt] DATETIME2(3) NULL,
+    [priority] NVARCHAR(30) NOT NULL,
+    [severity] NVARCHAR(30) NOT NULL,
+    [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_INDICATORFLAGS_status] DEFAULT N'open',
+    CONSTRAINT [PK_INDICATORFLAGS] PRIMARY KEY ([indicatorFlagId]),
+    CONSTRAINT [FK_INDICATORFLAGS_caseId] FOREIGN KEY ([caseId]) REFERENCES [dbo].[CASES]([caseId]),
+    CONSTRAINT [FK_INDICATORFLAGS_indicatorId] FOREIGN KEY ([indicatorId]) REFERENCES [dbo].[INDICATORS]([indicatorId]),
+    CONSTRAINT [FK_INDICATORFLAGS_requestedBy] FOREIGN KEY ([requestedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_INDICATORFLAGS_resolvedBy] FOREIGN KEY ([resolvedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_INDICATORFLAGS_studentDataId] FOREIGN KEY ([studentDataId]) REFERENCES [dbo].[STUDENTDATA]([studentDataId]),
+    CONSTRAINT [FK_INDICATORFLAGS_studentId] FOREIGN KEY ([studentId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_INDICATORFLAGS_termId] FOREIGN KEY ([termId]) REFERENCES [dbo].[ACADEMICTERMS]([termId]),
+    CONSTRAINT [CK_INDICATORFLAGS_priority] CHECK ([priority] IN (N'low', N'medium', N'high', N'urgent')),
+    CONSTRAINT [CK_INDICATORFLAGS_severity] CHECK ([severity] IN (N'low', N'moderate', N'high', N'critical')),
+    CONSTRAINT [CK_INDICATORFLAGS_status] CHECK ([status] IN (N'open', N'requested', N'caseOpened', N'dismissed', N'cleared')),
+    CONSTRAINT [CK_INDICATORFLAGS_dismissReason] CHECK ([status] <> N'dismissed' OR [dismissReason] IS NOT NULL)
+);
+GO
+
+-- 29. REFERRALS
 CREATE TABLE [dbo].[REFERRALS] (
     [referralId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_REFERRALS_referralId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -522,9 +601,10 @@ CREATE TABLE [dbo].[REFERRALS] (
 );
 GO
 
--- 27. CORRECTIONREQUESTS
+-- 30. CORRECTIONREQUESTS
 CREATE TABLE [dbo].[CORRECTIONREQUESTS] (
     [correctionRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CORRECTIONREQUESTS_correctionRequestId] DEFAULT NEWSEQUENTIALID(),
+    [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
     [reviewedBy] UNIQUEIDENTIFIER NULL,
     [studentDataId] UNIQUEIDENTIFIER NOT NULL,
     [studentId] UNIQUEIDENTIFIER NOT NULL,
@@ -537,6 +617,7 @@ CREATE TABLE [dbo].[CORRECTIONREQUESTS] (
     [submittedAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_CORRECTIONREQUESTS_submittedAt] DEFAULT SYSUTCDATETIME(),
     [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_CORRECTIONREQUESTS_status] DEFAULT N'pending',
     CONSTRAINT [PK_CORRECTIONREQUESTS] PRIMARY KEY ([correctionRequestId]),
+    CONSTRAINT [FK_CORRECTIONREQUESTS_consentPurposeId] FOREIGN KEY ([consentPurposeId]) REFERENCES [dbo].[CONSENTPURPOSES]([consentPurposeId]),
     CONSTRAINT [FK_CORRECTIONREQUESTS_reviewedBy] FOREIGN KEY ([reviewedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
     CONSTRAINT [FK_CORRECTIONREQUESTS_studentDataId] FOREIGN KEY ([studentDataId]) REFERENCES [dbo].[STUDENTDATA]([studentDataId]),
     CONSTRAINT [FK_CORRECTIONREQUESTS_studentId] FOREIGN KEY ([studentId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
@@ -544,7 +625,7 @@ CREATE TABLE [dbo].[CORRECTIONREQUESTS] (
 );
 GO
 
--- 28. INTERVENTIONS
+-- 31. INTERVENTIONS
 CREATE TABLE [dbo].[INTERVENTIONS] (
     [interventionId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_INTERVENTIONS_interventionId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -563,7 +644,7 @@ CREATE TABLE [dbo].[INTERVENTIONS] (
 );
 GO
 
--- 29. SUPPORTGRANTS
+-- 32. SUPPORTGRANTS
 CREATE TABLE [dbo].[SUPPORTGRANTS] (
     [supportGrantId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_SUPPORTGRANTS_supportGrantId] DEFAULT NEWSEQUENTIALID(),
     [interventionId] UNIQUEIDENTIFIER NOT NULL,
@@ -577,7 +658,7 @@ CREATE TABLE [dbo].[SUPPORTGRANTS] (
 );
 GO
 
--- 30. EXTERNALSERVICES
+-- 33. EXTERNALSERVICES
 CREATE TABLE [dbo].[EXTERNALSERVICES] (
     [externalServiceId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_EXTERNALSERVICES_externalServiceId] DEFAULT NEWSEQUENTIALID(),
     [contactInfo] NVARCHAR(MAX) NULL,
@@ -588,7 +669,7 @@ CREATE TABLE [dbo].[EXTERNALSERVICES] (
 );
 GO
 
--- 31. EXTERNALREFERRALS
+-- 34. EXTERNALREFERRALS
 CREATE TABLE [dbo].[EXTERNALREFERRALS] (
     [externalReferralId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_EXTERNALREFERRALS_externalReferralId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -607,7 +688,7 @@ CREATE TABLE [dbo].[EXTERNALREFERRALS] (
 );
 GO
 
--- 32. ESCALATIONS
+-- 35. ESCALATIONS
 CREATE TABLE [dbo].[ESCALATIONS] (
     [escalationId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ESCALATIONS_escalationId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -625,7 +706,7 @@ CREATE TABLE [dbo].[ESCALATIONS] (
 );
 GO
 
--- 34. PURPOSE_ATTRIBUTE
+-- 37. PURPOSE_ATTRIBUTE
 CREATE TABLE [dbo].[PURPOSE_ATTRIBUTE] (
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
@@ -635,7 +716,7 @@ CREATE TABLE [dbo].[PURPOSE_ATTRIBUTE] (
 );
 GO
 
--- 35. CONSENTS
+-- 38. CONSENTS
 CREATE TABLE [dbo].[CONSENTS] (
     [consentId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTS_consentId] DEFAULT NEWSEQUENTIALID(),
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
@@ -653,7 +734,7 @@ CREATE TABLE [dbo].[CONSENTS] (
 );
 GO
 
--- 36. CONSENTHISTORIES
+-- 39. CONSENTHISTORIES
 CREATE TABLE [dbo].[CONSENTHISTORIES] (
     [consentHistoryId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTHISTORIES_consentHistoryId] DEFAULT NEWSEQUENTIALID(),
     [changedBy] UNIQUEIDENTIFIER NOT NULL,
@@ -669,7 +750,7 @@ CREATE TABLE [dbo].[CONSENTHISTORIES] (
 );
 GO
 
--- 37. CONSENTREQUESTS
+-- 40. CONSENTREQUESTS
 CREATE TABLE [dbo].[CONSENTREQUESTS] (
     [consentRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTREQUESTS_consentRequestId] DEFAULT NEWSEQUENTIALID(),
     [advisorId] UNIQUEIDENTIFIER NOT NULL,
@@ -689,7 +770,7 @@ CREATE TABLE [dbo].[CONSENTREQUESTS] (
 );
 GO
 
--- 38. ACCESSPOLICIES
+-- 41. ACCESSPOLICIES
 CREATE TABLE [dbo].[ACCESSPOLICIES] (
     [accessPolicyId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ACCESSPOLICIES_accessPolicyId] DEFAULT NEWSEQUENTIALID(),
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
@@ -704,7 +785,7 @@ CREATE TABLE [dbo].[ACCESSPOLICIES] (
 );
 GO
 
--- 39. ACCESSLOGS
+-- 42. ACCESSLOGS
 CREATE TABLE [dbo].[ACCESSLOGS] (
     [accessLogId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ACCESSLOGS_accessLogId] DEFAULT NEWSEQUENTIALID(),
     [accessorId] UNIQUEIDENTIFIER NOT NULL,
@@ -724,7 +805,7 @@ CREATE TABLE [dbo].[ACCESSLOGS] (
 );
 GO
 
--- 40. EMERGENCYACCESSREQUESTS
+-- 43. EMERGENCYACCESSREQUESTS
 CREATE TABLE [dbo].[EMERGENCYACCESSREQUESTS] (
     [emergencyAccessRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_EMERGENCYACCESSREQUESTS_emergencyAccessRequestId] DEFAULT NEWSEQUENTIALID(),
     [requestedBy] UNIQUEIDENTIFIER NOT NULL,
@@ -744,7 +825,7 @@ CREATE TABLE [dbo].[EMERGENCYACCESSREQUESTS] (
 );
 GO
 
--- 41. ERASUREREQUESTS
+-- 44. ERASUREREQUESTS
 CREATE TABLE [dbo].[ERASUREREQUESTS] (
     [erasureRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ERASUREREQUESTS_erasureRequestId] DEFAULT NEWSEQUENTIALID(),
     [attributeKeyId] UNIQUEIDENTIFIER NOT NULL,
@@ -761,7 +842,7 @@ CREATE TABLE [dbo].[ERASUREREQUESTS] (
 );
 GO
 
--- 43. REPORTS
+-- 46. REPORTS
 CREATE TABLE [dbo].[REPORTS] (
     [reportId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_REPORTS_reportId] DEFAULT NEWSEQUENTIALID(),
     [generatedBy] UNIQUEIDENTIFIER NOT NULL,
@@ -778,7 +859,7 @@ CREATE TABLE [dbo].[REPORTS] (
 );
 GO
 
--- 44. BACKUPS
+-- 47. BACKUPS
 CREATE TABLE [dbo].[BACKUPS] (
     [backupId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_BACKUPS_backupId] DEFAULT NEWSEQUENTIALID(),
     [createdBy] UNIQUEIDENTIFIER NULL,
@@ -791,7 +872,7 @@ CREATE TABLE [dbo].[BACKUPS] (
 );
 GO
 
--- 45. RESTOREOPERATIONS
+-- 48. RESTOREOPERATIONS
 CREATE TABLE [dbo].[RESTOREOPERATIONS] (
     [restoreOperationId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_RESTOREOPERATIONS_restoreOperationId] DEFAULT NEWSEQUENTIALID(),
     [backupId] UNIQUEIDENTIFIER NOT NULL,
@@ -819,18 +900,23 @@ CREATE UNIQUE INDEX [UX_CONSENTS_student_purpose_attribute_granted] ON [dbo].[CO
 CREATE UNIQUE INDEX [UX_ACCESSPOLICIES_role_purpose_live] ON [dbo].[ACCESSPOLICIES]([roleId], [consentPurposeId]) WHERE [status] IN (N'draft', N'active');
 -- fast lookup of the next row for point-in-time reconstruction (system time and valid time)
 CREATE INDEX [IX_STUDENTDATA_student_attribute_time] ON [dbo].[STUDENTDATA]([studentId], [dataAttributeId], [termId], [transactionFrom], [validFrom]);
+-- one open (or requested) flag per student, rule and term; resolved flags stay as history
+CREATE UNIQUE INDEX [UX_INDICATORFLAGS_student_indicator_term_open] ON [dbo].[INDICATORFLAGS]([studentId], [indicatorId], [termId]) WHERE [status] IN (N'open', N'requested');
+-- at most one active consent purpose is the statistics purpose used for cohort data
+CREATE UNIQUE INDEX [UX_CONSENTPURPOSES_statistics_active] ON [dbo].[CONSENTPURPOSES]([isForStatistics]) WHERE [isForStatistics] = 1 AND [status] = N'active';
 -- every value protected by one key, for erasure
 CREATE INDEX [IX_STUDENTDATA_attributeKeyId] ON [dbo].[STUDENTDATA]([attributeKeyId]) WHERE [attributeKeyId] IS NOT NULL;
 GO
 
 /* ---------- 4. Seed and mock data ---------- */
 -- Test accounts (password 123456 for all, BCrypt hash, same format as BCrypt.Net-Next HashPassword):
---   admin, steward, academicadvisor, wellbeingadvisor, welfareofficer, student, programmehead (@gmail.com) are kept clean:
---   no cases, consents or logs, so the steps in AdviseCare_API_Workflow_List.txt can still be run on them.
+--   admin, steward, academicadvisor, wellbeingadvisor, welfareofficer, programmehead (@gmail.com) are kept clean (no cases, consents or logs),
+--   so the steps in AdviseCare_API_Workflow_List.txt can still be run on them. student@gmail.com has its own mock data (QC-203):
+--   a closed wellbeing case with messages and feedback, an open PRN212 case, and 4 consents; it is also a full row in every mock import file.
 -- Mock accounts use the reserved domain example.com, so notification emails sent to them never reach a real person.
 -- Mock data covers every table. The only exception is encrypted values: STUDENTDATA values, their ATTRIBUTEKEYS and pending
 --   CORRECTIONREQUESTS need the API master key, so they are loaded with POST /api/StudentData/import and the mock_studentdata_*.xlsx files
---   (see AdviseCareTempFolder\AdviseCare_Mock_Data\AdviseCare_Mock_Data_Guide.txt). Seeded here without encryption: missing-value rows, erased rows and their destroyed keys,
+--   (see Documentation/AdviseCare_Mock_Data/AdviseCare_Mock_Data_Guide.txt). Seeded here without encryption: missing-value rows, erased rows and their destroyed keys,
 --   and correction requests decided before an erasure (values cleared).
 -- For local development only: delete or change these accounts before any real deployment.
 -- Reference date of the mock data: 2026-10-30 (Fall 2026 is the current term).
@@ -2620,13 +2706,14 @@ INSERT INTO [dbo].[ACCOUNT_SUBJECT] ([accountId], [subjectId], [assignedAt]) VAL
     (N'250FC00D-CF8C-5407-8DC4-B2EB407045AF', N'E1BC7A6B-8159-586E-A142-397E174A6F72', '2026-08-30T20:30:00.000');
 GO
 
--- CONSENTPURPOSES: 5 rows
-INSERT INTO [dbo].[CONSENTPURPOSES] ([consentPurposeId], [createdBy], [description], [purposeName], [status]) VALUES
-    (N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Help with study plans, course choices and academic warnings', N'Academic advising', N'active'),
-    (N'4972CD1E-F8EF-5C20-B644-74B82BE479FA', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Support for stress, living situation and balancing study with life', N'Wellbeing support', N'active'),
-    (N'67AE520A-3DED-5412-BF27-857BDA854CDC', N'528CDB05-F116-5E0F-B75D-9C9145204328', N'Tuition support, loans, grants and meal support', N'Financial support', N'active'),
-    (N'6B45F610-99BE-50EB-BB03-ED7BC348EBFA', N'528CDB05-F116-5E0F-B75D-9C9145204328', N'Internship and career advice (not launched yet)', N'Career guidance', N'inactive'),
-    (N'601E7F3A-3C05-5434-BA56-B724DE50F1C7', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Pilot study on student retention, finished in 2025', N'Retention pilot 2025', N'retired');
+-- CONSENTPURPOSES: 6 rows
+INSERT INTO [dbo].[CONSENTPURPOSES] ([consentPurposeId], [createdBy], [description], [purposeName], [isForStatistics], [status]) VALUES
+    (N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Help with study plans, course choices and academic warnings', N'Academic advising', 0, N'active'),
+    (N'4972CD1E-F8EF-5C20-B644-74B82BE479FA', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Support for stress, living situation and balancing study with life', N'Wellbeing support', 0, N'active'),
+    (N'67AE520A-3DED-5412-BF27-857BDA854CDC', N'528CDB05-F116-5E0F-B75D-9C9145204328', N'Tuition support, loans, grants and meal support', N'Financial support', 0, N'active'),
+    (N'6B45F610-99BE-50EB-BB03-ED7BC348EBFA', N'528CDB05-F116-5E0F-B75D-9C9145204328', N'Internship and career advice (not launched yet)', N'Career guidance', 0, N'inactive'),
+    (N'601E7F3A-3C05-5434-BA56-B724DE50F1C7', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Pilot study on student retention, finished in 2025', N'Retention pilot 2025', 0, N'retired'),
+    (N'EFACE243-70AE-5432-B720-B876774F523A', N'528CDB05-F116-5E0F-B75D-9C9145204328', N'Anonymised cohort averages per term and faculty; no single student is ever shown', N'Cohort statistics', 1, N'active');
 GO
 
 -- SUPPORTCATEGORIES: 8 rows
@@ -2917,10 +3004,10 @@ INSERT INTO [dbo].[REFERRALS] ([referralId], [caseId], [fromAccountId], [toAccou
 GO
 
 -- CORRECTIONREQUESTS: 3 rows
-INSERT INTO [dbo].[CORRECTIONREQUESTS] ([correctionRequestId], [reviewedBy], [studentDataId], [studentId], [currentValue], [decisionNotes], [explanation], [proposedValue], [decidedAt], [submittedAt], [status]) VALUES
-    (N'F0515294-0090-5D81-A7EB-705147513379', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'1E896264-C402-5DAA-8CC4-0C71063AA8DE', N'47BC1410-1752-5DB1-8BEC-C5D245F8CF42', NULL, N'Checked with the lecturer; corrected.', N'My gpa for Spring 2026 looks wrong; I have the confirmation email from the department.', NULL, '2026-05-06T04:58:00.000', '2026-05-05T04:00:00.000', N'approved'),
-    (N'8300B14D-CB29-57B1-8C17-A7F465F2D4A9', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'6287A725-F1DC-58F3-B152-AFA83341038E', N'1882A57F-ABEC-5E7F-94B6-F2A3B9CC8DCA', NULL, N'The source system confirms the original value.', N'My academic warning level for Spring 2026 looks wrong; I have the confirmation email from the department.', NULL, '2026-05-09T01:24:00.000', '2026-05-06T04:00:00.000', N'rejected'),
-    (N'99667576-9C9D-5B51-8278-E9082192F940', NULL, N'A1B91E2F-B4DF-5C2C-8645-04283B0DA829', N'B1C138EC-B5C5-5B43-98C2-F6C22AB42BB9', NULL, NULL, N'My credits attempted for Spring 2026 looks wrong; I have the confirmation email from the department.', NULL, '2026-05-09T16:13:00.000', '2026-05-07T04:00:00.000', N'withdrawn');
+INSERT INTO [dbo].[CORRECTIONREQUESTS] ([correctionRequestId], [consentPurposeId], [reviewedBy], [studentDataId], [studentId], [currentValue], [decisionNotes], [explanation], [proposedValue], [decidedAt], [submittedAt], [status]) VALUES
+    (N'F0515294-0090-5D81-A7EB-705147513379', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'1E896264-C402-5DAA-8CC4-0C71063AA8DE', N'47BC1410-1752-5DB1-8BEC-C5D245F8CF42', NULL, N'Checked with the lecturer; corrected.', N'My gpa for Spring 2026 looks wrong; I have the confirmation email from the department.', NULL, '2026-05-06T04:58:00.000', '2026-05-05T04:00:00.000', N'approved'),
+    (N'8300B14D-CB29-57B1-8C17-A7F465F2D4A9', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'6287A725-F1DC-58F3-B152-AFA83341038E', N'1882A57F-ABEC-5E7F-94B6-F2A3B9CC8DCA', NULL, N'The source system confirms the original value.', N'My academic warning level for Spring 2026 looks wrong; I have the confirmation email from the department.', NULL, '2026-05-09T01:24:00.000', '2026-05-06T04:00:00.000', N'rejected'),
+    (N'99667576-9C9D-5B51-8278-E9082192F940', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', NULL, N'A1B91E2F-B4DF-5C2C-8645-04283B0DA829', N'B1C138EC-B5C5-5B43-98C2-F6C22AB42BB9', NULL, NULL, N'My credits attempted for Spring 2026 looks wrong; I have the confirmation email from the department.', NULL, '2026-05-09T16:13:00.000', '2026-05-07T04:00:00.000', N'withdrawn');
 GO
 
 -- INTERVENTIONS: 9 rows
@@ -2973,7 +3060,7 @@ INSERT INTO [dbo].[ESCALATIONS] ([escalationId], [caseId], [escalatedBy], [escal
     (N'ABAFB264-682B-598E-970F-8D0E83C98250', N'5F791948-D278-5C9A-9F9D-263E4DAD50B1', N'173E79C0-75D6-53C2-BF4E-45C3CFA18845', N'5976E918-C022-5F18-81E7-911498BDD788', N'The student needs a decision only the Programme Head can make (deadline extension / study load).', N'Approved a reduced study load for this term.', '2026-10-12T15:09:00.000', N'responded');
 GO
 
--- PURPOSE_ATTRIBUTE: 33 rows
+-- PURPOSE_ATTRIBUTE: 37 rows
 INSERT INTO [dbo].[PURPOSE_ATTRIBUTE] ([consentPurposeId], [dataAttributeId]) VALUES
     (N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618'),
     (N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D'),
@@ -3007,7 +3094,11 @@ INSERT INTO [dbo].[PURPOSE_ATTRIBUTE] ([consentPurposeId], [dataAttributeId]) VA
     (N'601E7F3A-3C05-5434-BA56-B724DE50F1C7', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618'),
     (N'601E7F3A-3C05-5434-BA56-B724DE50F1C7', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D'),
     (N'601E7F3A-3C05-5434-BA56-B724DE50F1C7', N'191D4DDB-8B96-5FF7-90D9-D1150EBF9165'),
-    (N'601E7F3A-3C05-5434-BA56-B724DE50F1C7', N'8979B92E-3303-5EDF-A0C0-A925271D1BDD');
+    (N'601E7F3A-3C05-5434-BA56-B724DE50F1C7', N'8979B92E-3303-5EDF-A0C0-A925271D1BDD'),
+    (N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618'),
+    (N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D'),
+    (N'EFACE243-70AE-5432-B720-B876774F523A', N'90174836-5490-5A0B-8938-74C4036DE15C'),
+    (N'EFACE243-70AE-5432-B720-B876774F523A', N'580B177A-2FB3-508C-B05A-6D52E73B2E82');
 GO
 
 -- CONSENTS: 541 rows
@@ -4174,7 +4265,7 @@ INSERT INTO [dbo].[CONSENTREQUESTS] ([consentRequestId], [advisorId], [consentPu
     (N'5B03ECE8-E0EF-596A-8490-986C6524BE5D', N'A5B03782-6A13-5E03-87ED-615183409D49', N'4972CD1E-F8EF-5C20-B644-74B82BE479FA', N'580B177A-2FB3-508C-B05A-6D52E73B2E82', N'18E00002-DD2D-5D60-B09F-DF4052043065', N'I would like to see your accommodation status to understand your situation and offer the right support.', '2026-10-15T13:21:00.000', '2026-10-16T03:40:00.000', N'withdrawn');
 GO
 
--- ACCESSPOLICIES: 8 rows
+-- ACCESSPOLICIES: 9 rows
 INSERT INTO [dbo].[ACCESSPOLICIES] ([accessPolicyId], [consentPurposeId], [createdBy], [roleId], [status]) VALUES
     (N'B3689F75-4BEB-5778-9257-875C133360AF', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'3ED661F9-DC4F-5353-A6E9-C4224A296BF1', N'active'),
     (N'14088196-1D97-5B1B-86CD-5743A59864DE', N'4972CD1E-F8EF-5C20-B644-74B82BE479FA', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'BF84B96D-99E0-5D30-B618-F7B8196B56B5', N'active'),
@@ -4183,7 +4274,8 @@ INSERT INTO [dbo].[ACCESSPOLICIES] ([accessPolicyId], [consentPurposeId], [creat
     (N'62F5C965-D262-5928-9FF1-9BA42D8FA7E2', N'4972CD1E-F8EF-5C20-B644-74B82BE479FA', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'2843CEE3-64AE-5054-A8D9-A77F17AEB6F5', N'active'),
     (N'237CBF56-AA3F-5E0B-8399-605B5B7B82E2', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'7F0590EB-855C-5C59-A566-4C9A7E55C8AE', N'draft'),
     (N'21C37377-598C-540F-8DA9-36C2E7594979', N'601E7F3A-3C05-5434-BA56-B724DE50F1C7', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'3ED661F9-DC4F-5353-A6E9-C4224A296BF1', N'revoked'),
-    (N'EF52AFA8-86EF-507D-B647-A3E4FE5C237E', N'6B45F610-99BE-50EB-BB03-ED7BC348EBFA', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'3ED661F9-DC4F-5353-A6E9-C4224A296BF1', N'draft');
+    (N'EF52AFA8-86EF-507D-B647-A3E4FE5C237E', N'6B45F610-99BE-50EB-BB03-ED7BC348EBFA', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'3ED661F9-DC4F-5353-A6E9-C4224A296BF1', N'draft'),
+    (N'50DCE2DB-FE46-595F-9CD8-98F481B0312D', N'EFACE243-70AE-5432-B720-B876774F523A', N'528CDB05-F116-5E0F-B75D-9C9145204328', N'7F0590EB-855C-5C59-A566-4C9A7E55C8AE', N'active');
 GO
 
 -- ACCESSLOGS: 30 rows
@@ -4262,4 +4354,208 @@ GO
 INSERT INTO [dbo].[RESTOREOPERATIONS] ([restoreOperationId], [backupId], [executedBy], [integrityCheckResult], [executedAt], [status]) VALUES
     (N'00B6083E-8F05-577C-9EC2-13BF81580695', N'D124D2DE-DF29-5D54-B3C5-39C2CE899F6A', N'0529DF8B-CE3C-50A2-AAC5-93867739D5AA', N'All 43 tables present; row counts match the backup.', '2026-10-26T03:00:00.000', N'verified'),
     (N'3179192D-51A1-5376-B7FF-836B1454E50E', N'698CD2A5-0B14-583D-8854-A36C968D8ADC', N'D2AA2929-437D-50E2-A61D-40EA2B09010E', N'Checksum mismatch on CASENOTES; restore stopped.', '2026-10-29T03:00:00.000', N'failed');
+GO
+
+-- ---------- Added 09/11/2026: early-support indicators, the base test student's own mock data (QC-203), case feedback,
+-- cohort statistics consents. INDICATORFLAGS has no seed rows: flags are raised by the server from imported STUDENTDATA rows. ----------
+-- INDICATORS: 6 rows
+INSERT INTO [dbo].[INDICATORS] ([indicatorId], [createdBy], [dataAttributeId], [supportCategoryId], [createdAt], [description], [indicatorName], [thresholdValue], [updatedAt], [comparisonOperator], [priority], [severity], [status]) VALUES
+    (N'393D4C12-72DD-5104-A996-2E79A67F5E03', N'528CDB05-F116-5E0F-B75D-9C9145204328', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'475E4312-560B-5126-8257-CDA07E894E90', '2026-10-01T09:00:00.000', N'Attendance under 75% this term; at 80% absence a student may be barred from the final exam.', N'Low attendance', N'75', NULL, N'lessThan', N'high', N'high', N'active'),
+    (N'6C7DF3D0-DEDB-533C-8446-688371F28B25', N'528CDB05-F116-5E0F-B75D-9C9145204328', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'475E4312-560B-5126-8257-CDA07E894E90', '2026-10-02T09:00:00.000', N'Term GPA under 5.0 on the 10-point scale usually leads to an academic warning.', N'Very low GPA', N'5', NULL, N'lessThan', N'urgent', N'critical', N'active'),
+    (N'F2CEB274-9DAC-539C-8E23-D3941FE8F7F6', N'528CDB05-F116-5E0F-B75D-9C9145204328', N'90174836-5490-5A0B-8938-74C4036DE15C', N'F6423B2F-DFDE-52BF-93EE-4A16B7544CE6', '2026-10-03T09:00:00.000', N'Failing two or more subjects in one term delays graduation; a study plan helps.', N'Two or more failed subjects', N'2', NULL, N'greaterOrEqual', N'high', N'high', N'active'),
+    (N'78AEB8AB-71BA-5F87-8824-C33683CF3783', N'528CDB05-F116-5E0F-B75D-9C9145204328', N'397BDBD1-679B-52F4-B732-883F9FE0FD64', N'475E4312-560B-5126-8257-CDA07E894E90', '2026-10-04T09:00:00.000', N'The student is on academic probation this term.', N'Academic probation', N'probation', NULL, N'equal', N'urgent', N'critical', N'active'),
+    (N'806FE720-087F-5389-88D2-0B50825EA630', N'528CDB05-F116-5E0F-B75D-9C9145204328', N'64D9FABF-E417-5FEA-9FFD-F07AC749D566', N'9285B8AC-C465-5254-8A87-CDFF33BC5A07', '2026-10-05T09:00:00.000', N'A tuition payment of this term is past its due date; financial support may be needed.', N'Tuition overdue', N'true', NULL, N'equal', N'high', N'moderate', N'active'),
+    (N'BC63AC2E-611D-5F8F-96F2-4A3AA3CFE237', N'528CDB05-F116-5E0F-B75D-9C9145204328', N'B24AF0AD-E23B-58D0-93EC-AA6276AEC5D7', N'F6423B2F-DFDE-52BF-93EE-4A16B7544CE6', '2026-10-06T09:00:00.000', N'More than 5 late assignments this term (draft, not raising flags yet).', N'Many late submissions', N'5', NULL, N'greaterThan', N'medium', N'low', N'draft');
+GO
+
+-- CASES: 2 rows
+INSERT INTO [dbo].[CASES] ([caseId], [advisorId], [openedBy], [studentId], [subjectId], [supportCategoryId], [requestReason], [closedAt], [openedAt], [currentStage], [priority], [status]) VALUES
+    (N'80683F7A-2AAB-52F3-BB09-725101506CE2', N'A5B03782-6A13-5E03-87ED-615183409D49', N'6341514A-BC92-5729-9218-7DA322CDCD4E', N'6341514A-BC92-5729-9218-7DA322CDCD4E', NULL, N'7A063A85-F134-59F9-A48F-32806169DA7C', N'I work 25 hours a week and keep falling asleep in class; I need help balancing work and study.', '2026-10-10T10:15:00.000', '2026-09-20T08:30:00.000', N'closed', N'medium', N'closed'),
+    (N'1DF613F6-73A6-5534-80B9-F2BF0ACAF91A', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'6341514A-BC92-5729-9218-7DA322CDCD4E', N'6341514A-BC92-5729-9218-7DA322CDCD4E', N'DB6EAD68-A440-5243-A770-B23709430D78', N'FDD156EB-5B67-5C5B-8E4E-D8F7FE0CE031', N'I want to prepare for the PRN212 final exam; my progress tests were weak.', NULL, '2026-10-22T14:05:00.000', N'contacted', N'medium', N'open');
+GO
+
+-- CASESTAGEHISTORIES: 8 rows
+INSERT INTO [dbo].[CASESTAGEHISTORIES] ([caseStageHistoryId], [caseId], [changedBy], [reason], [changedAt], [fromStage], [toStage]) VALUES
+    (N'B0369481-85D3-52B3-A4BF-54B7A9C2B7A9', N'80683F7A-2AAB-52F3-BB09-725101506CE2', N'6341514A-BC92-5729-9218-7DA322CDCD4E', N'Support requested by the student', '2026-09-20T08:30:00.000', N'pending', N'pending'),
+    (N'C15EF129-96A6-5B13-A66E-D8F14F4E8456', N'80683F7A-2AAB-52F3-BB09-725101506CE2', N'7FD2CFD6-AE46-5A8D-9FEF-A4803C32687F', N'Matched to a wellbeing advisor', '2026-09-21T09:00:00.000', N'pending', N'assigned'),
+    (N'F4F7A9A1-15AD-5776-AEF4-48383412570B', N'80683F7A-2AAB-52F3-BB09-725101506CE2', N'A5B03782-6A13-5E03-87ED-615183409D49', N'Met the student online', '2026-09-24T15:00:00.000', N'assigned', N'contacted'),
+    (N'5064CDF7-EFCC-56AA-AE6C-CBE7938FA6E0', N'80683F7A-2AAB-52F3-BB09-725101506CE2', N'A5B03782-6A13-5E03-87ED-615183409D49', N'Agreed a weekly schedule; checking how it goes', '2026-09-30T10:00:00.000', N'contacted', N'followUp'),
+    (N'1AE15D29-03E8-5F42-8022-C94037D5ECAC', N'80683F7A-2AAB-52F3-BB09-725101506CE2', N'A5B03782-6A13-5E03-87ED-615183409D49', N'Schedule works, the student sleeps better and attends class', '2026-10-10T10:15:00.000', N'followUp', N'closed'),
+    (N'0075715B-9AD8-50D6-9A13-B72D4326865B', N'1DF613F6-73A6-5534-80B9-F2BF0ACAF91A', N'6341514A-BC92-5729-9218-7DA322CDCD4E', N'Support requested by the student', '2026-10-22T14:05:00.000', N'pending', N'pending'),
+    (N'D56A036A-5C4C-558D-8DB6-8F05C98AFE0E', N'1DF613F6-73A6-5534-80B9-F2BF0ACAF91A', N'7FD2CFD6-AE46-5A8D-9FEF-A4803C32687F', N'Matched to the PRN212 specialist', '2026-10-23T08:40:00.000', N'pending', N'assigned'),
+    (N'4CDAA445-1169-533E-BDB2-B6BAA3A81359', N'1DF613F6-73A6-5534-80B9-F2BF0ACAF91A', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'First meeting in room 203', '2026-10-27T13:30:00.000', N'assigned', N'contacted');
+GO
+
+-- CASE_ATTRIBUTE: 4 rows
+INSERT INTO [dbo].[CASE_ATTRIBUTE] ([caseId], [dataAttributeId], [shareReason], [sharedAt]) VALUES
+    (N'80683F7A-2AAB-52F3-BB09-725101506CE2', N'0507C9AE-1465-5719-AFBA-E95EF0945680', N'I work evenings at a cafe, 25 hours a week.', '2026-09-20T08:30:00.000'),
+    (N'80683F7A-2AAB-52F3-BB09-725101506CE2', N'142CB05A-56FB-5746-8F2D-89C80B66A8FE', NULL, '2026-09-20T08:30:00.000'),
+    (N'1DF613F6-73A6-5534-80B9-F2BF0ACAF91A', N'B24AF0AD-E23B-58D0-93EC-AA6276AEC5D7', N'Most late submissions were PRN212 labs.', '2026-10-22T14:05:00.000'),
+    (N'1DF613F6-73A6-5534-80B9-F2BF0ACAF91A', N'6209A1F0-147F-5214-89AE-BA87651F785C', NULL, '2026-10-22T14:05:00.000');
+GO
+
+-- CONSENTS: 4 rows
+INSERT INTO [dbo].[CONSENTS] ([consentId], [consentPurposeId], [dataAttributeId], [studentId], [expiresAt], [grantedAt], [withdrawnAt], [status]) VALUES
+    (N'C1176975-7D5D-5090-B96E-8CFD0467F067', N'4972CD1E-F8EF-5C20-B644-74B82BE479FA', N'0507C9AE-1465-5719-AFBA-E95EF0945680', N'6341514A-BC92-5729-9218-7DA322CDCD4E', NULL, '2026-09-20T08:30:00.000', NULL, N'granted'),
+    (N'68230151-FCCA-50EA-8BAC-0E1346341B1F', N'4972CD1E-F8EF-5C20-B644-74B82BE479FA', N'142CB05A-56FB-5746-8F2D-89C80B66A8FE', N'6341514A-BC92-5729-9218-7DA322CDCD4E', NULL, '2026-09-20T08:30:00.000', NULL, N'granted'),
+    (N'E3C5D07B-3783-5035-8736-306031CEC342', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'B24AF0AD-E23B-58D0-93EC-AA6276AEC5D7', N'6341514A-BC92-5729-9218-7DA322CDCD4E', NULL, '2026-10-22T14:05:00.000', NULL, N'granted'),
+    (N'3FE960E3-6CC7-5C95-9A75-928EEE3E09B7', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'6209A1F0-147F-5214-89AE-BA87651F785C', N'6341514A-BC92-5729-9218-7DA322CDCD4E', NULL, '2026-10-22T14:05:00.000', NULL, N'granted');
+GO
+
+-- CONSENTHISTORIES: 4 rows
+INSERT INTO [dbo].[CONSENTHISTORIES] ([consentHistoryId], [changedBy], [consentId], [changedAt], [newStatus], [previousStatus]) VALUES
+    (N'563807F8-ACB5-5C6F-BD0E-55488427C2EC', N'6341514A-BC92-5729-9218-7DA322CDCD4E', N'C1176975-7D5D-5090-B96E-8CFD0467F067', '2026-09-20T08:30:00.000', N'granted', NULL),
+    (N'0024E9D4-CB87-59F0-8BA5-8E081B6A0C65', N'6341514A-BC92-5729-9218-7DA322CDCD4E', N'68230151-FCCA-50EA-8BAC-0E1346341B1F', '2026-09-20T08:30:00.000', N'granted', NULL),
+    (N'421D06CD-6F56-5F3A-9271-706F2FC2A022', N'6341514A-BC92-5729-9218-7DA322CDCD4E', N'E3C5D07B-3783-5035-8736-306031CEC342', '2026-10-22T14:05:00.000', N'granted', NULL),
+    (N'3CC3CF0C-1BDC-58EC-AAA3-76A8B687A567', N'6341514A-BC92-5729-9218-7DA322CDCD4E', N'3FE960E3-6CC7-5C95-9A75-928EEE3E09B7', '2026-10-22T14:05:00.000', N'granted', NULL);
+GO
+
+-- CASEMESSAGES: 6 rows
+INSERT INTO [dbo].[CASEMESSAGES] ([caseMessageId], [authorId], [caseId], [messageText], [createdAt]) VALUES
+    (N'4A908FCC-6308-5A04-8193-098601EF852F', N'A5B03782-6A13-5E03-87ED-615183409D49', N'80683F7A-2AAB-52F3-BB09-725101506CE2', N'Hi, I read your request. Could we meet online on Thursday at 3 pm?', '2026-09-23T09:10:00.000'),
+    (N'181F6DDA-ABAE-5D09-8A10-547095514058', N'6341514A-BC92-5729-9218-7DA322CDCD4E', N'80683F7A-2AAB-52F3-BB09-725101506CE2', N'Thursday 3 pm works for me, thank you.', '2026-09-23T11:42:00.000'),
+    (N'F71BC706-B6A8-55D9-8240-D757B39CDF91', N'A5B03782-6A13-5E03-87ED-615183409D49', N'80683F7A-2AAB-52F3-BB09-725101506CE2', N'As agreed: no shifts after 10 pm on weekdays. Tell me next week how it goes.', '2026-09-24T15:40:00.000'),
+    (N'4D2EC4ED-3952-562A-92DC-8D40986E73CA', N'6341514A-BC92-5729-9218-7DA322CDCD4E', N'80683F7A-2AAB-52F3-BB09-725101506CE2', N'It is going well, I attended every class this week.', '2026-10-08T19:05:00.000'),
+    (N'1176192B-B165-5ED9-BB49-29EC49752CE2', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'1DF613F6-73A6-5534-80B9-F2BF0ACAF91A', N'Let us meet in room 203 on Tuesday 1:30 pm; bring your last two progress tests.', '2026-10-24T08:15:00.000'),
+    (N'F79FEA2B-B45D-54DE-920F-DC7E726BE3EC', N'6341514A-BC92-5729-9218-7DA322CDCD4E', N'1DF613F6-73A6-5534-80B9-F2BF0ACAF91A', N'I will be there, thanks.', '2026-10-24T09:02:00.000');
+GO
+
+-- CASEFEEDBACKS: 8 rows
+INSERT INTO [dbo].[CASEFEEDBACKS] ([caseFeedbackId], [advisorId], [caseId], [createdBy], [comment], [createdAt], [rating]) VALUES
+    (N'90445CC0-6F34-590D-9A20-8B3603D11C4D', N'A5B03782-6A13-5E03-87ED-615183409D49', N'80683F7A-2AAB-52F3-BB09-725101506CE2', N'6341514A-BC92-5729-9218-7DA322CDCD4E', N'Very understanding, the schedule really helped.', '2026-10-11T08:00:00.000', 5),
+    (N'D18FF2CE-88AA-5FC2-90C0-C22711877575', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'B540A3B5-129A-55ED-87CD-63E5E46A8E56', N'176E3B63-26B2-534F-A2A2-BBF29573221C', N'Clear advice and quick replies.', '2026-09-28T23:57:00.000', 5),
+    (N'33AF94D0-836F-5442-B703-62040B1908B8', N'E7101E7D-9CD9-553E-B5D9-2F0C7DC19032', N'C167293A-A4BA-59A3-90D9-9EAC8A66968C', N'89C502B7-7FE3-5D4F-A1B2-D8EE86A7497D', N'Helpful, but the first meeting took a while to arrange.', '2026-09-26T00:11:00.000', 4),
+    (N'FA861CA4-F128-5C62-8443-198C59EE60EF', N'A5B03782-6A13-5E03-87ED-615183409D49', N'32CA96E0-43AA-5C1E-85BF-C0BB87A4B792', N'1C541D54-7A4F-5104-8EA4-8892F19A856F', NULL, '2026-09-24T12:19:00.000', 4),
+    (N'985DEC83-D6D0-58C5-815C-558B68B6B312', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'6E3AAD12-9C99-5EC2-B467-8DB05CA120A7', N'A6453EAD-2A4E-580A-860C-5B161EA57E0C', N'Explained the warning rules well.', '2026-10-25T23:53:00.000', 5),
+    (N'CAA3F174-FF9F-51C3-9FF4-14A4A6ED118E', N'A6E940DF-7FE9-551A-A267-C50775E7BA4E', N'C65E2EA6-74F9-5629-B4EA-590FBA1136FA', N'ED3100B5-1F7B-5FB0-A2BA-AC3FFB606846', N'Good follow-up after the meeting.', '2026-10-05T14:55:00.000', 4),
+    (N'4BB54341-2013-5A2F-AFD4-D1860BC7A046', N'437A2A74-E052-50DE-9C3D-994B084CFF40', N'95F5FA1F-D09A-55D8-A19C-28049CF13200', N'E0AB5662-23FF-51CA-87C3-F217E57D69EC', NULL, '2026-10-26T21:09:00.000', 3),
+    (N'BB88F0BE-EE28-5B7D-A613-1E91C46B8B6B', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'51694D26-7E9D-5436-BAD5-F980F6C0695C', N'F6DE86F1-4DBC-534E-8447-5918824BFC41', N'Could have been more specific about next steps.', '2026-10-08T13:03:00.000', 3);
+GO
+
+-- CONSENTS: 60 rows
+INSERT INTO [dbo].[CONSENTS] ([consentId], [consentPurposeId], [dataAttributeId], [studentId], [expiresAt], [grantedAt], [withdrawnAt], [status]) VALUES
+    (N'45FA3CFC-0BD5-512A-99DF-0566DD4DC8C1', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'1C541D54-7A4F-5104-8EA4-8892F19A856F', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'1A26CD08-DDE5-554B-90D1-12EA97C2E268', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'1C541D54-7A4F-5104-8EA4-8892F19A856F', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'A1090A0B-5C49-5A01-8E4E-E1AB1D0E5971', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'ED3100B5-1F7B-5FB0-A2BA-AC3FFB606846', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'0D4F83E5-5455-5117-AB7F-9DEF14AF8082', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'ED3100B5-1F7B-5FB0-A2BA-AC3FFB606846', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'564B41D2-780B-5BA6-9722-79EED8537187', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'2ED515CF-C579-52D3-B1F5-7A18F59244E7', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'BCF3D71A-E41F-5A4A-8C86-09D147E5BF98', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'2ED515CF-C579-52D3-B1F5-7A18F59244E7', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'A25D94C6-E12F-5835-8D9A-21A42FFA9F2B', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'5F6292D7-2B27-571A-B3A8-F1250BAACDC0', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'2CAB8BF1-CA17-5ECF-A741-D0C8F4861932', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'5F6292D7-2B27-571A-B3A8-F1250BAACDC0', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'267C1E19-01F1-5F5B-BA4E-4B8D673A9264', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'951EE941-A532-502C-9301-90A23D8A7A80', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'413077A9-38F9-561F-9185-A48064B80DB0', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'951EE941-A532-502C-9301-90A23D8A7A80', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'A4ECB021-D9EB-5386-9688-2B1F8C9CEF72', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'18E00002-DD2D-5D60-B09F-DF4052043065', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'8546035B-8986-5B3C-8B16-740827AC88E7', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'18E00002-DD2D-5D60-B09F-DF4052043065', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'4B3A5185-9270-576E-8D01-5CCA1FE7E848', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'47BC1410-1752-5DB1-8BEC-C5D245F8CF42', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'58C0A00A-F24A-5940-98AD-C54CDC56CB28', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'47BC1410-1752-5DB1-8BEC-C5D245F8CF42', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'1DBDB7BF-8D3E-5790-8523-BA9C939ED69A', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'F73E4316-7630-5CF6-91C1-E5623609B16B', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'1FC1A9D7-AAF1-54E9-BC85-E9CFE4B77506', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'F73E4316-7630-5CF6-91C1-E5623609B16B', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'B4AD989B-4D63-56A1-8805-447366F9A545', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'F6DE86F1-4DBC-534E-8447-5918824BFC41', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'F325961E-DC49-5E82-B438-C8CBD3A8D1F2', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'F6DE86F1-4DBC-534E-8447-5918824BFC41', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'33F9C6E3-F23F-5674-B0FA-185040F55840', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'382B4E6F-B7A5-5BD6-A2DF-3154979BFF9F', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'94960A23-B604-5BB6-96B8-D14E95466352', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'382B4E6F-B7A5-5BD6-A2DF-3154979BFF9F', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'75996463-4290-5C8D-A58D-E680C593C1E3', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'C4611D54-864C-5396-8F65-AE11F4F76A4E', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'039521C4-66AF-530B-A1CF-C3551E6EC758', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'C4611D54-864C-5396-8F65-AE11F4F76A4E', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'4A411D37-1CF1-5CCC-9BDB-3D21995F0C4E', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'176E3B63-26B2-534F-A2A2-BBF29573221C', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'51238303-731D-58B5-8BE8-56759C251CC5', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'176E3B63-26B2-534F-A2A2-BBF29573221C', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'34E0C475-3782-5323-B849-B23458421721', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'35DA158D-C863-5DF2-957E-430F79EEC833', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'331CA0B5-817B-5C64-A66D-5E1FACFDDF80', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'35DA158D-C863-5DF2-957E-430F79EEC833', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'55BE61E8-C4B9-5DA1-B886-0A3688CE541A', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'DBA648D0-A2A9-5287-B3E7-6A101D7DD67F', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'55337C8B-075A-5B9D-B067-8A12F4E35A2F', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'DBA648D0-A2A9-5287-B3E7-6A101D7DD67F', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'07AD0EEA-5E21-526B-AE52-D7B77AC74D98', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'738287A1-757A-507E-9241-5A5FDA494D68', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'B00B7657-EAAA-552C-95A3-AE1FEF82753B', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'738287A1-757A-507E-9241-5A5FDA494D68', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'07945BF1-B974-5AD6-85C6-C0F669535E3B', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'C84874F4-7EB4-58D6-9C21-44D6CE74C456', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'FA525A38-1C81-50FC-9222-81A62040E6BD', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'C84874F4-7EB4-58D6-9C21-44D6CE74C456', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'0A88A365-4CA5-5810-AC72-8E08CEBC1749', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'F5E09A72-52C3-5667-8D21-CD9A7A7B33BE', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'CDF96389-2DE9-5D5B-BAF1-6295A1A968CA', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'F5E09A72-52C3-5667-8D21-CD9A7A7B33BE', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'58A0174E-AC64-5035-A99D-E75C78C2BF00', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'88ABDB2A-4283-5F5A-9FB8-F767513A7186', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'01F75430-7A8C-5FCC-92FC-FF68862B8FE2', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'88ABDB2A-4283-5F5A-9FB8-F767513A7186', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'2577D043-2893-5284-BD67-FC0B26B1D673', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'36C02202-E321-5FDF-9816-276555DC567A', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'BD24ED24-0F53-553E-A65C-B897E84B07CC', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'36C02202-E321-5FDF-9816-276555DC567A', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'671EAD01-322F-50E0-A092-5771C0E36726', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'37FE0227-4AB0-5068-B5BA-47C4F9914D33', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'F08D369A-81B7-5BF2-BAFC-810778A589AC', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'37FE0227-4AB0-5068-B5BA-47C4F9914D33', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'D62D6100-087C-5820-AE95-3D4654DBD6EA', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'A6453EAD-2A4E-580A-860C-5B161EA57E0C', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'4B28CBF5-7A27-504E-ADBD-BD908AB8D72C', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'A6453EAD-2A4E-580A-860C-5B161EA57E0C', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'FD5E68E1-292F-580B-9908-FE48E2F012B1', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'A7DA87F6-F4A3-5FFA-B1E2-ECD98AF137FB', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'10C756F4-D6B3-5776-B33F-8FC33B8899DB', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'A7DA87F6-F4A3-5FFA-B1E2-ECD98AF137FB', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'0FD8D8E9-8F53-54B8-B116-FC24AA0A59C4', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'0028258F-059D-5492-8FB7-94C431782EA7', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'427052F3-3D2C-5364-B716-1E19A59B86F1', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'0028258F-059D-5492-8FB7-94C431782EA7', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'D1CE67EE-6EDE-594B-9D96-D4CF1D7FF474', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'32E850CB-8C33-5D2F-BB28-12A1FF53C4CA', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'542B60D6-0792-5A05-AFDA-2CFF0A2474A3', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'32E850CB-8C33-5D2F-BB28-12A1FF53C4CA', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'C04F01C8-2622-5206-AFFA-2A70FB5A024E', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'9359E086-1F1B-5737-A8B3-0EB7C256FDB2', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'9B50BD88-E322-5D69-8FF6-C870492A6691', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'9359E086-1F1B-5737-A8B3-0EB7C256FDB2', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'7584E332-98C0-50F0-95C3-B07DFDF1FBB9', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'6BAC242E-558C-5F5B-8B2B-A0CCD5CF8A16', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'C32BDCEF-8BB4-5EBF-9587-11DBE39508F3', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'6BAC242E-558C-5F5B-8B2B-A0CCD5CF8A16', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'7F83C8DC-3AAA-5A54-8309-91BDB45D5C92', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'333108A4-2CA8-5656-8B73-744E6579CD8C', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'213C3222-2008-5828-88CD-7210B14D1EA2', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'333108A4-2CA8-5656-8B73-744E6579CD8C', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'A4205D5C-D0E6-51D7-BDB7-032861AD8B10', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'B1C138EC-B5C5-5B43-98C2-F6C22AB42BB9', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'FB046FAF-CAAE-5495-973F-C992D7AB66CE', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'B1C138EC-B5C5-5B43-98C2-F6C22AB42BB9', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'615D8703-F3E1-5D78-81B4-1D7C977EDC2B', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'108C23D8-9F70-5548-AFF5-BA08C5A34D11', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'0F42A1CA-6FAB-58B3-A455-15C7930295AF', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'108C23D8-9F70-5548-AFF5-BA08C5A34D11', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'F5594397-4E22-57A9-BED7-3A8133CB0FE8', N'EFACE243-70AE-5432-B720-B876774F523A', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'1882A57F-ABEC-5E7F-94B6-F2A3B9CC8DCA', NULL, '2026-09-15T10:00:00.000', NULL, N'granted'),
+    (N'4B517086-9D50-5140-809A-4803E24BB85C', N'EFACE243-70AE-5432-B720-B876774F523A', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'1882A57F-ABEC-5E7F-94B6-F2A3B9CC8DCA', NULL, '2026-09-15T10:00:00.000', NULL, N'granted');
+GO
+
+-- CONSENTHISTORIES: 60 rows
+INSERT INTO [dbo].[CONSENTHISTORIES] ([consentHistoryId], [changedBy], [consentId], [changedAt], [newStatus], [previousStatus]) VALUES
+    (N'DB6ED1E0-B019-5B26-AEA2-79E3A3F580A2', N'1C541D54-7A4F-5104-8EA4-8892F19A856F', N'45FA3CFC-0BD5-512A-99DF-0566DD4DC8C1', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'581A6B01-0E08-57BE-8FF0-29E3AE030820', N'1C541D54-7A4F-5104-8EA4-8892F19A856F', N'1A26CD08-DDE5-554B-90D1-12EA97C2E268', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'846999D8-1775-5A47-828C-6672F6437C8A', N'ED3100B5-1F7B-5FB0-A2BA-AC3FFB606846', N'A1090A0B-5C49-5A01-8E4E-E1AB1D0E5971', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'C466DCFE-ECCD-51FA-80EE-C71C36D949FC', N'ED3100B5-1F7B-5FB0-A2BA-AC3FFB606846', N'0D4F83E5-5455-5117-AB7F-9DEF14AF8082', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'B4A4E9DC-4CB1-5A08-9BA0-785B375C0A8F', N'2ED515CF-C579-52D3-B1F5-7A18F59244E7', N'564B41D2-780B-5BA6-9722-79EED8537187', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'642C1650-DBDC-57FB-BB1E-EA2DB40E170C', N'2ED515CF-C579-52D3-B1F5-7A18F59244E7', N'BCF3D71A-E41F-5A4A-8C86-09D147E5BF98', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'5A034567-2D84-5392-8040-C81B28943975', N'5F6292D7-2B27-571A-B3A8-F1250BAACDC0', N'A25D94C6-E12F-5835-8D9A-21A42FFA9F2B', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'65F46E31-78B9-5A83-A20E-BF23CD3D1B17', N'5F6292D7-2B27-571A-B3A8-F1250BAACDC0', N'2CAB8BF1-CA17-5ECF-A741-D0C8F4861932', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'F5C1CB98-0B22-5BA5-AF8A-7F04F412FA62', N'951EE941-A532-502C-9301-90A23D8A7A80', N'267C1E19-01F1-5F5B-BA4E-4B8D673A9264', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'AAA4E7C7-3A17-5619-AA45-E31B254DC4E5', N'951EE941-A532-502C-9301-90A23D8A7A80', N'413077A9-38F9-561F-9185-A48064B80DB0', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'4B9F84B6-8E2C-5538-8CF7-032C2694E69E', N'18E00002-DD2D-5D60-B09F-DF4052043065', N'A4ECB021-D9EB-5386-9688-2B1F8C9CEF72', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'309E7A50-5933-56B9-94A4-B687BEA80A05', N'18E00002-DD2D-5D60-B09F-DF4052043065', N'8546035B-8986-5B3C-8B16-740827AC88E7', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'7A9D59EA-3F8A-5125-B5DA-D929D54C0FA8', N'47BC1410-1752-5DB1-8BEC-C5D245F8CF42', N'4B3A5185-9270-576E-8D01-5CCA1FE7E848', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'AF66E8C0-0CD8-57C6-804D-0493FC69CB37', N'47BC1410-1752-5DB1-8BEC-C5D245F8CF42', N'58C0A00A-F24A-5940-98AD-C54CDC56CB28', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'BCAFE1DA-591C-56AA-9A0C-A10E56345D92', N'F73E4316-7630-5CF6-91C1-E5623609B16B', N'1DBDB7BF-8D3E-5790-8523-BA9C939ED69A', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'BFA7A8F5-94D5-594F-9662-0DC298996E26', N'F73E4316-7630-5CF6-91C1-E5623609B16B', N'1FC1A9D7-AAF1-54E9-BC85-E9CFE4B77506', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'652BCC1A-9E98-5BAB-9117-4BFED082EDA4', N'F6DE86F1-4DBC-534E-8447-5918824BFC41', N'B4AD989B-4D63-56A1-8805-447366F9A545', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'32825F98-D00B-509F-89D8-D91BFD60772A', N'F6DE86F1-4DBC-534E-8447-5918824BFC41', N'F325961E-DC49-5E82-B438-C8CBD3A8D1F2', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'9E2AA538-6194-5749-B6ED-C21B21762865', N'382B4E6F-B7A5-5BD6-A2DF-3154979BFF9F', N'33F9C6E3-F23F-5674-B0FA-185040F55840', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'5010B934-83D7-564E-97A1-ED8CB2E88C72', N'382B4E6F-B7A5-5BD6-A2DF-3154979BFF9F', N'94960A23-B604-5BB6-96B8-D14E95466352', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'95473AAD-C071-54D7-A2AD-E7D3EBDF8A52', N'C4611D54-864C-5396-8F65-AE11F4F76A4E', N'75996463-4290-5C8D-A58D-E680C593C1E3', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'83283646-CDE8-5C60-AB83-C4A005B6068A', N'C4611D54-864C-5396-8F65-AE11F4F76A4E', N'039521C4-66AF-530B-A1CF-C3551E6EC758', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'F33D60C3-13D1-56D8-B398-C52E86C4254A', N'176E3B63-26B2-534F-A2A2-BBF29573221C', N'4A411D37-1CF1-5CCC-9BDB-3D21995F0C4E', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'5B9925C3-3526-54E0-9946-7B75836E09DD', N'176E3B63-26B2-534F-A2A2-BBF29573221C', N'51238303-731D-58B5-8BE8-56759C251CC5', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'0DD17850-235E-5E4F-97DC-D747DB0ED221', N'35DA158D-C863-5DF2-957E-430F79EEC833', N'34E0C475-3782-5323-B849-B23458421721', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'F068B52B-30F9-50A8-94ED-54E4603904B2', N'35DA158D-C863-5DF2-957E-430F79EEC833', N'331CA0B5-817B-5C64-A66D-5E1FACFDDF80', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'0DE56A3C-33AA-516B-962D-90EAC47F88DB', N'DBA648D0-A2A9-5287-B3E7-6A101D7DD67F', N'55BE61E8-C4B9-5DA1-B886-0A3688CE541A', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'2B59F09E-D77C-5213-96E0-D7F7DCD76D01', N'DBA648D0-A2A9-5287-B3E7-6A101D7DD67F', N'55337C8B-075A-5B9D-B067-8A12F4E35A2F', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'1D9749A2-B4A6-541C-8D8D-47B07A34A722', N'738287A1-757A-507E-9241-5A5FDA494D68', N'07AD0EEA-5E21-526B-AE52-D7B77AC74D98', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'4F72419A-973E-5624-BD73-89A4A4754ADC', N'738287A1-757A-507E-9241-5A5FDA494D68', N'B00B7657-EAAA-552C-95A3-AE1FEF82753B', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'4AED15D2-F6C0-52D1-A9B8-B695CB089F65', N'C84874F4-7EB4-58D6-9C21-44D6CE74C456', N'07945BF1-B974-5AD6-85C6-C0F669535E3B', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'F3D30165-6531-5A43-82FF-BE35B19643C7', N'C84874F4-7EB4-58D6-9C21-44D6CE74C456', N'FA525A38-1C81-50FC-9222-81A62040E6BD', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'156F11AB-D6AE-5685-95DD-3ED6BD562B2A', N'F5E09A72-52C3-5667-8D21-CD9A7A7B33BE', N'0A88A365-4CA5-5810-AC72-8E08CEBC1749', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'BC4D2A75-1747-543E-A2FB-E9217F5B2EC8', N'F5E09A72-52C3-5667-8D21-CD9A7A7B33BE', N'CDF96389-2DE9-5D5B-BAF1-6295A1A968CA', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'234A9928-313E-5BCA-A97E-50C9F000CACA', N'88ABDB2A-4283-5F5A-9FB8-F767513A7186', N'58A0174E-AC64-5035-A99D-E75C78C2BF00', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'E1B27CD4-8EE5-5359-BE0C-62669B315DBC', N'88ABDB2A-4283-5F5A-9FB8-F767513A7186', N'01F75430-7A8C-5FCC-92FC-FF68862B8FE2', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'E0A4CA22-CA21-5D09-B157-D9764D348D33', N'36C02202-E321-5FDF-9816-276555DC567A', N'2577D043-2893-5284-BD67-FC0B26B1D673', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'4F550751-431D-5139-8658-00D17161AF9A', N'36C02202-E321-5FDF-9816-276555DC567A', N'BD24ED24-0F53-553E-A65C-B897E84B07CC', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'5789679B-C8A1-5729-935A-4A6F4B176E25', N'37FE0227-4AB0-5068-B5BA-47C4F9914D33', N'671EAD01-322F-50E0-A092-5771C0E36726', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'DED1B43D-704A-53B3-95C2-131DA4749295', N'37FE0227-4AB0-5068-B5BA-47C4F9914D33', N'F08D369A-81B7-5BF2-BAFC-810778A589AC', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'98520B89-A5DB-5FF6-B7CA-A566768BCB91', N'A6453EAD-2A4E-580A-860C-5B161EA57E0C', N'D62D6100-087C-5820-AE95-3D4654DBD6EA', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'222F3E4D-3F1C-5E15-9932-192B35172DE6', N'A6453EAD-2A4E-580A-860C-5B161EA57E0C', N'4B28CBF5-7A27-504E-ADBD-BD908AB8D72C', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'E90E2133-31B2-5723-A2B4-9EF0B5093840', N'A7DA87F6-F4A3-5FFA-B1E2-ECD98AF137FB', N'FD5E68E1-292F-580B-9908-FE48E2F012B1', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'32C289F0-2BFC-5D84-BAD0-144174D3E038', N'A7DA87F6-F4A3-5FFA-B1E2-ECD98AF137FB', N'10C756F4-D6B3-5776-B33F-8FC33B8899DB', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'AF8A57DA-2D2E-5450-8611-A1052198644D', N'0028258F-059D-5492-8FB7-94C431782EA7', N'0FD8D8E9-8F53-54B8-B116-FC24AA0A59C4', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'691A94CC-762C-518B-BB0F-6C24BE63DE1F', N'0028258F-059D-5492-8FB7-94C431782EA7', N'427052F3-3D2C-5364-B716-1E19A59B86F1', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'19738BE2-C904-502C-9382-0C40813C2E49', N'32E850CB-8C33-5D2F-BB28-12A1FF53C4CA', N'D1CE67EE-6EDE-594B-9D96-D4CF1D7FF474', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'A6681A3C-8CA2-55EF-87BC-39FBB90139FF', N'32E850CB-8C33-5D2F-BB28-12A1FF53C4CA', N'542B60D6-0792-5A05-AFDA-2CFF0A2474A3', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'C8657A5B-62CF-51F3-8A45-95D1EC861E31', N'9359E086-1F1B-5737-A8B3-0EB7C256FDB2', N'C04F01C8-2622-5206-AFFA-2A70FB5A024E', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'465685E1-E786-54F0-9465-90E5E7FBA520', N'9359E086-1F1B-5737-A8B3-0EB7C256FDB2', N'9B50BD88-E322-5D69-8FF6-C870492A6691', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'DD2AF487-9C52-5C47-BD07-489D94E96EFF', N'6BAC242E-558C-5F5B-8B2B-A0CCD5CF8A16', N'7584E332-98C0-50F0-95C3-B07DFDF1FBB9', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'952AD9D1-EACB-536A-A9B1-E9395B60D0B2', N'6BAC242E-558C-5F5B-8B2B-A0CCD5CF8A16', N'C32BDCEF-8BB4-5EBF-9587-11DBE39508F3', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'8A8C32AB-D2B9-5DF9-B4BE-5593C51953C0', N'333108A4-2CA8-5656-8B73-744E6579CD8C', N'7F83C8DC-3AAA-5A54-8309-91BDB45D5C92', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'C4A4F7F7-D052-5ACC-B398-DA130D1DF3F9', N'333108A4-2CA8-5656-8B73-744E6579CD8C', N'213C3222-2008-5828-88CD-7210B14D1EA2', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'574EA927-407E-5BA3-8B2F-3FFF92723DD1', N'B1C138EC-B5C5-5B43-98C2-F6C22AB42BB9', N'A4205D5C-D0E6-51D7-BDB7-032861AD8B10', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'9E5BB74E-9E56-54EA-9FD8-A5E1A399B89F', N'B1C138EC-B5C5-5B43-98C2-F6C22AB42BB9', N'FB046FAF-CAAE-5495-973F-C992D7AB66CE', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'715C734D-7078-505C-8ECD-A9CF6604157E', N'108C23D8-9F70-5548-AFF5-BA08C5A34D11', N'615D8703-F3E1-5D78-81B4-1D7C977EDC2B', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'7E2B8DE2-71EA-5C47-B63D-0C9428014618', N'108C23D8-9F70-5548-AFF5-BA08C5A34D11', N'0F42A1CA-6FAB-58B3-A455-15C7930295AF', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'D58F94CF-50D3-522D-83A1-AE7B388E1766', N'1882A57F-ABEC-5E7F-94B6-F2A3B9CC8DCA', N'F5594397-4E22-57A9-BED7-3A8133CB0FE8', '2026-09-15T10:00:00.000', N'granted', NULL),
+    (N'2D7CE4E9-DA15-5C3D-BEC0-A5D51B038838', N'1882A57F-ABEC-5E7F-94B6-F2A3B9CC8DCA', N'4B517086-9D50-5140-809A-4803E24BB85C', '2026-09-15T10:00:00.000', N'granted', NULL);
 GO

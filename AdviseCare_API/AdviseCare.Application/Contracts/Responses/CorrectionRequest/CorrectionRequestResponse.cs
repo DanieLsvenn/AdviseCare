@@ -3,6 +3,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
     public class GetAllCorrectionRequestResponse
     {
         public Guid CorrectionRequestId { get; set; } = Guid.Empty;
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
         public Guid? ReviewedBy { get; set; }
         public Guid StudentDataId { get; set; } = Guid.Empty;
         public Guid StudentId { get; set; } = Guid.Empty;
@@ -11,6 +12,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
         public string DecisionNotes { get; set; } = string.Empty;
         public string Explanation { get; set; } = string.Empty;
         public string? ProposedValue { get; set; }
+        public string PurposeName { get; set; } = string.Empty;
         public string ReviewedByFullName { get; set; } = string.Empty;
         public string StudentCode { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
@@ -25,6 +27,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
     public class GetAllCorrectionRequestWithPaginationResponse
     {
         public Guid CorrectionRequestId { get; set; } = Guid.Empty;
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
         public Guid? ReviewedBy { get; set; }
         public Guid StudentDataId { get; set; } = Guid.Empty;
         public Guid StudentId { get; set; } = Guid.Empty;
@@ -33,6 +36,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
         public string DecisionNotes { get; set; } = string.Empty;
         public string Explanation { get; set; } = string.Empty;
         public string? ProposedValue { get; set; }
+        public string PurposeName { get; set; } = string.Empty;
         public string ReviewedByFullName { get; set; } = string.Empty;
         public string StudentCode { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
@@ -47,6 +51,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
     public class GetCorrectionRequestByIdResponse
     {
         public Guid CorrectionRequestId { get; set; } = Guid.Empty;
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
         public Guid? ReviewedBy { get; set; }
         public Guid StudentDataId { get; set; } = Guid.Empty;
         public Guid StudentId { get; set; } = Guid.Empty;
@@ -55,6 +60,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
         public string DecisionNotes { get; set; } = string.Empty;
         public string Explanation { get; set; } = string.Empty;
         public string? ProposedValue { get; set; }
+        public string PurposeName { get; set; } = string.Empty;
         public string ReviewedByFullName { get; set; } = string.Empty;
         public string StudentCode { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
@@ -69,6 +75,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
     public class SearchCorrectionRequestResponse
     {
         public Guid CorrectionRequestId { get; set; } = Guid.Empty;
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
         public Guid? ReviewedBy { get; set; }
         public Guid StudentDataId { get; set; } = Guid.Empty;
         public Guid StudentId { get; set; } = Guid.Empty;
@@ -77,6 +84,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
         public string DecisionNotes { get; set; } = string.Empty;
         public string Explanation { get; set; } = string.Empty;
         public string? ProposedValue { get; set; }
+        public string PurposeName { get; set; } = string.Empty;
         public string ReviewedByFullName { get; set; } = string.Empty;
         public string StudentCode { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
@@ -91,6 +99,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
     public class CreateCorrectionRequestResponse
     {
         public Guid CorrectionRequestId { get; set; } = Guid.Empty;
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
         public Guid? ReviewedBy { get; set; }
         public Guid StudentDataId { get; set; } = Guid.Empty;
         public Guid StudentId { get; set; } = Guid.Empty;
@@ -99,6 +108,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
         public string DecisionNotes { get; set; } = string.Empty;
         public string Explanation { get; set; } = string.Empty;
         public string? ProposedValue { get; set; }
+        public string PurposeName { get; set; } = string.Empty;
         public string ReviewedByFullName { get; set; } = string.Empty;
         public string StudentCode { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
@@ -113,6 +123,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
     public class ApproveCorrectionRequestResponse
     {
         public Guid CorrectionRequestId { get; set; } = Guid.Empty;
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
         public Guid? ReviewedBy { get; set; }
         public Guid StudentDataId { get; set; } = Guid.Empty;
         public Guid StudentId { get; set; } = Guid.Empty;
@@ -121,6 +132,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
         public string DecisionNotes { get; set; } = string.Empty;
         public string Explanation { get; set; } = string.Empty;
         public string? ProposedValue { get; set; }
+        public string PurposeName { get; set; } = string.Empty;
         public string ReviewedByFullName { get; set; } = string.Empty;
         public string StudentCode { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
@@ -135,6 +147,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
     public class RejectCorrectionRequestResponse
     {
         public Guid CorrectionRequestId { get; set; } = Guid.Empty;
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
         public Guid? ReviewedBy { get; set; }
         public Guid StudentDataId { get; set; } = Guid.Empty;
         public Guid StudentId { get; set; } = Guid.Empty;
@@ -143,6 +156,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
         public string DecisionNotes { get; set; } = string.Empty;
         public string Explanation { get; set; } = string.Empty;
         public string? ProposedValue { get; set; }
+        public string PurposeName { get; set; } = string.Empty;
         public string ReviewedByFullName { get; set; } = string.Empty;
         public string StudentCode { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
@@ -157,6 +171,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
     public class GetMyCorrectionRequestResponse
     {
         public Guid CorrectionRequestId { get; set; } = Guid.Empty;
+        public Guid ConsentPurposeId { get; set; } = Guid.Empty;
         public Guid? ReviewedBy { get; set; }
         public Guid StudentDataId { get; set; } = Guid.Empty;
         public Guid StudentId { get; set; } = Guid.Empty;
@@ -165,6 +180,7 @@ namespace AdviseCare.Application.Contracts.Responses.CorrectionRequest
         public string DecisionNotes { get; set; } = string.Empty;
         public string Explanation { get; set; } = string.Empty;
         public string? ProposedValue { get; set; }
+        public string PurposeName { get; set; } = string.Empty;
         public string ReviewedByFullName { get; set; } = string.Empty;
         public string StudentCode { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;

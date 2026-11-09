@@ -61,6 +61,10 @@ public partial class Account
 
     public virtual ICollection<Case> CaseAdvisors { get; set; } = new List<Case>();
 
+    public virtual ICollection<Casefeedback> CasefeedbackAdvisors { get; set; } = new List<Casefeedback>();
+
+    public virtual ICollection<Casefeedback> CasefeedbackCreatedByNavigations { get; set; } = new List<Casefeedback>();
+
     public virtual ICollection<Case> CaseOpenedByNavigations { get; set; } = new List<Case>();
 
     public virtual ICollection<Case> CaseStudents { get; set; } = new List<Case>();
@@ -102,6 +106,14 @@ public partial class Account
     public virtual ICollection<Externalreferral> Externalreferrals { get; set; } = new List<Externalreferral>();
 
     public virtual Faculty Faculty { get; set; }
+
+    public virtual ICollection<Indicatorflag> IndicatorflagRequestedByNavigations { get; set; } = new List<Indicatorflag>();
+
+    public virtual ICollection<Indicatorflag> IndicatorflagResolvedByNavigations { get; set; } = new List<Indicatorflag>();
+
+    public virtual ICollection<Indicatorflag> IndicatorflagStudents { get; set; } = new List<Indicatorflag>();
+
+    public virtual ICollection<Indicator> Indicators { get; set; } = new List<Indicator>();
 
     public virtual ICollection<Intervention> Interventions { get; set; } = new List<Intervention>();
 

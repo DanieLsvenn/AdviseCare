@@ -52,16 +52,20 @@ Mở trình duyệt: **http://localhost:3000/vi/sign-in** (đuôi `/vi` = giao d
 
 > **Mẹo demo hai vai trò cùng lúc:** mở thêm **một cửa sổ ẩn danh** (hoặc profile trình duyệt thứ hai) — cửa sổ 1 là Sinh viên, cửa sổ 2 là Cố vấn/Trưởng chương trình. Không cần đăng xuất qua lại. Muốn đăng xuất: bấm **"Đăng xuất"** ở góc trên.
 
-### 1.3. File mẫu để import (thư mục [`demo-samples`](./demo-samples))
+### 1.3. File mẫu để import (thư mục [`AdviseCare_Mock_Data`](./AdviseCare_Mock_Data))
 
-| File                                                                          | Dùng ở đâu                            | Kết quả mong đợi                                                                                                                                                                       |
-| ----------------------------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`studentdata_demo.csv`](./demo-samples/studentdata_demo.csv)                 | Admin → "Nhập dữ liệu sinh viên"      | **Hợp lệ**: 5 dòng dữ liệu cho `student@gmail.com` (GPA 6.8, Attendance rate 72, Accommodation status rented, Family income bracket low, Financial difficulty true — học kỳ Fall 2026) |
-| [`studentdata_invalid_demo.csv`](./demo-samples/studentdata_invalid_demo.csv) | cùng chỗ trên                         | **Bị từ chối** với 3 lỗi: email không tồn tại, thuộc tính `Height` không có, giá trị GPA `abc` không phải số                                                                           |
-| [`accounts_valid_demo.xlsx`](./demo-samples/accounts_valid_demo.xlsx)         | Admin → "Tài khoản" → "Nhập từ Excel" | 5 tài khoản (3 sinh viên, 1 cố vấn, 1 nhân sự có 2 vai trò)                                                                                                                            |
-| [`accounts_invalid_demo.xlsx`](./demo-samples/accounts_invalid_demo.xlsx)     | cùng chỗ trên                         | **Bị từ chối toàn bộ** (có 1 email sai định dạng, 1 mã khoa `XX` không tồn tại) → minh họa nguyên tắc "một dòng lỗi thì không tạo gì cả"                                               |
+Thư mục `demo-samples` cũ đã được thay bằng `AdviseCare_Mock_Data` (09/11/2026). Kết quả mong đợi chi tiết của từng file nằm trong [`AdviseCare_Mock_Data_Guide.txt`](./AdviseCare_Mock_Data/AdviseCare_Mock_Data_Guide.txt).
 
-> Các file `.csv`/`.xlsx` mẫu đã được kiểm tra bằng API ở chế độ **kiểm tra thử (dry-run)**. File `accounts_valid_demo.xlsx` **chưa nhập thật** để không làm bẩn DB — nếu bạn nhập, 5 tài khoản mới sẽ ở trạng thái "chưa liên kết" và không đăng nhập được (xem mục 10).
+| File                                                                                                     | Dùng ở đâu                            | Kết quả mong đợi                                                                                                                                                   |
+| -------------------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`mock_studentdata_student_gmail.csv`](./AdviseCare_Mock_Data/mock_studentdata_student_gmail.csv)        | Admin → "Nhập dữ liệu sinh viên"      | **Hợp lệ**: 4 dòng cho `student@gmail.com` (GPA 6.3, Attendance rate 74, Late submissions 7, Tuition overdue true — Fall 2026, hiệu lực từ 2026-11-05)              |
+| [`mock_studentdata_invalid.csv`](./AdviseCare_Mock_Data/mock_studentdata_invalid.csv)                    | cùng chỗ trên                         | **Bị từ chối** với 7 lỗi (sinh viên không tồn tại, thuộc tính `Height` không có, `abc` không phải số, học kỳ sai, `yes` không phải boolean, giá trị trống, ngày sai) |
+| [`mock_studentdata_invalid_columns.xlsx`](./AdviseCare_Mock_Data/mock_studentdata_invalid_columns.xlsx)  | cùng chỗ trên                         | **Bị từ chối** ngay bước ghép cột: thiếu cột `Value` và `Valid from`                                                                                               |
+| [`accounts_import_valid.xlsx`](./AdviseCare_Mock_Data/accounts_import_valid.xlsx) (hoặc `.csv`)          | Admin → "Tài khoản" → "Nhập từ Excel" | 10 tài khoản (6 sinh viên, 4 nhân sự, 1 người có 2 vai trò)                                                                                                         |
+| [`accounts_import_invalid_rows.xlsx`](./AdviseCare_Mock_Data/accounts_import_invalid_rows.xlsx)          | cùng chỗ trên                         | **Bị từ chối toàn bộ**: 10 lỗi ở dòng 3-12 (email trùng/sai, khoa `IT`, vai trò `Teacher`, thiếu mã SV...) → "một dòng lỗi thì không tạo gì cả"                     |
+| [`accounts_import_invalid_columns.xlsx`](./AdviseCare_Mock_Data/accounts_import_invalid_columns.xlsx)    | cùng chỗ trên                         | **Bị từ chối**: thiếu cột `facultyCode, role`                                                                                                                      |
+
+> File `accounts_import_valid.xlsx` **chưa nhập thật** để không làm bẩn DB — nếu bạn nhập, 10 tài khoản mới sẽ ở trạng thái "chưa liên kết" và không đăng nhập được (xem mục 10). `student@gmail.com` giờ đã có dữ liệu mẫu riêng (2 ca, 4 đồng ý) và có đủ giá trị trong các file Summer/Fall 2026.
 
 ### 1.4. Đặt lại dữ liệu (nếu demo bị "bẩn")
 
@@ -112,13 +116,13 @@ Cố vấn ── đóng ca ─────────────────�
 
 Trang hiện có khoảng 68 tài khoản, các cột: Họ và tên / Email / Tên đăng nhập / Vai trò / Trạng thái / Trạng thái liên kết; có bộ lọc.
 
-**Cách 1 — Nhập hàng loạt từ Excel:** bấm **"Nhập từ Excel"** → chọn [`accounts_valid_demo.xlsx`](./demo-samples/accounts_valid_demo.xlsx).
+**Cách 1 — Nhập hàng loạt từ Excel/CSV:** bấm **"Nhập từ Excel"** → chọn [`accounts_import_valid.xlsx`](./AdviseCare_Mock_Data/accounts_import_valid.xlsx).
 
 File gồm 7 cột: `email, fullName, userName, facultyCode, role, studentCode, academicStatus`.
 
-- Dòng **sinh viên** điền đủ 7 cột (ví dụ `demo.student01@example.com | Nguyễn Văn An | demo_student01 | SE | Student | SE189001 | enrolled`).
+- Dòng **sinh viên** điền thêm mã sinh viên và trạng thái học tập (ví dụ `anhntse180036@example.com | Nguyễn Tuấn Anh | anhntse180036 | SE | Student | SE180036 |`; để trống `academicStatus` nghĩa là `enrolled`).
 - Dòng **nhân sự** chỉ điền 5 cột đầu (không có mã sinh viên); nhiều vai trò viết cách nhau bằng dấu phẩy (`Academic Advisor, Programme Head`).
-- Chỉ cần **1 dòng lỗi thì không tạo gì cả**, lỗi được báo theo từng dòng → thử file [`accounts_invalid_demo.xlsx`](./demo-samples/accounts_invalid_demo.xlsx) để minh họa (lỗi dòng 3: email sai; dòng 4: mã khoa không tồn tại).
+- Chỉ cần **1 dòng lỗi thì không tạo gì cả**, lỗi được báo theo từng dòng → thử file [`accounts_import_invalid_rows.xlsx`](./AdviseCare_Mock_Data/accounts_import_invalid_rows.xlsx) để minh họa (dòng 3: email đã dùng; dòng 4: email sai; dòng 6: mã khoa không tồn tại...).
 
 **Cách 2 — Tạo từng tài khoản:** bấm **"Tạo"**, điền:
 
@@ -171,22 +175,22 @@ Gán **cố vấn ↔ môn học** để hệ thống **gợi ý đúng cố v�
 
 Thao tác (file `.xlsx` hoặc `.csv`):
 
-1. Bấm chọn file → [`studentdata_demo.csv`](./demo-samples/studentdata_demo.csv) → **"Xem trước"** (chỉ hiện tiêu đề + vài dòng mẫu, **chưa ghi gì**).
+1. Bấm chọn file → [`mock_studentdata_student_gmail.csv`](./AdviseCare_Mock_Data/mock_studentdata_student_gmail.csv) → **"Xem trước"** (chỉ hiện tiêu đề + vài dòng mẫu, **chưa ghi gì**).
 2. **Ghép cột** (5 ô dropdown):
 
    | Ô                       | Chọn                                                                 |
    | ----------------------- | -------------------------------------------------------------------- |
-   | Cột định danh sinh viên | `Student email` _(chấp nhận email, tên đăng nhập hoặc mã sinh viên)_ |
+   | Cột định danh sinh viên | `Student` _(chấp nhận email, tên đăng nhập hoặc mã sinh viên)_       |
    | Mục dữ liệu             | `Data attribute`                                                     |
    | Cột giá trị             | `Value`                                                              |
    | Học kỳ                  | `Term`                                                               |
    | Có hiệu lực từ          | `Valid from`                                                         |
 
-3. Bấm **"Kiểm tra dữ liệu"** (chạy thử) → kết quả mong đợi: **5 dòng hợp lệ**.
+3. Bấm **"Kiểm tra dữ liệu"** (chạy thử) → kết quả mong đợi: **4 dòng hợp lệ**.
 4. Bấm **"Nhập dữ liệu"** (chỉ bấm được sau khi kiểm tra thành công).
-5. Cuộn xuống **"Sổ dữ liệu sinh viên"** → thấy 5 giá trị vừa nhập.
+5. Cuộn xuống **"Sổ dữ liệu sinh viên"** → thấy 4 giá trị vừa nhập.
 
-Thử thêm file [`studentdata_invalid_demo.csv`](./demo-samples/studentdata_invalid_demo.csv) ở bước 3 → hệ thống báo **3 lỗi** (dòng 3, 4, 5), nút "Nhập dữ liệu" vẫn bị khóa.
+Thử thêm file [`mock_studentdata_invalid.csv`](./AdviseCare_Mock_Data/mock_studentdata_invalid.csv) ở bước 3 → hệ thống báo **7 lỗi** (dòng 3-9), nút "Nhập dữ liệu" vẫn bị khóa.
 
 > Nhập lại cùng một file chỉ **thêm dòng mới**, không ghi đè/cập nhật dòng cũ.
 
@@ -459,15 +463,16 @@ Cố vấn cần xem dữ liệu **mà sinh viên chưa cho phép** trong tình 
 
 | Ô                      | Ví dụ                                                           |
 | ---------------------- | --------------------------------------------------------------- |
-| Giá trị cần điều chỉnh | chọn trong danh sách các giá trị đã import, ví dụ `GPA = 6.8`   |
+| Giá trị cần điều chỉnh | chọn trong danh sách các giá trị đã import, ví dụ `GPA = 6.3`   |
+| Mục đích đồng ý\*      | mục đích có chứa thuộc tính đó, ví dụ `Academic advising`        |
 | Giải thích\*           | `GPA của tôi sau khi phúc khảo là 7.2, hệ thống chưa cập nhật.` |
 | Giá trị đề xuất\*      | `7.2`                                                           |
 
 Sinh viên có thể **"Rút"** yêu cầu khi chưa được xử lý.
 
-**Cố vấn xử lý đính chính:** (cố vấn có ca đang mở của sinh viên đó) menu **"Đính chính"** → **"Chấp thuận"** hoặc **"Từ chối"**, mỗi lựa chọn **bắt buộc** nhập _Ghi chú quyết định_.
+Gửi yêu cầu đồng thời là **đồng ý chia sẻ đúng thuộc tính đó** theo mục đích đã chọn; **không cần mở ca** (QC-214).
 
-> Lưu ý: quy tắc "chỉ cố vấn có ca đang mở mới được xử lý" đã có; còn quy tắc "chỉ sinh viên có ca mở mới được gửi đính chính" mới **nằm trong kế hoạch**, chưa được áp dụng.
+**Cố vấn xử lý đính chính:** mọi cố vấn có vai trò được chính sách truy cập của mục đích đó cho phép (ví dụ mọi Academic Advisor với `Academic advising`) đều thấy yêu cầu trong menu **"Đính chính"** (tách riêng khỏi danh sách ca) → **"Chấp thuận"** hoặc **"Từ chối"**, mỗi lựa chọn **bắt buộc** nhập _Ghi chú quyết định_. Người quyết định đầu tiên được ghi lại; người sau sẽ nhận lỗi 409.
 
 ---
 

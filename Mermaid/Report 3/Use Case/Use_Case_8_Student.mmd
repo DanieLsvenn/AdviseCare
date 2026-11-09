@@ -23,6 +23,8 @@ flowchart LR
         end
         subgraph CWF["Case Workflow and Referrals"]
             UC49(["UC-49<br/>View Case History"])
+            UC59(["UC-59<br/>Write in Case Thread"])
+            UC60(["UC-60<br/>Rate Closed Case"])
         end
     end
     ACT --- UC21
@@ -34,6 +36,8 @@ flowchart LR
     ACT --- UC38
     ACT --- UC41
     ACT --- UC49
+    ACT --- UC59
+    ACT --- UC60
     linkStyle default stroke-width: 1pt;
     classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
     class ACT,GEN actor;

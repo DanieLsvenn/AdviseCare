@@ -1,0 +1,11 @@
+﻿email,fullName,userName,facultyCode,role,studentCode,academicStatus
+aa.phuongnt@example.com,Nguyễn Thu Phương,aa.phuongnt,SE,Academic Advisor,,
+wa.huyld@example.com,Lê Đức Huy,wa.huyld,BA,Wellbeing Advisor,,
+wo.thanhpv@example.com,Phạm Văn Thành,wo.thanhpv,SE,Student Welfare Officer,,
+aa.ngocpt@example.com,Phan Thị Ngọc,aa.ngocpt,SE,"Academic Advisor, Programme Head",,
+anhntse180036@example.com,Nguyễn Tuấn Anh,anhntse180036,SE,Student,SE180036,
+linhptse190037@example.com,Phạm Thùy Linh,linhptse190037,SE,Student,SE190037,enrolled
+khoinvse180038@example.com,Nguyễn Văn Khôi,khoinvse180038,SE,Student,SE180038,onLeave
+maihtba180149@example.com,Hoàng Thị Mai,maihtba180149,BA,Student,BA180149,
+quangldba190150@example.com,Lê Đình Quang,quangldba190150,BA,Student,BA190150,enrolled
+vietdqba170151@example.com,Đặng Quốc Việt,vietdqba170151,BA,Student,BA170151,graduated

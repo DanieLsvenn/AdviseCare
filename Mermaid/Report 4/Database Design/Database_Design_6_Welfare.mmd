@@ -56,12 +56,12 @@ erDiagram
     CASES {
         uniqueidentifier caseId PK "referenced table, see its own section"
     }
+    CASES ||--o{ INTERVENTIONS : "caseId"
+    ACCOUNTS ||--o{ INTERVENTIONS : "officerId"
     INTERVENTIONS ||--o{ SUPPORTGRANTS : "interventionId"
-    CASES ||--o{ ESCALATIONS : "caseId"
-    ACCOUNTS ||--o{ ESCALATIONS : "escalatedBy"
-    ACCOUNTS ||--o{ ESCALATIONS : "escalatedTo"
     CASES ||--o{ EXTERNALREFERRALS : "caseId"
     EXTERNALSERVICES ||--o{ EXTERNALREFERRALS : "externalServiceId"
     ACCOUNTS ||--o{ EXTERNALREFERRALS : "referredBy"
-    CASES ||--o{ INTERVENTIONS : "caseId"
-    ACCOUNTS ||--o{ INTERVENTIONS : "officerId"
+    CASES ||--o{ ESCALATIONS : "caseId"
+    ACCOUNTS ||--o{ ESCALATIONS : "escalatedBy"
+    ACCOUNTS ||--o{ ESCALATIONS : "escalatedTo"

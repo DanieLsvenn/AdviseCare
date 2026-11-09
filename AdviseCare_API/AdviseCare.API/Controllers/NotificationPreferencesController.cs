@@ -1,4 +1,5 @@
 using AdviseCare.Application.Contracts.Requests.NotificationPreference;
+using AdviseCare.Application.Contracts.Responses;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +20,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Get all notification preferences with optional pagination",
             Description = "Retrieves every notification preference row of every account. Pass page and pageSize together to page the results.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- Page and page size must be at least 1.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
             if (page.HasValue && pageSize.HasValue)
@@ -36,6 +40,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Get notification preference by Id",
             Description = "Retrieves one notification preference row by its unique identifier.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Notification preference not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             var response = await _notificationPreferenceService.GetByIdAsync(id);
@@ -47,6 +54,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Search/Filter notification preferences",
             Description = "Filters notification preference rows by account, by channel (email/inApp) and by on/off state. Empty fields are ignored.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> Search([FromQuery] SearchNotificationPreferenceRequest request)
         {
             var response = await _notificationPreferenceService.SearchAsync(request);
@@ -58,6 +68,11 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Create notification preference",
             Description = "Creates a notification preference row (account, channel email/inApp, on/off), for testing. An account can have one row per channel; a missing row means the channel is on.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Account not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- This account already has a '{Channel}' preference.", typeof(ErrorResponse))]
         public async Task<IActionResult> Create([FromBody] CreateNotificationPreferenceRequest request)
         {
             var response = await _notificationPreferenceService.CreateAsync(request);
@@ -69,6 +84,10 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Update notification preference",
             Description = "Turns a notification preference row on or off, for testing.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Notification preference not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateNotificationPreferenceRequest request)
         {
             var response = await _notificationPreferenceService.UpdateAsync(id, request);
@@ -79,6 +98,7 @@ namespace AdviseCare.API.Controllers
         [HttpGet("me")]
         [SwaggerOperation(Summary = "[All roles] Get my notification preferences",
             Description = "Returns both notification channels of the signed-in account: email and inApp, each on or off. A channel the account never changed is on.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         public async Task<IActionResult> GetMine()
         {
             var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -90,6 +110,8 @@ namespace AdviseCare.API.Controllers
         [HttpPut("me")]
         [SwaggerOperation(Summary = "[All roles] Update my notification preference",
             Description = "Turns the email or inApp channel of the signed-in account on or off. With email off, notifications are no longer emailed; with inApp off, they are no longer shown in the app. Account-linking and password-reset emails are always sent.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         public async Task<IActionResult> UpdateMine([FromBody] UpdateMyNotificationPreferenceRequest request)
         {
             var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);

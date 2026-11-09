@@ -12,7 +12,7 @@ using System.Text;
 namespace AdviseCare.Application.Services
 {
     // Reports (WF4, Programme Head) over the cases opened in a date range: the case list, and the caseload and closure time per advisor.
-    // Generated on the fly and downloaded as xlsx, csv or pdf; nothing is stored (REPORTS stays for the stored report history, FU2)
+    // Generated on the fly and downloaded as xlsx, csv or pdf; nothing is stored (REPORTS stays for the stored report history, extra scope ES2)
     public class ReportService : IReportService
     {
         private readonly IGenericRepository<Case> _caseRepository;

@@ -15,11 +15,11 @@ flowchart LR
         MST(["Master Data Management<br/>(4 use cases)"])
         NTF(["Notifications and Personal Settings<br/>(3 use cases)"])
         CON(["Consent and Data Protection<br/>(12 use cases)"])
-        SDA(["Student Data Management<br/>(6 use cases)"])
-        SUP(["Support Requests and Case Matching<br/>(7 use cases)"])
-        CWF(["Case Workflow and Referrals<br/>(7 use cases)"])
+        SDA(["Student Data Management<br/>(7 use cases)"])
+        SUP(["Support Requests and Case Matching<br/>(9 use cases)"])
+        CWF(["Case Workflow and Referrals<br/>(9 use cases)"])
         WEL(["Student Welfare<br/>(6 use cases)"])
-        RPT(["Reporting<br/>(3 use cases)"])
+        RPT(["Reporting<br/>(6 use cases)"])
     end
     AA --- CON
     AA --- CWF
@@ -42,8 +42,10 @@ flowchart LR
     STU --- SDA
     STU --- SUP
     STW --- CON
+    STW --- SDA
     SWO --- CON
     SWO --- CWF
+    SWO --- RPT
     SWO --- SDA
     SWO --- WEL
     WA --- CON

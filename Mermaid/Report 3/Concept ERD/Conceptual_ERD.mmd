@@ -35,6 +35,10 @@ erDiagram
     CaseChangeRequest["CASE CHANGE<br/>REQUEST"]
     Case["CASE"]
     CaseNote["CASE NOTE"]
+    CaseMessage["CASE MESSAGE"]
+    CaseFeedback["CASE<br/>FEEDBACK"]
+    Indicator["INDICATOR"]
+    IndicatorFlag["INDICATOR<br/>FLAG"]
     CaseStageHistory["CASE STAGE<br/>HISTORY"]
     Referral["REFERRAL"]
     CorrectionRequest["CORRECTION<br/>REQUEST"]
@@ -73,6 +77,10 @@ erDiagram
     Account ||--o{ CaseChangeRequest : "programmeHeadId, proposedAdvisorId, requestedBy"
     Account ||--o{ Case : "advisorId, openedBy, studentId"
     Account ||--o{ CaseNote : "authorId"
+    Account ||--o{ CaseMessage : "authorId"
+    Account ||--o{ CaseFeedback : "advisorId, createdBy"
+    Account ||--o{ Indicator : "createdBy"
+    Account ||--o{ IndicatorFlag : "requestedBy, resolvedBy, studentId"
     Account ||--o{ CaseStageHistory : "changedBy"
     Account ||--o{ Referral : "fromAccountId, toAccountId"
     Account ||--o{ CorrectionRequest : "reviewedBy, studentId"
@@ -96,22 +104,30 @@ erDiagram
     Faculty ||--o{ Subject : "facultyId"
     AcademicTerm ||--o{ StudentData : "termId"
     AcademicTerm ||--o{ Report : "termId"
+    AcademicTerm ||--o{ IndicatorFlag : "termId"
     Subject |o--o{ Case : "subjectId"
     DataAttribute ||--o| DataSource : "dataAttributeId"
     DataAttribute ||--o{ StudentData : "dataAttributeId"
     DataAttribute ||--o{ Consent : "dataAttributeId"
     DataAttribute ||--o{ ConsentRequest : "dataAttributeId"
     DataAttribute ||--o{ AttributeKey : "dataAttributeId"
+    DataAttribute ||--o{ Indicator : "dataAttributeId"
     DataSource ||--o{ IngestionSchedule : "dataSourceId"
     DataSource |o--o{ StudentData : "dataSourceId"
     IngestionSchedule ||--o{ IngestionJob : "ingestionScheduleId"
     AttributeKey |o--o{ StudentData : "attributeKeyId"
     StudentData ||--o{ CorrectionRequest : "studentDataId"
     StudentData |o--o{ AccessLog : "studentDataId"
+    StudentData ||--o{ IndicatorFlag : "studentDataId"
     ConsentPurpose ||--o{ SupportCategory : "consentPurposeId"
     SupportCategory ||--o{ Case : "supportCategoryId"
+    SupportCategory ||--o{ Indicator : "supportCategoryId"
+    Indicator ||--o{ IndicatorFlag : "indicatorId"
+    Case |o--o{ IndicatorFlag : "caseId"
     Case ||--o{ CaseChangeRequest : "caseId"
     Case ||--o{ CaseNote : "caseId"
+    Case ||--o{ CaseMessage : "caseId"
+    Case ||--o| CaseFeedback : "caseId"
     Case ||--o{ CaseStageHistory : "caseId"
     Case ||--o{ Referral : "caseId"
     Case ||--o{ Intervention : "caseId"
@@ -122,6 +138,7 @@ erDiagram
     ConsentPurpose ||--o{ Consent : "consentPurposeId"
     ConsentPurpose ||--o{ ConsentRequest : "consentPurposeId"
     ConsentPurpose ||--o{ AccessPolicy : "consentPurposeId"
+    ConsentPurpose ||--o{ CorrectionRequest : "consentPurposeId"
     ConsentPurpose |o--o{ AccessLog : "consentPurposeId"
     Consent ||--o{ ConsentHistory : "consentId"
     Consent ||--o{ ErasureRequest : "consentId"
@@ -130,6 +147,7 @@ erDiagram
     Account }o--o{ Role : "has"
     Account }o--o{ Subject : "specialises in"
     DataAttribute }o--o{ ConsentPurpose : "covers"
+    Case }o--o{ DataAttribute : "shares"
 
-    %% Future entities (designed, no feature in the current version): Backup, DataSource, IngestionJob, IngestionSchedule, Report, RestoreOperation
+    %% Extra scope entities (designed, no feature in the current version): Backup, DataSource, IngestionJob, IngestionSchedule, Report, RestoreOperation
     %% When several FKs link the same two entities, the line shows all of them; it is drawn as mandatory (||) when at least one of them is NOT NULL.

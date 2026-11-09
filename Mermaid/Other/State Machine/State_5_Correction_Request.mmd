@@ -4,9 +4,9 @@ title: AdviseCare - State Machine - Correction Request
 
 stateDiagram-v2
     direction LR
-    [*] --> pending : student with an open case reports a wrong value
-    pending --> approved : advisor approves (new correction row, same valid-from)
-    pending --> rejected : advisor rejects with a note
+    [*] --> pending : student reports a wrong value under a consent purpose (no case needed)
+    pending --> approved : first advisor of the pool approves (new correction row, same valid-from)
+    pending --> rejected : first advisor of the pool rejects with a note
     pending --> withdrawn : student withdraws
     approved --> [*]
     rejected --> [*]

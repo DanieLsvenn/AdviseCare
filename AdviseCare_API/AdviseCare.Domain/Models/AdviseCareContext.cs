@@ -42,6 +42,8 @@ public partial class AdviseCareContext : DbContext
 
     public virtual DbSet<Casechangerequest> Casechangerequests { get; set; }
 
+    public virtual DbSet<Casefeedback> Casefeedbacks { get; set; }
+
     public virtual DbSet<Casemessage> Casemessages { get; set; }
 
     public virtual DbSet<Casenote> Casenotes { get; set; }
@@ -73,6 +75,10 @@ public partial class AdviseCareContext : DbContext
     public virtual DbSet<Externalservice> Externalservices { get; set; }
 
     public virtual DbSet<Faculty> Faculties { get; set; }
+
+    public virtual DbSet<Indicator> Indicators { get; set; }
+
+    public virtual DbSet<Indicatorflag> Indicatorflags { get; set; }
 
     public virtual DbSet<Ingestionjob> Ingestionjobs { get; set; }
 
@@ -574,6 +580,43 @@ public partial class AdviseCareContext : DbContext
                 .HasConstraintName("FK_CASECHANGEREQUESTS_requestedBy");
         });
 
+        modelBuilder.Entity<Casefeedback>(entity =>
+        {
+            entity.ToTable("CASEFEEDBACKS");
+
+            entity.HasIndex(e => e.CaseId, "UQ_CASEFEEDBACKS_caseId").IsUnique();
+
+            entity.Property(e => e.CaseFeedbackId)
+                .HasDefaultValueSql("(newsequentialid())")
+                .HasColumnName("caseFeedbackId");
+            entity.Property(e => e.AdvisorId).HasColumnName("advisorId");
+            entity.Property(e => e.CaseId).HasColumnName("caseId");
+            entity.Property(e => e.Comment)
+                .HasMaxLength(1000)
+                .HasColumnName("comment");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("createdAt");
+            entity.Property(e => e.CreatedBy).HasColumnName("createdBy");
+            entity.Property(e => e.Rating).HasColumnName("rating");
+
+            entity.HasOne(d => d.Advisor).WithMany(p => p.CasefeedbackAdvisors)
+                .HasForeignKey(d => d.AdvisorId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CASEFEEDBACKS_advisorId");
+
+            entity.HasOne(d => d.Case).WithOne(p => p.Casefeedback)
+                .HasForeignKey<Casefeedback>(d => d.CaseId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CASEFEEDBACKS_caseId");
+
+            entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.CasefeedbackCreatedByNavigations)
+                .HasForeignKey(d => d.CreatedBy)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CASEFEEDBACKS_createdBy");
+        });
+
         modelBuilder.Entity<Casemessage>(entity =>
         {
             entity.ToTable("CASEMESSAGES");
@@ -764,6 +807,7 @@ public partial class AdviseCareContext : DbContext
                 .HasColumnName("consentPurposeId");
             entity.Property(e => e.CreatedBy).HasColumnName("createdBy");
             entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.IsForStatistics).HasColumnName("isForStatistics");
             entity.Property(e => e.PurposeName)
                 .IsRequired()
                 .HasMaxLength(255)
@@ -773,6 +817,10 @@ public partial class AdviseCareContext : DbContext
                 .HasMaxLength(30)
                 .HasDefaultValue("inactive")
                 .HasColumnName("status");
+
+            entity.HasIndex(e => e.IsForStatistics, "UX_CONSENTPURPOSES_statistics_active")
+                .IsUnique()
+                .HasFilter("([isForStatistics] = 1 AND [status] = N'active')");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.Consentpurposes)
                 .HasForeignKey(d => d.CreatedBy)
@@ -854,6 +902,7 @@ public partial class AdviseCareContext : DbContext
             entity.Property(e => e.CorrectionRequestId)
                 .HasDefaultValueSql("(newsequentialid())")
                 .HasColumnName("correctionRequestId");
+            entity.Property(e => e.ConsentPurposeId).HasColumnName("consentPurposeId");
             entity.Property(e => e.CurrentValue).HasColumnName("currentValue");
             entity.Property(e => e.DecidedAt)
                 .HasPrecision(3)
@@ -875,6 +924,11 @@ public partial class AdviseCareContext : DbContext
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())")
                 .HasColumnName("submittedAt");
+
+            entity.HasOne(d => d.ConsentPurpose).WithMany(p => p.Correctionrequests)
+                .HasForeignKey(d => d.ConsentPurposeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CORRECTIONREQUESTS_consentPurposeId");
 
             entity.HasOne(d => d.ReviewedByNavigation).WithMany(p => p.CorrectionrequestReviewedByNavigations)
                 .HasForeignKey(d => d.ReviewedBy)
@@ -1161,6 +1215,150 @@ public partial class AdviseCareContext : DbContext
                 .HasMaxLength(30)
                 .HasDefaultValue("active")
                 .HasColumnName("status");
+        });
+
+        modelBuilder.Entity<Indicator>(entity =>
+        {
+            entity.ToTable("INDICATORS");
+
+            entity.HasIndex(e => e.IndicatorName, "UQ_INDICATORS_indicatorName").IsUnique();
+
+            entity.Property(e => e.IndicatorId)
+                .HasDefaultValueSql("(newsequentialid())")
+                .HasColumnName("indicatorId");
+            entity.Property(e => e.ComparisonOperator)
+                .IsRequired()
+                .HasMaxLength(30)
+                .HasColumnName("comparisonOperator");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("createdAt");
+            entity.Property(e => e.CreatedBy).HasColumnName("createdBy");
+            entity.Property(e => e.DataAttributeId).HasColumnName("dataAttributeId");
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000)
+                .HasColumnName("description");
+            entity.Property(e => e.IndicatorName)
+                .IsRequired()
+                .HasMaxLength(255)
+                .HasColumnName("indicatorName");
+            entity.Property(e => e.Priority)
+                .IsRequired()
+                .HasMaxLength(30)
+                .HasDefaultValue("medium")
+                .HasColumnName("priority");
+            entity.Property(e => e.Severity)
+                .IsRequired()
+                .HasMaxLength(30)
+                .HasDefaultValue("moderate")
+                .HasColumnName("severity");
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(30)
+                .HasDefaultValue("draft")
+                .HasColumnName("status");
+            entity.Property(e => e.SupportCategoryId).HasColumnName("supportCategoryId");
+            entity.Property(e => e.ThresholdValue)
+                .IsRequired()
+                .HasMaxLength(255)
+                .HasColumnName("thresholdValue");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasColumnName("updatedAt");
+
+            entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.Indicators)
+                .HasForeignKey(d => d.CreatedBy)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_INDICATORS_createdBy");
+
+            entity.HasOne(d => d.DataAttribute).WithMany(p => p.Indicators)
+                .HasForeignKey(d => d.DataAttributeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_INDICATORS_dataAttributeId");
+
+            entity.HasOne(d => d.SupportCategory).WithMany(p => p.Indicators)
+                .HasForeignKey(d => d.SupportCategoryId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_INDICATORS_supportCategoryId");
+        });
+
+        modelBuilder.Entity<Indicatorflag>(entity =>
+        {
+            entity.ToTable("INDICATORFLAGS");
+
+            entity.HasIndex(e => new { e.StudentId, e.IndicatorId, e.TermId }, "UX_INDICATORFLAGS_student_indicator_term_open")
+                .IsUnique()
+                .HasFilter("([status] IN (N'open', N'requested'))");
+
+            entity.Property(e => e.IndicatorFlagId)
+                .HasDefaultValueSql("(newsequentialid())")
+                .HasColumnName("indicatorFlagId");
+            entity.Property(e => e.CaseId).HasColumnName("caseId");
+            entity.Property(e => e.DismissReason)
+                .HasMaxLength(1000)
+                .HasColumnName("dismissReason");
+            entity.Property(e => e.FlaggedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("flaggedAt");
+            entity.Property(e => e.IndicatorId).HasColumnName("indicatorId");
+            entity.Property(e => e.Priority)
+                .IsRequired()
+                .HasMaxLength(30)
+                .HasColumnName("priority");
+            entity.Property(e => e.RequestedAt)
+                .HasPrecision(3)
+                .HasColumnName("requestedAt");
+            entity.Property(e => e.RequestedBy).HasColumnName("requestedBy");
+            entity.Property(e => e.ResolvedAt)
+                .HasPrecision(3)
+                .HasColumnName("resolvedAt");
+            entity.Property(e => e.ResolvedBy).HasColumnName("resolvedBy");
+            entity.Property(e => e.Severity)
+                .IsRequired()
+                .HasMaxLength(30)
+                .HasColumnName("severity");
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(30)
+                .HasDefaultValue("open")
+                .HasColumnName("status");
+            entity.Property(e => e.StudentDataId).HasColumnName("studentDataId");
+            entity.Property(e => e.StudentId).HasColumnName("studentId");
+            entity.Property(e => e.TermId).HasColumnName("termId");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.Indicatorflags)
+                .HasForeignKey(d => d.CaseId)
+                .HasConstraintName("FK_INDICATORFLAGS_caseId");
+
+            entity.HasOne(d => d.Indicator).WithMany(p => p.Indicatorflags)
+                .HasForeignKey(d => d.IndicatorId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_INDICATORFLAGS_indicatorId");
+
+            entity.HasOne(d => d.RequestedByNavigation).WithMany(p => p.IndicatorflagRequestedByNavigations)
+                .HasForeignKey(d => d.RequestedBy)
+                .HasConstraintName("FK_INDICATORFLAGS_requestedBy");
+
+            entity.HasOne(d => d.ResolvedByNavigation).WithMany(p => p.IndicatorflagResolvedByNavigations)
+                .HasForeignKey(d => d.ResolvedBy)
+                .HasConstraintName("FK_INDICATORFLAGS_resolvedBy");
+
+            entity.HasOne(d => d.StudentData).WithMany(p => p.Indicatorflags)
+                .HasForeignKey(d => d.StudentDataId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_INDICATORFLAGS_studentDataId");
+
+            entity.HasOne(d => d.Student).WithMany(p => p.IndicatorflagStudents)
+                .HasForeignKey(d => d.StudentId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_INDICATORFLAGS_studentId");
+
+            entity.HasOne(d => d.Term).WithMany(p => p.Indicatorflags)
+                .HasForeignKey(d => d.TermId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_INDICATORFLAGS_termId");
         });
 
         modelBuilder.Entity<Ingestionjob>(entity =>

@@ -14,6 +14,8 @@ namespace AdviseCare.Application.Contracts.Requests.ConsentPurpose
         [Required(ErrorMessage = "Purpose name is required."), MaxLength(255,
             ErrorMessage = "Purpose name must be under 255 characters.")]
         public string PurposeName { get; set; } = string.Empty;
+        // True for the one purpose students consent to for anonymised cohort statistics (at most one active)
+        public bool IsForStatistics { get; set; } = false;
     }
 
     public class UpdateConsentPurposeRequest
@@ -22,6 +24,8 @@ namespace AdviseCare.Application.Contracts.Requests.ConsentPurpose
         [Required(ErrorMessage = "Purpose name is required."), MaxLength(255,
             ErrorMessage = "Purpose name must be under 255 characters.")]
         public string PurposeName { get; set; } = string.Empty;
+        // True for the one purpose students consent to for anonymised cohort statistics (at most one active)
+        public bool IsForStatistics { get; set; } = false;
     }
 
     public class SearchPurposeAttributeRequest

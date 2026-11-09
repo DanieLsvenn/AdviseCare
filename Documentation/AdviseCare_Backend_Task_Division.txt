@@ -11,7 +11,7 @@
 
 ==========
 MEMBER A - IDENTITY, ACCOUNTS, MASTER DATA, NOTIFICATIONS
-Tables owned: ACCOUNTS, STUDENTPROFILES, ROLES, ACCOUNT_ROLE, SESSIONS, ACTIVITYLOGS, NOTIFICATIONS, NOTIFICATIONPREFERENCES, FACULTIES, PROGRAMMES, ACADEMICTERMS, SUBJECTS, ACCOUNT_SUBJECT
+Tables owned: ACCOUNTS, STUDENTPROFILES, ROLES, ACCOUNT_ROLE, SESSIONS, ACTIVITYLOGS, NOTIFICATIONS, NOTIFICATIONPREFERENCES, FACULTIES, PROGRAMMES, ACADEMICTERMS, SUBJECTS, ACCOUNT_SUBJECT, INDICATORS, INDICATORFLAGS
 ==========
 
 A1. Authentication and sessions (AuthController; AccountService + SessionService)
@@ -24,7 +24,7 @@ A1.6. Set or change password with one endpoint: the old password is asked only w
 A1.7. Sessions: record device, list own sessions, log out, log out of other sessions, automatic end after 1 month
 A2. Account management (Admin; AccountsController, RolesController)
 A2.1. Account CRUD: get all (paged), get by id, search/filter (role, faculty, student code, academic status, link status, account status), create a single account (email, fullName, userName, faculty, roles, plus studentCode and academicStatus for a Student), update details (changing the email unlinks the Google account)
-A2.2. Bulk import from an Excel file (email, fullName, userName, facultyCode, role, studentCode, academicStatus): 5 filled columns for staff rows, 7 for Student rows; validate all rows, all-or-nothing (Google Sheet import is future, FU6; updating existing accounts through the import is future, FU10)
+A2.2. Bulk import from an .xlsx or .csv file (email, fullName, userName, facultyCode, role, studentCode, academicStatus): 5 filled columns for staff rows, up to 7 for Student rows (academicStatus empty = enrolled); preview and import; validate all rows, all-or-nothing (Google Sheet import is extra scope, ES6; updating existing accounts through the import is extra scope, ES10)
 A2.3. Send / resend account-linking emails, linkStatus notLinked -> emailSent
 A2.4. Roles CRUD and account roles (ACCOUNT_ROLE); the last System Administrator role cannot be removed
 A2.5. Activate/deactivate, ban/unban (never on the admin's own account; ends all active sessions)
@@ -37,19 +37,26 @@ A4.1. Notification CRUD; own inbox: list, mark read, mark all read, delete, clea
 A4.2. NotifyAsync for other features: writes the in-app notification and, if the account's email preference is on, also sends it by email
 A4.3. Notification preferences (email / in-app); a missing row means the channel is on
 A5. Own account: profile (username, preferred language), avatar upload (Supabase Storage), activity history (ACTIVITYLOGS, types listed in AdviseCare_Activity_Types.txt)
-A6. Admin configuration panel (not officially registered in docs; not started): the settings listed in AdviseCare_Functional_Requirements.txt, needs a SYSTEMSETTINGS table
+A6. Admin configuration panel (extra scope, ES15; not officially registered in docs; not started): the settings listed in AdviseCare_Functional_Requirements.txt, needs a SYSTEMSETTINGS table
+A7. Early-support indicators (new 09/11/2026; entities and seed done, service and controller to do)
+A7.1. Indicators CRUD (Data Protection Steward): name, description, data attribute, comparison operator + threshold (checked against the attribute's data type), severity, priority, support category; draft -> active -> archived
+A7.2. Flag check (server-side, no ACCESSLOGS row): after every student data import and when a rule is activated or changed, compare each enrolled student's latest value per term with every active rule; raise one open flag per student, rule and term; clear an open flag whose student no longer hits the rule. Member C's import calls it after its save
+A7.3. Flag queue (Programme Head): list by severity, priority, oldest; open a case from a flag (calls Member D's case creation with openedBy = the Programme Head, the rule's priority and category, then sets the flag's caseId, status caseOpened); dismiss with a reason
+A7.4. Advisor request: an advisor asks to take a flagged student on (status requested, requestedBy); the Programme Head approves (case opened for that advisor) or turns it down (back to open)
+A7.5. Responses show directory data, rule, severity, priority and term, never the value
+A8. Advisor suggestion algorithm (extra scope, ES4; maybe Member A): rank advisors for the Programme Head from support category, subjects, familiar pair, caseload and CASEFEEDBACKS ratings
 
 ==========
 MEMBER B - CONSENT AND DATA PROTECTION
-Tables owned: DATAATTRIBUTES, CONSENTPURPOSES, PURPOSE_ATTRIBUTE, ACCESSPOLICIES, CONSENTS, CONSENTHISTORIES, CONSENTREQUESTS, ACCESSLOGS, EMERGENCYACCESSREQUESTS, ERASUREREQUESTS, ATTRIBUTEKEYS
+Tables owned: DATAATTRIBUTES, CONSENTPURPOSES, PURPOSE_ATTRIBUTE, ACCESSPOLICIES, CONSENTS, CONSENTHISTORIES, CONSENTREQUESTS, ACCESSLOGS, EMERGENCYACCESSREQUESTS, ERASUREREQUESTS, ATTRIBUTEKEYS, CASEMESSAGES
 ==========
 
 B1. Steward configuration
 B1.1. Data attributes (the student data that is only shown with consent): name, description, data type (numeric/categorical/boolean); archive (one-way)
-B1.2. Consent purposes: create (starts inactive), attach/remove attributes, activate/deactivate, retire
+B1.2. Consent purposes: create (starts inactive), attach/remove attributes, activate/deactivate, retire; isForStatistics marks the one statistics purpose (at most one active; it cannot govern a support category or be asked for in a consent request)
 B1.3. Access policies: role + purpose (draft -> active -> revoked, no edit once active); test a policy against a sample student
 B2. Access guard (IAccessGuardService, used by Member C for every student data, point-in-time and correction read)
-B2.1. Decide access: granted, unexpired consent + purpose active and still covering the attribute + active policy for one of the accessor's roles ("if you consent, we serve"); the case category's purpose inside a case, any purpose outside a case
+B2.1. Decide access: granted, unexpired consent + purpose active and still covering the attribute + active policy for one of the accessor's roles ("if you consent, we serve"); the case category's purpose inside a case, any purpose outside a case except the statistics purpose (it only counts when asked for by name, for cohort data); CheckAccessForStudentsAsync checks many students at once under one purpose
 B2.2. Return "exists, not shared" instead of the value when access is refused (inside a case); leave the attribute out of student lists
 B2.3. Write every access to ACCESSLOGS (one row per value read, with its studentDataId; batch writes with LogAccessAsync's batch form); the student's own reads are not logged
 B3. Student consent
@@ -63,36 +70,41 @@ B5. Access log and processing records
 B5.1. Search/filter access log; flag entries; Steward review (cleared / confirmed issue)
 B5.2. Student's own access log
 B5.3. Export processing record for one student or a date range
-B6. Emergency access (pending review): request, approve with time limit, reject with a reason, auto-expire; Stewards share one pool, the first to act is stored as stewardId; the access guard allows an approved, unexpired request (logged with consentPurposeId = null)
+B6. Emergency access: request, approve with time limit, reject with a reason, auto-expire; Stewards share one pool, the first to act is stored as stewardId; the access guard allows an approved, unexpired request (logged with consentPurposeId = null)
+B7. Case messages and messaging (CASEMESSAGES, moved from Member D on 09/11/2026; the current CaseMessageService is the starting point): a two-way append-only thread on a case between its student and its current advisor (not on a closed case); the case staff can read it; each message notifies the other side; kept separate from the private CASENOTES. Chat rules (real-time or not, attachments, read receipts, who else may write, limits) are to be decided (Q&A)
 
 ==========
 MEMBER C - STUDENT DATA, PROFILE AND WELFARE
 Tables owned: STUDENTDATA, CORRECTIONREQUESTS, INTERVENTIONS, SUPPORTGRANTS, EXTERNALSERVICES, EXTERNALREFERRALS, ESCALATIONS
-(DATASOURCES, INGESTIONSCHEDULES, INGESTIONJOBS are future: no work now)
+(DATASOURCES, INGESTIONSCHEDULES, INGESTIONJOBS are extra scope, ES1: no work now)
 ==========
 
 C1. Student data import (Admin; StudentDataController)
-C1.1. Upload Excel/CSV (Google Sheet is future, FU6); preview the header and sample rows; map columns to data attributes
+C1.1. Upload Excel/CSV (Google Sheet is extra scope, ES6); preview the header and sample rows; map columns to data attributes
 C1.2. Validate the whole file (also as a dry run), all-or-nothing; return the list of invalid rows; rows of archived data attributes are not imported but listed in rejectedRows, and the rest still goes in
 C1.3. Insert new STUDENTDATA rows only (dataSourceId null, provenanceNote = file name + import date); never update; encrypt each value with Member B's IAttributeKeyService.EncryptValuesAsync before saving (new keys are saved by the same SaveAsync)
 C1.4. Flag missing values (isMissing) for every enrolled, active student without a value for an imported attribute and term
 C1.5. Import history through ACTIVITYLOGS
+C1.6. After the save, call Member A's indicator flag check (A7.2) for the imported attributes and terms
 C2. Student data and history
 C2.1. Student data API: data attribute values with sources and missing-data notices, inside a case (the case category's purpose, only the case's advisor) or outside a case (any purpose the staff role has a policy for, or emergency access); every value passed through Member B's access guard (IAccessGuardService, then IAttributeKeyService.DecryptValuesAsync and LogAccessAsync for each value shown; an erased value is shown as erased)
 C2.2. Point-in-time view ("way back machine") on both time axes: system time (latest transactionFrom up to the chosen date) and valid time (latest validFrom up to the chosen date, a later recording winning on ties); compare two dates
 C2.3. Student's own data view (no consent needed, not logged)
 C2.4. Student JSON export (own record + own access log), generated on the fly
-C2.5. Correction requests (pending review): submit on one STUDENTDATA row (values stored encrypted), only while the student has an open case (to do: refuse with 409 otherwise), reviewed by the advisor of one of the student's open cases (the values are only shown with consent or emergency access, and logged), approved = new "correction" row with the same validFrom, withdraw
+C2.5. Correction requests (done 09/11/2026, QC-214): submit on one STUDENTDATA row under a consent purpose (consentPurposeId; values stored encrypted); submitting grants the student's consent on that one attribute under the purpose (IConsentService.CreateAsync), no case needed; every advisor whose role has an active policy for the purpose sees it (shared pool), the first to decide is stored in reviewedBy; values read through the access guard under the request's purpose and logged; approved = new "correction" row with the same validFrom; withdraw
 C3. Welfare (Student Welfare Officer)
 C3.1. Interventions: log, update until closed (the outcome is part of the update), close, history per student
 C3.2. Support grants under an intervention; revoke
 C3.3. External services list; external referrals with follow-up due date, follow-up outcome, close, overdue flag (background check)
 C3.4. Escalations: officer raises, Programme Head responds, status tracking
+C4. Anonymised statistics (done 09/11/2026; StatisticService, StatisticsController, QC-024)
+C4.1. Welfare statistics (Student Welfare Officer, Programme Head): per support category (and faculty) in a date range, cases opened, referred cases, interventions, support grants, external referrals, escalations, distinct students; cells from fewer than 5 students hidden; export xlsx/csv/pdf
+C4.2. Cohort data (Programme Head): one attribute and term (and faculty), latest value per student, only consents under the statistics purpose (no emergency access), every value read logged, cells and values from fewer than 10 students hidden; export xlsx/csv/pdf
 Note: welfare works on existing CASES rows (from the seed data), so it does not wait for Member D's case APIs
 
 ==========
 MEMBER D - SUPPORT REQUESTS, CASES, MATCHING AND REPORTS
-Tables owned: SUPPORTCATEGORIES, CASES, CASENOTES, CASESTAGEHISTORIES, REFERRALS, CASECHANGEREQUESTS
+Tables owned: SUPPORTCATEGORIES, CASES, CASE_ATTRIBUTE, CASENOTES, CASESTAGEHISTORIES, REFERRALS, CASECHANGEREQUESTS, CASEFEEDBACKS
 ==========
 
 D1. Support categories (Admin): create/edit/archive, academic/wellbeing, governing consent purpose; the shareable attributes of a category (its purpose's active attributes)
@@ -102,7 +114,7 @@ D2.2. List the attributes the student may share (from the category's purpose) an
 D2.3. Student's own cases, stages and history
 D3. Matching (Programme Head)
 D3.1. Queue of unassigned cases
-D3.2. Suggested advisors: by type, subject specialisation, faculty, workload (an advisor already handling another open case of the student first is optional)
+D3.2. Suggested advisors: by type, subject specialisation, faculty, workload (an advisor already handling another open case of the student first is optional; a ranked suggestion algorithm is extra scope, ES4)
 D3.3. Assign a case: set advisorId (the case's advisor is the only advisor-student link), notify student with the advisor's contact information (NotificationService.NotifyAsync, Member A)
 D3.4. Reassign directly
 D4. Advisor case workflow (Academic and Wellbeing Advisors)
@@ -111,6 +123,7 @@ D4.2. Advisor opens a case for a student based on their data (read through Membe
 D4.3. Case notes: draft, edit, finalize (no edits after finalize)
 D4.4. Stage changes with reason (CASESTAGEHISTORIES insert-only); close, reopen
 D4.5. Referrals: to another advisor (same/other type) or to the Welfare Officer; accept / return
-D4.6. Case messages (CASEMESSAGES): a two-way append-only thread on a case between its student and its current advisor (not on a closed case); the case staff can read it; each message notifies the other side; kept separate from the private CASENOTES
+D4.6. Case messages: moved to Member B (B7) on 09/11/2026
 D5. Case change requests (CASECHANGEREQUESTS): the case's advisor or student requests another advisor for one case, Programme Head approves (CASES.advisorId = proposed advisor) or rejects with decision notes (required)
+D5b. Case feedback and ratings (CASEFEEDBACKS, new 09/11/2026; entity and seed done, service and controller to do): the student of a closed case rates it once (1-5, optional comment, max 1000 characters), tied to the case's advisor; who may read it (advisor, Programme Head, anonymous or not) is to be decided (Q&A); average rating per advisor for the reports and for ES4
 D6. Reports (Programme Head; ReportsController + ReportService): cases in a time range with filters, caseload volume and closure time per advisor, export Excel/CSV/PDF generated on the fly (the PDF uses the built-in SimplePdfWriter, which cannot draw Vietnamese diacritics)

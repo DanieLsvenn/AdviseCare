@@ -43,6 +43,8 @@ public partial class Studentdata
 
     public virtual Datasource DataSource { get; set; }
 
+    public virtual ICollection<Indicatorflag> Indicatorflags { get; set; } = new List<Indicatorflag>();
+
     public virtual Account Student { get; set; }
 
     public virtual Academicterm Term { get; set; }

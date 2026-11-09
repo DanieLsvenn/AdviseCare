@@ -70,6 +70,9 @@ classDiagram
     CorrectionRequestService ..|> ICorrectionRequestService
     CorrectionRequestService --> Correctionrequest : IGenericRepository
     CorrectionRequestService --> Studentdata : IGenericRepository
+    CorrectionRequestService --> Consentpurpose : IGenericRepository
+    CorrectionRequestService --> Accesspolicy : IGenericRepository
+    CorrectionRequestService --> AccountRole : IGenericRepository
     class IAccessGuardService {
         <<interface, other module>>
     }
@@ -85,6 +88,18 @@ classDiagram
     class INotificationService {
         <<interface, other module>>
     }
+    class IConsentService {
+        <<interface, other module>>
+    }
+    class Consentpurpose {
+        <<entity, other module>>
+    }
+    class Accesspolicy {
+        <<entity, other module>>
+    }
+    class AccountRole {
+        <<entity, other module>>
+    }
     class IStudentProfileService {
         <<interface, other module>>
     }
@@ -92,6 +107,7 @@ classDiagram
     CorrectionRequestService --> IActivityLogService : uses
     CorrectionRequestService --> IAttributeKeyService : uses
     CorrectionRequestService --> INotificationService : uses
+    CorrectionRequestService --> IConsentService : uses
     StudentDataService --> IAccessGuardService : uses
     StudentDataService --> IAccessLogService : uses
     StudentDataService --> IActivityLogService : uses
@@ -120,6 +136,7 @@ classDiagram
     }
     class Correctionrequest {
         +Guid correctionRequestId
+        +Guid consentPurposeId
         +Guid? reviewedBy
         +Guid studentDataId
         +Guid studentId
@@ -165,4 +182,5 @@ classDiagram
     Dataattribute "1" -- "*" Studentdata : dataAttributeId
     Academicterm "1" -- "*" Studentdata : termId
     Studentdata "1" -- "*" Correctionrequest : studentDataId
+    Consentpurpose "1" -- "*" Correctionrequest : consentPurposeId
     Dataattribute "1" -- "*" Attributekey : dataAttributeId

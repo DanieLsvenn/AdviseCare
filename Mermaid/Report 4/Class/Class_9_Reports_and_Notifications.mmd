@@ -11,6 +11,13 @@ classDiagram
         +ExportCaseloadClosureReport() GET /caseload-closure/export
     }
     ReportsController --> IReportService : uses
+    class StatisticsController {
+        +GetWelfareStatistic() GET /welfare
+        +ExportWelfareStatistic() GET /welfare/export
+        +GetCohortStatistic() GET /cohort
+        +ExportCohortStatistic() GET /cohort/export
+    }
+    StatisticsController --> IStatisticService : uses
     class NotificationsController {
         +GetAll() GET /
         +GetById() GET /:id
@@ -48,6 +55,42 @@ classDiagram
     ReportService --> Case : IGenericRepository
     ReportService --> IExcelWriter : uses
     ReportService --> IPdfWriter : uses
+    class IStatisticService {
+        +GetWelfareStatisticAsync(request) List~GetWelfareStatisticResponse~
+        +ExportWelfareStatisticAsync(AccessorId, request) ExportWelfareStatisticResponse
+        +GetCohortStatisticAsync(AccessorId, request) List~GetCohortStatisticResponse~
+        +ExportCohortStatisticAsync(AccessorId, request) ExportCohortStatisticResponse
+    }
+    class StatisticService {
+    }
+    class IAccessGuardService {
+        <<interface, other module>>
+    }
+    class IAttributeKeyService {
+        <<interface, other module>>
+    }
+    class Consentpurpose {
+        <<entity, other module>>
+    }
+    class Studentdata {
+        <<entity, other module>>
+    }
+    class Academicterm {
+        <<entity, other module>>
+    }
+    class Faculty {
+        <<entity, other module>>
+    }
+    StatisticService ..|> IStatisticService
+    StatisticService --> Case : IGenericRepository
+    StatisticService --> Consentpurpose : IGenericRepository
+    StatisticService --> Studentdata : IGenericRepository
+    StatisticService --> Academicterm : IGenericRepository
+    StatisticService --> Faculty : IGenericRepository
+    StatisticService --> IAccessGuardService : uses
+    StatisticService --> IAttributeKeyService : uses
+    StatisticService --> IExcelWriter : uses
+    StatisticService --> IPdfWriter : uses
     class INotificationService {
         +GetAll() IEnumerable~GetAllNotificationResponse~
         +GetAllWithPaginationAsync(page, pageSize) IEnumerable~GetAllNotificationWithPaginationResponse~

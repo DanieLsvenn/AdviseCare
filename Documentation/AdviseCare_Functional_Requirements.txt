@@ -1,6 +1,6 @@
 Actors (current version): System Administrator, Data Protection Steward, Academic Advisor, Wellbeing Advisor, Student Welfare Officer, Student, Programme Head
 External: Google (personal account sign-in), Email service, External Support Services
-Items marked (pending review) are kept for now but will be re-checked when we go over the requirements again.
+Items marked (extra scope) are backup plans to widen the scope; details in AdviseCare_Extra_Scope_List.txt. Items marked (to be decided) still have open rules, tracked in AdviseCare_QA_History.
 
 System Administrator
 
@@ -9,11 +9,11 @@ System Administrator
 Creating accounts for students and staff (one by one or in bulk from an import file), getting every account linked to its owner's personal Google account, and deciding which role each staff account plays.
 
 + Create a single account (email, full name, username, faculty, roles); a Student account also gets its student profile (student code, academic status)
-+ Bulk import accounts from an Excel file (email, full name, username, faculty code, role, plus student code and academic status on Student rows only: 7 filled columns for a student, 5 for staff); importing from a Google Sheet is future (see AdviseCare_Future_List.txt)
++ Bulk import accounts from an .xlsx or .csv file (email, full name, username, faculty code, role, plus student code and academic status on Student rows only: up to 7 filled columns for a student, academic status empty = enrolled; 5 for staff); importing from a Google Sheet is extra scope (ES6)
 + Send account-linking emails to newly created accounts
 + Track each account's link status (not linked / email sent / linked) and resend the linking email
 + Edit account details (email, full name, username, faculty); changing the email unlinks the Google account, so the linking email has to be sent again
-+ Edit a student's profile (student code, academic status: enrolled / on leave / withdrawn / graduated), e.g. when the student goes on leave or graduates; updating existing accounts through the import is future
++ Edit a student's profile (student code, academic status: enrolled / on leave / withdrawn / graduated), e.g. when the student goes on leave or graduates; updating existing accounts through the import is extra scope (ES10)
 + Activate/Deactivate or Ban/Unban an account (not the admin's own account; deactivating or banning ends all of the account's sessions)
 + Adjust roles for each account (the last System Administrator role cannot be removed)
 + View the account dashboard, sorted/filtered by role, faculty, student code, academic status, link status or account status
@@ -40,13 +40,14 @@ Setting up the basic calendar and the shared lookup lists the rest of the system
 
 Since the school has no data source or API to connect to, student data (attendance, grades, ...) comes in as files that the admin uploads. The import is all-or-nothing: if one row is invalid, nothing is imported. Rows of an archived data attribute are the only exception: they are left out and listed, and the other rows are still imported.
 
-+ Upload an Excel/CSV file of student data values (a Google Sheet is future, see FU6 in AdviseCare_Future_List.txt)
++ Upload an Excel/CSV file of student data values (a Google Sheet is extra scope, see ES6 in AdviseCare_Extra_Scope_List.txt)
 + Preview the file and map its columns (student identifier, data attribute, value, term, valid-from date)
 + Validate the whole file before saving (all-or-nothing); valid values are encrypted and go straight into the student data history, and every enrolled student without a value gets a missing-data notice
 + View the import result and the list of invalid rows when it fails
 + View import history (who imported what, when; kept in the admin's activity log)
++ After every import, the active early-support indicators are re-checked and flags raised or cleared (see the Steward and the Programme Head)
 
-- Configure data source connections and ingestion schedules (future, not in the current version, see AdviseCare_Future_List.txt):
+- Configure data source connections and ingestion schedules (extra scope, ES1, see AdviseCare_Extra_Scope_List.txt):
 
 Kept in the ERD for later, when a real data source exists.
 
@@ -55,13 +56,13 @@ Kept in the ERD for later, when a real data source exists.
 + Pause/Disconnect a data source
 + View failed ingestion jobs and retry them
 
-- Restore records from backup and verify integrity after restore (future, not in the current version, see AdviseCare_Future_List.txt):
+- Restore records from backup and verify integrity after restore (extra scope, ES3, see AdviseCare_Extra_Scope_List.txt):
 
 + Select a backup point to restore from
 + Run the restore and the integrity check
 + View restore history log
 
-- Configure system settings (not officially registered in docs):
+- Configure system settings (extra scope, ES15; not officially registered in docs):
 
 An admin control panel for values that are fixed in code for now. It is kept out of the official reports; until a settings table exists (see the NOTES of AdviseCare_ERD_Tables.txt), the current values below are the defaults.
 
@@ -96,6 +97,7 @@ Deciding the reasons the university may use student data (e.g. "Academic advisin
 + Attach/Remove specific data attributes to a purpose
 + Activate/Deactivate a purpose
 + Retire (not remove) a purpose that is no longer used - Retired purposes cannot be brought back
++ Mark one purpose as the statistics purpose (only one can be active): students consent to it to be counted in anonymised cohort data, and it never opens a single student's values
 + View list of purposes and their status
 
 - Configure access policies binding role, purpose and consent state:
@@ -118,7 +120,7 @@ Being able to pull up "who looked at what, when, and why", for audits and becaus
 + Export a full report for a date range
 + Flag a suspicious access entry for follow-up
 
-- Approve or reject requests for out-of-scope emergency access (pending review):
+- Approve or reject requests for out-of-scope emergency access:
 
 + View pending emergency access requests (Stewards share one pool; the first Steward to act decides)
 + View requester's justification
@@ -137,6 +139,15 @@ When a student withdraws consent, the Steward triggers the destruction of the en
 + View erasure completion log
 + View the key status of each student's attributes (active/destroyed; the key itself is never shown)
 
+- Define early-support indicators (owner: Member A):
+
+Rules that point out students who may be falling behind, so staff can reach out before the student asks. The Steward decides which data attribute is watched, the threshold, how serious a hit is and how urgent the case would be.
+
++ Create an indicator: name, description, one data attribute, comparison (less than, less or equal, greater than, greater or equal, equal, not equal) and threshold value, severity (low/moderate/high/critical), case priority (low/medium/high/urgent) and the support category a case would get
++ Edit, activate or archive an indicator (it starts as a draft; a draft raises no flags)
++ Re-check every enrolled student's latest values when a rule is activated or changed
++ View the flags each indicator raised (directory data and the rule only, never the value)
+
 Academic Advisor and Wellbeing Advisor (shared requirements)
 
 The two advisor roles use the same case tools. The Academic Advisor handles study matters (subjects, FLM / FAP / LMS resources) and may be specialised in some subjects. The Wellbeing Advisor handles personal life matters (psychological issues, accommodation, family, everyday money advice, paperwork such as student certificates or military exemption); anything involving borrowing money or financial support goes to the Student Welfare Officer.
@@ -154,11 +165,12 @@ Their homepage: the cases the Programme Head matched to them, plus cases they op
 
 - Reach out to students based on their data:
 
-Advisors can also start a case themselves when a student's data (merits, attendance, grades...) suggests the student needs help. There is no automatic case opening.
+Advisors can also start a case themselves when a student's data (merits, attendance, grades...) suggests the student needs help, or ask to take on a student flagged by an early-support indicator. There is no automatic case opening.
 
 + View a student's data outside a case (only what consent allows under a purpose the advisor's role has a policy for: "if you consent, we serve"; attributes not shared show as "exists, not shared"), or through an approved emergency access
 + Open a case for a student with a reason
 + Get the student notified that the advisor wants to meet
++ View the early-support flags (student directory data, rule, severity, priority, term; never the value) and ask the Programme Head to take a flagged student on
 
 - Open a student profile with source provenance and missing-data notices:
 
@@ -172,7 +184,7 @@ Every value shown says where it came from (which import) and if something is mis
 
 - Record case notes and agreed actions:
 
-Advisor and student decide by themselves how and when to meet (online, offline, external messaging app). The advisor writes down what was discussed. Once finalized, a note can't be edited.
+Advisor and student agree how and when to meet (online, offline), e.g. in the case thread. The advisor writes down what was discussed. Once finalized, a note can't be edited.
 
 + Add a case note
 + Record agreed actions in the note
@@ -180,13 +192,14 @@ Advisor and student decide by themselves how and when to meet (online, offline, 
 + Finalize a note
 + View history of past notes for a student
 
-- Talk with the student in the case thread:
+- Talk with the student in the case thread (owner: Member B; chat rules to be decided):
 
 The case has a message thread that the student and the current advisor both write in, e.g. a next step or a meeting suggestion from the advisor and the student's reply. Messages are attributed and timestamped, are visible to the student and the staff of the case, and cannot be edited or deleted. Nothing can be written while the case is closed, and a student can write once an advisor is assigned. Internal case notes remain staff-only.
 
 + Write and read messages in the case thread
 + Notify the other side when a message is written
 + Preserve message author and timestamp for accountability
++ To be decided with Member B: real-time or not, attachments, read receipts, who else may write and when, length and rate limits
 
 - Advance a case through its stages:
 
@@ -225,11 +238,11 @@ If an advisor needs data the student has not shared, they send a specific named 
 + View request status (pending/granted/denied)
 + Withdraw a pending request
 
-- Review a student's correction request (pending review):
+- Review a student's correction request:
 
-When a student says one of their data values is wrong, the advisor of one of the student's open cases checks it against its source (e.g. the lecturer's attendance sheet) and decides.
+When a student says one of their data values is wrong, the request works like a case for that one data attribute but never opens a case. Every advisor whose role has an active access policy for the request's consent purpose sees it (a shared pool, shown separately from cases); the first one to decide checks it against its source (e.g. the lecturer's attendance sheet).
 
-+ View pending correction requests of students in own open cases (the values are only shown with consent or emergency access, and the read is logged)
++ View the correction requests of the shared pool (the values are shown through the consent the student gave with the request, and every read is logged)
 + Approve with a note: the corrected value is saved as a new version with the same valid-from date, and the wrong value stays in the history
 + Reject with a note explaining why
 + The student is notified of the decision
@@ -271,6 +284,15 @@ When a case goes beyond what the officer is allowed to decide, it is escalated t
 + View status of an escalated case
 + View the Programme Head's response
 
+- View anonymised welfare statistics:
+
+Counts of what happens in welfare and advising over a period, without ever showing who it was about.
+
++ Select a date range, and optionally a faculty, a support type and a split per faculty
++ View per support category: cases opened, referred cases, interventions, support grants, external referrals and escalations, and the number of different students behind them
++ Every cell counted from fewer than 5 different students is hidden
++ Export the statistics (Excel/CSV/PDF)
+
 Student
 
 - Request support (create a case):
@@ -284,6 +306,8 @@ The main entry point: the student asks for help, picks the kind of help, explain
 + Choose which data attributes to share (only those allowed by the category's consent purpose; can be left empty), with an optional note per attribute on why it matters
 + Receive the matched advisor's contact information by email and in-app notification
 + View own cases, their stages and history
++ Write in the case thread once an advisor is assigned
++ Rate a closed case once (1-5 stars and an optional comment; owner: Member D, who may read it is to be decided)
 
 - View own profile, data and the sources behind them:
 
@@ -298,6 +322,7 @@ The main entry point: the student asks for help, picks the kind of help, explain
 + Grant consent to a purpose
 + Withdraw single attributes of a purpose while keeping the rest shared
 + Set or change an optional expiry date for a consent
++ Choose whether to be counted in anonymised cohort statistics (consent under the statistics purpose)
 + Withdraw consent entirely for a purpose
 + Respond to an advisor's consent request (grant/deny)
 + View consent change history
@@ -313,13 +338,13 @@ The main entry point: the student asks for help, picks the kind of help, explain
 
 + Export own record and access log as a JSON file
 
-- Ask for a wrong data value to be corrected (pending review):
+- Ask for a wrong data value to be corrected:
 
-When one of the student's own data values is wrong (e.g. an attendance rate imported with a mistake), the student can ask for it to be fixed. An advisor checks it against its source. The corrected value is added as a new version, so the old value stays in the history and past views can still show what the system knew at the time. Directory data (name, student code, academic status) is not corrected this way; the admin edits it.
+When one of the student's own data values is wrong (e.g. an attendance rate imported with a mistake), the student can ask for it to be fixed. An advisor of the chosen purpose's pool checks it against its source; no case is needed. The corrected value is added as a new version, so the old value stays in the history and past views can still show what the system knew at the time. Directory data (name, student code, academic status) is not corrected this way; the admin edits it.
 
 + Pick the value believed to be wrong (one data attribute for one term)
++ Choose the consent purpose to send it under (only purposes that cover the attribute); submitting also shares that one attribute under the purpose
 + Give the correct value and a reason (e.g. evidence from the lecturer)
-+ Only possible while the student has an open case, since that case's advisor reviews it; without one, the student is asked to open a support case first
 + Track the request (pending / approved / rejected) and get notified of the decision
 + Withdraw a request that is still pending
 
@@ -329,12 +354,19 @@ Usually there is one Programme Head for the whole app: the manager responsible f
 
 - Match cases to advisors:
 
-For now matching is manual; an automated/AI matching mode is a future plan.
+Matching is manual. An advisor suggestion algorithm (ES4) and an AI advisor as a backup when there are not enough advisors (ES13) are extra scope; the Programme Head always makes the final decision.
 
 + View the queue of unassigned cases (type, category, subject, priority)
 + View suitable advisors (by type, subject specialisation, faculty, current workload)
 + Assign a case to an advisor (familiar advisor-student pairs suggested first: quality-of-life add-on, optional)
 + Reassign a case directly if needed
+
+- Work through the early-support flag queue:
+
++ View the open flags sorted by severity, then priority, then oldest (student directory data, rule, severity, priority, term; never the value)
++ Open a case from a flag for an advisor of the rule's support type (the case gets the rule's priority and category)
++ Dismiss a flag with a reason
++ Approve or turn down an advisor's request to take a flagged student on
 
 - Approve case advisor changes:
 
@@ -355,6 +387,13 @@ For now matching is manual; an automated/AI matching mode is a future plan.
 + Review advisor caseload volume and case closure times
 + Export the list/report (Excel/CSV/PDF)
 
+- View anonymised welfare statistics and cohort data:
+
++ View the welfare statistics (same page as the Student Welfare Officer)
++ View cohort data of one data attribute for one term, the whole cohort or per faculty: average, minimum and maximum for a numeric attribute, the number of students per value otherwise
++ Only values the students shared under the statistics purpose count (never emergency access); every value read is logged; every cell or value with fewer than 10 students is hidden
++ Export the cohort data (Excel/CSV/PDF)
+
 All authenticated users
 
 - Sign in with Google or password:
@@ -370,7 +409,7 @@ Every account belongs to a personal Google account. After the first Google sign-
 
 - Receive notifications:
 
-+ Receive in-app and email notifications (case assigned, advisor contact info, referral, consent request, escalation)
++ Receive in-app and email notifications (case assigned, advisor contact info, referral, consent request, escalation, case message, correction decision)
 + Mark a notification as read
 + Click through a notification to the relevant item
 + Set notification preferences (email vs in-app)

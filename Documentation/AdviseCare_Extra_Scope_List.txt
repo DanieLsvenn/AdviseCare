@@ -1,0 +1,108 @@
+ADVISECARE EXTRA SCOPE LIST (backup plans to widen the scope, not in the current version)
+
+Renamed from AdviseCare_Future_List.txt on 09/11/2026: FUx became ESx with the same number.
+Same numbering as the EXTRA SCOPE section of AdviseCare_Workflow_List.txt and the NOTES of AdviseCare_ERD_Tables.txt.
+
+Moved into the current version on 09/11/2026 (no longer extra scope):
+- Emergency access and correction requests: official since the first requirements (the old "pending review" note is gone).
+- Early-support indicators (INDICATORS, INDICATORFLAGS), the case thread rules (CASEMESSAGES), case feedback and ratings (CASEFEEDBACKS).
+- The welfare part of the old FU12 (welfare statistics for the Student Welfare Officer and the Programme Head) and the old FU13 (anonymised cohort data).
+  What is left of FU12 (statistics for the other roles) stays here as ES12.
+
+==========
+1. EXTRA SCOPE, ALREADY IN THE ERD
+(the tables or data already exist in AdviseCare_ERD_Tables.txt, but no feature is built on them in the current version)
+==========
+
+ES1: Scheduled data ingestion / live integration with FAP, FLM, LMS
+- What it is: connect to a real data source (database, API) and pull student data automatically on a schedule, instead of the admin uploading Excel/CSV files
+- Already in the ERD: DATASOURCES (one data source per data attribute), INGESTIONSCHEDULES, INGESTIONJOBS, and STUDENTDATA.dataSourceId (null for file imports in the current version)
+- Rules already decided: one upcoming job per schedule, minimum frequency daily, start time works like an alarm, on failure warn/skip/retry, every job is all-or-nothing
+- Why extra scope: the school offers no data source or API for FAP, FLM or LMS
+
+ES2: Stored report history
+- What it is: keep every generated report/export so it can be downloaded again later
+- Already in the ERD: REPORTS
+- Current version instead: case reports, statistics and the student JSON export are generated and downloaded on the fly, not stored
+
+ES3: Backup and restore with integrity check
+- What it is: pick a backup point, restore it, and verify nothing is missing or duplicated
+- Already in the ERD: BACKUPS, RESTOREOPERATIONS
+- Why extra scope: database backups are handled by the hosting for now
+
+ES4: Advisor suggestion algorithm (owner for now: Member A)
+- What it is: when the Programme Head matches a case (or opens one from an indicator flag), the system ranks the suitable advisors and shows why; the Programme Head still decides
+- Factors to brainstorm with the team:
+  + the support category and support type of the case (academic advisors for academic cases, wellbeing advisors for wellbeing ones)
+  + the advisor's subjects (ACCOUNT_SUBJECT) against the case's subject
+  + a familiar advisor-student pair (earlier cases of the same student, and how they were rated)
+  + the advisor's current caseload (open cases), so work is spread evenly
+  + ratings from CASEFEEDBACKS (average, number of ratings)
+  + profession, languages and personality / working-style fit: these need ES14 (advisor profiles)
+- Already in the ERD: no extra table needed for a first version; it scores advisors from CASES, ACCOUNT_SUBJECT, SUBJECTS, SUPPORTCATEGORIES and CASEFEEDBACKS
+- Open points: the weight of each factor, whether the score is shown to the advisor, and how to avoid always picking the same top-rated advisor
+
+ES5: Advising effectiveness analysis
+- What it is: analyse case data over a period (a month, a term) to help the school judge whether advising works
+- Already in the ERD: no extra table needed; it would use CASES, CASESTAGEHISTORIES, REFERRALS, INTERVENTIONS and CASEFEEDBACKS
+- Why extra scope: the mentor stated this software matches and tracks; judging effectiveness is not its responsibility
+
+ES6: Importing accounts and student data from a Google Sheet
+- What it is: the admin pastes a Google Sheet link instead of uploading a file, both for the account import and for the student data import; the rows go through the same all-or-nothing validation as the file imports
+- Already in the ERD: no extra table needed; it creates the same ACCOUNTS, ACCOUNT_ROLE and STUDENTPROFILES rows as the account import, and the same STUDENTDATA rows (dataSourceId null) as the student data import
+- Why extra scope: kept simple for now, the admin can download the sheet as an Excel or CSV file and upload that
+- Ways to do it later: a sheet shared as "anyone with the link can view" read through its CSV export link (no API key), or a Google service account for private sheets
+
+ES10: Account import that also updates existing accounts
+- What it is: the same account import, but a Student row whose studentCode already exists updates that student (e.g. academicStatus enrolled -> onLeave, a new faculty) instead of being refused; a row with a new studentCode creates the account exactly like today
+- Already in the ERD: no extra table needed; it updates ACCOUNTS and STUDENTPROFILES
+- Current version instead: the import only creates accounts, and the admin edits a student's profile one by one (PUT /api/StudentProfiles/{studentId})
+
+ES12: Anonymised statistics for the other roles
+- What it is: more summary pages in the style of the welfare statistics (which are in the current version), one per role:
+  + Cases (Programme Head): cases opened/closed per support category, support type, faculty and stage; average time to first contact and to closure
+  + Consent (Data Protection Steward): consents granted/withdrawn per purpose and data attribute, consent requests granted/denied, erasures executed, emergency access requests approved/rejected, flagged access log entries
+  + Imports (System Administrator): student data imported per term and data attribute, missing values per attribute, correction requests approved/rejected
+  + Accounts (System Administrator): accounts per role, faculty, academic status and link status
+- Same rule as the welfare statistics: every cell counted from fewer than 5 different students is hidden; statistics that are not about students (accounts per role, imports per term) need no suppression
+- Already in the ERD: no extra table needed; it only counts existing rows
+
+==========
+2. EXTRA SCOPE, NOT IN THE ERD
+(would need new tables or changes to existing ones)
+==========
+
+ES7: In-app meeting scheduling
+- What it is: advisors publish available time slots, students book them, advisors can swap meetings with each other
+- Missing in the ERD: tables for advisor availability and meetings
+- Current version instead: advisor and student agree on a time in the case thread (CASEMESSAGES); the advisor records case notes
+
+ES8: AI assistance in the case thread
+- What it is: AI help inside a case's message thread (e.g. a suggested reply for the advisor or a summary of the thread); not agreed by the team yet
+- Missing in the ERD: a way to mark AI-written or AI-suggested messages in CASEMESSAGES
+
+ES9: Accounts without a Google account on file (activation code)
+- What it is: the admin creates an account without a Google-linked email. The system shows a one-time activation code, valid for a short time, which the admin gives to the student in person. The student enters the code, sets their own password straight away, and links a Google account later in Settings
+- Missing in the ERD: no new table, but ACCOUNTS.email must allow null (the unique index has to ignore nulls), and the code can reuse resetToken and resetTokenExpiresAt
+- Why extra scope: the current version expects every student to have an email and a Google account
+- Open points: how notifications and "forgot password" work for an account with no email; the code is shown only on the admin screen, never sent by email
+
+ES11: Each student's programme
+- What it is: record which programme each student belongs to, so cases and statistics can be split per programme and routed to that programme's head
+- Missing in the ERD: STUDENTPROFILES.programmeId (FK to PROGRAMMES)
+- Why extra scope: there is only one programme / Programme Head for now; the faculty on ACCOUNTS is enough to group students
+
+ES13: AI advisor as a backup (owner: to be decided)
+- What it is: when there are not enough human advisors, an AI advisor can take on suitable cases (e.g. simple exam-preparation questions); the Programme Head always makes the final decision on whether a case goes to the AI, and can hand it to a human at any time
+- Missing in the ERD: a way to tell an AI-advised case apart (an AI account or CASES.advisedBy = human/ai), an AI-suitability score per case and its rules, and AI-written CASEMESSAGES (shared with ES8)
+- Open points: which cases are never suitable (wellbeing crises, anything with emergency access), what the AI may read (it must follow the same consent rules), and how the student is told they are talking to an AI
+
+ES14: Advisor profiles for the suggestion algorithm
+- What it is: a profile per advisor (expertise, languages, personality / working-style tags, availability) so ES4 can also match on fit, not only on subjects and ratings
+- Missing in the ERD: e.g. ADVISORPROFILES (advisorId, expertise, languages, styleTags, maxCaseload)
+- Open points: who fills the profile (the advisor or the Programme Head), and whether personality tags are fair to use
+
+ES15: Admin configuration panel
+- What it is: a screen where the System Administrator changes the settings listed in AdviseCare_Functional_Requirements.txt (token lifetimes, thresholds, file size limits) without a new deployment
+- Missing in the ERD: a SYSTEMSETTINGS key/value table (settingKey, settingValue, updatedBy, updatedAt)
+- Current version instead: the values are fixed in code or appsettings.json

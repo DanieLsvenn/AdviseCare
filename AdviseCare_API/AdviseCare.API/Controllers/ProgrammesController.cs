@@ -1,4 +1,5 @@
 using AdviseCare.Application.Contracts.Requests.Programme;
+using AdviseCare.Application.Contracts.Responses;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +18,8 @@ namespace AdviseCare.API.Controllers
         [HttpGet]
         [SwaggerOperation(Summary = "[All roles] Get all programmes with optional pagination",
             Description = "Retrieves every programme, ordered by programme code. Pass page and pageSize together to page the results. Programmes are a simple reference list for now and are not used by other tables.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- Page and page size must be at least 1.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
             if (page.HasValue && pageSize.HasValue)
@@ -33,6 +36,8 @@ namespace AdviseCare.API.Controllers
         [HttpGet("{id}")]
         [SwaggerOperation(Summary = "[All roles] Get programme by Id",
             Description = "Retrieves one programme by its unique identifier.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Programme not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             var response = await _programmeService.GetByIdAsync(id);
@@ -43,6 +48,8 @@ namespace AdviseCare.API.Controllers
         [HttpGet("search")]
         [SwaggerOperation(Summary = "[All roles] Search/Filter programmes",
             Description = "Filters programmes by faculty, by code or name (contains) and by status (active/archived). Empty fields are ignored.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         public async Task<IActionResult> Search([FromQuery] SearchProgrammeRequest request)
         {
             var response = await _programmeService.SearchAsync(request);
@@ -54,6 +61,11 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Create programme",
             Description = "Creates a new active programme under an existing faculty. The programme code must be unique.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Faculty not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- A programme with code '{ProgrammeCode}' already exists.", typeof(ErrorResponse))]
         public async Task<IActionResult> Create([FromBody] CreateProgrammeRequest request)
         {
             var response = await _programmeService.CreateAsync(request);
@@ -65,6 +77,11 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Update programme",
             Description = "Updates a programme's faculty, code, name and status (active/archived).")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Programme not found.\n- Faculty not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- A programme with code '{ProgrammeCode}' already exists.", typeof(ErrorResponse))]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateProgrammeRequest request)
         {
             var response = await _programmeService.UpdateAsync(id, request);

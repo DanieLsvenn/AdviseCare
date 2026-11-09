@@ -85,6 +85,7 @@ builder.Services.AddScoped<ICaseMessageService, CaseMessageService>();
 builder.Services.AddScoped<IReferralService, ReferralService>();
 builder.Services.AddScoped<ICaseChangeRequestService, CaseChangeRequestService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IStatisticService, StatisticService>();
 
 // --- Repositories ---
 // Registered once for every entity (open generic), so no per-entity line is needed.

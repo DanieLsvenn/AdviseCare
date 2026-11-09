@@ -35,6 +35,7 @@ namespace AdviseCare.Application.Services
                 CreatorFullName = p.CreatedByNavigation.FullName,
                 Description = p.Description ?? string.Empty,
                 PurposeName = p.PurposeName,
+                IsForStatistics = p.IsForStatistics,
                 Status = p.Status
             });
         }
@@ -57,6 +58,7 @@ namespace AdviseCare.Application.Services
                     CreatorFullName = p.CreatedByNavigation.FullName,
                     Description = p.Description ?? string.Empty,
                     PurposeName = p.PurposeName,
+                    IsForStatistics = p.IsForStatistics,
                     Status = p.Status
                 });
         }
@@ -83,6 +85,7 @@ namespace AdviseCare.Application.Services
                         AttributeName = a.AttributeName,
                         Status = a.Status
                     }).ToList(),
+                IsForStatistics = purpose.IsForStatistics,
                 Status = purpose.Status
             };
         }
@@ -104,6 +107,7 @@ namespace AdviseCare.Application.Services
                 CreatorFullName = p.CreatedByNavigation.FullName,
                 Description = p.Description ?? string.Empty,
                 PurposeName = p.PurposeName,
+                IsForStatistics = p.IsForStatistics,
                 Status = p.Status
             }).ToList();
         }
@@ -121,6 +125,7 @@ namespace AdviseCare.Application.Services
                 CreatedBy = CreatorId,
                 Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
                 PurposeName = purposeName,
+                IsForStatistics = request.IsForStatistics,
                 Status = "inactive"
             };
             await _consentPurposeRepository.CreateAsync(purpose);
@@ -135,11 +140,12 @@ namespace AdviseCare.Application.Services
                 CreatorFullName = creator,
                 Description = purpose.Description ?? string.Empty,
                 PurposeName = purpose.PurposeName,
+                IsForStatistics = purpose.IsForStatistics,
                 Status = purpose.Status
             };
         }
 
-        // Update Consent purpose (name and description; a retired purpose cannot be edited)
+        // Update Consent purpose (name, description and whether it is the statistics purpose; a retired purpose cannot be edited)
         public async Task<UpdateConsentPurposeResponse> UpdateAsync(Guid ConsentPurposeId, UpdateConsentPurposeRequest request)
         {
             var purpose = await _consentPurposeRepository.GetByIdAsyncInclude(ConsentPurposeId, p => p.CreatedByNavigation)
@@ -153,7 +159,10 @@ namespace AdviseCare.Application.Services
                 throw new ConflictException($"A consent purpose named '{purposeName}' already exists.");
 
             purpose.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+            if (request.IsForStatistics && purpose.Status == "active" && !purpose.IsForStatistics)
+                await EnsureNoOtherStatisticsPurposeAsync(ConsentPurposeId);
             purpose.PurposeName = purposeName;
+            purpose.IsForStatistics = request.IsForStatistics;
             await _consentPurposeRepository.SaveAsync();
 
             await _activityLogService.LogCurrentAccountAsync("consentPurposeUpdated", $"Edited consent purpose {purpose.PurposeName}");
@@ -165,6 +174,7 @@ namespace AdviseCare.Application.Services
                 CreatorFullName = purpose.CreatedByNavigation.FullName,
                 Description = purpose.Description ?? string.Empty,
                 PurposeName = purpose.PurposeName,
+                IsForStatistics = purpose.IsForStatistics,
                 Status = purpose.Status
             };
         }
@@ -181,6 +191,8 @@ namespace AdviseCare.Application.Services
                 throw new ConflictException("This consent purpose is already active.");
             if (!purpose.DataAttributes.Any(a => a.Status == "active"))
                 throw new ValidationException("Attach at least one active data attribute before activating the purpose.");
+            if (purpose.IsForStatistics)
+                await EnsureNoOtherStatisticsPurposeAsync(ConsentPurposeId);
 
             purpose.Status = "active";
             await _consentPurposeRepository.SaveAsync();
@@ -358,6 +370,13 @@ namespace AdviseCare.Application.Services
         {
             var purpose = await _consentPurposeRepository.GetByIdAsyncInclude(ConsentPurposeId, p => p.CreatedByNavigation);
             return purpose?.CreatedByNavigation?.FullName ?? string.Empty;
+        }
+
+        // Helper: only one active consent purpose may be the statistics purpose used for cohort data
+        private async Task EnsureNoOtherStatisticsPurposeAsync(Guid ConsentPurposeId)
+        {
+            if (await _consentPurposeRepository.ExistsAsync(p => p.IsForStatistics && p.Status == "active" && p.ConsentPurposeId != ConsentPurposeId))
+                throw new ConflictException("Another active consent purpose is already the statistics purpose; deactivate it first.");
         }
     }
 }

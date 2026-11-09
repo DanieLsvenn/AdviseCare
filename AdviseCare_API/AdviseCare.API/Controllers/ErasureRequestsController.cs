@@ -1,4 +1,5 @@
 using AdviseCare.Application.Contracts.Requests.ErasureRequest;
+using AdviseCare.Application.Contracts.Responses;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +20,9 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[Data Protection Steward] Get all erasure requests with optional pagination",
             Description = "Retrieves every erasure request, newest first, with the student, attribute, purpose of the withdrawn consent, key status and who executed it. " +
                 "Requests are queued automatically when a student withdraws the last granted consent on an attribute that has stored values. Pass page and pageSize together to page the results.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- Page and page size must be at least 1.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
             if (page.HasValue && pageSize.HasValue)
@@ -35,6 +39,9 @@ namespace AdviseCare.API.Controllers
         [HttpGet("{id}")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Get erasure request by Id",
             Description = "Retrieves one erasure request.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Erasure request not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             var response = await _erasureRequestService.GetByIdAsync(id);
@@ -45,6 +52,9 @@ namespace AdviseCare.API.Controllers
         [HttpGet("search")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Search/Filter erasure requests",
             Description = "Filters erasure requests by consent, executing steward (executedBy), student and status (pending = the erasure queue, completed = the completion log). Empty fields are ignored.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> Search([FromQuery] SearchErasureRequestRequest request)
         {
             var response = await _erasureRequestService.SearchAsync(request);
@@ -56,6 +66,10 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[Data Protection Steward] Execute erasure",
             Description = "Verifies that the consent is still withdrawn and that the student has not shared the attribute again under another purpose, then destroys the student's key for that attribute. " +
                 "The values become unreadable, while consents, consent history and access log stay for audit. The student is notified.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Erasure request not found.\n- Account not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- This erasure has already been executed.\n- The consent behind this request is no longer withdrawn, so the erasure cannot go ahead.\n- The student has shared this attribute again under another purpose; erasing the key would wipe data that is still shared.", typeof(ErrorResponse))]
         public async Task<IActionResult> Execute([FromRoute] Guid id)
         {
             var stewardId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);

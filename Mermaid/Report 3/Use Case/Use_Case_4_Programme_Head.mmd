@@ -18,6 +18,7 @@ flowchart LR
             UC39(["UC-39<br/>Match Case to Advisor"])
             UC40(["UC-40<br/>Reassign Case"])
             UC42(["UC-42<br/>Decide Case Advisor Change"])
+            UC62(["UC-62<br/>Handle Early-Support Flags"])
         end
         subgraph CWF["Case Workflow and Referrals"]
             UC46(["UC-46<br/>Change Case Priority"])
@@ -30,6 +31,9 @@ flowchart LR
             UC56(["UC-56<br/>View Case Report"])
             UC57(["UC-57<br/>View Caseload and Closure Report"])
             UC58(["UC-58<br/>Export Report"])
+            UC64(["UC-64<br/>View Welfare Statistics"])
+            UC65(["UC-65<br/>View Cohort Data"])
+            UC66(["UC-66<br/>Export Statistics"])
         end
     end
     ACT --- UC26
@@ -44,6 +48,10 @@ flowchart LR
     ACT --- UC56
     ACT --- UC57
     ACT --- UC58
+    ACT --- UC62
+    ACT --- UC64
+    ACT --- UC65
+    ACT --- UC66
     linkStyle default stroke-width: 1pt;
     classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
     class ACT,GEN actor;

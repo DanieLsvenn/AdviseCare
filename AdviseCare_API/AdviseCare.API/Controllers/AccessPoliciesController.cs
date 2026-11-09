@@ -1,4 +1,5 @@
 using AdviseCare.Application.Contracts.Requests.AccessPolicy;
+using AdviseCare.Application.Contracts.Responses;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +19,9 @@ namespace AdviseCare.API.Controllers
         [HttpGet]
         [SwaggerOperation(Summary = "[Data Protection Steward] Get all access policies with optional pagination",
             Description = "Retrieves every access policy (draft, active and revoked) with its role, purpose and creator, ordered by role then purpose. Pass page and pageSize together to page the results.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- Page and page size must be at least 1.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
             if (page.HasValue && pageSize.HasValue)
@@ -34,6 +38,9 @@ namespace AdviseCare.API.Controllers
         [HttpGet("{id}")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Get access policy by Id",
             Description = "Retrieves one access policy with its role, purpose and creator.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Access policy not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             var response = await _accessPolicyService.GetByIdAsync(id);
@@ -44,6 +51,9 @@ namespace AdviseCare.API.Controllers
         [HttpGet("search")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Search/Filter access policies",
             Description = "Filters access policies by purpose (consentPurposeId), by role (roleId, e.g. every policy affecting the Wellbeing Advisor) and by status (draft/active/revoked). Empty fields are ignored.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> Search([FromQuery] SearchAccessPolicyRequest request)
         {
             var response = await _accessPolicyService.SearchAsync(request);
@@ -55,6 +65,11 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[Data Protection Steward] Create access policy",
             Description = "Links a role to a consent purpose: once active, accounts with that role may read the attributes a student has granted under that purpose. " +
                 "The policy starts as a draft. The purpose must not be retired, the role cannot be Student, and a role can have only one draft/active policy per purpose.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- Students always see their own data, so no access policy is needed for the Student role.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Consent purpose not found.\n- Role not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- A retired consent purpose cannot get new access policies.\n- {RoleName} already has a draft or active policy under {PurposeName}.", typeof(ErrorResponse))]
         public async Task<IActionResult> Create([FromBody] CreateAccessPolicyRequest request)
         {
             var creatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -66,6 +81,11 @@ namespace AdviseCare.API.Controllers
         [HttpPut("{id}")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Update draft access policy",
             Description = "Changes the role or purpose of a draft policy. Active and revoked policies cannot be edited: revoke the policy and create a new one instead.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- Students always see their own data, so no access policy is needed for the Student role.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Access policy not found.\n- Consent purpose not found.\n- Role not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- Only a draft access policy can be edited. Revoke it and create a new one instead.\n- A retired consent purpose cannot get new access policies.\n- {RoleName} already has a draft or active policy under {PurposeName}.", typeof(ErrorResponse))]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateAccessPolicyRequest request)
         {
             var response = await _accessPolicyService.UpdateAsync(id, request);
@@ -76,6 +96,10 @@ namespace AdviseCare.API.Controllers
         [HttpPut("{id}/activate")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Activate access policy",
             Description = "Sets a draft policy to active, so it is enforced. Access is only given while its purpose is also active.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Access policy not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- Only a draft access policy can be activated.\n- The purpose of this policy is retired.", typeof(ErrorResponse))]
         public async Task<IActionResult> Activate([FromRoute] Guid id)
         {
             var response = await _accessPolicyService.ActivateAsync(id);
@@ -86,6 +110,10 @@ namespace AdviseCare.API.Controllers
         [HttpPut("{id}/revoke")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Revoke access policy",
             Description = "Revokes a draft or active policy. This is one-way and policies are never deleted, so the history of who could see what stays visible.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Access policy not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- This access policy is already revoked.", typeof(ErrorResponse))]
         public async Task<IActionResult> Revoke([FromRoute] Guid id)
         {
             var response = await _accessPolicyService.RevokeAsync(id);
@@ -97,6 +125,10 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[Data Protection Steward] Test access policy against a sample student",
             Description = "Shows, for every attribute of the policy's purpose, whether the student has granted consent, whether a value exists, and the result for the policy's role: " +
                 "allowed, allowedOnceActive (consented, but the policy or purpose is not active yet) or notShared. Values are never returned and nothing is written to the access log.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- The sample account is not a student.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Access policy not found.\n- Student not found.\n- Consent purpose not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> Test([FromRoute] Guid id, [FromBody] TestAccessPolicyRequest request)
         {
             var response = await _accessPolicyService.TestAsync(id, request);

@@ -12,6 +12,13 @@ Endpoint tags
 - [PLANNED] - not built yet; the route and body are a proposal following the same conventions, to be confirmed by the member who owns it (see AdviseCare_Backend_Task_Division.txt)
 - [NO API] - the step happens outside the backend (web app page, email inbox, Google)
 
+Unhappy cases (QC-202)
+- Every step with an endpoint also lists its unhappy cases and their results, so a tester can check each refusal:
+  "Negative:" lines are hand-written cases with their exact input; "Unhappy:" lines list every error the route can answer
+  (taken from the route's Swagger error list), each as: how to trigger it -> status "message"
+- Every error answer has the body { "message": "..." }; a request that fails its DataAnnotations answers 400 with an "errors" object per field instead
+- Swagger UI shows the same list under each route's 400/401/403/404/409 responses
+
 Step layout
 N. Step name (same as AdviseCare_Workflow_List.txt)
    METHOD /api/Route [tag]
@@ -40,10 +47,13 @@ Seed accounts (AdviseCare_Database_Script.sql, password 123456 for all)
 - welfareofficer@gmail.com / welfareofficer - Student Welfare Officer -> {welfareOfficerToken}, {welfareOfficerId}
 - student@gmail.com / student - Student (student profile: studentCode SE180001, academicStatus enrolled) -> {studentToken}, {studentId}
 - programmehead@gmail.com / programmehead - Programme Head -> {programmeHeadToken}, {programmeHeadId}
-The seed also has mock data for every table (see AdviseCareTempFolder\AdviseCare_Mock_Data\AdviseCare_Mock_Data_Guide.txt): 12 mock staff and 49 mock students (@example.com),
-faculties SE/BA, programme BSE, the 4 terms, 12 subjects, 25 data attributes, the purposes, policies and support categories below, cases, consents and welfare records.
-The 7 accounts above are kept clean (no cases, consents or logs), so the workflows below still start from zero for them.
-Master data already seeded: the create steps of EX11 and WF3 return 409 for these names; save the ids with the GET/search routes instead, or create with a new name.
+The seed also has mock data for every table (see Documentation/AdviseCare_Mock_Data/AdviseCare_Mock_Data_Guide.txt): 12 mock staff and 49 mock students (@example.com),
+faculties SE/BA, programme BSE, the 4 terms, 12 subjects, 25 data attributes, the purposes (incl. the Cohort statistics purpose), policies, indicators and support categories below, cases, consents, feedback and welfare records.
+The 6 staff accounts above are kept clean (no cases, consents or logs), so the workflows below still start from zero for them.
+student@gmail.com has its own mock data (QC-203): a closed wellbeing case with wa.ngocbt (messages, a 5-star feedback), an open PRN212 case with aa.hungpt (stage contacted) and 4 consents;
+the cases and consents created below for the student come on top of these, so lists for the student show the seeded rows too.
+Master data already seeded: the create steps of EX11 and WF3 for these names are an unhappy case: they return 409 with the reason
+(e.g. 409 "A faculty with code 'SE' already exists."); record that result, then save the ids with the GET/search routes, or create with a new name.
 
 Accounts created during testing
 - Emails use Gmail plus-addressing so every test email reaches one inbox you own: replace yourgmail with your own Gmail name (yourgmail+student01@gmail.com is delivered to yourgmail@gmail.com)
@@ -70,13 +80,16 @@ Files to prepare (keep them in a TestFiles folder next to this file)
 - accounts_valid.xlsx, accounts_invalid.xlsx (WF1)
 - studentdata_fall2026.xlsx, studentdata_fall2026_update.xlsx, studentdata_invalid.xlsx, studentdata_archived.xlsx (WF5)
 - avatar.png (under 2 MB), avatar_too_big.png (over 2 MB), avatar.bmp (EX16)
+Ready-made files in Documentation/AdviseCare_Mock_Data (for the mock data; the expected results are in its guide):
+- accounts_import_valid.xlsx / .csv, accounts_import_invalid_rows.xlsx, accounts_import_invalid_columns.xlsx (WF1 against the mock data)
+- mock_studentdata_*.xlsx, mock_studentdata_invalid.csv, mock_studentdata_invalid_columns.xlsx, mock_studentdata_student_gmail.csv (WF5 against the mock data)
 
 ==========
 RECOMMENDED RUN ORDER
 ==========
 
-EX11 steps 1-3 (faculties, programmes, terms, subjects) -> WF1 -> EX1 -> EX2 -> EX12 -> WF3 -> EX11 step 4 (support categories) -> WF5 -> WF2 -> EX7 -> EX4 -> WF2b -> EX5 -> EX6 -> EX3 -> EX8 -> EX9 -> EX10 -> EX13 -> EX14 -> EX15 -> WF4 -> EX16
-Members A and B can be tested now: EX11 (steps 1-3), WF1, EX1, EX2, EX12, EX16, WF3, EX7, EX8 (except the profile check in 4.1), EX9 (the log fills once Member C reads data through the access guard) and EX10; the rest wait for Members C and D.
+EX11 steps 1-3 (faculties, programmes, terms, subjects) -> WF1 -> EX1 -> EX2 -> EX12 -> WF3 -> EX11 step 4 (support categories) -> WF5 -> WF2 -> EX18 -> EX7 -> EX4 -> WF2b -> EX5 -> EX6 -> EX3 -> EX8 -> EX9 -> EX10 -> EX13 -> EX14 -> EX15 -> WF4 -> EX20 -> EX19 -> EX17 -> EX16
+Everything is [EXISTS] except EX17 (early-support indicators, Member A) and EX19 (case feedback, Member D), which are [PLANNED].
 
 ==========
 MAIN WORKFLOWS
@@ -102,6 +115,12 @@ WF1: Admin creates accounts
    GET /api/Roles [EXISTS]
    Auth: {adminToken}
    Expect: faculties SE and BA (from EX11), the 7 seed roles
+   Unhappy (GET /api/Faculties/search):
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   Unhappy (GET /api/Roles):
+   - page=0 -> 400 "Page and page size must be at least 1."
+   - {studentToken} -> 403 "Your role cannot use this route."
 3.1. Bulk import
 3.1.1. Admin uploads an Excel file
    POST /api/Accounts/import [EXISTS]
@@ -114,6 +133,13 @@ WF1: Admin creates accounts
    yourgmail+student03@gmail.com  | Le Hoang Cuong     | student03 | BA          | Student                          | BA180103    | onLeave
    yourgmail+advisor01@gmail.com  | Pham Minh Duc      | advisor01 | SE          | Academic Advisor                 |             |
    yourgmail+staff01@gmail.com    | Vo Thi Em          | staff01   | SE          | Academic Advisor, Programme Head |             |
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "A non-empty .xlsx or .csv file is required."
+   - 400 "Only .xlsx and .csv files can be imported."
+   - 400 "(details of the failing rows or file)"
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
 3.1.2. System validates every row (no separate call, part of the import)
 3.1.3. If any row is invalid, nothing is created
    POST /api/Accounts/import [EXISTS]
@@ -132,6 +158,13 @@ WF1: Admin creates accounts
    yourgmail+student10@gmail.com  | Bad Status      | student10 | SE          | Student          | SE180110    | studying     (academicStatus not enrolled/onLeave/withdrawn/graduated)
    yourgmail+advisor02@gmail.com  | Staff With Code | advisor02 | SE          | Academic Advisor | SE180111    |              (staff row with a studentCode)
    Expect: 200, isSuccess = false, createdCount = 0, one error per invalid row with its row number; student04 is not created either
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "A non-empty .xlsx or .csv file is required."
+   - 400 "Only .xlsx and .csv files can be imported."
+   - 400 "(details of the failing rows or file)"
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
 3.1.4. If all rows are valid, the accounts are created
    Use the accounts_valid.xlsx call from 3.1.1
    Expect: 200, isSuccess = true, createdCount = 5, createdAccountIds has 5 ids; each account has linkStatus = notLinked, hasPassword = false
@@ -172,6 +205,10 @@ WF1: Admin creates accounts
    GET /api/Accounts?page=1&pageSize=20 [EXISTS]
    Auth: {adminToken}
    Expect: 200, newest first, each item has roles, linkStatus, status, hasPassword
+   Unhappy:
+   - page=0 -> 400 "Page and page size must be at least 1."
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
 6.1. Sort/filter accounts
    GET /api/Accounts/search?roleName=Student&linkStatus=emailSent [EXISTS]
    GET /api/Accounts/search?facultyId={facultySeId}&status=active [EXISTS]
@@ -179,20 +216,36 @@ WF1: Admin creates accounts
    GET /api/Accounts/search?studentCode=SE1801&academicStatus=enrolled [EXISTS]
    Auth: {adminToken}
    Expect: only the matching accounts (sorting is done by the web app)
+   Unhappy (GET /api/Accounts/search):
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
 6.2. Resend the linking email to accounts still in emailSent
    POST /api/Accounts/linking-emails [EXISTS]
    Auth: {adminToken}
    Body: { "accountIds": ["{student01Id}"] }
    Expect: sentCount = 1; only the newest email's link works (the old link is replaced)
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
 6.3. Open an account to edit it, change roles, deactivate or ban it -> see EX12
    GET /api/Accounts/{student01Id} [EXISTS]
    Auth: {adminToken}
+   Unhappy:
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Account not found."
 
 WF2: Student requests support and gets advised
 1. Student signs in
    POST /api/Auth/login [EXISTS]
    Body: { "identifier": "student@gmail.com", "password": "123456", "deviceInfo": "Chrome 141 on Windows 11" }
    Save: token -> {studentToken}, accountId -> {studentId}
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 401 "Invalid email/username or password."
+   - 403 "Account is not active. Current status: {Status}."
 2. Student opens "Request support" and creates a new case
 2.1. Chooses the support type: academic or wellbeing (web app choice) [NO API]
 2.2. Chooses the category
@@ -200,10 +253,16 @@ WF2: Student requests support and gets advised
    GET /api/SupportCategories/search?supportType=wellbeing&status=active [EXISTS]
    Auth: {studentToken}
    Expect: academic -> Course content question, Study plan; wellbeing -> Accommodation, Money
+   Unhappy (GET /api/SupportCategories/search):
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
 2.2.1. Academic: the subject (dropdown) and the topic
    GET /api/Subjects/search?status=active [EXISTS]
    Auth: {studentToken}
    Expect: PRN212, SWP391, MKT101
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
 2.2.2. Wellbeing: the issue (the category itself, e.g. Accommodation, Money)
 2.3. Writes the reason (part of the body in 2.5)
 2.4. Chooses which data attributes to share
@@ -212,6 +271,11 @@ WF2: Student requests support and gets advised
    GET /api/ConsentPurposes/{purposeAcademicId} [EXISTS]
    Auth: {studentToken}
    Expect: dataAttributes = GPA and Attendance rate (the attributes of Academic advising); only active ones are offered
+   Unhappy (GET /api/SupportCategories/{id}):
+   - no token or an ended session -> 401
+   - an unknown or someone else's id -> 404 "Support category not found."
+   Unhappy (GET /api/ConsentPurposes/{id}):
+   - an unknown or someone else's id -> 404 "Consent purpose not found."
 2.4.2. The student may leave it empty (sharedAttributes = [])
 2.4.3. For each chosen attribute the student may add a short note on why it matters (shareReason, optional, up to 1000 characters)
 2.4.4. Each chosen attribute is recorded as consent for that purpose and as a CASE_ATTRIBUTE row of the case with its note (done by the server in 2.5)
@@ -243,10 +307,17 @@ WF2: Student requests support and gets advised
    POST /api/Auth/login [EXISTS]
    Body: { "identifier": "programmehead@gmail.com", "password": "123456", "deviceInfo": "Edge 141 on Windows 11" }
    Save: token -> {programmeHeadToken}
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 401 "Invalid email/username or password."
+   - 403 "Account is not active. Current status: {Status}."
 3.1. Programme Head sees the case in the matching queue
    GET /api/Cases/matching-queue [EXISTS]
    Auth: {programmeHeadToken}
    Expect: both cases with currentStage = pending, ordered by priority then openedAt
+   Unhappy:
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
 3.2. Programme Head picks a suitable advisor
    GET /api/Cases/{caseAcademicId}/suggested-advisors [EXISTS]
    Auth: {programmeHeadToken}
@@ -254,6 +325,12 @@ WF2: Student requests support and gets advised
    Expect (3.2.2): for {caseWellbeingId} -> wellbeingadvisor
    Expect (3.2.3, optional): an advisor who already handles another open case of this student is listed first
    GET /api/Cases/search?studentId={studentId}&currentStage=assigned [EXISTS]
+   Unhappy (GET /api/Cases/{id}/suggested-advisors):
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Case not found."
+   Unhappy (GET /api/Cases/search):
+   - a required field empty or out of range -> 400 (errors per field)
 3.3. System sets the case's advisor and moves the case to assigned
    PUT /api/Cases/{caseAcademicId}/assign [EXISTS]
    Auth: {programmeHeadToken}
@@ -270,6 +347,8 @@ WF2: Student requests support and gets advised
    GET /api/Notifications/me [EXISTS]
    Auth: {studentToken}
    Expect: a new unread notification with the advisor's name and email, redirectUrl to the case; an email in the student's inbox if the email channel is on
+   Unhappy:
+   - no token or an ended session -> 401
 4.2. Advisor receives a notification of the new case
    POST /api/Auth/login [EXISTS]
    Body: { "identifier": "academicadvisor@gmail.com", "password": "123456", "deviceInfo": "Firefox 143 on Ubuntu" }
@@ -277,12 +356,25 @@ WF2: Student requests support and gets advised
    GET /api/Notifications/me/unread-count [EXISTS]
    Auth: {academicAdvisorToken}
    Expect: count >= 1
+   Unhappy (POST /api/Auth/login):
+   - a required field empty or out of range -> 400 (errors per field)
+   - 401 "Invalid email/username or password."
+   - 403 "Account is not active. Current status: {Status}."
+   Unhappy (GET /api/Notifications/me/unread-count):
+   - no token or an ended session -> 401
 5. Advisor reviews the case
 5.1. Opens the case: reason, category, subject
    GET /api/Cases/assigned?currentStage=assigned [EXISTS]
    GET /api/Cases/{caseAcademicId} [EXISTS]
    Auth: {academicAdvisorToken}
    Expect: the case with requestReason, category Course content question, subject PRN212
+   Unhappy (GET /api/Cases/assigned):
+   - a required field empty or out of range -> 400 (errors per field)
+   - page=0 -> 400 "Page and page size must be at least 1."
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   Unhappy (GET /api/Cases/{id}):
+   - an unknown or someone else's id -> 404 "Case not found."
 5.2. Opens the student profile and the student's data: only consented data, with source and missing-data notices
    GET /api/StudentProfiles/{studentId} [EXISTS] (directory data: name, student code, programme, contact; open to all staff, not logged)
    GET /api/StudentData/students/{studentId}?caseId={caseAcademicId} [EXISTS] (through Member B's IAccessGuardService with the case category's purpose; only the case's advisor)
@@ -335,6 +427,20 @@ WF2: Student requests support and gets advised
    }
    Expect: 200, status = pending; case currentStage = referred; the Welfare Officer is notified
    Save: referralId -> {referralWelfareId} -> continue in WF2b
+   Unhappy (POST /api/Auth/login):
+   - a required field empty or out of range -> 400 (errors per field)
+   - 401 "Invalid email/username or password."
+   - 403 "Account is not active. Current status: {Status}."
+   Unhappy (POST /api/Referrals):
+   - 400 "You cannot refer a case to yourself."
+   - 400 "{FullName} is not an active account."
+   - 400 "{FullName} is not an Academic Advisor, Wellbeing Advisor or Student Welfare Officer."
+   - 400 "Referral reason is required."
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 403 "Only the case's current advisor can refer it."
+   - an unknown or someone else's id -> 404 "Case not found."
+   - ... and 4 more in the route's Swagger error list
 9. Advisor follows up and closes the case
    PUT /api/Cases/{caseAcademicId}/stage [EXISTS]
    Auth: {academicAdvisorToken}
@@ -344,10 +450,24 @@ WF2: Student requests support and gets advised
    Reopen test: PUT /api/Cases/{caseAcademicId}/reopen [EXISTS]
    Body: { "reason": "Student failed the final exam and asks for a study plan" }
    Expect: status = reopened, currentStage = assigned
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "The case is already at stage {ToStage}."
+   - 400 "Reason is required."
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 403 "Only the case's current advisor can do this."
+   - an unknown or someone else's id -> 404 "Case not found."
+   - an unknown or someone else's id -> 404 "Account not found."
+   - ... and 2 more in the route's Swagger error list
 10. Every stage change is recorded in the case's stage history
    GET /api/CaseStageHistories/search?caseId={caseAcademicId} [EXISTS]
    Auth: {academicAdvisorToken} (also {studentToken} for own cases)
    Expect: pending -> assigned -> contacted -> followUp -> closed (-> assigned on reopen), each with changedBy, reason and changedAt
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - an unknown or someone else's id -> 404 "Case not found."
 
 WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2)
 1. Welfare Officer sees the referral in the incoming queue
@@ -357,16 +477,37 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    GET /api/Referrals/me/incoming?status=pending [EXISTS]
    Auth: {welfareOfficerToken}
    Expect: {referralWelfareId} with the case, the sender and priority high
+   Unhappy (POST /api/Auth/login):
+   - a required field empty or out of range -> 400 (errors per field)
+   - 401 "Invalid email/username or password."
+   - 403 "Account is not active. Current status: {Status}."
+   Unhappy (GET /api/Referrals/me/incoming):
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
 2. Welfare Officer triages it
 2.1. Opens the referral and the advisor's notes
    GET /api/Referrals/{referralWelfareId} [EXISTS]
    GET /api/CaseNotes/search?caseId={caseWellbeingId} [EXISTS]
    Auth: {welfareOfficerToken}
+   Unhappy (GET /api/Referrals/{id}):
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Referral not found."
+   Unhappy (GET /api/CaseNotes/search):
+   - a required field empty or out of range -> 400 (errors per field)
+   - an unknown or someone else's id -> 404 "Case not found."
 2.2. Sets the priority
    PUT /api/Cases/{caseWellbeingId}/priority [EXISTS]
    Auth: {welfareOfficerToken}
    Body: { "priority": "urgent" }
    Expect: case priority = urgent
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 403 "You cannot change the priority of this case."
+   - an unknown or someone else's id -> 404 "Case not found."
+   - 409 "The case is closed."
 2.3. Accepts it, or returns it with a reason
    PUT /api/Referrals/{referralWelfareId}/accept [EXISTS]
    Auth: {welfareOfficerToken}
@@ -374,6 +515,14 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    Return test (on a second referral): PUT /api/Referrals/{id}/return [EXISTS]
    Body: { "reason": "Not a financial matter, the student needs accommodation support" }
    Expect: status = returned; case back to the sender
+   Unhappy:
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 403 "Only the receiver can answer a referral."
+   - an unknown or someone else's id -> 404 "Account not found."
+   - an unknown or someone else's id -> 404 "Referral not found."
+   - an unknown or someone else's id -> 404 "Case not found."
+   - 409 "The referral was already {Status}."
 3. Welfare Officer works with the student
 3.1. Logs each intervention
    POST /api/Interventions [EXISTS]
@@ -390,6 +539,17 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    Save: interventionId -> {interventionId}
    PUT /api/Interventions/{interventionId} [EXISTS]
    Body: { "interventionDate": "2026-10-23T02:00:00Z", "notes": "Application sent to the finance office on 2026-10-24.", "outcome": "", "interventionType": "financialAid", "status": "inProgress" }
+   Unhappy (POST /api/Interventions):
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 403 "This case has not been referred to you (or you have not accepted the referral yet)."
+   - an unknown or someone else's id -> 404 "Case not found."
+   - 409 "The case is closed."
+   Unhappy (PUT /api/Interventions/{id}):
+   - 403 "Only the Welfare Officer who logged the intervention can change it."
+   - an unknown or someone else's id -> 404 "Intervention not found."
+   - 409 "A closed intervention cannot be changed."
 3.2. Records any support grant issued
    POST /api/SupportGrants [EXISTS]
    Auth: {welfareOfficerToken}
@@ -403,9 +563,23 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    Expect: status = issued
    Save: supportGrantId -> {supportGrantId}
    Revoke test (on a second grant): PUT /api/SupportGrants/{id}/revoke [EXISTS] -> status = revoked
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 403 "Only the Welfare Officer of the intervention can record a grant under it."
+   - an unknown or someone else's id -> 404 "Intervention not found."
+   - 409 "A support grant cannot be added to a closed intervention."
 3.3. Records the outcome
    PUT /api/Interventions/{interventionId} [EXISTS] (the outcome is part of the update)
    Body: { "interventionDate": "2026-10-23T02:00:00Z", "notes": "Application sent to the finance office on 2026-10-24.", "outcome": "Tuition reduction granted; student can stay enrolled this term.", "interventionType": "financialAid", "status": "inProgress" }
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 403 "Only the Welfare Officer who logged the intervention can change it."
+   - an unknown or someone else's id -> 404 "Intervention not found."
+   - 409 "A closed intervention cannot be changed."
 4. If an outside service is needed
 4.1. Welfare Officer records the external referral with an expected follow-up date
    GET /api/ExternalServices/search?isActive=true [EXISTS]
@@ -428,15 +602,36 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    }
    Expect: status = sent, isOverdue = false
    Save: externalReferralId -> {externalReferralId}
+   Unhappy (GET /api/ExternalServices/search):
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   Unhappy (POST /api/ExternalServices):
+   - {studentToken} -> 403 "Your role cannot use this route."
+   Unhappy (POST /api/ExternalReferrals):
+   - 403 "This case has not been referred to you (or you have not accepted the referral yet)."
+   - an unknown or someone else's id -> 404 "External service not found."
+   - an unknown or someone else's id -> 404 "Case not found."
+   - 409 "New referrals can only be sent to an active external service."
+   - 409 "The case is closed."
 4.2. System flags it as overdue if the date passes without an outcome (background check)
    Test: create a second referral with "followUpDueAt": "2026-10-01T00:00:00Z" (already past), wait for the background check (or restart the API), then
    GET /api/ExternalReferrals/search?isOverdue=true [EXISTS]
    Expect: that referral has isOverdue = true
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
 4.3. Welfare Officer logs the follow-up outcome
    PUT /api/ExternalReferrals/{externalReferralId} [EXISTS] (the update is the follow-up)
    Body: { "followUpOutcome": "Bank approved a student loan of 20,000,000 VND for the remaining tuition." }
    Expect: status = followedUp, isOverdue = false
    Close it once nothing more is expected: PUT /api/ExternalReferrals/{externalReferralId}/close [EXISTS] -> status = closed
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "External referral not found."
+   - 409 "Only a sent referral can receive a follow-up outcome."
 5. If the case goes beyond the Welfare Officer's authority -> see EX5
 6. Welfare Officer closes the intervention; the case goes back to the advisor
    PUT /api/Interventions/{interventionId}/close [EXISTS]
@@ -444,12 +639,24 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
    Body: { "outcome": "Tuition reduced and bank loan approved. Handing back to the wellbeing advisor." }
    Expect: isClosed = true, status = completed; the wellbeing advisor is notified
    Then the wellbeing advisor continues with WF2 step 9 on {caseWellbeingId}
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 403 "Only the Welfare Officer who logged the intervention can change it."
+   - an unknown or someone else's id -> 404 "Intervention not found."
+   - an unknown or someone else's id -> 404 "Account not found."
+   - 409 "A closed intervention cannot be changed."
 
 WF3: Steward sets up consent
 1. Steward signs in
    POST /api/Auth/login [EXISTS]
    Body: { "identifier": "steward@gmail.com", "password": "123456", "deviceInfo": "Chrome 141 on Windows 11" }
    Save: token -> {stewardToken}
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 401 "Invalid email/username or password."
+   - 403 "Account is not active. Current status: {Status}."
 2. Steward defines the shareable data
 2.1. Creates a data attribute (a piece of student data that is only shown with consent)
    POST /api/DataAttributes [EXISTS]
@@ -475,6 +682,14 @@ WF3: Steward sets up consent
    POST /api/DataAttributes [EXISTS] with "attributeName": "Old test attribute", "dataType": "boolean" -> {attrOldId}
    PUT /api/DataAttributes/{attrOldId}/archive [EXISTS]
    Expect: true, status = archived, activity log dataAttributeArchived; archiving it again -> 409; PUT /api/DataAttributes/{attrOldId} -> 409; attaching {attrOldId} to a purpose (3.2) -> 409; its rows in an import are left out (WF5 4.3)
+   Unhappy (POST /api/DataAttributes):
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 409 "A data attribute named '{attributeName}' already exists."
+   Unhappy (PUT /api/DataAttributes/{id}/archive):
+   - an unknown or someone else's id -> 404 "Data attribute not found."
+   - 409 "This data attribute is already archived."
 3. Steward defines consent purposes
 3.1. Creates a purpose
    POST /api/ConsentPurposes [EXISTS]
@@ -500,6 +715,14 @@ WF3: Steward sets up consent
    PUT /api/ConsentPurposes/{purposeAcademicId}/activate [EXISTS] (repeat for the other two)
    Expect: true, status = active; a purpose with no active attribute -> 400
    Detail: GET /api/ConsentPurposes/{purposeAcademicId} [EXISTS] -> the purpose with its dataAttributes
+   Unhappy:
+   - 400 "Attach at least one active data attribute before activating the purpose."
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Consent purpose not found."
+   - 409 "A retired consent purpose cannot be brought back."
+   - 409 "This consent purpose is already active."
+   - 409 "Another active consent purpose is already the statistics purpose; deactivate it first."
 4. Steward configures access policies
 4.1. Links a role to a purpose (the student's consent must be granted)
    GET /api/Roles [EXISTS] (open to the Steward)
@@ -520,21 +743,47 @@ WF3: Steward sets up consent
 4.2. Activates the policy
    PUT /api/AccessPolicies/{policyAcademicId}/activate [EXISTS] (repeat for the other three)
    Expect: true, status = active
+   Unhappy:
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Access policy not found."
+   - 409 "Only a draft access policy can be activated."
+   - 409 "The purpose of this policy is retired."
 4.3. Tests the policy against a sample case
    POST /api/AccessPolicies/{policyAcademicId}/test [EXISTS]
    Auth: {stewardToken}
    Body: { "studentId": "{studentId}" }
    Expect: one line per attribute of the purpose with hasConsent, hasValue and result (allowed / allowedOnceActive / notShared); before WF2 the student has shared nothing, so every result is notShared; nothing is logged in ACCESSLOGS
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "The sample account is not a student."
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Access policy not found."
+   - an unknown or someone else's id -> 404 "Student not found."
+   - an unknown or someone else's id -> 404 "Consent purpose not found."
 5. Admin links each support category to its purpose -> see EX11 step 4
 6. Later changes
    POST /api/ConsentPurposes [EXISTS] "Old purpose" -> {purposeOldId}; PUT /api/ConsentPurposes/{purposeOldId}/retire [EXISTS]
    Expect: status = retired; activate, edit or attach on it -> 409
    PUT /api/AccessPolicies/{id}/revoke [EXISTS] (on a test policy)
    Expect: status = revoked; there is no DELETE and no edit of an active policy (revoke it and create a new one instead)
+   Unhappy (POST /api/ConsentPurposes):
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 409 "A consent purpose named '{purposeName}' already exists."
+   Unhappy (PUT /api/AccessPolicies/{id}/revoke):
+   - an unknown or someone else's id -> 404 "Access policy not found."
+   - 409 "This access policy is already revoked."
 
 WF4: Programme Head lists, reports and exports
 1. Programme Head signs in and opens the reports page
    POST /api/Auth/login [EXISTS] with programmehead@gmail.com / 123456 -> {programmeHeadToken}
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 401 "Invalid email/username or password."
+   - 403 "Account is not active. Current status: {Status}."
 2. Chooses a time range
 3. Filters by advisor, support type, category, subject or stage
 4. Views the result
@@ -543,11 +792,23 @@ WF4: Programme Head lists, reports and exports
    GET /api/Reports/cases?from=2026-09-07&to=2026-12-27&advisorId={academicAdvisorId}&supportType=academic&subjectId={subjectPrn212Id}&currentStage=closed [EXISTS]
    Auth: {programmeHeadToken}
    Expect: the cases from WF2/EX3 that match
+   Unhappy (GET /api/Reports/cases):
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "Both from and to dates are required."
+   - 400 "The to date must not be before the from date."
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
 4.2. Caseload volume per advisor
 4.3. Average time to close a case per advisor
    GET /api/Reports/caseload-closure?from=2026-09-07&to=2026-12-27 [EXISTS]
    Auth: {programmeHeadToken}
    Expect: per advisor: open cases, closed cases, average days to close (closed cases only)
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "Both from and to dates are required."
+   - 400 "The to date must not be before the from date."
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
 5. Exports the list/report
    GET /api/Reports/cases/export?from=2026-09-07&to=2026-12-27&format=xlsx [EXISTS]
    GET /api/Reports/caseload-closure/export?from=2026-09-07&to=2026-12-27&format=pdf [EXISTS]
@@ -558,6 +819,10 @@ WF4: Programme Head lists, reports and exports
 WF5: Admin imports student data
 1. Admin signs in and opens "Import student data"
    POST /api/Auth/login [EXISTS] with admin@gmail.com / 123456 -> {adminToken}
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 401 "Invalid email/username or password."
+   - 403 "Account is not active. Current status: {Status}."
 2. Admin uploads an Excel/CSV file
 3. Admin maps file columns to data attributes
    POST /api/StudentData/import/preview [EXISTS]
@@ -572,7 +837,16 @@ WF5: Admin imports student data
    student@gmail.com  | Financial difficulty | true      | Fall 2026 | 2026-10-01
    (no rows for student01: every imported data attribute becomes missing for them)
    The student column accepts an email, a username or a student code
-   Google Sheet import is future (FU6)
+   Google Sheet import is extra scope (ES6)
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "The file has no data rows under the header row."
+   - 400 "A non-empty .xlsx or .csv file is required."
+   - 400 "Only .xlsx and .csv files can be imported."
+   - 400 "The file could not be read as {extension} data."
+   - 400 "(details of the failing rows or file)"
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
 4. System validates the whole file
    Dry run: POST /api/StudentData/import/validate [EXISTS] with the same form -> validRowCount, rejectedRows, errors, isValid; nothing is written
    POST /api/StudentData/import [EXISTS]
@@ -580,6 +854,16 @@ WF5: Admin imports student data
    Form (multipart/form-data):
    file = studentdata_fall2026.xlsx
    columnMapping = { "studentIdentifier": "Student email", "dataAttribute": "Data attribute", "value": "Value", "term": "Term", "validFrom": "Valid from" }
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "Column mapping must be a JSON object."
+   - 400 "Column mapping must be valid JSON."
+   - 400 "A non-empty .xlsx or .csv file is required."
+   - 400 "Only .xlsx and .csv files can be imported."
+   - 400 "The file could not be read as {extension} data."
+   - 400 "(details of the failing rows or file)"
+   - no token or an ended session -> 401
+   - ... and 1 more in the route's Swagger error list
 4.1. If any row is invalid, nothing is imported
    Form: file = studentdata_invalid.xlsx (same mapping)
    studentdata_invalid.xlsx:
@@ -607,11 +891,21 @@ WF5: Admin imports student data
    GET /api/StudentData/search?termId={termFall2026Id}&isMissing=true [EXISTS]
    Auth: {adminToken}
    Expect: rows with isMissing = true for every enrolled student without a value (e.g. student01); values are never returned by these admin lists
-6. Admin views the import result and the import history
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+6. Early-support flags are raised or cleared (see EX17) [PLANNED]
+   Expect: after the 4.2 import, student@gmail.com (Attendance rate 72) gets an open flag of the "Low attendance" indicator (< 75) for Fall 2026
+7. Admin views the import result and the import history
    GET /api/ActivityLogs/search?activityType=studentDataImported [EXISTS]
    Auth: {adminToken}
    Expect: one entry per successful import with the file name and the row counts
-7. Scheduled automatic ingestion is future (FU1) [NO API]
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+8. Scheduled automatic ingestion is extra scope (ES1) [NO API]
 
 ==========
 EXTRA WORKFLOWS
@@ -636,6 +930,14 @@ EX1: Account linking and first sign-in
    {googleIdToken}: the credential from the "Sign in with Google" button on the web app (for Swagger testing, copy it from the browser's network tab)
    Expect: 200, linkStatus = linked, hasPassword = false, a JWT; activity log accountLinked
    Save: token -> {linkedUserToken}
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "This linking link is not valid or has already been used."
+   - 400 "This linking link has expired. Ask the System Administrator to send a new one."
+   - 400 "The Google account {Email} does not match the email of this AdviseCare account. Sign in with the Google account of {Email}."
+   - 401 "Invalid Google token."
+   - 403 "Account is not active. Current status: {Status}."
+   - 409 "This Google account is already linked to another AdviseCare account."
 3.1. Negative: sign in with a Google account whose email differs from the account email -> 400, nothing changes
 3.2. Negative: a Google account already linked to another account -> 400
 3.3. Negative: reuse the same {linkToken} -> 400 (one-time); a token older than 7 days -> 400 with "ask the Admin to resend"
@@ -650,27 +952,53 @@ EX1: Account linking and first sign-in
    }
    Expect: 200, hasPassword = true; activity log passwordSet
    Skip = no call
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "Passwords do not match."
+   - 400 "Old password is required."
+   - 400 "Old password is incorrect."
+   - no token or an ended session -> 401
+   - an unknown or someone else's id -> 404 "Account not found."
 5. User sets the preferred language
    PUT /api/Auth/me [EXISTS]
    Auth: {linkedUserToken}
    Body: { "userName": "student01", "preferredLanguage": "en" }
    Expect: preferredLanguage = en
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - an unknown or someone else's id -> 404 "Account not found."
+   - 409 "The username '{userName}' is already taken."
 6. User lands on the home page of their role
    GET /api/Auth/me [EXISTS]
    Auth: {linkedUserToken}
    Expect: roles, used by the web app to pick the home page
+   Unhappy:
+   - no token or an ended session -> 401
+   - an unknown or someone else's id -> 404 "Account not found."
 7. Later sign-ins
    POST /api/Auth/google [EXISTS]
    Body: { "idToken": "{googleIdToken}", "deviceInfo": "Chrome 141 on Android" }
    Expect: 200 for the linked Google account; 401 for any Google account not linked
    POST /api/Auth/login [EXISTS]
    Body: { "identifier": "student01", "password": "Linked@2026", "deviceInfo": "Chrome 141 on Windows 11" }
+   Unhappy (POST /api/Auth/google):
+   - a required field empty or out of range -> 400 (errors per field)
+   - 401 "This Google account is not linked to any AdviseCare account."
+   - 401 "Invalid Google token."
+   - 403 "Account is not active. Current status: {Status}."
+   Unhappy (POST /api/Auth/login):
+   - 401 "Invalid email/username or password."
 
 EX2: Sign in, forgot password and sessions
 1. User signs in with Google or with password
    POST /api/Auth/login [EXISTS]
    Body: { "identifier": "academicadvisor@gmail.com", "password": "123456", "deviceInfo": "Chrome 141 on Windows 11" } -> {sessionAToken}
    Same body with "deviceInfo": "Safari on iPhone 16" -> {sessionBToken}
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 401 "Invalid email/username or password."
+   - 403 "Account is not active. Current status: {Status}."
 2. System checks the account status
    Negative: deactivate the account first (EX12 step 4), then log in -> 403; activate it again afterwards
 3. System opens a session and records the device
@@ -678,12 +1006,16 @@ EX2: Sign in, forgot password and sessions
    Auth: {sessionAToken}
    Expect: 2 live sessions with their deviceInfo and expiry (1 month after sign-in); the session of {sessionAToken} has isCurrent = true
    Save: the other session's id -> {sessionBId}
+   Unhappy:
+   - no token or an ended session -> 401
 4. Forgot password (needs Gmail set up)
 4.1. User enters the email
    POST /api/Auth/forgot-password [EXISTS]
    Auth: none
    Body: { "email": "yourgmail@gmail.com" }   (a linked account, from EX1)
    Expect: 200 with the same message for linked, not-linked and unknown emails ("nobody@gmail.com" too); only the linked account gets an email
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
 4.2. System emails a one-time reset link (valid for 1 hour) [NO API]
    Save: the token from the link -> {resetToken}
 4.3. User sets a new password; every session is logged out
@@ -716,6 +1048,10 @@ EX2: Sign in, forgot password and sessions
    POST /api/Auth/logout [EXISTS] (current session)
    Auth: {sessionAToken}
    Expect: after logout, GET /api/Auth/me with {sessionAToken} -> 401
+   Unhappy (GET /api/Auth/sessions):
+   - no token or an ended session -> 401
+   Unhappy (POST /api/Auth/sessions/{id}/logout):
+   - an unknown or someone else's id -> 404 "Session not found."
 
 EX3: Advisor reaches out based on student data
 1. Advisor finds a student and views their data (only consented data)
@@ -724,6 +1060,17 @@ EX3: Advisor reaches out based on student data
    Expect: student
    GET /api/StudentData/students/{studentId} [EXISTS] (no caseId: any purpose the Academic Advisor role has a policy for counts)
    Expect: GPA 6.8 and Attendance rate 72 (consented in WF2), the rest isShared = false; ACCESSLOGS rows with studentDataId
+   Unhappy (GET /api/StudentProfiles/search):
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   Unhappy (GET /api/StudentData/students/{studentId}):
+   - 403 "Only the advisor of this case may read the student's data through it."
+   - an unknown or someone else's id -> 404 "Student not found."
+   - an unknown or someone else's id -> 404 "Case not found."
+   - an unknown or someone else's id -> 404 "Case not found for this student."
+   - 409 "A stored value does not belong to this student and data attribute."
+   - 409 "A stored value could not be decrypted (it was changed or moved, or its master key version is missing)."
 2. Advisor notices a student who needs help [NO API]
 3. Advisor opens a case for that student
    POST /api/Cases [EXISTS]
@@ -738,9 +1085,21 @@ EX3: Advisor reaches out based on student data
    }
    Expect: openedBy = advisor, advisorId = advisor, currentStage = assigned (no matching needed)
    Save: caseId -> {caseOutreachId}
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "The support category '{CategoryName}' is archived."
+   - 400 "Request reason is required."
+   - 400 "Only academic requests can name a subject."
+   - 400 "The subject {SubjectCode} is archived."
+   - 400 "The note for a shared data attribute cannot exceed 1000 characters."
+   - 400 "Shared data is chosen by the student. Leave the shared attributes empty when an advisor opens a case."
+   - 400 "{FullName} is not a student."
+   - ... and 19 more in the route's Swagger error list
 4. System notifies the student with the advisor's contact information
    GET /api/Notifications/me [EXISTS]
    Auth: {studentToken}
+   Unhappy:
+   - no token or an ended session -> 401
 5. Continues as WF2 from step 5 with {caseOutreachId}
 
 EX4: Referral between advisors
@@ -757,18 +1116,45 @@ EX4: Referral between advisors
    }
    Expect: status = pending, case currentStage = referred
    Save: referralId -> {referralAdvisorId}
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "You cannot refer a case to yourself."
+   - 400 "{FullName} is not an active account."
+   - 400 "{FullName} is not an Academic Advisor, Wellbeing Advisor or Student Welfare Officer."
+   - 400 "Referral reason is required."
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 403 "Only the case's current advisor can refer it."
+   - ... and 5 more in the route's Swagger error list
 3. Receiver gets a notification
    GET /api/Notifications/me [EXISTS]
    GET /api/Referrals/me/incoming?status=pending [EXISTS]
    Auth: {wellbeingAdvisorToken}
+   Unhappy (GET /api/Notifications/me):
+   - no token or an ended session -> 401
+   Unhappy (GET /api/Referrals/me/incoming):
+   - a required field empty or out of range -> 400 (errors per field)
+   - {studentToken} -> 403 "Your role cannot use this route."
 4. Receiver accepts or returns the referral
    PUT /api/Referrals/{referralAdvisorId}/accept [EXISTS]
    Auth: {wellbeingAdvisorToken}
    Expect: status = accepted; case advisorId = wellbeing advisor; currentStage back to assigned
    Return test (on another referral): PUT /api/Referrals/{id}/return, body { "reason": "The student only needs help with the subject" }
+   Unhappy:
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 403 "Only the receiver can answer a referral."
+   - an unknown or someone else's id -> 404 "Account not found."
+   - an unknown or someone else's id -> 404 "Referral not found."
+   - an unknown or someone else's id -> 404 "Case not found."
+   - 409 "The referral was already {Status}."
 5. Case stage history records the hand-over
    GET /api/CaseStageHistories/search?caseId={caseOutreachId} [EXISTS]
    Expect: assigned -> referred -> assigned with the referral reason
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - an unknown or someone else's id -> 404 "Case not found."
 
 EX5: Escalation to the Programme Head
 1. Welfare Officer marks the case for escalation and writes the reason
@@ -782,18 +1168,44 @@ EX5: Escalation to the Programme Head
    }
    Expect: status = pending
    Save: escalationId -> {escalationId}
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "An escalation can only be sent to an active Programme Head."
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 403 "This case has not been referred to you (or you have not accepted the referral yet)."
+   - an unknown or someone else's id -> 404 "Case not found."
+   - an unknown or someone else's id -> 404 "Programme Head not found."
+   - an unknown or someone else's id -> 404 "Account not found."
+   - ... and 1 more in the route's Swagger error list
 2. Programme Head gets a notification
    GET /api/Notifications/me [EXISTS]
    GET /api/Escalations/search?status=pending [EXISTS]
    Auth: {programmeHeadToken}
+   Unhappy (GET /api/Notifications/me):
+   - no token or an ended session -> 401
+   Unhappy (GET /api/Escalations/search):
+   - a required field empty or out of range -> 400 (errors per field)
+   - {studentToken} -> 403 "Your role cannot use this route."
 3. Programme Head records a response/decision
    PUT /api/Escalations/{escalationId}/respond [EXISTS]
    Auth: {programmeHeadToken}
    Body: { "response": "Approved: tuition deadline extended to 2026-12-15." }
    Expect: status = responded; the Welfare Officer is notified
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Escalation not found."
+   - an unknown or someone else's id -> 404 "Account not found."
+   - 409 "Only a pending escalation can be answered."
 4. Welfare Officer sees the response and continues the case
    GET /api/Escalations/{escalationId} [EXISTS]
    Auth: {welfareOfficerToken}
+   Unhappy:
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Escalation not found."
 
 EX6: Case advisor change
 1. The case's advisor (or its student) requests another advisor for the case
@@ -807,9 +1219,23 @@ EX6: Case advisor change
    }
    Expect: status = pending, programmeHeadId = null (set to the Programme Head who decides)
    Save: caseChangeRequestId -> {changeRequestId}
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "The proposed advisor already handles this case."
+   - 400 "Reason is required."
+   - 400 "{FullName} is not an active account."
+   - 400 "{FullName} does not have the role {RoleName}."
+   - no token or an ended session -> 401
+   - {adminToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Case not found."
+   - ... and 5 more in the route's Swagger error list
 2. Programme Head reviews the request
    GET /api/CaseChangeRequests/search?status=pending [EXISTS]
    Auth: {programmeHeadToken}
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {adminToken} -> 403 "Your role cannot use this route."
 3. Programme Head approves or rejects it
 3.1. Approved
    PUT /api/CaseChangeRequests/{changeRequestId}/approve [EXISTS]
@@ -825,10 +1251,22 @@ EX6: Case advisor change
    Negative: empty decisionNotes -> 400
 4. Both advisors and the student are notified
    GET /api/Notifications/me [EXISTS] with each of the 3 tokens
+   Unhappy:
+   - no token or an ended session -> 401
 5. Programme Head can also reassign the case directly
    PUT /api/Cases/{caseAcademicId}/reassign [EXISTS]
    Auth: {programmeHeadToken}
    Body: { "advisorId": "{academicAdvisorId}", "reason": "Advisor is back from leave" }
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "The case is already handled by this advisor."
+   - 400 "Reason is required."
+   - 400 "{FullName} is not an active account."
+   - 400 "{FullName} does not have the role {RoleName}."
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Case not found."
+   - ... and 5 more in the route's Swagger error list
 
 EX7: Advisor asks for more data (consent request)
 1. Advisor picks the student, the purpose and the data attribute needed
@@ -849,24 +1287,51 @@ EX7: Advisor asks for more data (consent request)
 3. Student gets a notification and grants or denies
    GET /api/ConsentRequests/me/received [EXISTS]
    Auth: {studentToken}
+   Unhappy:
+   - no token or an ended session -> 401
+   - {adminToken} -> 403 "Your role cannot use this route."
 3.1. Granted
    PUT /api/ConsentRequests/{consentRequestId}/grant [EXISTS]
    Auth: {studentToken}
    Expect: true; request status = granted, respondedAt set; a CONSENTS row under Wellbeing support for Accommodation status and a CONSENTHISTORIES row (null -> granted); the advisor is notified
+   Unhappy:
+   - 400 "The expiry date must be in the future."
+   - 400 "Some data attributes are not covered by '{PurposeName}'."
+   - no token or an ended session -> 401
+   - {adminToken} -> 403 "Your role cannot use this route."
+   - 403 "Only students can grant consent."
+   - an unknown or someone else's id -> 404 "Consent request not found."
+   - an unknown or someone else's id -> 404 "Consent purpose not found."
+   - an unknown or someone else's id -> 404 "Account not found."
+   - ... and 3 more in the route's Swagger error list
 3.2. Denied (on a second request, e.g. for {attrAttendanceId})
    PUT /api/ConsentRequests/{id}/deny [EXISTS]
    Expect: status = denied; the advisor still sees "exists, not shared"
+   Unhappy:
+   - no token or an ended session -> 401
+   - {adminToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Consent request not found."
+   - an unknown or someone else's id -> 404 "Account not found."
+   - 409 "This request has already been answered or withdrawn."
 4. Advisor can withdraw a request that is still pending
    PUT /api/ConsentRequests/{id}/withdraw [EXISTS]
    Auth: {wellbeingAdvisorToken}
    Expect: status = withdrawn; withdrawing an answered request -> 409
    GET /api/ConsentRequests/me/sent [EXISTS] -> every request of the advisor with its status
+   Unhappy (PUT /api/ConsentRequests/{id}/withdraw):
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Consent request not found."
+   - 409 "Only a pending request can be withdrawn."
 
 EX8: Student manages consent and erasure
 1. Student opens the consent page and sees each purpose and its attributes
    GET /api/Consents/me [EXISTS]
    Auth: {studentToken}
    Expect: each active purpose (and any purpose the student has consents under) with its attributes and the student's status per attribute (none / granted / expired / withdrawn)
+   Unhappy:
+   - no token or an ended session -> 401
+   - {adminToken} -> 403 "Your role cannot use this route."
 2. Student grants or withdraws consent per purpose, or withdraws single attributes of a purpose
    Grant: POST /api/Consents [EXISTS]
    Body:
@@ -884,10 +1349,22 @@ EX8: Student manages consent and erasure
 3. Every change is recorded in consent history
    GET /api/Consents/me/histories [EXISTS] (Student), GET /api/Consents/histories/search?consentId={consentAttendanceWbId} [EXISTS] (Steward)
    Expect: null -> granted, then granted -> withdrawn, changedBy = student
+   Unhappy:
+   - no token or an ended session -> 401
+   - {adminToken} -> 403 "Your role cannot use this route."
 4. On withdrawal
 4.1. Access is blocked immediately
    GET /api/StudentData/students/{studentId} [EXISTS] with {wellbeingAdvisorToken}
    Expect: Attendance rate -> isShared = false, value = null (unless still granted under another purpose the advisor's role has a policy for)
+   Unhappy:
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 403 "Only the advisor of this case may read the student's data through it."
+   - an unknown or someone else's id -> 404 "Student not found."
+   - an unknown or someone else's id -> 404 "Case not found."
+   - an unknown or someone else's id -> 404 "Case not found for this student."
+   - 409 "A stored value does not belong to this student and data attribute."
+   - 409 "A stored value could not be decrypted (it was changed or moved, or its master key version is missing)."
 4.2. An erasure request is queued (automatic, only when the attribute is no longer granted under any purpose and the student has an active key for it)
    Note: keys are created when Member C's import stores the student's values (WF5); a student with no stored value for the attribute has no key, so nothing is queued
 4.3. Steward verifies the withdrawal and executes the erasure
@@ -895,11 +1372,23 @@ EX8: Student manages consent and erasure
    PUT /api/ErasureRequests/{erasureRequestId}/execute [EXISTS]
    Auth: {stewardToken}
    Expect: status = completed, executedAt and executedBy set; GET /api/AttributeKeys/{attributeKeyId} [EXISTS] -> status = destroyed, destroyedAt set; executing again -> 409; executing after the student shared the attribute again -> 409
+   Unhappy (GET /api/ErasureRequests/search):
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   Unhappy (PUT /api/ErasureRequests/{id}/execute):
+   - an unknown or someone else's id -> 404 "Erasure request not found."
+   - an unknown or someone else's id -> 404 "Account not found."
+   - 409 "This erasure has already been executed."
+   - 409 "The consent behind this request is no longer withdrawn, so the erasure cannot go ahead."
+   - 409 "The student has shared this attribute again under another purpose; erasing the key would wipe data that is still shared."
 4.4. The values become unreadable; the audit trail stays
    Expect: the student's own profile and every staff view show the erased values as erased (IAttributeKeyService.DecryptValuesAsync returns isErased = true); consents, consent history and access log rows are still there
    Re-share test: grant the attribute again and import a new value -> a new active key; old rows stay erased, the new value is readable
 4.5. Student is notified
    GET /api/Notifications/me [EXISTS] with {studentToken}
+   Unhappy:
+   - no token or an ended session -> 401
 
 EX9: Access log review
 1. Every staff read of student data is checked and logged (automatic, IAccessGuardService; one row per attribute read, see WF2 5.2)
@@ -908,6 +1397,12 @@ EX9: Access log review
    PUT /api/AccessLogs/me/{accessLogId}/flag [EXISTS]
    Auth: {studentToken}
    Expect: isFlagged = true, status = unreviewed; every Steward is notified; flagging it again -> 409; another student's entry -> 404
+   Unhappy:
+   - no token or an ended session -> 401
+   - {adminToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Access log entry not found."
+   - an unknown or someone else's id -> 404 "Account not found."
+   - 409 "This entry is already flagged."
 3. Steward searches/filters the access log, reviews flagged entries and exports processing records
    GET /api/AccessLogs/search?isFlagged=true&fromDate=2026-10-01&toDate=2026-11-01 [EXISTS]
    PUT /api/AccessLogs/{accessLogId}/flag [EXISTS] (the Steward can flag too)
@@ -917,8 +1412,21 @@ EX9: Access log review
    GET /api/AccessLogs/processing-record/export?fromDate=2026-09-07&toDate=2026-12-27&format=csv [EXISTS]
    Auth: {stewardToken}
    Expect: a file download (not JSON); neither a student nor both dates -> 400
+   Unhappy (GET /api/AccessLogs/search):
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   Unhappy (PUT /api/AccessLogs/{id}/flag):
+   - an unknown or someone else's id -> 404 "Access log entry not found."
+   - 409 "This entry is already flagged."
+   Unhappy (PUT /api/AccessLogs/{id}/review):
+   - 409 "Only a flagged entry can be reviewed."
+   Unhappy (GET /api/AccessLogs/processing-record/export):
+   - 400 "Choose a student, or both a start and an end date."
+   - 400 "The end date must be after the start date."
+   - an unknown or someone else's id -> 404 "Student not found."
 
-EX10: Emergency access (pending review)
+EX10: Emergency access
 1. Staff requests access beyond consent with a justification
    POST /api/EmergencyAccessRequests [EXISTS]
    Auth: {wellbeingAdvisorToken}
@@ -931,6 +1439,14 @@ EX10: Emergency access (pending review)
    Save: -> {emergencyRequestId}
    Edit: PUT /api/EmergencyAccessRequests/{emergencyRequestId} [EXISTS], body { "justification": "..." } (pending only)
    GET /api/EmergencyAccessRequests/me [EXISTS] -> the requester's own requests
+   Unhappy (POST /api/EmergencyAccessRequests):
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "Emergency access can only be requested for a student."
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Student not found."
+   - an unknown or someone else's id -> 404 "Account not found."
+   - 409 "You already have a pending request or a running emergency access for this student."
 2. A Steward approves with a time limit, or rejects with a reason (Stewards share one pool; the first to act decides)
    GET /api/EmergencyAccessRequests/search?status=pending [EXISTS]
    PUT /api/EmergencyAccessRequests/{emergencyRequestId}/approve [EXISTS]
@@ -939,6 +1455,15 @@ EX10: Emergency access (pending review)
    Body: { "rejectionReason": "The student was reached by phone and is safe; the normal consent process applies." }
    Auth: {stewardToken}
    Expect: stewardId = the steward who acted; a second steward acting on the same request -> 409; scopeExpiresAt in the past -> 400
+   Unhappy (GET /api/EmergencyAccessRequests/search):
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   Unhappy (PUT /api/EmergencyAccessRequests/{id}/approve):
+   - 400 "The end of the access window must be in the future."
+   - an unknown or someone else's id -> 404 "Emergency access request not found."
+   - an unknown or someone else's id -> 404 "Account not found."
+   - 409 "This request was already {Status} by {emergencyRequest.Steward?.FullName ?? "
 3. While approved, the requester can read every attribute of that student; access ends automatically when the time limit passes; every access is logged
    Expect: the access guard allows the requester for that student (isEmergencyAccess = true); each read appears in GET /api/AccessLogs/search?recordedUserId={studentId} with purposeName = "Emergency access" (consentPurposeId = null); after scopeExpiresAt, isExpired = true and the guard refuses again
    Note: the profile read itself is Member C's endpoint
@@ -1002,11 +1527,26 @@ EX11: Master data setup
    { "consentPurposeId": "{purposeWellbeingId}", "categoryName": "Accommodation", "description": "Problems with the dormitory or renting", "supportType": "wellbeing" } -> {catAccommodationId}
    { "consentPurposeId": "{purposeFinancialId}", "categoryName": "Money", "description": "Tuition, loans or other money problems", "supportType": "wellbeing" } -> {catMoneyId}
    PUT /api/SupportCategories/{id} [EXISTS] (edit or "status": "archived")
+   Unhappy (POST /api/SupportCategories):
+   - a required field empty or out of range -> 400 (errors per field)
+   - 400 "'{PurposeName}' is retired and cannot govern a support category."
+   - 400 "'{PurposeName}' is the statistics purpose and cannot govern a support category."
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Support category not found."
+   - an unknown or someone else's id -> 404 "Consent purpose not found."
+   - 409 "A {SupportType} support category named '{CategoryName}' already exists."
+   Unhappy (PUT /api/SupportCategories/{id}):
+   - 409 "The support type cannot change because cases already use this category. Archive it and create a new category instead."
 
 EX12: Account management
 1. Admin opens an account from the dashboard
    GET /api/Accounts/{student01Id} [EXISTS]
    Auth: {adminToken}
+   Unhappy:
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Account not found."
 2. Admin edits the account details
    PUT /api/Accounts/{student01Id} [EXISTS]
    Body:
@@ -1046,6 +1586,10 @@ EX12: Account management
    Test: sign in as student (seed), keep {studentToken}, deactivate the account, then GET /api/Auth/me with {studentToken} -> 401
    GET /api/Sessions/search?accountId={studentId}&isActive=true [EXISTS] -> empty
    Clean-up: activate the student again
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
 
 EX13: Point-in-time reconstruction ("way back machine")
 (Needs both WF5 imports.)
@@ -1064,6 +1608,16 @@ EX13: Point-in-time reconstruction ("way back machine")
 4. Advisor can compare two dates; the access is logged
    GET /api/StudentData/students/{studentId}/compare?dateA=2026-10-31&dateB=2026-11-30&timeAxis=system [EXISTS]
    Expect: both values side by side per data attribute and term; ACCESSLOGS rows for each date read
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 403 "Only the advisor of this case may read the student's data through it."
+   - an unknown or someone else's id -> 404 "Student not found."
+   - an unknown or someone else's id -> 404 "Case not found."
+   - an unknown or someone else's id -> 404 "Case not found for this student."
+   - 409 "A stored value does not belong to this student and data attribute."
+   - ... and 1 more in the route's Swagger error list
 
 EX14: Student exports own record
 1. Student opens account settings and chooses "Export my data"
@@ -1073,38 +1627,62 @@ EX14: Student exports own record
    Auth: {studentToken}
    Expect: a .json file download with profile, current data values (erased ones shown as erased), cases and own access log; activity log dataExported
    Own data without a download: GET /api/StudentData/me [EXISTS] and GET /api/StudentProfiles/me [EXISTS] (not logged)
+   Unhappy:
+   - no token or an ended session -> 401
+   - {adminToken} -> 403 "Your role cannot use this route."
+   - 403 "Only the advisor of this case may read the student's data through it."
+   - an unknown or someone else's id -> 404 "Student not found."
+   - an unknown or someone else's id -> 404 "Case not found."
+   - an unknown or someone else's id -> 404 "Case not found for this student."
+   - 404 "Your student profile has not been set up yet."
+   - 409 "A stored value does not belong to this student and data attribute."
+   - ... and 1 more in the route's Swagger error list
 
-EX15: Correction request (pending review)
-1. Student selects a value believed to be wrong and explains why
+EX15: Correction request (works like a one-attribute case, never opens a case; QC-214)
+1. Student selects a value believed to be wrong, the consent purpose and explains why
    GET /api/StudentData/me [EXISTS] -> pick the Attendance rate value, keep its studentDataId -> {studentDataAttendanceId}
+   GET /api/ConsentPurposes/search?status=active [EXISTS] -> a purpose that covers Attendance rate, e.g. Academic advising -> {purposeAcademicId}
    POST /api/CorrectionRequests [EXISTS]
    Auth: {studentToken}
    Body:
    {
+     "consentPurposeId": "{purposeAcademicId}",
      "studentDataId": "{studentDataAttendanceId}",
      "explanation": "I was marked absent on 2026-10-05 and 2026-10-12 although I attended; my lecturer confirmed it by email.",
      "proposedValue": "80"
    }
-   Expect: status = pending; currentValue is copied from the row (both values stored encrypted); activity log correctionRequested
+   Expect: status = pending, purposeName = "Academic advising", reviewedBy = null; currentValue is copied from the row (both values stored encrypted);
+   the student now has a granted consent on Attendance rate under Academic advising (an existing one is kept); activity logs consentGranted and correctionRequested; no case is opened
    Save: -> {correctionRequestId}
-   Negative: "proposedValue": "abc" (Attendance rate is numeric) -> 400; another student's studentDataId -> 404; a second pending request for the same row -> 409
-   Negative [PLANNED]: a student with no open case -> 409 "Open a support case first, so its advisor can review your correction" (not checked by the code yet)
+   Negative: "proposedValue": "abc" (Attendance rate is numeric) -> 400 "The proposed value is not valid for the numeric data attribute 'Attendance rate'."
+   Negative: another student's studentDataId -> 404 "Student data row not found."; a second pending request for the same row -> 409 "A pending correction request already exists for this value."
+   Negative: "consentPurposeId" of Financial support (does not cover Attendance rate) -> 400 "'Financial support' does not cover this data attribute; choose a purpose that does."
+   Negative: the Cohort statistics purpose -> 400 "'Cohort statistics' is the statistics purpose; choose an advising purpose for a correction."; an inactive purpose -> 409
    Own list: GET /api/CorrectionRequests/me, GET /api/CorrectionRequests/me/{correctionRequestId} [EXISTS]
-   Withdraw test (on a second request): PUT /api/CorrectionRequests/{id}/withdraw [EXISTS] -> status = withdrawn, activity log correctionRequestWithdrawn
-2. Advisor reviews it against its source
-   Reviewer = the advisor of one of the student's open cases
-   GET /api/CorrectionRequests/search?status=pending [EXISTS]
-   Auth: {academicAdvisorToken}
-   Expect: the request; the values are only shown when the advisor may read the attribute (consent or emergency access), and that read is logged
-3. Approved or rejected
+   Withdraw test (on a second request): PUT /api/CorrectionRequests/{id}/withdraw [EXISTS] -> status = withdrawn, activity log correctionRequestWithdrawn; withdrawing it again -> 409 "Only a pending correction request can be withdrawn."
+2. Every advisor of the purpose's pool sees it (shared pool, separate from cases)
+   GET /api/CorrectionRequests/search?status=pending&consentPurposeId={purposeAcademicId} [EXISTS]
+   Auth: {academicAdvisorToken} (Academic Advisor has the active policy on Academic advising; no case with the student is needed)
+   Expect: the request with currentValue and proposedValue (isShared = true); each request shown with its values writes one ACCESSLOGS row under Academic advising
+   Check: {wellbeingAdvisorToken} does not see it (Wellbeing Advisor has no policy on Academic advising); GET /api/CorrectionRequests/{correctionRequestId} with it -> 403 "Your role has no active access policy for this request's consent purpose, so it is not in your review pool."
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - 409 "A stored value does not belong to this student and data attribute."
+   - 409 "A stored value could not be decrypted (it was changed or moved, or its master key version is missing)."
+3. The first advisor to decide approves or rejects
    PUT /api/CorrectionRequests/{correctionRequestId}/approve [EXISTS]
    Body: { "decisionNotes": "Checked with the lecturer's attendance sheet; corrected." }
-   Expect: status = approved, reviewedBy set; a new STUDENTDATA row with status = correction, value 80 and the old row's validFrom; the old row stays; activity log correctionReviewed
+   Expect: status = approved, reviewedBy = the academic advisor; a new STUDENTDATA row with status = correction, value 80 and the old row's validFrom; the old row stays; activity log correctionReviewed
    PUT /api/CorrectionRequests/{id}/reject [EXISTS]
    Body: { "decisionNotes": "The attendance sheet confirms the absences." }
-   Negative: an advisor without an open case of this student -> 403
+   Negative: a second advisor of the pool approving the same request afterwards -> 409 "Only a pending correction request can be reviewed."
+   Negative: the student withdrew the consent on Attendance rate before the review -> 403 "The student no longer shares this data attribute under the request's consent purpose, so it cannot be reviewed."
 4. Student is notified
    GET /api/Notifications/me [EXISTS] with {studentToken}
+   Unhappy:
+   - no token or an ended session -> 401
 
 EX16: Notifications, language and settings
 1. User views notifications, marks them read, clicks through and clears old ones
@@ -1146,17 +1724,100 @@ EX16: Notifications, language and settings
    Expect: the new avatarUrl
    Negative: avatar_too_big.png -> 400; avatar.bmp -> 400
 
+EX17: Early-support indicators [PLANNED] (Member A; routes are a proposal)
+1. Steward defines an indicator
+   POST /api/Indicators [PLANNED]
+   Auth: {stewardToken}
+   Body:
+   {
+     "dataAttributeId": "{attrAttendanceId}",
+     "supportCategoryId": "{catStudyPlanId}",
+     "description": "Attendance under 75% this term; at 80% absence a student may be barred from the final exam.",
+     "indicatorName": "Low attendance (test)",
+     "thresholdValue": "75",
+     "comparisonOperator": "lessThan",
+     "priority": "high",
+     "severity": "high"
+   }
+   Expect: status = draft; activity log indicatorCreated
+   Save: -> {indicatorId}
+   PUT /api/Indicators/{indicatorId}/activate [PLANNED] -> status = active; every enrolled student's latest Attendance rate is checked
+   Negative: "thresholdValue": "abc" for a numeric attribute -> 400; "comparisonOperator": "lessThan" on a categorical attribute -> 400 (only equal/notEqual); a name that exists -> 409; an archived data attribute -> 409
+2. The system raises or clears flags after every import (WF5 step 6)
+   GET /api/Indicators/flags?status=open [PLANNED]
+   Auth: {programmeHeadToken}
+   Expect: one flag per student, rule and term, sorted by severity, priority, oldest; each shows the student's directory data, the rule name and description, severity, priority, term; never the value
+   Check: GET /api/AccessLogs/search?recordedUserId={studentId} shows no row for the flag check (it is a server check, not an access)
+   Negative: {studentToken} -> 403
+3. Programme Head opens a case from a flag or dismisses it
+   PUT /api/Indicators/flags/{flagId}/open-case [PLANNED], body { "advisorId": "{academicAdvisorId}" } -> a case with openedBy = the Programme Head, the rule's priority and category; the flag gets caseId and status = caseOpened
+   PUT /api/Indicators/flags/{flagId}/dismiss [PLANNED], body { "dismissReason": "Absences were excused (medical certificate)." } -> status = dismissed
+   Negative: dismiss without a reason -> 400; an advisor of the wrong support type -> 400; a flag that is not open or requested -> 409
+4. An advisor asks to take a flagged student on
+   PUT /api/Indicators/flags/{flagId}/request [PLANNED] with {academicAdvisorToken} -> status = requested, requestedBy = the advisor
+   PUT /api/Indicators/flags/{flagId}/approve-request [PLANNED] / turn-down-request [PLANNED] with {programmeHeadToken} -> a case for that advisor, or the flag back to open
+   Negative: a second advisor requesting the same flag -> 409
+
+EX18: Case thread
+1. The student and the current advisor write in the case's thread
+   POST /api/CaseMessages [EXISTS]
+   Auth: {academicAdvisorToken}
+   Body: { "caseId": "{caseId}", "messageText": "Let us meet in room 203 on Tuesday 1:30 pm; bring your last two progress tests." }
+   Expect: the message with authorRole = advisor; the student gets a notification; activity log caseMessageSent
+   Then with {studentToken}: { "caseId": "{caseId}", "messageText": "I will be there, thanks." }
+   Negative: a closed case -> 409; the student of a pending case (no advisor yet) -> 409; an empty text or more than 1000 characters -> 400; an advisor who is not the case's advisor -> 403
+2. Read the thread
+   GET /api/CaseMessages/search?caseId={caseId} [EXISTS] with {studentToken}, {academicAdvisorToken} or {programmeHeadToken}
+   Expect: oldest first; no edit or delete endpoint exists
+   Unhappy:
+   - a required field empty or out of range -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {adminToken} -> 403 "Your role cannot use this route."
+   - an unknown or someone else's id -> 404 "Case not found."
+3. Chat rules still to be decided with Member B (real-time or not, attachments, read receipts, limits): see the Q&A history
+
+EX19: Case feedback and ratings [PLANNED] (Member D; routes are a proposal)
+1. The student rates a closed case once
+   POST /api/CaseFeedbacks [PLANNED]
+   Auth: {studentToken}
+   Body: { "caseId": "{caseId}", "comment": "Clear advice and quick replies.", "rating": 5 }
+   Expect: advisorId = the case's advisor; activity log caseFeedbackGiven
+   Negative: a case that is not closed -> 409; a second rating for the same case -> 409; "rating": 6 -> 400; another student's case -> 404
+2. Reading the feedback: who may read it is still to be decided (Q&A); proposal GET /api/CaseFeedbacks/search?advisorId= [PLANNED] for the Programme Head
+
+EX20: Anonymised welfare statistics and cohort data
+1. Welfare statistics
+   GET /api/Statistics/welfare?from=2026-09-01&to=2026-12-27 [EXISTS]
+   GET /api/Statistics/welfare?from=2026-09-01&to=2026-12-27&isByFaculty=true&supportType=wellbeing [EXISTS]
+   Auth: {welfareOfficerToken} or {programmeHeadToken}
+   Expect: one row per support category (and faculty): caseCount, referredCaseCount, interventionCount, supportGrantCount, externalReferralCount, escalationCount, studentCount;
+   on the test data alone every row has isSuppressed = true and null counts (fewer than 5 students); on the mock data the busy categories are shown
+   Negative: "to" before "from" -> 400 "The to date must not be before the from date."; an unknown facultyId -> 404 "Faculty not found."; supportType=other -> 400
+   GET /api/Statistics/welfare/export?from=2026-09-01&to=2026-12-27&format=xlsx [EXISTS] -> a file; suppressed cells are written as "hidden"; activity log statisticsExported
+2. Cohort data
+   Setup (Steward): a purpose with "isForStatistics": true covering GPA, activated (POST /api/ConsentPurposes, POST /api/ConsentPurposes/purpose-attributes, PUT /api/ConsentPurposes/{id}/activate), and an active access policy Programme Head -> that purpose; on the mock data use the seeded "Cohort statistics" purpose
+   Students consent to it like any purpose (POST /api/Consents)
+   GET /api/Statistics/cohort?dataAttributeId={attrGpaId}&termId={termFall2026Id} [EXISTS]
+   GET /api/Statistics/cohort?dataAttributeId={attrGpaId}&termId={termFall2026Id}&isByFaculty=true [EXISTS]
+   Auth: {programmeHeadToken}
+   Expect: averageValue, minValue, maxValue and studentCount, or isSuppressed = true when fewer than 10 students consented; a categorical attribute gives valueCounts instead;
+   each value read writes one ACCESSLOGS row with the statistics purpose (none for a suppressed cell); emergency access never counts
+   Check: an advisor reading the same student outside a case (GET /api/StudentData/students/{studentId}) does not see a value shared only for statistics
+   Negative: no active statistics purpose -> 409 "There is no active statistics consent purpose, so no cohort data can be shown."; an attribute the purpose does not cover -> 400; an unknown termId -> 404 "Academic term not found."; {welfareOfficerToken} -> 403
+   Negative (Steward side): activating a second statistics purpose -> 409 "Another active consent purpose is already the statistics purpose; deactivate it first."; using it for a support category or a consent request -> 400
+   GET /api/Statistics/cohort/export?dataAttributeId={attrGpaId}&termId={termFall2026Id}&format=csv [EXISTS] -> a file; activity log statisticsExported
+
 ==========
 NOTES
 ==========
 
 - All [PLANNED] routes are proposals: the member who builds the controller may rename them; update this file when they do
-- Members A, B, C and D's routes are built and tagged [EXISTS]; any feature that shows or exports a data attribute value calls IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync), then IAttributeKeyService.DecryptValuesAsync and LogAccessAsync / LogAccessBatchAsync before showing or exporting any data attribute value; the StudentData import encrypts with IAttributeKeyService.EncryptValuesAsync
+- Members A, B, C and D's routes are built and tagged [EXISTS], except EX17 and EX19; any feature that shows or exports a data attribute value calls IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync with the purpose, e.g. the statistics purpose for cohort data), then IAttributeKeyService.DecryptValuesAsync and LogAccessAsync / LogAccessBatchAsync before showing or exporting any data attribute value; the StudentData import encrypts with IAttributeKeyService.EncryptValuesAsync
 - Student profile (directory) data is open to all staff and not logged; data attribute values need consent (or emergency access) and every value shown to staff is logged with its studentDataId; the student's own reads are not logged
 - The API needs Encryption:MasterKeys (numbered versions of 32 random bytes in base64, e.g. "1": "...") and Encryption:CurrentVersion in appsettings.json, or the environment variables Encryption__MasterKeys__1 and Encryption__CurrentVersion on MonsterASP; it refuses to start without them. Every environment that shares a database must use the same master keys
 - Master key rotation: add version 2 next to version 1, set CurrentVersion = 2, restart, then PUT /api/AttributeKeys/rewrap [EXISTS] (Steward) until no key uses version 1; only then remove version 1
 - EX1, EX2 step 4, WF1 step 4.2 and EX16 avatar need Google, Gmail and Supabase values in appsettings.json; until then they return errors from the outside service
-- Notifications sent by other features (WF2 step 4, EX4, EX5, EX6, EX7, EX8, EX15) depend on NotificationService.NotifyAsync being called by Members B, C and D
+- Notifications sent by other features (WF2 step 4, EX4, EX5, EX6, EX7, EX8, EX15, EX18) are written through NotificationService.NotifyAsync
 - Decided for the case workflow (were open questions, answered with Member D's implementation):
   - WF2 2.5: the student does not set the priority (a new request is always medium); an advisor may give one when opening a case (EX3); afterwards the case's advisor, the Programme Head or a Welfare Officer who received a referral of the case changes it with PUT /api/Cases/{id}/priority
   - WF2b 2.2: the priority is set on the case; a referral keeps its own priority given by the sender

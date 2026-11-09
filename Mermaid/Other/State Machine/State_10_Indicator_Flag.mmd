@@ -1,0 +1,16 @@
+---
+title: AdviseCare - State Machine - Early-Support Indicator Flag
+---
+
+stateDiagram-v2
+    direction LR
+    [*] --> open : import or rule change - the latest value hits an active rule
+    open --> requested : an advisor asks to take the student on
+    requested --> open : Programme Head turns the request down
+    open --> caseOpened : Programme Head opens a case for an advisor
+    requested --> caseOpened : Programme Head approves the advisor's request
+    open --> dismissed : Programme Head dismisses with a reason
+    open --> cleared : a later value no longer hits the rule
+    caseOpened --> [*]
+    dismissed --> [*]
+    cleared --> [*]

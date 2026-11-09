@@ -27,6 +27,8 @@ public partial class Dataattribute
 
     public virtual Datasource Datasource { get; set; }
 
+    public virtual ICollection<Indicator> Indicators { get; set; } = new List<Indicator>();
+
     public virtual ICollection<Studentdata> Studentdata { get; set; } = new List<Studentdata>();
 
     public virtual ICollection<Consentpurpose> ConsentPurposes { get; set; } = new List<Consentpurpose>();
