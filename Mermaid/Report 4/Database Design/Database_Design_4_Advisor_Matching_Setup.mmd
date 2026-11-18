@@ -17,16 +17,37 @@ erDiagram
         nvarchar(30) supportType "NOT NULL"
         nvarchar(30) status "NOT NULL"
     }
+    INDICATORS {
+        uniqueidentifier indicatorId PK "NOT NULL"
+        uniqueidentifier createdBy FK "NOT NULL"
+        uniqueidentifier dataAttributeId FK "NOT NULL"
+        uniqueidentifier supportCategoryId FK "NOT NULL"
+        datetime2(3) createdAt "NOT NULL"
+        nvarchar(1000) description "NULL"
+        nvarchar(255) indicatorName UK "NOT NULL"
+        nvarchar(255) thresholdValue "NOT NULL"
+        datetime2(3) updatedAt "NULL"
+        nvarchar(30) comparisonOperator "NOT NULL"
+        nvarchar(30) priority "NOT NULL"
+        nvarchar(30) severity "NOT NULL"
+        nvarchar(30) status "NOT NULL"
+    }
     ACCOUNTS {
         uniqueidentifier accountId PK "referenced table, see its own section"
     }
     CONSENTPURPOSES {
         uniqueidentifier consentPurposeId PK "referenced table, see its own section"
     }
+    DATAATTRIBUTES {
+        uniqueidentifier dataAttributeId PK "referenced table, see its own section"
+    }
     SUBJECTS {
         uniqueidentifier subjectId PK "referenced table, see its own section"
     }
-    CONSENTPURPOSES ||--o{ SUPPORTCATEGORIES : "consentPurposeId"
-    ACCOUNTS ||--o{ SUPPORTCATEGORIES : "createdBy"
     ACCOUNTS ||--o{ ACCOUNT_SUBJECT : "accountId"
     SUBJECTS ||--o{ ACCOUNT_SUBJECT : "subjectId"
+    CONSENTPURPOSES ||--o{ SUPPORTCATEGORIES : "consentPurposeId"
+    ACCOUNTS ||--o{ SUPPORTCATEGORIES : "createdBy"
+    ACCOUNTS ||--o{ INDICATORS : "createdBy"
+    DATAATTRIBUTES ||--o{ INDICATORS : "dataAttributeId"
+    SUPPORTCATEGORIES ||--o{ INDICATORS : "supportCategoryId"

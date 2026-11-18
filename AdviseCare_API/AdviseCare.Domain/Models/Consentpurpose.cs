@@ -15,6 +15,8 @@ public partial class Consentpurpose
 
     public string PurposeName { get; set; }
 
+    public bool IsForStatistics { get; set; }
+
     public string Status { get; set; }
 
     public virtual ICollection<Accesslog> Accesslogs { get; set; } = new List<Accesslog>();
@@ -24,6 +26,8 @@ public partial class Consentpurpose
     public virtual ICollection<Consentrequest> Consentrequests { get; set; } = new List<Consentrequest>();
 
     public virtual ICollection<Consent> Consents { get; set; } = new List<Consent>();
+
+    public virtual ICollection<Correctionrequest> Correctionrequests { get; set; } = new List<Correctionrequest>();
 
     public virtual Account CreatedByNavigation { get; set; }
 

@@ -36,10 +36,10 @@ namespace AdviseCare.Application.Services
             return await DecideAsync(AccessorId, new List<Guid> { StudentId }, DataAttributeIds, ConsentPurposeId);
         }
 
-        // Check the same data attributes for a list of students at once (e.g. the advisor's student list with indicators), under any purpose
-        public async Task<List<AccessDecision>> CheckAccessForStudentsAsync(Guid AccessorId, List<Guid> StudentIds, List<Guid> DataAttributeIds)
+        // Check the same data attributes for a list of students at once (e.g. cohort statistics under the statistics purpose); null = any purpose
+        public async Task<List<AccessDecision>> CheckAccessForStudentsAsync(Guid AccessorId, List<Guid> StudentIds, List<Guid> DataAttributeIds, Guid? ConsentPurposeId)
         {
-            return await DecideAsync(AccessorId, StudentIds, DataAttributeIds, null);
+            return await DecideAsync(AccessorId, StudentIds, DataAttributeIds, ConsentPurposeId);
         }
 
         // Write one access log row for one value shown (studentDataId = the exact STUDENTDATA row; consentPurposeId = null for an emergency access read;
@@ -113,7 +113,8 @@ namespace AdviseCare.Application.Services
                     p.Status == "active" &&
                     roleIds.Contains(p.RoleId) &&
                     p.ConsentPurpose.Status == "active" &&
-                    (ConsentPurposeId == null || p.ConsentPurposeId == ConsentPurposeId)))
+                    // the statistics purpose only counts when asked for by name (cohort data), so it never opens a single student's values
+                    (ConsentPurposeId == null ? !p.ConsentPurpose.IsForStatistics : p.ConsentPurposeId == ConsentPurposeId)))
                 .Select(p => p.ConsentPurposeId)
                 .Distinct()
                 .ToList();

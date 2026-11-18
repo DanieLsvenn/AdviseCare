@@ -10,6 +10,7 @@ import { listOf, toCase, type CaseRecord } from "@/components/case/case-api";
 import { CaseProgress } from "@/components/case/case-progress";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { Pager, usePaged } from "@/components/ui/pager";
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/states";
 import { StatusValue } from "@/components/ui/status-value";
 
@@ -51,6 +52,8 @@ export function StudentCaseList() {
 
   const open = cases.filter((item) => item.status !== "closed" && item.currentStage !== "closed");
   const closed = cases.filter((item) => !open.includes(item));
+  const pagedOpen = usePaged(open, 10);
+  const pagedClosed = usePaged(closed, 10);
 
   return (
     <div className="flex flex-col gap-space-lg">
@@ -101,7 +104,7 @@ export function StudentCaseList() {
             </h2>
             {open.length ? (
               <ul className="flex flex-col gap-space-sm">
-                {open.map((item) => (
+                {pagedOpen.items.map((item) => (
                   <RequestCard key={item.caseId} item={item} />
                 ))}
               </ul>
@@ -110,6 +113,7 @@ export function StudentCaseList() {
                 {t("noneOpen")}
               </p>
             )}
+            <Pager {...pagedOpen} className="mt-space-sm" />
           </section>
 
           {closed.length ? (
@@ -129,11 +133,12 @@ export function StudentCaseList() {
               </button>
               {showClosed ? (
                 <ul className="mt-space-sm flex flex-col gap-space-sm">
-                  {closed.map((item) => (
+                  {pagedClosed.items.map((item) => (
                     <RequestCard key={item.caseId} item={item} />
                   ))}
                 </ul>
               ) : null}
+              {showClosed ? <Pager {...pagedClosed} className="mt-space-sm" /> : null}
             </section>
           ) : null}
         </>

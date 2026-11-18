@@ -1,4 +1,5 @@
 using AdviseCare.Application.Contracts.Requests.Case;
+using AdviseCare.Application.Contracts.Responses;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +21,9 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[Student, advisors, Student Welfare Officer, Programme Head] Get the stage history of a case",
             Description = "caseId is required. Lists every stage change and hand-over of the case, oldest first, with fromStage, toStage, who changed it, why and when. " +
                 "Same access as GET /api/Cases/{id} (the student can see their own).")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Case not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> Search([FromQuery] SearchCaseStageHistoryRequest request)
         {
             var callerId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);

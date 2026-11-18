@@ -35,6 +35,8 @@ export default async function StudentWorkspacePage({
     screen = "student.access";
   } else if (route === "events" || /^events\/[^/]+$/.test(route)) {
     screen = "student.events";
+  } else if (route === "private-data") {
+    screen = "student.data";
   } else if (route === "export") {
     screen = "student.export";
   } else {

@@ -1,4 +1,5 @@
 using AdviseCare.Application.Contracts.Requests.Subject;
+using AdviseCare.Application.Contracts.Responses;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +18,8 @@ namespace AdviseCare.API.Controllers
         [HttpGet]
         [SwaggerOperation(Summary = "[All roles] Get all subjects with optional pagination",
             Description = "Retrieves every subject, ordered by subject code. Pass page and pageSize together to page the results. Used for the subject dropdown of academic support requests.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- Page and page size must be at least 1.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
             if (page.HasValue && pageSize.HasValue)
@@ -33,6 +36,8 @@ namespace AdviseCare.API.Controllers
         [HttpGet("{id}")]
         [SwaggerOperation(Summary = "[All roles] Get subject by Id",
             Description = "Retrieves one subject by its unique identifier.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Subject not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             var response = await _subjectService.GetByIdAsync(id);
@@ -43,6 +48,8 @@ namespace AdviseCare.API.Controllers
         [HttpGet("search")]
         [SwaggerOperation(Summary = "[All roles] Search/Filter subjects",
             Description = "Filters subjects by faculty, by code or name (contains) and by status (active/archived). Empty fields are ignored.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         public async Task<IActionResult> Search([FromQuery] SearchSubjectRequest request)
         {
             var response = await _subjectService.SearchAsync(request);
@@ -54,6 +61,11 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Create subject",
             Description = "Creates a new active subject under an existing faculty. The subject code (e.g. PRN212) must be unique.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Faculty not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- A subject with code '{SubjectCode}' already exists.", typeof(ErrorResponse))]
         public async Task<IActionResult> Create([FromBody] CreateSubjectRequest request)
         {
             var response = await _subjectService.CreateAsync(request);
@@ -65,6 +77,11 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Update subject",
             Description = "Updates a subject's faculty, code, name and status. Setting the status to archived removes it from the request form without breaking old cases.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Subject not found.\n- Faculty not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- A subject with code '{SubjectCode}' already exists.", typeof(ErrorResponse))]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateSubjectRequest request)
         {
             var response = await _subjectService.UpdateAsync(id, request);
@@ -76,6 +93,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator,Programme Head")]
         [SwaggerOperation(Summary = "[System Administrator, Programme Head] Get all advisor-subject links with optional pagination",
             Description = "Retrieves every link between an academic advisor and a subject they specialise in, with the advisor's full name and the subject's code and name. An academic advisor with no link is a general academic advisor. Pass page and pageSize together to page the results.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- Page and page size must be at least 1.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetAllAccountSubject([FromQuery] int? page, [FromQuery] int? pageSize)
         {
             if (page.HasValue && pageSize.HasValue)
@@ -93,6 +113,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator,Programme Head")]
         [SwaggerOperation(Summary = "[System Administrator, Programme Head] Get advisor-subject link",
             Description = "Retrieves the link between one academic advisor and one subject. Returns 404 when the advisor is not linked to that subject.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- This advisor is not linked to this subject.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetAccountSubjectById([FromRoute] Guid accountId, [FromRoute] Guid subjectId)
         {
             var response = await _subjectService.GetAccountSubjectByIdAsync(accountId, subjectId);
@@ -104,6 +127,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator,Programme Head")]
         [SwaggerOperation(Summary = "[System Administrator, Programme Head] Search advisor-subject links",
             Description = "Filters advisor-subject links by advisor (accountId) and/or subject (subjectId), e.g. to view the advisors of one subject or the subjects of one advisor. Empty fields are ignored.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> SearchAccountSubject([FromQuery] SearchAccountSubjectRequest request)
         {
             var response = await _subjectService.SearchAccountSubjectAsync(request);
@@ -115,6 +141,11 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Link an academic advisor to a subject",
             Description = "Records that an academic advisor specialises in a subject, so academic support requests for that subject can be matched to them. The account must have the Academic Advisor role, the subject must be active, and the same link cannot be added twice.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- Advisors can only be linked to an active subject.\n- Only an account with the Academic Advisor role can be linked to a subject.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Subject not found.\n- Account not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- This advisor is already linked to this subject.", typeof(ErrorResponse))]
         public async Task<IActionResult> CreateAccountSubject([FromBody] CreateAccountSubjectRequest request)
         {
             var response = await _subjectService.CreateAccountSubjectAsync(request);
@@ -126,6 +157,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Unlink an academic advisor from a subject",
             Description = "Removes the link between an academic advisor and a subject. An advisor left with no links becomes a general academic advisor.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- This advisor is not linked to this subject.", typeof(ErrorResponse))]
         public async Task<IActionResult> DeleteAccountSubject([FromRoute] Guid accountId, [FromRoute] Guid subjectId)
         {
             var response = await _subjectService.DeleteAccountSubjectAsync(accountId, subjectId);

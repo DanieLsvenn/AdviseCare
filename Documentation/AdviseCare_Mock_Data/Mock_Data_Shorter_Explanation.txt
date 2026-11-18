@@ -1,0 +1,18 @@
+All of these are in Documentation/AdviseCare_Mock_Data. The guide in that folder has the full details.
+
+Account import (POST /api/Accounts/import, columns email, fullName, userName, facultyCode, role, studentCode, academicStatus):
+
+accounts_import_valid.xlsx and .csv: the happy path. Both hold the same 10 rows: 4 staff and 6 students. Expect createdCount = 10. Importing the second one after the first gives 10 “already used” errors. The .csv version shows that CSV works too.
+accounts_import_invalid_rows.xlsx: 11 rows where row 2 is valid and rows 3–12 each have one problem (duplicate email, bad email, unknown faculty, unknown role, student without code, and so on). Expect isSuccess = false, 10 errors and nothing created, because the import is all-or-nothing.
+accounts_import_invalid_columns.xlsx: the headers are wrong (faculty instead of facultyCode, no role). Expect the error “Missing column(s): facultyCode, role.”
+
+Student data import (POST /api/StudentData/import, with the columnMapping from the guide):
+
+mock_studentdata_summer2026.xlsx: 1,056 valid rows for Summer 2026, with some values left out on purpose so “missing” rows get created.
+mock_studentdata_fall2026.xlsx: 1,037 valid rows for Fall 2026, the current term. The Student column mixes emails, usernames and student codes, to prove all three identifiers work. It also drives the early-support indicators.
+mock_studentdata_fall2026_update.xlsx: 37 rows with newer GPA and attendance values valid from 2026-10-28, plus 5 late “Absent slots” rows. It tests point-in-time history (EX13).
+mock_studentdata_archived.xlsx: 4 rows, 2 of them for archived attributes. Expect 2 inserted and 2 rejected.
+mock_studentdata_invalid.xlsx and .csv: 8 rows with 7 different errors. Expect nothing inserted (all-or-nothing). The .csv holds the same rows.
+mock_studentdata_invalid_columns.xlsx: Value is named Score and Valid from is missing. Expect a 400 about the mapped columns not being found.
+mock_studentdata_student_gmail.csv: 4 valid rows for student@gmail.com (GPA, attendance, late submissions, tuition overdue). It shows a CSV with the same mapping, and it triggers the “Tuition overdue” indicator.
+AdviseCare_Mock_Data_Guide.txt: the load order, the accounts, what the seed data contains and the test starting points.

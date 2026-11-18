@@ -1,0 +1,11 @@
+---
+title: AdviseCare - State Machine - Early-Support Indicator
+---
+
+stateDiagram-v2
+    direction LR
+    [*] --> draft : Steward creates the rule
+    draft --> active : Steward activates (every enrolled student's latest value is checked)
+    active --> archived : Steward archives (no new flags; existing flags are kept)
+    draft --> archived : Steward archives an unused draft
+    archived --> [*]

@@ -35,6 +35,7 @@
   },
   "student": {
     "profile": "My profile",
+    "privateData": "Private data",
     "consent": "Consent",
     "cases": "My requests",
     "accessHistory": "Access log",

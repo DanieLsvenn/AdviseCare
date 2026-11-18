@@ -1,0 +1,304 @@
+ADVISECARE MOCK DATA GUIDE (09/11/2026)
+
+What this covers: the mock data in section 4 of AdviseCare_Database_Script.sql, plus the mock import files in this folder
+(Documentation/AdviseCare_Mock_Data in the repo; AdviseCareTempFolder/AdviseCare_Mock_Data in the temp folder).
+Reference date of the data: 2026-10-30. Fall 2026 is the current term.
+
+Changes on 09/11/2026:
+- student@gmail.com now has its own mock data (QC-203) and a full row of values in every term import file (no more "missing" rows for it).
+- New tables seeded: INDICATORS (6), CASEFEEDBACKS (8); the "Cohort statistics" consent purpose with 60 statistics consents.
+- New import files for the unhappy cases: account import (valid, invalid rows, invalid columns, CSV) and student data (invalid columns, CSV).
+- The old Documentation/MockData and Documentation/demo-samples folders were removed from the repo; this folder replaces both.
+
+==========
+1. HOW TO LOAD IT
+==========
+
+Step 1 - run AdviseCare_Database_Script.sql
+- It recreates all 48 tables and inserts the mock data (about 3,400 rows across 47 tables; INDICATORFLAGS starts empty).
+
+Step 2 - start the API
+- Use the master key of your environment (Encryption:MasterKeys / Encryption:CurrentVersion).
+
+Step 3 - sign in as admin02@example.com (password 123456) and import the student data values, in this order:
+   POST /api/StudentData/import (multipart/form-data)
+   columnMapping = { "studentIdentifier": "Student", "dataAttribute": "Data attribute", "value": "Value", "term": "Term", "validFrom": "Valid from" }
+   1. mock_studentdata_summer2026.xlsx
+      - 1,056 rows, all valid (1,033 mock rows + 23 rows for student@gmail.com).
+      - Some (student, attribute) pairs are left out on purpose, so missing rows are created for enrolled students.
+   2. mock_studentdata_fall2026.xlsx
+      - 1,037 rows, all valid (1,014 mock rows + 23 rows for student@gmail.com).
+      - The Student column mixes emails, usernames and student codes: all 3 identifiers must work.
+      - student@gmail.com gets Attendance rate 72, so the active "Low attendance" indicator (< 75) flags it.
+   3. mock_studentdata_fall2026_update.xlsx
+      - 37 rows: new GPA and Attendance rate values for 16 students (student@gmail.com included), valid from 2026-10-28.
+      - Also 5 late "Absent slots" values that are valid from 2026-10-01 but recorded today (see the EX13 test in section 5).
+   4. mock_studentdata_archived.xlsx
+      - 4 rows: 2 for archived attributes (Club membership count, Dormitory block).
+      - Expect isSuccess = true, insertedCount = 2 and rejectedRows = the 2 archived rows.
+   5. mock_studentdata_invalid.xlsx (and the same rows as mock_studentdata_invalid.csv)
+      - 8 rows: 1 valid and 7 invalid.
+      - The invalid rows have: an unknown student, an unknown attribute, "abc" as a number, an unknown term, "yes" as a boolean, an empty value, and a bad date.
+      - Expect isSuccess = false, 7 errors and nothing inserted (all-or-nothing).
+   6. mock_studentdata_invalid_columns.xlsx
+      - Columns Student, Data attribute, Score, Term: "Value" is named "Score" and "Valid from" is missing.
+      - With the columnMapping above, expect 400 "Mapped column(s) not found in the file: Value, Valid from."
+      - Mapping value to "Score" still fails on validFrom: every field must be mapped to a column.
+   7. mock_studentdata_student_gmail.csv (optional, any time after file 3)
+      - 4 valid rows for student@gmail.com, valid from 2026-11-05 (GPA 6.3, Attendance rate 74, Late submissions 7, Tuition overdue true).
+      - Shows that a .csv works with the same columnMapping; Tuition overdue = true hits the "Tuition overdue" indicator.
+
+Step 4 (optional) - account import, signed in as an admin:
+   POST /api/Accounts/import (multipart/form-data, file only; POST /api/Accounts/import/preview shows the same checks without writing)
+   - Columns: email, fullName, userName, facultyCode, role (comma-separated for several roles), studentCode, academicStatus.
+     Staff rows leave studentCode and academicStatus empty; an empty academicStatus on a Student row means enrolled.
+   1. accounts_import_valid.xlsx (or accounts_import_valid.csv, same 10 rows)
+      - 4 staff (aa.phuongnt, wa.huyld, wo.thanhpv, aa.ngocpt with 2 roles) and 6 students (SE180036, SE190037, SE180038, BA180149, BA190150, BA170151).
+      - Expect isSuccess = true and createdCount = 10. Importing the second file after the first gives 10 "already used" errors.
+   2. accounts_import_invalid_rows.xlsx
+      - 11 rows: row 2 is valid, rows 3-12 each have one problem.
+      - Row 3: email student@gmail.com already used. Row 4: email not valid. Row 5: fullName empty and userName aa.hungpt already used.
+        Row 6: faculty code IT does not exist. Row 7: role Teacher does not exist. Row 8: Student without studentCode.
+        Row 9: academicStatus suspended. Row 10: staff row with a studentCode. Row 11: studentCode SE180003 already used.
+        Row 12: the email of row 2 a second time in the file.
+      - Expect isSuccess = false, 10 errors and nothing created (all-or-nothing, the valid row 2 is not created either).
+   3. accounts_import_invalid_columns.xlsx
+      - Columns email, fullName, userName, faculty, studentCode.
+      - Expect isSuccess = false with one error on row 1: "Missing column(s): facultyCode, role."
+
+Why the values are not in the SQL script
+- STUDENTDATA values are AES-256-GCM encrypted with the student's attribute key, and that key is wrapped with the API master key.
+- The import encrypts with whatever master key the running environment uses, so this works for every teammate and for MonsterASP.
+- Seeded directly in SQL (no encryption needed):
+  - Spring 2026 missing-value rows;
+  - Spring 2026 erased rows with their destroyed keys and completed erasure requests;
+  - 3 correction requests decided before the erasure (their values were cleared by it).
+- After the import:
+  - create pending correction requests through POST /api/CorrectionRequests (studentDataId, consentPurposeId, explanation, proposedValue);
+  - pending erasures are created automatically when a student withdraws a consent of an attribute that now has a key;
+  - indicator flags are raised by the server for every enrolled student whose latest value hits an active indicator.
+
+==========
+2. ACCOUNTS (password 123456 for all)
+==========
+
+The base test accounts (@gmail.com)
+- admin, steward, academicadvisor, wellbeingadvisor, welfareofficer and programmehead are kept clean: no cases, consents, logs or sessions,
+  so AdviseCare_API_Workflow_List.txt can still be followed on them.
+- student@gmail.com has its own mock data (QC-203), so a student screen is never empty:
+  - a closed "Stress and balance" wellbeing case with wa.ngocbt (opened 2026-09-20, closed 2026-10-10), 4 thread messages and a 5-star feedback;
+  - an open PRN212 "Exam preparation" academic case with aa.hungpt, stage contacted, 2 thread messages;
+  - 8 stage history rows, 4 CASE_ATTRIBUTE rows (Part-time work hours, Commute time, Late submissions, LMS logins per week) and the 4 matching granted consents;
+  - a full row of values in the Summer 2026 and Fall 2026 import files.
+- The master data has the same names as in the API workflow list (faculties SE/BA, BSE, the terms, PRN212/SWP391/MKT101, GPA/Attendance rate/...,
+  Academic advising/Wellbeing support/Financial support, the support categories). So the create steps in EX11/WF3 return 409 with the reason;
+  the workflow list shows that unhappy result too, then looks the ids up with GET/search.
+
+Mock staff (12)
+- admin02@example.com / admin02 - Trần Quốc Bảo - System Administrator - faculty - - active
+- steward02@example.com / steward02 - Lê Thị Thu Hà - Data Protection Steward - faculty - - active
+- aa.hungpt@example.com / aa.hungpt - Phạm Thanh Hùng - Academic Advisor - faculty SE - active
+- aa.lannt@example.com / aa.lannt - Nguyễn Thị Lan - Academic Advisor - faculty SE - active
+- aa.khoavd@example.com / aa.khoavd - Vũ Đăng Khoa - Academic Advisor, Programme Head - faculty SE - active
+- aa.maidt@example.com / aa.maidt - Đỗ Thanh Mai - Academic Advisor - faculty BA - active
+- aa.sonhm@example.com / aa.sonhm - Hồ Minh Sơn - Academic Advisor - faculty SE - deactivated
+- wa.ngocbt@example.com / wa.ngocbt - Bùi Thị Ngọc - Wellbeing Advisor - faculty SE - active
+- wa.tamlh@example.com / wa.tamlh - Lý Hoàng Tâm - Wellbeing Advisor - faculty BA - active
+- wo.yennh@example.com / wo.yennh - Ngô Hải Yến - Student Welfare Officer - faculty - - active
+- wo.duongvm@example.com / wo.duongvm - Dương Văn Minh - Student Welfare Officer - faculty - - active
+- ph.quanpm@example.com / ph.quanpm - Phan Minh Quân - Programme Head - faculty BA - active
+
+Notes:
+- aa.khoavd has 2 roles: he is also the Programme Head of SE.
+- ph.quanpm is the Programme Head of BA.
+- aa.sonhm is deactivated, to test refused sign-in.
+
+Mock students (49; plus the base student = 50 students)
+- SE: 34 mock students plus the base student = 35. BA: 15.
+- All are in the one programme, BSE.
+- Academic status:
+  - 43 enrolled, 3 on leave, 2 withdrawn (their accounts are deactivated), 1 graduated;
+  - 1 enrolled student is banned.
+- SE170002 longhmse170002 - Hoàng Minh Long - SE (withdrawn, account deactivated)
+- SE180003 binhnqse180003 - Ngô Quốc Bình - SE
+- SE180004 huybqse180004 - Bùi Quốc Huy - SE (onLeave)
+- SE180005 thaodase180005 - Dương Anh Thảo - SE
+- SE190006 quanvqse190006 - Võ Quốc Quân - SE
+- SE170007 khoavhse170007 - Vũ Hữu Khoa - SE
+- SE180008 tubhse180008 - Bùi Hoàng Tú - SE
+- SE180009 dungttse180009 - Trần Thu Dũng - SE (onLeave)
+- SE180010 haipvse180010 - Phạm Văn Hải - SE
+- SE180011 phongpmse180011 - Phan Minh Phong - SE
+- SE180012 yendgse180012 - Dương Gia Yến - SE
+- SE170013 khanghtse170013 - Huỳnh Thu Khang - SE
+- SE190014 thuhkse190014 - Hoàng Khánh Thư - SE (withdrawn, account deactivated)
+- SE180015 hunghtse180015 - Hoàng Thu Hùng - SE
+- SE190016 nhihhse190016 - Huỳnh Hữu Nhi - SE
+- SE170017 uyendnse170017 - Dương Ngọc Uyên - SE
+- SE190018 nganhdse190018 - Huỳnh Đức Ngân - SE
+- SE190019 hieudgse190019 - Đỗ Gia Hiếu - SE
+- SE180020 toanlnse180020 - Lý Ngọc Toàn - SE
+- SE180021 vynhse180021 - Ngô Hữu Vy - SE
+- SE180022 diepdqse180022 - Đặng Quốc Diệp - SE (account banned)
+- SE180023 cuongltse180023 - Lê Thị Cường - SE
+- SE190024 lanvtse190024 - Võ Thanh Lan - SE
+- SE180025 sonpgse180025 - Phan Gia Sơn - SE
+- SE190026 linhvtse190026 - Võ Thanh Linh - SE
+- SE170027 phuchmse170027 - Hoàng Minh Phúc - SE
+- SE180028 tienvgse180028 - Vũ Gia Tiến - SE (onLeave)
+- SE190029 giangdnse190029 - Đặng Ngọc Giang - SE
+- SE170030 chaubvse170030 - Bùi Văn Châu - SE
+- SE180031 dathbse180031 - Hoàng Bảo Đạt - SE
+- SE180032 nhungnnse180032 - Ngô Ngọc Nhung - SE
+- SE190033 tranghtse190033 - Hồ Thanh Trang - SE
+- SE180034 baolnse180034 - Lê Ngọc Bảo - SE
+- SE180035 mainkse180035 - Ngô Khánh Mai - SE
+- BA180134 tamltba180134 - Lê Thanh Tâm - BA
+- BA180135 handvba180135 - Dương Văn Hân - BA
+- BA190136 nampvba190136 - Phạm Văn Nam - BA
+- BA180137 trungltba180137 - Lý Thị Trung - BA
+- BA170138 lochgba170138 - Hồ Gia Lộc - BA
+- BA180139 andtba180139 - Dương Thị An - BA
+- BA180140 hungddba180140 - Đặng Đức Hưng - BA
+- BA170141 quynhdmba170141 - Đỗ Minh Quỳnh - BA
+- BA190142 hoahnba190142 - Hồ Ngọc Hoa - BA
+- BA160143 vinhdbba160143 - Đặng Bảo Vinh - BA (graduated)
+- BA170144 thinhdbba170144 - Dương Bảo Thịnh - BA
+- BA180145 habtba180145 - Bùi Thu Hà - BA
+- BA180146 duytmba180146 - Trần Minh Duy - BA
+- BA180147 kienbgba180147 - Bùi Gia Kiên - BA
+- BA180148 mypgba180148 - Phan Gia My - BA
+
+==========
+3. WHAT IS IN EACH AREA
+==========
+
+Identity and access
+- 68 accounts, 69 account roles, 50 student profiles.
+- 125 sessions: active and ended, on 5 kinds of devices.
+- 23 notification preferences.
+- 122 notifications: read and unread.
+- 1,140 activity logs, written for the seeded actions with the real activity types from AdviseCare_Activity_Types.txt.
+
+Master data
+- 2 faculties, 1 programme (BSE).
+- 4 terms: Spring 2026 past, Summer 2026 past, Fall 2026 current, Spring 2027 upcoming.
+- 12 subjects; OSG202 is archived.
+- 13 advisor-subject links.
+
+Consent and data protection
+- 25 data attributes:
+  - 23 active: 12 numeric, 6 categorical, 5 boolean;
+  - 2 archived: Club membership count, Dormitory block.
+- 6 consent purposes:
+  - Academic advising, Wellbeing support, Financial support (active);
+  - Cohort statistics (active, isForStatistics = 1: the only purpose cohort data may use);
+  - Career guidance (inactive);
+  - Retention pilot 2025 (retired).
+- 37 purpose-attribute links (Cohort statistics covers GPA, Attendance rate, Failed subjects and Accommodation status).
+- 9 access policies: 6 active (one of them: Programme Head on Cohort statistics), 2 draft, 1 revoked.
+- 605 consents:
+  - 554 granted, some with an expiry that has already passed and some that expires in 2027;
+    60 of them are statistics consents (30 enrolled students, GPA and Attendance rate: 29 in SE, 1 in BA);
+  - 51 withdrawn.
+  - 656 consent history rows go with them.
+- 15 consent requests: 5 pending, 5 granted, 3 denied, 2 withdrawn.
+- 5 emergency access requests:
+  - 1 pending;
+  - 3 approved: one expires 2026-10-31 18:00, one 2026-11-02, one already expired 2026-10-12;
+  - 1 rejected with a reason.
+- 30 access logs:
+  - reads of Spring 2026 rows;
+  - emergency reads (consentPurposeId = null);
+  - flagged entries in every review status.
+- 5 completed erasure requests, 5 destroyed attribute keys, 22 Spring 2026 STUDENTDATA rows (16 missing, 6 erased: 5 original + 1 correction).
+- 3 correction requests (decided before the erasure, values cleared), each under the Academic advising purpose.
+
+Early-support indicators
+- 6 indicators set by steward02: Low attendance (< 75), Very low GPA (< 5), Two or more failed subjects (>= 2), Academic probation (= probation),
+  Tuition overdue (= true) are active; Many late submissions (> 5) is a draft and raises no flags.
+- INDICATORFLAGS has no seed rows: the flags appear after the Fall 2026 import (student@gmail.com is flagged for Low attendance).
+
+Cases
+- 50 cases (48 mock + 2 of student@gmail.com). Every stage is covered:
+  - 6 pending (no advisor);
+  - 10 assigned + 2 reopened;
+  - 9 contacted;
+  - 10 referred;
+  - 5 followUp;
+  - 8 closed.
+- 4 of them are outreach cases opened by advisors.
+- 118 stage history rows.
+- 79 case notes: finalized and drafts.
+- 6 case thread messages (CASEMESSAGES) and 4 CASE_ATTRIBUTE rows, all on student@gmail.com's 2 cases.
+- 8 case feedbacks on closed cases: ratings 5, 5, 5, 4, 4, 4, 3, 3 (5 of them with a comment).
+- 13 referrals:
+  - to welfare officers: 7 accepted, 2 pending, 1 returned;
+  - between advisors: 1 accepted, 1 pending, 1 returned.
+- 5 case change requests: 2 pending, 2 approved (the case's advisor changed), 1 rejected.
+
+Welfare
+- 9 interventions: scheduled, inProgress, completed, cancelled. Each is only on a case with an accepted referral to that officer (K3).
+- 6 support grants (1 revoked).
+- 6 external services (1 inactive).
+- 6 external referrals:
+  - 4 sent: 2 overdue, 2 with the follow-up date still ahead;
+  - 1 followedUp;
+  - 1 closed.
+- 3 escalations to Programme Heads: 1 pending, 2 responded.
+
+Extra scope tables (small)
+- 3 data sources, 3 ingestion schedules, 10 ingestion jobs (1 pending).
+- 6 reports, 6 backups (1 failed), 2 restore operations.
+
+==========
+4. STATISTICS
+==========
+
+- Welfare statistics: GET /api/Statistics/welfare?from=2026-09-01&to=2026-10-31 (wo.yennh or a Programme Head).
+  Categories counted from fewer than 5 different students come back with isSuppressed = true and no counts.
+- Cohort data: GET /api/Statistics/cohort?dataAttributeId=<GPA>&termId=<Fall 2026> (ph.quanpm or aa.khoavd), after the Fall 2026 import.
+  - The whole cohort is shown (about 30 consented students).
+  - With isByFaculty=true, SE is shown and BA (1 student) is suppressed.
+  - Every value read is written to ACCESSLOGS with the Cohort statistics purpose.
+
+==========
+5. GOOD TEST STARTING POINTS
+==========
+
+- Paging and search
+  - GET /api/StudentProfiles?page=2&pageSize=20, GET /api/ActivityLogs/search?activityType=consentGranted.
+- Programme Head matching queue
+  - The 6 pending cases (sign in as aa.khoavd for SE or ph.quanpm for BA).
+- Welfare officer work
+  - Sign in as wo.yennh or wo.duongvm.
+  - Their accepted referrals have interventions, grants, external referrals (2 overdue) and escalations.
+- Steward
+  - Sign in as steward02.
+  - Review the flagged access logs.
+  - Decide the pending emergency request.
+  - Review the 5 completed erasures.
+  - Edit the indicators (activate the draft one and re-check the flags).
+- Correction requests (shared advisor pool, QC-214)
+  - Sign in as a mock student, call POST /api/CorrectionRequests with one of their Fall 2026 studentDataIds and the Academic advising purpose.
+  - Every Academic Advisor sees it in GET /api/CorrectionRequests; the first one to approve or reject decides.
+- Point-in-time (EX13)
+  - Pick a student from the update file and call /api/StudentData/students/{id}/as-of.
+  - Valid time with the late "Absent slots" rows (valid from 2026-10-01, but recorded when you import the update file):
+    - as-of 2026-10-05 with timeAxis=valid shows the late value, because nothing else was valid yet;
+    - as-of 2026-10-20 with timeAxis=valid shows the Fall value from mock_studentdata_fall2026.xlsx (valid from 2026-10-12 to 2026-10-18), because it is valid later.
+  - System time:
+    - transactionFrom is the moment you ran the import;
+    - so as-of any date before your import with timeAxis=system shows no Fall values;
+    - as-of today shows the latest recorded value.
+- Student's own data
+  - Sign in as student@gmail.com or any enrolled mock student (e.g. binhnqse180003, thaodase180005).
+  - Use GET /api/StudentData/me, GET /api/StudentProfiles/me and GET /api/StudentData/me/export.
+
+==========
+6. REGENERATING
+==========
+
+- The data is generated by a script with a fixed random seed, so running it again gives the same ids and values.
+- The rows added on 09/11/2026 use fixed name-based ids (uuid5), so they stay the same too.
+- Ask Claude to regenerate it after a schema change. Every row is checked against the script's constraints (NOT NULL, CHECK, FK, UNIQUE and the filtered unique indexes) and against the business rules before it is written.

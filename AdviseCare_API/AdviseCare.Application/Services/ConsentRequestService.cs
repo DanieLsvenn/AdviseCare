@@ -159,6 +159,8 @@ namespace AdviseCare.Application.Services
                 ?? throw new NotFoundException("Consent purpose not found.");
             if (purpose.Status != "active")
                 throw new ConflictException($"'{purpose.PurposeName}' is not active.");
+            if (purpose.IsForStatistics)
+                throw new ValidationException($"'{purpose.PurposeName}' is the statistics purpose; advisors cannot request consent for it.");
             var attribute = purpose.DataAttributes.FirstOrDefault(a => a.DataAttributeId == request.DataAttributeId)
                 ?? throw new ValidationException($"This data attribute is not covered by '{purpose.PurposeName}'.");
             if (attribute.Status != "active")

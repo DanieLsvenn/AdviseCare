@@ -1,4 +1,5 @@
 using AdviseCare.Application.Contracts.Requests.ActivityLog;
+using AdviseCare.Application.Contracts.Responses;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +20,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Get all activity logs with optional pagination",
             Description = "Retrieves every activity log row of every account, newest first. Pass page and pageSize together to page the results.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- Page and page size must be at least 1.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
             if (page.HasValue && pageSize.HasValue)
@@ -36,6 +40,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Get activity log by Id",
             Description = "Retrieves one activity log row by its unique identifier.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Activity log not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             var response = await _activityLogService.GetByIdAsync(id);
@@ -47,6 +54,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Search/Filter activity logs",
             Description = "Filters activity log rows by account and by exact activity type (e.g. signedIn, accountsImported). Empty fields are ignored.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> Search([FromQuery] SearchActivityLogRequest request)
         {
             var response = await _activityLogService.SearchAsync(request);
@@ -58,6 +68,10 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Create activity log",
             Description = "Creates an activity log row by hand, for testing. The system writes these rows itself when the actions happen.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Account not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> Create([FromBody] CreateActivityLogRequest request)
         {
             var response = await _activityLogService.CreateAsync(request);
@@ -69,6 +83,10 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Update activity log",
             Description = "Updates the type and detail of an activity log row, for testing. Activity history is normally never edited.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Activity log not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateActivityLogRequest request)
         {
             var response = await _activityLogService.UpdateAsync(id, request);
@@ -79,6 +97,7 @@ namespace AdviseCare.API.Controllers
         [HttpGet("me")]
         [SwaggerOperation(Summary = "[All roles] Get my activity history",
             Description = "Retrieves the activity history of the signed-in account (sign-ins, password changes, profile changes and, for admins, the management actions they did), newest first. The activity types are listed in AdviseCare_Activity_Types.txt.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         public async Task<IActionResult> GetMine()
         {
             var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);

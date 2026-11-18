@@ -1,4 +1,5 @@
 using AdviseCare.Application.Contracts.Requests.Faculty;
+using AdviseCare.Application.Contracts.Responses;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +18,8 @@ namespace AdviseCare.API.Controllers
         [HttpGet]
         [SwaggerOperation(Summary = "[All roles] Get all faculties with optional pagination",
             Description = "Retrieves every faculty, ordered by faculty code. Pass page and pageSize together to page the results.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- Page and page size must be at least 1.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
             if (page.HasValue && pageSize.HasValue)
@@ -33,6 +36,8 @@ namespace AdviseCare.API.Controllers
         [HttpGet("{id}")]
         [SwaggerOperation(Summary = "[All roles] Get faculty by Id",
             Description = "Retrieves one faculty by its unique identifier.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Faculty not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             var response = await _facultyService.GetByIdAsync(id);
@@ -43,6 +48,8 @@ namespace AdviseCare.API.Controllers
         [HttpGet("search")]
         [SwaggerOperation(Summary = "[All roles] Search/Filter faculties",
             Description = "Filters faculties by code or name (contains) and by status (active/archived). Empty fields are ignored.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         public async Task<IActionResult> Search([FromQuery] SearchFacultyRequest request)
         {
             var response = await _facultyService.SearchAsync(request);
@@ -54,6 +61,10 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Create faculty",
             Description = "Creates a new active faculty. The faculty code must be unique; it is the code used in the account import file.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- A faculty with code '{FacultyCode}' already exists.", typeof(ErrorResponse))]
         public async Task<IActionResult> Create([FromBody] CreateFacultyRequest request)
         {
             var response = await _facultyService.CreateAsync(request);
@@ -65,6 +76,11 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Update faculty",
             Description = "Updates a faculty's code, name and status. Setting the status to archived retires a discontinued faculty without deleting its history; archived faculties cannot receive new accounts.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Faculty not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- A faculty with code '{FacultyCode}' already exists.", typeof(ErrorResponse))]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateFacultyRequest request)
         {
             var response = await _facultyService.UpdateAsync(id, request);

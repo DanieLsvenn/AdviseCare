@@ -1,4 +1,5 @@
 using AdviseCare.Application.Contracts.Requests.AccessLog;
+using AdviseCare.Application.Contracts.Responses;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +21,9 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[Data Protection Steward] Get all access log entries with optional pagination",
             Description = "Retrieves every logged read of student data (who, whose record, which resource, under which purpose, when), newest first. " +
                 "Entries are written by the access guard, one per data attribute read, and are never edited apart from their review fields. Pass page and pageSize together to page the results.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- Page and page size must be at least 1.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
             if (page.HasValue && pageSize.HasValue)
@@ -37,6 +41,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "Data Protection Steward")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Get access log entry by Id",
             Description = "Retrieves the detail of one access event.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Access log entry not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             var response = await _accessLogService.GetByIdAsync(id);
@@ -49,6 +56,9 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[Data Protection Steward] Search/Filter access log",
             Description = "Filters the access log by accessor (accessorId), purpose (consentPurposeId), student (recordedUserId), accessedAt between fromDate and toDate, " +
                 "flag (isFlagged) and review status (unreviewed/cleared/confirmedIssue). Empty fields are ignored.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> Search([FromQuery] SearchAccessLogRequest request)
         {
             var response = await _accessLogService.SearchAsync(request);
@@ -60,6 +70,11 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "Data Protection Steward")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Review a flagged access log entry",
             Description = "Records the outcome of the review of a flagged entry: cleared or confirmedIssue. Only flagged entries can be reviewed.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Access log entry not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- Only a flagged entry can be reviewed.", typeof(ErrorResponse))]
         public async Task<IActionResult> Review([FromRoute] Guid id, [FromBody] ReviewAccessLogRequest request)
         {
             var response = await _accessLogService.ReviewAsync(id, request);
@@ -71,6 +86,10 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "Data Protection Steward")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Flag an access log entry",
             Description = "Flags a suspicious entry for follow-up (isFlagged = true, status = unreviewed).")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Access log entry not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- This entry is already flagged.", typeof(ErrorResponse))]
         public async Task<IActionResult> Flag([FromRoute] Guid id)
         {
             var response = await _accessLogService.FlagAsync(id);
@@ -83,6 +102,10 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[Data Protection Steward] Export a processing record",
             Description = "Downloads the access log of one student (studentId) and/or a date range (fromDate and toDate, both needed when no student is given) as an .xlsx or .csv file, generated on the fly and not stored. " +
                 "Returns the file itself instead of JSON.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- Choose a student, or both a start and an end date.\n- The end date must be after the start date.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Student not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> ExportProcessingRecord([FromQuery] ExportProcessingRecordRequest request)
         {
             var response = await _accessLogService.ExportProcessingRecordAsync(request);
@@ -95,6 +118,9 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[Student] Get my access log",
             Description = "Lists who read which part of the signed-in student's record, when and under which purpose, newest first, with the accessor's roles. " +
                 "Can be filtered by accessedAt between fromDate and toDate and by the accessor's role (roleName).")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetMine([FromQuery] SearchMyAccessLogRequest request)
         {
             var studentId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -107,6 +133,10 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "Student")]
         [SwaggerOperation(Summary = "[Student] Flag an entry of my access log",
             Description = "Flags an access to the signed-in student's record as suspicious; every Data Protection Steward is notified. Returns 404 for an entry about another student.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Access log entry not found.\n- Account not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- This entry is already flagged.", typeof(ErrorResponse))]
         public async Task<IActionResult> FlagMine([FromRoute] Guid id)
         {
             var studentId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);

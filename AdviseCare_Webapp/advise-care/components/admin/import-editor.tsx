@@ -6,6 +6,7 @@ import { ApiError, isRecord } from "@/lib/api-contract";
 import { clientApiRequest } from "@/lib/client-api";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { controlClass } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
 import { Notice } from "@/components/ui/notice";
@@ -73,10 +74,10 @@ export function ImportEditor({
     rowNumbers: number[];
     outcome?: CheckOutcome;
   }>;
-  /** Check the edited rows (sent as CSV). */
-  check: (csv: File, headers: string[]) => Promise<CheckOutcome>;
-  /** Import the edited rows (sent as CSV). */
-  runImport: (csv: File, headers: string[]) => Promise<ImportOutcome>;
+  /** Check the edited rows (sent as CSV; the rows themselves for callers that reshape them). */
+  check: (csv: File, headers: string[], rows: ImportRow[]) => Promise<CheckOutcome>;
+  /** Import the edited rows (sent as CSV; the rows themselves for callers that reshape them). */
+  runImport: (csv: File, headers: string[], rows: ImportRow[]) => Promise<ImportOutcome>;
   /** Extra controls between the file and the table (e.g. column mapping). */
   beforeTable?: (headers: string[], invalidate: () => void) => ReactNode;
   collapsible?: boolean;
@@ -84,6 +85,8 @@ export function ImportEditor({
   canCheck?: boolean;
 }) {
   const t = useTranslations("workspace");
+  const tu = useTranslations("ui");
+  const { confirm, element: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(!collapsible);
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -125,9 +128,12 @@ export function ImportEditor({
   const upToDate = outcome !== null && checkedVersion === version;
   const canImport = upToDate && outcome.ok && rows.length > 0 && result?.ok !== true;
 
+  // With no row left that has a problem, the filter would hide every row (and
+  // its own checkbox), so it only applies while there is something to show.
+  const filtering = onlyProblems && problemsByRow.size > 0;
   const visible = rows
     .map((row, index) => ({ row, index }))
-    .filter(({ index }) => !onlyProblems || problemsByRow.has(index));
+    .filter(({ index }) => !filtering || problemsByRow.has(index));
   const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
   const pageRows = visible.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
@@ -191,7 +197,7 @@ export function ImportEditor({
     setError("");
     setResult(null);
     try {
-      const checked = await check(toCsvFile(headers, rows, file), headers);
+      const checked = await check(toCsvFile(headers, rows, file), headers, rows);
       setOutcome(checked);
       setCheckedVersion(version);
       if (!checked.ok) setOnlyProblems(checked.problems.some((problem) => problem.rowIndex !== null));
@@ -203,10 +209,19 @@ export function ImportEditor({
   }
 
   async function doImport() {
+    // Importing writes every row at once (all or nothing), so it is confirmed first.
+    const ok = await confirm({
+      title: t("importConfirmTitle", { count: rows.length }),
+      body: t("importConfirmBody"),
+      confirmLabel: t("importRun", { count: rows.length }),
+      cancelLabel: tu("cancel"),
+      icon: "upload",
+    });
+    if (!ok) return;
     setPending("import");
     setError("");
     try {
-      const outcomeOfImport = await runImport(toCsvFile(headers, rows, file), headers);
+      const outcomeOfImport = await runImport(toCsvFile(headers, rows, file), headers, rows);
       setResult(outcomeOfImport);
       if (!outcomeOfImport.ok && outcomeOfImport.problems) {
         setOutcome({ ok: false, problems: outcomeOfImport.problems });
@@ -230,8 +245,19 @@ export function ImportEditor({
 
   function deleteRow(index: number) {
     setRows((current) => current.filter((_, rowIndex) => rowIndex !== index));
-    // Row positions shift, so the old problems no longer line up.
-    setOutcome(null);
+    // Keep the last check's messages on the rows that remain: drop the deleted
+    // row's own messages and shift the ones below it up by one. They show as
+    // stale until the next check, instead of disappearing.
+    setOutcome((current) => {
+      if (!current) return current;
+      const shift = (items: RowProblem[] | undefined) =>
+        items
+          ?.filter((item) => item.rowIndex !== index)
+          .map((item) =>
+            item.rowIndex !== null && item.rowIndex > index ? { ...item, rowIndex: item.rowIndex - 1 } : item,
+          );
+      return { ...current, problems: shift(current.problems) ?? [], warnings: shift(current.warnings) };
+    });
     invalidate();
   }
 
@@ -298,7 +324,7 @@ export function ImportEditor({
                 <input
                   type="checkbox"
                   className="size-4 accent-[#2142b8]"
-                  checked={onlyProblems}
+                  checked={filtering}
                   onChange={(event) => {
                     setOnlyProblems(event.target.checked);
                     setPage(0);
@@ -441,6 +467,7 @@ export function ImportEditor({
         </header>
       )}
       {open ? body : null}
+      {confirmDialog}
     </section>
   );
 }

@@ -59,6 +59,8 @@ export function AdvisorCase({ caseId, viewerId }: { caseId: string; viewerId: st
   const [error, setError] = useState("");
   const [missing, setMissing] = useState(false);
   const [flash, setFlash] = useState<{ ok: boolean; message: string } | null>(null);
+  const ask = (title: string, body: string, confirmLabel: string, icon?: string) =>
+    confirm({ title, body, confirmLabel, cancelLabel: tu("cancel"), icon });
   // Entries signed by the last action get their signature line drawn in.
   const knownIds = useRef<Set<string> | null>(null);
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
@@ -246,7 +248,8 @@ export function AdvisorCase({ caseId, viewerId }: { caseId: string; viewerId: st
             <ActionCard icon="lock_open" title={t("reopen")} hint={t("reopenHint")} defaultOpen>
               <ReasonForm
                 submitLabel={t("reopen")}
-                onSubmit={(reason) =>
+                onSubmit={async (reason) =>
+                  (await ask(t("reopen"), t("reopenConfirmBody"), t("reopen"), "lock_open")) &&
                   send(`Cases/${record.caseId}/reopen`, "PUT", { reason }, t("reopened"))
                 }
               />
@@ -264,7 +267,12 @@ export function AdvisorCase({ caseId, viewerId }: { caseId: string; viewerId: st
                         cancelLabel: tu("cancel"),
                         icon: "lock",
                       })
-                    : Promise.resolve(true)
+                    : ask(
+                        t("stageConfirmTitle", { stage: tu(`status.${toStage.toLowerCase()}`) }),
+                        t("stageConfirmBody"),
+                        t("moveTo"),
+                        "trending_flat",
+                      )
                 }
                 onSubmit={async (toStage, reason) => {
                   return send(
@@ -292,7 +300,8 @@ export function AdvisorCase({ caseId, viewerId }: { caseId: string; viewerId: st
           <ActionCard plain icon="flag" title={t("priority")}>
             <PriorityForm
               current={record.priority}
-              onSubmit={(priority) =>
+              onSubmit={async (priority) =>
+                (await ask(t("priorityConfirmTitle"), t("priorityConfirmBody"), t("save"), "flag")) &&
                 send(`Cases/${record.caseId}/priority`, "PUT", { priority }, t("priorityChanged"))
               }
             />
@@ -301,7 +310,8 @@ export function AdvisorCase({ caseId, viewerId }: { caseId: string; viewerId: st
           {!closed ? (
             <ActionCard plain icon="forward_to_inbox" title={t("refer")} hint={t("referHint")}>
               <ReferForm
-                onSubmit={(toAccountId, referralReason, priority) =>
+                onSubmit={async (toAccountId, referralReason, priority) =>
+                  (await ask(t("referConfirmTitle"), t("referConfirmBody"), t("sendReferral"), "forward_to_inbox")) &&
                   send(
                     "Referrals",
                     "POST",
@@ -316,7 +326,8 @@ export function AdvisorCase({ caseId, viewerId }: { caseId: string; viewerId: st
           {!closed ? (
             <ActionCard plain icon="swap_horiz" title={t("changeAdvisor")} hint={t("changeAdvisorHint")}>
               <ChangeAdvisorForm
-                onSubmit={(proposedAdvisorId, reason) =>
+                onSubmit={async (proposedAdvisorId, reason) =>
+                  (await ask(t("changeConfirmTitle"), t("changeConfirmBody"), t("sendChangeRequest"), "swap_horiz")) &&
                   send(
                     "CaseChangeRequests",
                     "POST",

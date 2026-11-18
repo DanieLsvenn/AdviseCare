@@ -1,0 +1,39 @@
+---
+title: AdviseCare - Sequence Diagram SD-38 - Early-Support Indicator Flags (design, to be built by Member A)
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor ADM as System Administrator
+    actor PH as Programme Head
+    actor ADV as Advisor
+    participant W as Web App
+    participant SD as StudentDataService
+    participant I as IndicatorService
+    participant CS as CaseService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    ADM->>W: Import student data (WF5)
+    W->>SD: POST /api/StudentData/import
+    SD->>DB: INSERT STUDENTDATA rows (one save)
+    SD->>I: CheckFlagsAsync(imported attributes, terms)
+    I->>R: Active indicators on those attributes, latest value per enrolled student and term
+    I->>I: Compare inside the server (no ACCESSLOGS row, no person reads the value)
+    I->>DB: INSERT INDICATORFLAGS for new hits (one open flag per student, rule, term), clear open flags no longer hit
+    PH->>W: Open the flag queue
+    W->>I: GET /api/Indicators/flags?status=open
+    I-->>W: Flags by severity, priority, oldest (directory data and rule only, never the value)
+    alt advisor asks first
+        ADV->>W: Ask to take the flagged student on
+        W->>I: PUT /api/Indicators/flags/{id}/request (status = requested)
+    end
+    alt open a case
+        PH->>W: Open a case for an advisor of the rule's support type
+        W->>I: PUT /api/Indicators/flags/{id}/open-case {advisorId}
+        I->>CS: Create the case (openedBy = Programme Head, rule priority and category)
+        I->>DB: UPDATE INDICATORFLAGS (caseId, status = caseOpened, resolvedBy, resolvedAt)
+    else dismiss
+        PH->>W: Dismiss with a reason
+        W->>I: PUT /api/Indicators/flags/{id}/dismiss {dismissReason}
+        I->>DB: UPDATE INDICATORFLAGS (status = dismissed)
+    end

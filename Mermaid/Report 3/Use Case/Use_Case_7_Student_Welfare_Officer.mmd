@@ -25,6 +25,10 @@ flowchart LR
             UC53(["UC-53<br/>Refer to External Service"])
             UC54(["UC-54<br/>Escalate Case"])
         end
+        subgraph RPT["Reporting"]
+            UC64(["UC-64<br/>View Welfare Statistics"])
+            UC66(["UC-66<br/>Export Statistics"])
+        end
     end
     ACT --- UC26
     ACT --- UC31
@@ -36,6 +40,8 @@ flowchart LR
     ACT --- UC51
     ACT --- UC53
     ACT --- UC54
+    ACT --- UC64
+    ACT --- UC66
     linkStyle default stroke-width: 1pt;
     classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
     class ACT,GEN actor;

@@ -15,6 +15,7 @@ import { controlClass } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
+import { Pager, usePaged } from "@/components/ui/pager";
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/states";
 import { StatusValue } from "@/components/ui/status-value";
 import { getInitials } from "@/lib/initials";
@@ -49,6 +50,7 @@ export function MatchingQueue() {
   const tw = useTranslations("workspace");
   const { confirm, element: confirmDialog } = useConfirm();
   const [queue, setQueue] = useState<CaseRecord[]>([]);
+  const pagedQueue = usePaged(queue, 15);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -262,8 +264,9 @@ export function MatchingQueue() {
               {t("emptyBody")}
             </EmptyState>
           ) : (
-            <ul className="divide-y divide-rule lg:max-h-[calc(100dvh-14rem)] lg:overflow-y-auto" onKeyDown={moveRowFocus}>
-              {queue.map((item) => {
+            <>
+            <ul className="divide-y divide-rule lg:max-h-[calc(100dvh-16rem)] lg:overflow-y-auto" onKeyDown={moveRowFocus}>
+              {pagedQueue.items.map((item) => {
                 const isSelected = item.caseId === selectedId;
                 const waited = daysSince(item.openedAt) ?? 0;
                 return (
@@ -302,6 +305,8 @@ export function MatchingQueue() {
                 );
               })}
             </ul>
+            <Pager {...pagedQueue} className="border-t border-rule px-space-base py-space-sm" />
+            </>
           )}
         </section>
 

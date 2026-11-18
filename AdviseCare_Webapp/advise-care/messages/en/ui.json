@@ -290,7 +290,16 @@
     "nextSteps": "Next steps",
     "moreActions": "More actions",
     "moreActionsHint": "Priority, refer, change advisor",
-    "proposedAdvisorHint": "Type part of the advisor's name or email. The Programme Head approves the change."
+    "proposedAdvisorHint": "Type part of the advisor's name or email. The Programme Head approves the change.",
+    "stageConfirmTitle": "Move the case to {stage}?",
+    "stageConfirmBody": "The student sees the new stage and what you wrote in the history. History entries cannot be edited.",
+    "reopenConfirmBody": "The case returns to your caseload and the student is notified with your reason.",
+    "priorityConfirmTitle": "Change the priority?",
+    "priorityConfirmBody": "The case moves in the caseload and matching queue order.",
+    "referConfirmTitle": "Send this referral?",
+    "referConfirmBody": "The receiver is notified. The case cannot change stage until they accept or return it.",
+    "changeConfirmTitle": "Ask for a different advisor?",
+    "changeConfirmBody": "The Programme Head decides. The student and both advisors are notified of the decision."
   },
   "myRequests": {
     "title": "My support requests",
@@ -338,7 +347,16 @@
     "loadError": "Could not load the messages.",
     "sendError": "Could not send the message.",
     "loading": "Loading messages",
-    "retry": "Retry"
+    "retry": "Retry",
+    "attach": "Attach files",
+    "attachHint": "Up to {count} files, 10 MB each: PDF, Word, Excel, PowerPoint, text, CSV or images.",
+    "attachments": "Attached files",
+    "removeFile": "Remove file",
+    "download": "Download",
+    "fileTypeError": "{name} cannot be attached. Use PDF, Word, Excel, PowerPoint, text, CSV or an image.",
+    "fileEmptyError": "{name} is empty.",
+    "fileSizeError": "{name} is larger than 10 MB.",
+    "fileCountError": "A message can carry at most {count} files."
   },
   "caseShared": {
     "titleStudent": "What you shared",

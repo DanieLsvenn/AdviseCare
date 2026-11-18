@@ -26,4 +26,6 @@ public partial class Supportcategory
     public virtual Consentpurpose ConsentPurpose { get; set; }
 
     public virtual Account CreatedByNavigation { get; set; }
+
+    public virtual ICollection<Indicator> Indicators { get; set; } = new List<Indicator>();
 }
