@@ -17,6 +17,8 @@ public partial class Studentdata
 
     public Guid StudentId { get; set; }
 
+    public Guid? SubjectId { get; set; }
+
     public Guid TermId { get; set; }
 
     public byte[] DataValue { get; set; }
@@ -46,6 +48,8 @@ public partial class Studentdata
     public virtual ICollection<Indicatorflag> Indicatorflags { get; set; } = new List<Indicatorflag>();
 
     public virtual Account Student { get; set; }
+
+    public virtual Subject Subject { get; set; }
 
     public virtual Academicterm Term { get; set; }
 }

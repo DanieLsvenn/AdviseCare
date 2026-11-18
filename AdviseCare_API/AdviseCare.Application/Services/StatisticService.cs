@@ -27,6 +27,7 @@ namespace AdviseCare.Application.Services
         private readonly IGenericRepository<Studentdata> _studentDataRepository;
         private readonly IGenericRepository<Academicterm> _academicTermRepository;
         private readonly IGenericRepository<Faculty> _facultyRepository;
+        private readonly IGenericRepository<Subject> _subjectRepository;
         private readonly IAccessGuardService _accessGuardService;
         private readonly IAttributeKeyService _attributeKeyService;
         private readonly IExcelWriter _excelWriter;
@@ -39,6 +40,7 @@ namespace AdviseCare.Application.Services
             IGenericRepository<Studentdata> studentDataRepository,
             IGenericRepository<Academicterm> academicTermRepository,
             IGenericRepository<Faculty> facultyRepository,
+            IGenericRepository<Subject> subjectRepository,
             IAccessGuardService accessGuardService,
             IAttributeKeyService attributeKeyService,
             IExcelWriter excelWriter,
@@ -50,6 +52,7 @@ namespace AdviseCare.Application.Services
             _studentDataRepository = studentDataRepository;
             _academicTermRepository = academicTermRepository;
             _facultyRepository = facultyRepository;
+            _subjectRepository = subjectRepository;
             _accessGuardService = accessGuardService;
             _attributeKeyService = attributeKeyService;
             _excelWriter = excelWriter;
@@ -90,22 +93,22 @@ namespace AdviseCare.Application.Services
             };
         }
 
-        // Get the Cohort data of one data attribute in one term (and per faculty): average, minimum and maximum for a numeric attribute,
+        // Get the Cohort data of one data attribute in one term (one subject for a per-subject attribute, and per faculty): average, minimum and maximum for a numeric attribute,
         // the number of students per value for a categorical or boolean one
         public async Task<List<GetCohortStatisticResponse>> GetCohortStatisticAsync(Guid AccessorId, GetCohortStatisticRequest request)
         {
-            return await GetCohortCellsAsync(AccessorId, request.DataAttributeId, request.TermId, request.FacultyId, request.IsByFaculty);
+            return await GetCohortCellsAsync(AccessorId, request.DataAttributeId, request.TermId, request.SubjectId, request.FacultyId, request.IsByFaculty);
         }
 
         // Export the Cohort data as xlsx, csv or pdf (suppressed cells are exported as "hidden")
         public async Task<ExportCohortStatisticResponse> ExportCohortStatisticAsync(Guid AccessorId, ExportCohortStatisticRequest request)
         {
-            var cells = await GetCohortCellsAsync(AccessorId, request.DataAttributeId, request.TermId, request.FacultyId, request.IsByFaculty);
+            var cells = await GetCohortCellsAsync(AccessorId, request.DataAttributeId, request.TermId, request.SubjectId, request.FacultyId, request.IsByFaculty);
 
-            var headers = new List<string> { "Attribute", "Term", "Faculty", "Students", "Average", "Minimum", "Maximum", "Students per value" };
+            var headers = new List<string> { "Attribute", "Term", "Subject", "Faculty", "Students", "Average", "Minimum", "Maximum", "Students per value" };
             var rows = cells.Select(c => new List<string>
             {
-                c.AttributeName, c.TermName, c.FacultyName, FormatCount(c.StudentCount), FormatNumber(c.AverageValue), FormatNumber(c.MinValue), FormatNumber(c.MaxValue),
+                c.AttributeName, c.TermName, c.SubjectCode, c.FacultyName, FormatCount(c.StudentCount), FormatNumber(c.AverageValue), FormatNumber(c.MinValue), FormatNumber(c.MaxValue),
                 c.IsSuppressed ? "hidden" : string.Join("; ", c.ValueCounts.Select(v => $"{v.Value}: {v.StudentCount}"))
             }).ToList();
             var first = cells.FirstOrDefault();
@@ -174,9 +177,9 @@ namespace AdviseCare.Application.Services
                 .ToList();
         }
 
-        // Helper: the cohort cells; only the latest value per student of the attribute and term counts, a missing or erased latest value is skipped,
+        // Helper: the cohort cells; only the latest value per student of the attribute and term (in the chosen subject, for a per-subject attribute) counts, a missing or erased latest value is skipped,
         // and a value counts only when the access guard allows it under the statistics purpose (never through emergency access)
-        private async Task<List<GetCohortStatisticResponse>> GetCohortCellsAsync(Guid AccessorId, Guid DataAttributeId, Guid TermId, Guid? FacultyId, bool IsByFaculty)
+        private async Task<List<GetCohortStatisticResponse>> GetCohortCellsAsync(Guid AccessorId, Guid DataAttributeId, Guid TermId, Guid? SubjectId, Guid? FacultyId, bool IsByFaculty)
         {
             var purpose = (await _consentPurposeRepository.SearchAsyncInclude(p => p.IsForStatistics && p.Status == "active", p => p.DataAttributes)).FirstOrDefault()
                 ?? throw new ConflictException("There is no active statistics consent purpose, so no cohort data can be shown.");
@@ -186,9 +189,15 @@ namespace AdviseCare.Application.Services
                 ?? throw new NotFoundException("Academic term not found.");
             if (FacultyId != null && !await _facultyRepository.ExistsAsync(f => f.FacultyId == FacultyId))
                 throw new NotFoundException("Faculty not found.");
+            if (attribute.IsSubjectSpecific && SubjectId == null)
+                throw new ValidationException($"'{attribute.AttributeName}' is recorded per subject, so choose a subject.");
+            if (!attribute.IsSubjectSpecific && SubjectId != null)
+                throw new ValidationException($"'{attribute.AttributeName}' is recorded per term, so leave the subject empty.");
+            var subject = SubjectId == null ? null : await _subjectRepository.GetByIdAsync(SubjectId.Value)
+                ?? throw new NotFoundException("Subject not found.");
 
             var latestRows = (await _studentDataRepository.SearchAsyncInclude(d =>
-                    d.DataAttributeId == DataAttributeId && d.TermId == TermId &&
+                    d.DataAttributeId == DataAttributeId && d.TermId == TermId && d.SubjectId == SubjectId &&
                     (FacultyId == null || d.Student.FacultyId == FacultyId),
                     d => d.Student.Faculty))
                 .GroupBy(d => d.StudentId)
@@ -227,30 +236,34 @@ namespace AdviseCare.Application.Services
                 StudentId = d.StudentId,
                 StudentDataId = d.StudentDataId,
                 ConsentPurposeId = purpose.ConsentPurposeId,
-                AccessedResource = $"Cohort data: {attribute.AttributeName} ({term.TermName})"
+                AccessedResource = subject == null
+                    ? $"Cohort data: {attribute.AttributeName} ({term.TermName})"
+                    : $"Cohort data: {attribute.AttributeName} - {subject.SubjectCode} ({term.TermName})"
             }).ToList());
 
             var cells = groups.Select(g =>
             {
                 var values = g.Where(d => decrypted.ContainsKey(d.StudentDataId)).Select(d => decrypted[d.StudentDataId]).ToList();
-                return BuildCohortCell(attribute, term, g.Key, g.First().Student.Faculty, IsByFaculty, g.Count() < CohortMinimumStudents ? null : values);
+                return BuildCohortCell(attribute, term, subject, g.Key, g.First().Student.Faculty, IsByFaculty, g.Count() < CohortMinimumStudents ? null : values);
             }).ToList();
             if (cells.Count == 0)
-                cells.Add(BuildCohortCell(attribute, term, null, null, false, null));
+                cells.Add(BuildCohortCell(attribute, term, subject, null, null, false, null));
 
             return cells.OrderBy(c => c.FacultyName).ToList();
         }
 
         // Helper: one cohort cell; null values = suppressed
-        private static GetCohortStatisticResponse BuildCohortCell(Dataattribute Attribute, Academicterm Term, Guid? FacultyId, Faculty? Faculty, bool IsByFaculty, List<string>? Values)
+        private static GetCohortStatisticResponse BuildCohortCell(Dataattribute Attribute, Academicterm Term, Subject? Subject, Guid? FacultyId, Faculty? Faculty, bool IsByFaculty, List<string>? Values)
         {
             var cell = new GetCohortStatisticResponse
             {
                 DataAttributeId = Attribute.DataAttributeId,
                 FacultyId = FacultyId,
+                SubjectId = Subject?.SubjectId,
                 TermId = Term.TermId,
                 AttributeName = Attribute.AttributeName,
                 FacultyName = IsByFaculty ? Faculty?.FacultyName ?? "No faculty" : string.Empty,
+                SubjectCode = Subject?.SubjectCode ?? string.Empty,
                 TermName = Term.TermName,
                 AverageValue = null,
                 MaxValue = null,

@@ -23,7 +23,11 @@ const mappingKeys = [
   "value",
   "term",
   "validFrom",
+  "subject",
 ] as const;
+
+/** The subject column is optional: only rows of per-subject data attributes (e.g. Attendance rate) need a subject code. */
+const optionalKeys: ReadonlySet<MappingKey> = new Set(["subject"]);
 
 type MappingKey = (typeof mappingKeys)[number];
 type ColumnMapping = Record<MappingKey, string>;
@@ -31,7 +35,7 @@ type Layout = "long" | "wide";
 
 /** In the one-row-per-student layout the term and date can come from a column or be one value for the whole file. */
 const FIXED = "__fixed__";
-const wideKeys = ["studentIdentifier", "term", "validFrom"] as const;
+const wideKeys = ["studentIdentifier", "term", "validFrom", "subject"] as const;
 type WideKey = (typeof wideKeys)[number];
 
 const emptyMapping: ColumnMapping = {
@@ -40,6 +44,7 @@ const emptyMapping: ColumnMapping = {
   value: "",
   term: "",
   validFrom: "",
+  subject: "",
 };
 
 /* Common header spellings, so a usual file maps itself. */
@@ -49,16 +54,18 @@ const guesses: Record<MappingKey, string[]> = {
   value: ["value", "giatri"],
   term: ["term", "termname", "semester", "hocky"],
   validFrom: ["validfrom", "date", "effectivedate", "ngay"],
+  subject: ["subject", "subjectcode", "course", "coursecode", "monhoc", "mamon"],
 };
 
 /** The columns the API reads, in the one-row-per-value file sent after reshaping. */
-const LONG_HEADERS = ["studentIdentifier", "dataAttribute", "value", "term", "validFrom"];
+const LONG_HEADERS = ["studentIdentifier", "dataAttribute", "value", "term", "validFrom", "subject"];
 const LONG_MAPPING: ColumnMapping = {
   studentIdentifier: "studentIdentifier",
   dataAttribute: "dataAttribute",
   value: "value",
   term: "term",
   validFrom: "validFrom",
+  subject: "subject",
 };
 
 const messagesOf = (item: Record<string, unknown>) =>
@@ -90,6 +97,7 @@ export function StudentDataImportWorkflow() {
   const [fixedDate, setFixedDate] = useState("");
   const [attributeColumns, setAttributeColumns] = useState<string[]>([]);
   const [attributes, setAttributes] = useState<string[]>([]);
+  const [subjectAttributes, setSubjectAttributes] = useState<string[]>([]);
   const [terms, setTerms] = useState<string[]>([]);
 
   // Active data attributes name the columns of the wide template and are ticked automatically.
@@ -101,9 +109,11 @@ export function StudentDataImportWorkflow() {
     ]).then(([attributePayload, termPayload]) => {
       if (!active) return;
       const list = (payload: unknown) => (Array.isArray(payload) ? payload.filter(isRecord) : []);
-      setAttributes(
-        list(attributePayload)
-          .filter((item) => item.status === undefined || item.status === "active")
+      const activeAttributes = list(attributePayload).filter((item) => item.status === undefined || item.status === "active");
+      setAttributes(activeAttributes.map((item) => String(item.attributeName ?? "")).filter(Boolean));
+      setSubjectAttributes(
+        activeAttributes
+          .filter((item) => item.isSubjectSpecific === true)
           .map((item) => String(item.attributeName ?? ""))
           .filter(Boolean),
       );
@@ -115,13 +125,14 @@ export function StudentDataImportWorkflow() {
   }, []);
 
   const attributeKeys = useMemo(() => new Set(attributes.map(squash)), [attributes]);
+  const subjectAttributeKeys = useMemo(() => new Set(subjectAttributes.map(squash)), [subjectAttributes]);
 
   const wideReady =
     mapping.studentIdentifier !== "" &&
     (mapping.term === FIXED ? fixedTerm !== "" : mapping.term !== "") &&
     (mapping.validFrom === FIXED ? fixedDate !== "" : mapping.validFrom !== "") &&
     attributeColumns.length > 0;
-  const longReady = mappingKeys.every((key) => mapping[key] !== "" && mapping[key] !== FIXED);
+  const longReady = mappingKeys.every((key) => optionalKeys.has(key) || (mapping[key] !== "" && mapping[key] !== FIXED));
   const mappingComplete = layout === "wide" ? wideReady : longReady;
 
   function guessMapping(headers: string[]) {
@@ -132,7 +143,7 @@ export function StudentDataImportWorkflow() {
     // A file with a data-attribute column and a value column is one row per value.
     const nextLayout: Layout = found.dataAttribute && found.value ? "long" : "wide";
     setLayout(nextLayout);
-    const used = new Set([found.studentIdentifier, found.term, found.validFrom].filter(Boolean));
+    const used = new Set([found.studentIdentifier, found.term, found.validFrom, found.subject].filter(Boolean));
     setAttributeColumns(headers.filter((header) => !used.has(header) && attributeKeys.has(squash(header))));
   }
 
@@ -143,6 +154,7 @@ export function StudentDataImportWorkflow() {
     rows.forEach((row, rowIndex) => {
       const term = mapping.term === FIXED ? fixedTerm : (row.values[mapping.term] ?? "");
       const validFrom = mapping.validFrom === FIXED ? fixedDate : (row.values[mapping.validFrom] ?? "");
+      const subject = mapping.subject ? (row.values[mapping.subject] ?? "").trim() : "";
       for (const column of attributeColumns) {
         const value = (row.values[column] ?? "").trim();
         if (!value) continue; // an empty cell means "no value for this student", not an error
@@ -155,6 +167,8 @@ export function StudentDataImportWorkflow() {
             value,
             term,
             validFrom,
+            // Only a per-subject data attribute carries the row's subject; a per-term one must leave it empty
+            subject: subjectAttributeKeys.has(squash(column)) ? subject : "",
           },
         });
       }
@@ -192,8 +206,8 @@ export function StudentDataImportWorkflow() {
 
   const templateColumns =
     layout === "wide"
-      ? ["studentCode", "term", "validFrom", ...(attributes.length ? attributes : ["GPA", "AbsentSlots"])]
-      : ["studentCode", "dataAttribute", "value", "term", "validFrom"];
+      ? ["studentCode", "term", "validFrom", "subject", ...(attributes.length ? attributes : ["GPA", "AbsentSlots"])]
+      : ["studentCode", "dataAttribute", "value", "term", "validFrom", "subject"];
 
   return (
     <ImportEditor
@@ -245,7 +259,7 @@ export function StudentDataImportWorkflow() {
           update();
           invalidate();
         };
-        const used = new Set([mapping.studentIdentifier, mapping.term, mapping.validFrom]);
+        const used = new Set([mapping.studentIdentifier, mapping.term, mapping.validFrom, mapping.subject]);
         return (
           <section aria-labelledby="student-import-mapping" className="flex flex-col gap-space-md rounded-lg border border-rule p-space-md">
             <fieldset>
@@ -287,14 +301,16 @@ export function StudentDataImportWorkflow() {
             </div>
 
             {layout === "long" ? (
-              <div className="grid gap-space-md sm:grid-cols-3 lg:grid-cols-5">
+              <div className="grid gap-space-md sm:grid-cols-3 lg:grid-cols-6">
                 {mappingKeys.map((key) => (
                   <label className="block" key={key}>
-                    <span className="mb-1 block text-[0.8125rem] font-semibold text-text">{t(key)}</span>
+                    <span className="mb-1 block text-[0.8125rem] font-semibold text-text">
+                      {key === "subject" ? t("importSubjectColumn") : t(key)}
+                    </span>
                     <select
                       className={cn(controlClass, "h-9 w-full pr-8")}
                       onChange={(event) => change(() => setMapping((current) => ({ ...current, [key]: event.target.value })))}
-                      required
+                      required={!optionalKeys.has(key)}
                       value={mapping[key] === FIXED ? "" : mapping[key]}
                     >
                       <option value="">—</option>
@@ -309,11 +325,13 @@ export function StudentDataImportWorkflow() {
               </div>
             ) : (
               <>
-                <div className="grid gap-space-md sm:grid-cols-3">
+                <div className="grid gap-space-md sm:grid-cols-2 lg:grid-cols-4">
                   {wideKeys.map((key: WideKey) => (
                     <div key={key}>
                       <label className="block">
-                        <span className="mb-1 block text-[0.8125rem] font-semibold text-text">{t(key)}</span>
+                        <span className="mb-1 block text-[0.8125rem] font-semibold text-text">
+                          {key === "subject" ? t("importSubjectColumn") : t(key)}
+                        </span>
                         <select
                           className={cn(controlClass, "h-9 w-full pr-8")}
                           onChange={(event) => {
@@ -324,11 +342,11 @@ export function StudentDataImportWorkflow() {
                               setAttributeColumns((current) => current.filter((column) => column !== next));
                             });
                           }}
-                          required
+                          required={!optionalKeys.has(key)}
                           value={mapping[key]}
                         >
                           <option value="">—</option>
-                          {key !== "studentIdentifier" ? (
+                          {key === "term" || key === "validFrom" ? (
                             <option value={FIXED}>{key === "term" ? t("importSameTerm") : t("importSameDate")}</option>
                           ) : null}
                           {headers.map((header) => (

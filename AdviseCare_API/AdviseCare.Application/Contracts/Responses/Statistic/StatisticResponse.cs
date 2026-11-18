@@ -30,9 +30,11 @@ namespace AdviseCare.Application.Contracts.Responses.Statistic
     {
         public Guid DataAttributeId { get; set; } = Guid.Empty;
         public Guid? FacultyId { get; set; }
+        public Guid? SubjectId { get; set; }
         public Guid TermId { get; set; } = Guid.Empty;
         public string AttributeName { get; set; } = string.Empty;
         public string FacultyName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
         public string TermName { get; set; } = string.Empty;
         public double? AverageValue { get; set; }
         public double? MaxValue { get; set; }

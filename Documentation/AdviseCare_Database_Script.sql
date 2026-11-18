@@ -5,7 +5,7 @@
    2. Drops every AdviseCare table that exists, child tables first
    3. Creates all 49 tables in dependency order (parents first)
    4. Seeds the 7 roles, one test account per role (password 123456) and mock data for every table
-      (69 accounts incl. 50 students, 25 data attributes, 50 cases, early-support indicators, case feedback, ...);
+      (69 accounts incl. 50 students, 26 data attributes, 50 cases, early-support indicators, case feedback, ...);
       student data values are loaded through the API import (AdviseCare_Mock_Data folder)
    WARNING: re-running this script deletes all data in these tables.
    Conventions: uuid -> UNIQUEIDENTIFIER (NEWSEQUENTIALID), date -> DATETIME2(3) in UTC,
@@ -231,6 +231,8 @@ CREATE TABLE [dbo].[DATAATTRIBUTES] (
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_DATAATTRIBUTES_dataAttributeId] DEFAULT NEWSEQUENTIALID(),
     [attributeDescription] NVARCHAR(MAX) NULL,
     [attributeName] NVARCHAR(255) NOT NULL,
+    -- 1 = every value belongs to one subject (STUDENTDATA.subjectId required); 0 = one value per term (subjectId empty)
+    [isSubjectSpecific] BIT NOT NULL CONSTRAINT [DF_DATAATTRIBUTES_isSubjectSpecific] DEFAULT 0,
     [dataType] NVARCHAR(30) NOT NULL CONSTRAINT [DF_DATAATTRIBUTES_dataType] DEFAULT N'numeric',
     [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_DATAATTRIBUTES_status] DEFAULT N'active',
     CONSTRAINT [PK_DATAATTRIBUTES] PRIMARY KEY ([dataAttributeId]),
@@ -331,6 +333,8 @@ CREATE TABLE [dbo].[STUDENTDATA] (
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
     [dataSourceId] UNIQUEIDENTIFIER NULL,
     [studentId] UNIQUEIDENTIFIER NOT NULL,
+    -- the subject of a value of a per-subject data attribute (DATAATTRIBUTES.isSubjectSpecific = 1); null for a per-term data attribute
+    [subjectId] UNIQUEIDENTIFIER NULL,
     [termId] UNIQUEIDENTIFIER NOT NULL,
     -- encrypted value: format version + nonce + tag + AES-256-GCM ciphertext; never plaintext
     [dataValue] VARBINARY(MAX) NULL,
@@ -345,6 +349,7 @@ CREATE TABLE [dbo].[STUDENTDATA] (
     CONSTRAINT [FK_STUDENTDATA_dataAttributeId] FOREIGN KEY ([dataAttributeId]) REFERENCES [dbo].[DATAATTRIBUTES]([dataAttributeId]),
     CONSTRAINT [FK_STUDENTDATA_dataSourceId] FOREIGN KEY ([dataSourceId]) REFERENCES [dbo].[DATASOURCES]([dataSourceId]),
     CONSTRAINT [FK_STUDENTDATA_studentId] FOREIGN KEY ([studentId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_STUDENTDATA_subjectId] FOREIGN KEY ([subjectId]) REFERENCES [dbo].[SUBJECTS]([subjectId]),
     CONSTRAINT [FK_STUDENTDATA_termId] FOREIGN KEY ([termId]) REFERENCES [dbo].[ACADEMICTERMS]([termId]),
     -- a missing row has no key and no value; a value row always has its key
     CONSTRAINT [CK_STUDENTDATA_missing] CHECK (([isMissing] = 1 AND [attributeKeyId] IS NULL AND [dataValue] IS NULL) OR ([isMissing] = 0 AND [attributeKeyId] IS NOT NULL)),
@@ -571,7 +576,7 @@ CREATE TABLE [dbo].[CASESTAGEHISTORIES] (
 );
 GO
 
--- 29. INDICATORFLAGS (a student hitting an early-support rule in a term; the value itself is never stored here)
+-- 29. INDICATORFLAGS (a student hitting an early-support rule in a term, and in one subject for a per-subject data attribute; the value itself is never stored here)
 CREATE TABLE [dbo].[INDICATORFLAGS] (
     [indicatorFlagId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_INDICATORFLAGS_indicatorFlagId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NULL,
@@ -580,6 +585,8 @@ CREATE TABLE [dbo].[INDICATORFLAGS] (
     [resolvedBy] UNIQUEIDENTIFIER NULL,
     [studentDataId] UNIQUEIDENTIFIER NOT NULL,
     [studentId] UNIQUEIDENTIFIER NOT NULL,
+    -- copied from the flagged STUDENTDATA row: the subject for a rule on a per-subject data attribute, null otherwise
+    [subjectId] UNIQUEIDENTIFIER NULL,
     [termId] UNIQUEIDENTIFIER NOT NULL,
     [dismissReason] NVARCHAR(1000) NULL,
     [flaggedAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_INDICATORFLAGS_flaggedAt] DEFAULT SYSUTCDATETIME(),
@@ -595,6 +602,7 @@ CREATE TABLE [dbo].[INDICATORFLAGS] (
     CONSTRAINT [FK_INDICATORFLAGS_resolvedBy] FOREIGN KEY ([resolvedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
     CONSTRAINT [FK_INDICATORFLAGS_studentDataId] FOREIGN KEY ([studentDataId]) REFERENCES [dbo].[STUDENTDATA]([studentDataId]),
     CONSTRAINT [FK_INDICATORFLAGS_studentId] FOREIGN KEY ([studentId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_INDICATORFLAGS_subjectId] FOREIGN KEY ([subjectId]) REFERENCES [dbo].[SUBJECTS]([subjectId]),
     CONSTRAINT [FK_INDICATORFLAGS_termId] FOREIGN KEY ([termId]) REFERENCES [dbo].[ACADEMICTERMS]([termId]),
     CONSTRAINT [CK_INDICATORFLAGS_priority] CHECK ([priority] IN (N'low', N'medium', N'high', N'urgent')),
     CONSTRAINT [CK_INDICATORFLAGS_severity] CHECK ([severity] IN (N'low', N'moderate', N'high', N'critical')),
@@ -921,9 +929,9 @@ CREATE UNIQUE INDEX [UX_CONSENTS_student_purpose_attribute_granted] ON [dbo].[CO
 -- one live (draft or active) access policy per role and purpose; revoked policies stay as history
 CREATE UNIQUE INDEX [UX_ACCESSPOLICIES_role_purpose_live] ON [dbo].[ACCESSPOLICIES]([roleId], [consentPurposeId]) WHERE [status] IN (N'draft', N'active');
 -- fast lookup of the next row for point-in-time reconstruction (system time and valid time)
-CREATE INDEX [IX_STUDENTDATA_student_attribute_time] ON [dbo].[STUDENTDATA]([studentId], [dataAttributeId], [termId], [transactionFrom], [validFrom]);
+CREATE INDEX [IX_STUDENTDATA_student_attribute_time] ON [dbo].[STUDENTDATA]([studentId], [dataAttributeId], [termId], [subjectId], [transactionFrom], [validFrom]);
 -- one open (or requested) flag per student, rule and term; resolved flags stay as history
-CREATE UNIQUE INDEX [UX_INDICATORFLAGS_student_indicator_term_open] ON [dbo].[INDICATORFLAGS]([studentId], [indicatorId], [termId]) WHERE [status] IN (N'open', N'requested');
+CREATE UNIQUE INDEX [UX_INDICATORFLAGS_student_indicator_term_subject_open] ON [dbo].[INDICATORFLAGS]([studentId], [indicatorId], [termId], [subjectId]) WHERE [status] IN (N'open', N'requested');
 -- at most one active consent purpose is the statistics purpose used for cohort data
 CREATE UNIQUE INDEX [UX_CONSENTPURPOSES_statistics_active] ON [dbo].[CONSENTPURPOSES]([isForStatistics]) WHERE [isForStatistics] = 1 AND [status] = N'active';
 -- every value protected by one key, for erasure
@@ -1442,7 +1450,7 @@ INSERT INTO [dbo].[NOTIFICATIONPREFERENCES] ([notificationPreferenceId], [accoun
     (N'A7358E57-396D-5FFC-8260-12052B7F719E', N'528CDB05-F116-5E0F-B75D-9C9145204328', N'inApp', 1);
 GO
 
--- ACTIVITYLOGS: 1141 rows
+-- ACTIVITYLOGS: 1142 rows
 INSERT INTO [dbo].[ACTIVITYLOGS] ([activityLogId], [accountId], [activityDetail], [activityType], [occurredAt]) VALUES
     (N'07915355-F83E-5035-9773-16BD03CF214D', N'0529DF8B-CE3C-50A2-AAC5-93867739D5AA', N'Signed in with password', N'signedIn', '2026-10-20T11:28:00.000'),
     (N'43BE7E0D-D142-5358-B4CA-4C562B75CE65', N'0529DF8B-CE3C-50A2-AAC5-93867739D5AA', N'Signed in with Google', N'signedIn', '2026-10-06T07:59:00.000'),
@@ -1612,12 +1620,13 @@ INSERT INTO [dbo].[ACTIVITYLOGS] ([activityLogId], [accountId], [activityDetail]
     (N'8F9667A2-243A-55AD-AC47-84FAC01D7D6F', N'0529DF8B-CE3C-50A2-AAC5-93867739D5AA', N'Created support category Money', N'supportCategoryCreated', '2026-09-03T02:00:00.000'),
     (N'C5AE7582-3EBE-5C4A-8D5A-7D52F79CB8A1', N'0529DF8B-CE3C-50A2-AAC5-93867739D5AA', N'Created support category Thesis topic (old)', N'supportCategoryCreated', '2026-09-03T02:00:00.000'),
     (N'C76DB619-935E-5DDE-BCB3-C927D04C18E1', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Created data attribute GPA (numeric)', N'dataAttributeCreated', '2026-08-31T03:00:00.000'),
-    (N'7587E3D5-322A-557A-BA6C-9B32F0D9C5EB', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Created data attribute Attendance rate (numeric)', N'dataAttributeCreated', '2026-08-31T03:00:00.000'),
+    (N'7587E3D5-322A-557A-BA6C-9B32F0D9C5EB', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Created data attribute Attendance rate (numeric, per subject)', N'dataAttributeCreated', '2026-08-31T03:00:00.000'),
     (N'687B8F98-E494-5B7C-A98E-A830F31964CF', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Created data attribute Credits earned (numeric)', N'dataAttributeCreated', '2026-08-31T03:00:00.000'),
     (N'A9D1ECF1-E1DD-5F6A-B5EA-D5E7D5EFC189', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Created data attribute Credits attempted (numeric)', N'dataAttributeCreated', '2026-08-31T03:00:00.000'),
     (N'A700A5B1-0590-5645-964A-7638F64027C4', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Created data attribute Failed subjects (numeric)', N'dataAttributeCreated', '2026-08-31T03:00:00.000'),
-    (N'FCB1A5E9-CCD5-5E80-901D-83838790EB8A', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Created data attribute Absent slots (numeric)', N'dataAttributeCreated', '2026-08-31T03:00:00.000'),
-    (N'1419CB49-AA81-53EE-BDAD-4EDDA6677286', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Created data attribute Late submissions (numeric)', N'dataAttributeCreated', '2026-08-31T03:00:00.000'),
+    (N'FCB1A5E9-CCD5-5E80-901D-83838790EB8A', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Created data attribute Absent slots (numeric, per subject)', N'dataAttributeCreated', '2026-08-31T03:00:00.000'),
+    (N'1419CB49-AA81-53EE-BDAD-4EDDA6677286', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Created data attribute Late submissions (numeric, per subject)', N'dataAttributeCreated', '2026-08-31T03:00:00.000'),
+    (N'36B6DFC7-FA6E-5E5D-8130-C9A7CC61D170', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Created data attribute Subject mark (numeric, per subject)', N'dataAttributeCreated', '2026-08-31T03:00:00.000'),
     (N'AE9451A9-2ACD-5130-B5B6-9767FDEA4E57', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Created data attribute LMS logins per week (numeric)', N'dataAttributeCreated', '2026-08-31T03:00:00.000'),
     (N'77C1496A-3ACD-5D8E-924E-CB1C6BDB7CC6', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Created data attribute Library visits (numeric)', N'dataAttributeCreated', '2026-08-31T03:00:00.000'),
     (N'CE36B889-EC75-5AC3-B13B-735BD3EE62E8', N'4FA71983-548F-5C26-BEFE-0E089DF4956F', N'Created data attribute Tuition outstanding (numeric)', N'dataAttributeCreated', '2026-08-31T03:00:00.000'),
@@ -2605,33 +2614,34 @@ INSERT INTO [dbo].[ACADEMICTERMS] ([termId], [endDate], [startDate], [termName],
     (N'EF3254A4-6B8D-5C7D-9921-D5602093842D', '2027-04-25T00:00:00.000', '2027-01-04T00:00:00.000', N'Spring 2027', N'upcoming');
 GO
 
--- DATAATTRIBUTES: 25 rows
-INSERT INTO [dbo].[DATAATTRIBUTES] ([dataAttributeId], [attributeDescription], [attributeName], [dataType], [status]) VALUES
-    (N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'Your cumulative grade point average for the term, on a 10-point scale', N'GPA', N'numeric', N'active'),
-    (N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'How often you attended your classes this term (percentage of attended slots, 0-100)', N'Attendance rate', N'numeric', N'active'),
-    (N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', N'Credits you have passed so far in the programme', N'Credits earned', N'numeric', N'active'),
-    (N'2B9B608A-C7DA-56BD-BD3B-BE65D5F742E9', N'Credits you registered for this term', N'Credits attempted', N'numeric', N'active'),
-    (N'90174836-5490-5A0B-8938-74C4036DE15C', N'Number of subjects you failed this term', N'Failed subjects', N'numeric', N'active'),
-    (N'09FC457D-EDDF-5CE3-A6AC-8A7D49E50EB9', N'Number of class slots you were absent from this term', N'Absent slots', N'numeric', N'active'),
-    (N'B24AF0AD-E23B-58D0-93EC-AA6276AEC5D7', N'Number of assignments you submitted after the deadline this term', N'Late submissions', N'numeric', N'active'),
-    (N'6209A1F0-147F-5214-89AE-BA87651F785C', N'Average number of times you signed in to the learning system per week', N'LMS logins per week', N'numeric', N'active'),
-    (N'852DDEFF-0B5F-5D87-BADC-445C1A48FC0F', N'Number of library visits recorded this term', N'Library visits', N'numeric', N'active'),
-    (N'4FFD5A76-4D95-5F1B-95CB-7B991A7321A6', N'Tuition still to be paid this term, in million VND', N'Tuition outstanding', N'numeric', N'active'),
-    (N'0507C9AE-1465-5719-AFBA-E95EF0945680', N'Hours per week you work in a part-time job', N'Part-time work hours', N'numeric', N'active'),
-    (N'142CB05A-56FB-5746-8F2D-89C80B66A8FE', N'Usual one-way travel time to campus, in minutes', N'Commute time', N'numeric', N'active'),
-    (N'580B177A-2FB3-508C-B05A-6D52E73B2E82', N'Where you are living this term (dormitory / rented / family / other)', N'Accommodation status', N'categorical', N'active'),
-    (N'B122CC0A-9AF7-5A24-BF85-53AA657B4109', N'Your scholarship this term (none / partial / full)', N'Scholarship status', N'categorical', N'active'),
-    (N'397BDBD1-679B-52F4-B732-883F9FE0FD64', N'Your academic warning this term (none / level1 / level2 / probation)', N'Academic warning level', N'categorical', N'active'),
-    (N'A129D94E-85CA-5CE2-AEE4-1561995004D3', N'Your latest English placement result (A2 / B1 / B2 / C1)', N'English level', N'categorical', N'active'),
-    (N'C3D53A5C-68C4-50E5-B460-B628A368394A', N'Your family income bracket on record (low / middle / high)', N'Family income bracket', N'categorical', N'active'),
-    (N'D025CFC3-9A36-5206-9AC5-743A92297BBD', N'How you usually travel to campus (motorbike / bus / walk / car / bicycle)', N'Transport mode', N'categorical', N'active'),
-    (N'C0CCEDC3-61AB-56EE-92C9-1219F899A3CA', N'Whether you have reported financial difficulty', N'Financial difficulty', N'boolean', N'active'),
-    (N'64D9FABF-E417-5FEA-9FFD-F07AC749D566', N'Whether a tuition payment of this term is past its due date', N'Tuition overdue', N'boolean', N'active'),
-    (N'5CF4F201-BDDD-537B-8669-A6D7406177CF', N'Whether you work a part-time job this term', N'Has part-time job', N'boolean', N'active'),
-    (N'C84CC473-EB1C-5AF4-9235-4534A7243B42', N'Whether you are the first in your family to attend university', N'First-generation student', N'boolean', N'active'),
-    (N'1E1FC43F-D279-59E6-9230-9D09A81D3A71', N'Whether you receive the campus meal support programme', N'Receives meal support', N'boolean', N'active'),
-    (N'191D4DDB-8B96-5FF7-90D9-D1150EBF9165', N'Number of student clubs you joined (no longer collected)', N'Club membership count', N'numeric', N'archived'),
-    (N'8979B92E-3303-5EDF-A0C0-A925271D1BDD', N'Your dormitory block (no longer collected, replaced by Accommodation status)', N'Dormitory block', N'categorical', N'archived');
+-- DATAATTRIBUTES: 26 rows
+INSERT INTO [dbo].[DATAATTRIBUTES] ([dataAttributeId], [attributeDescription], [attributeName], [isSubjectSpecific], [dataType], [status]) VALUES
+    (N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', N'Your cumulative grade point average for the term, on a 10-point scale', N'GPA', 0, N'numeric', N'active'),
+    (N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', N'How often you attended the classes of this subject this term (percentage of attended slots, 0-100)', N'Attendance rate', 1, N'numeric', N'active'),
+    (N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', N'Credits you have passed so far in the programme', N'Credits earned', 0, N'numeric', N'active'),
+    (N'2B9B608A-C7DA-56BD-BD3B-BE65D5F742E9', N'Credits you registered for this term', N'Credits attempted', 0, N'numeric', N'active'),
+    (N'90174836-5490-5A0B-8938-74C4036DE15C', N'Number of subjects you failed this term', N'Failed subjects', 0, N'numeric', N'active'),
+    (N'09FC457D-EDDF-5CE3-A6AC-8A7D49E50EB9', N'Number of class slots of this subject you were absent from this term', N'Absent slots', 1, N'numeric', N'active'),
+    (N'B24AF0AD-E23B-58D0-93EC-AA6276AEC5D7', N'Number of assignments of this subject you submitted after the deadline this term', N'Late submissions', 1, N'numeric', N'active'),
+    (N'E1F10ED8-1DE9-5CF0-9F22-F57AEEB95A25', N'Your mark in this subject this term, on a 10-point scale', N'Subject mark', 1, N'numeric', N'active'),
+    (N'6209A1F0-147F-5214-89AE-BA87651F785C', N'Average number of times you signed in to the learning system per week', N'LMS logins per week', 0, N'numeric', N'active'),
+    (N'852DDEFF-0B5F-5D87-BADC-445C1A48FC0F', N'Number of library visits recorded this term', N'Library visits', 0, N'numeric', N'active'),
+    (N'4FFD5A76-4D95-5F1B-95CB-7B991A7321A6', N'Tuition still to be paid this term, in million VND', N'Tuition outstanding', 0, N'numeric', N'active'),
+    (N'0507C9AE-1465-5719-AFBA-E95EF0945680', N'Hours per week you work in a part-time job', N'Part-time work hours', 0, N'numeric', N'active'),
+    (N'142CB05A-56FB-5746-8F2D-89C80B66A8FE', N'Usual one-way travel time to campus, in minutes', N'Commute time', 0, N'numeric', N'active'),
+    (N'580B177A-2FB3-508C-B05A-6D52E73B2E82', N'Where you are living this term (dormitory / rented / family / other)', N'Accommodation status', 0, N'categorical', N'active'),
+    (N'B122CC0A-9AF7-5A24-BF85-53AA657B4109', N'Your scholarship this term (none / partial / full)', N'Scholarship status', 0, N'categorical', N'active'),
+    (N'397BDBD1-679B-52F4-B732-883F9FE0FD64', N'Your academic warning this term (none / level1 / level2 / probation)', N'Academic warning level', 0, N'categorical', N'active'),
+    (N'A129D94E-85CA-5CE2-AEE4-1561995004D3', N'Your latest English placement result (A2 / B1 / B2 / C1)', N'English level', 0, N'categorical', N'active'),
+    (N'C3D53A5C-68C4-50E5-B460-B628A368394A', N'Your family income bracket on record (low / middle / high)', N'Family income bracket', 0, N'categorical', N'active'),
+    (N'D025CFC3-9A36-5206-9AC5-743A92297BBD', N'How you usually travel to campus (motorbike / bus / walk / car / bicycle)', N'Transport mode', 0, N'categorical', N'active'),
+    (N'C0CCEDC3-61AB-56EE-92C9-1219F899A3CA', N'Whether you have reported financial difficulty', N'Financial difficulty', 0, N'boolean', N'active'),
+    (N'64D9FABF-E417-5FEA-9FFD-F07AC749D566', N'Whether a tuition payment of this term is past its due date', N'Tuition overdue', 0, N'boolean', N'active'),
+    (N'5CF4F201-BDDD-537B-8669-A6D7406177CF', N'Whether you work a part-time job this term', N'Has part-time job', 0, N'boolean', N'active'),
+    (N'C84CC473-EB1C-5AF4-9235-4534A7243B42', N'Whether you are the first in your family to attend university', N'First-generation student', 0, N'boolean', N'active'),
+    (N'1E1FC43F-D279-59E6-9230-9D09A81D3A71', N'Whether you receive the campus meal support programme', N'Receives meal support', 0, N'boolean', N'active'),
+    (N'191D4DDB-8B96-5FF7-90D9-D1150EBF9165', N'Number of student clubs you joined (no longer collected)', N'Club membership count', 0, N'numeric', N'archived'),
+    (N'8979B92E-3303-5EDF-A0C0-A925271D1BDD', N'Your dormitory block (no longer collected, replaced by Accommodation status)', N'Dormitory block', 0, N'categorical', N'archived');
 GO
 
 -- ATTRIBUTEKEYS: 5 rows
@@ -2688,29 +2698,29 @@ INSERT INTO [dbo].[INGESTIONJOBS] ([ingestionJobId], [ingestionScheduleId], [exp
 GO
 
 -- STUDENTDATA: 22 rows
-INSERT INTO [dbo].[STUDENTDATA] ([studentDataId], [attributeKeyId], [dataAttributeId], [dataSourceId], [studentId], [termId], [dataValue], [provenanceNote], [erasedAt], [transactionFrom], [validFrom], [isMissing], [status]) VALUES
-    (N'19B9880B-DC6A-5043-B2B0-51233EB1BCB7', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'333108A4-2CA8-5656-8B73-744E6579CD8C', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'9E1C0363-A884-534E-9D34-456C2074060D', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'333108A4-2CA8-5656-8B73-744E6579CD8C', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'91E96BA9-9F9E-5459-BCF5-B7FAED999E71', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'738287A1-757A-507E-9241-5A5FDA494D68', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'C852EC3C-F813-5414-8CE2-A7BA9F13C71F', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'738287A1-757A-507E-9241-5A5FDA494D68', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'155162EE-8EAD-584C-9097-EAE155B0C0C3', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'C4611D54-864C-5396-8F65-AE11F4F76A4E', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'CA003F48-8F78-5DE9-BF99-B5E0488064F1', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'C4611D54-864C-5396-8F65-AE11F4F76A4E', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'5460D82D-C359-5875-A42B-8540E941F245', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'36C02202-E321-5FDF-9816-276555DC567A', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'201ED10A-F4C0-594C-8481-7AB5BA39E0F5', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'36C02202-E321-5FDF-9816-276555DC567A', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'B8C3B9B7-84E1-5D08-8531-40D5A6C15709', NULL, N'61ABB48C-FCBB-5292-8689-1263F7F5A21D', NULL, N'108C23D8-9F70-5548-AFF5-BA08C5A34D11', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'B9C29A4C-7737-5BD4-A4C7-EA132F2B0C25', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'108C23D8-9F70-5548-AFF5-BA08C5A34D11', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'18F556FE-6E99-549A-82FF-0CB62B21829D', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'6BAC242E-558C-5F5B-8B2B-A0CCD5CF8A16', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'912E770F-D83F-5C30-B923-56D52244B385', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'6BAC242E-558C-5F5B-8B2B-A0CCD5CF8A16', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'78C92D2B-BD7C-598E-B9E1-14C62B95DC67', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'37FE0227-4AB0-5068-B5BA-47C4F9914D33', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'D3DA4D0A-502C-5FF4-A343-0A9D02BCC0AC', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'37FE0227-4AB0-5068-B5BA-47C4F9914D33', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'6BD49F83-3F45-5EBB-99E2-EFB019BDA942', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'ED3100B5-1F7B-5FB0-A2BA-AC3FFB606846', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'3BB73215-AD63-521D-83C2-55D2716988EE', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'ED3100B5-1F7B-5FB0-A2BA-AC3FFB606846', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
-    (N'1E896264-C402-5DAA-8CC4-0C71063AA8DE', N'015BABC9-D818-512D-A881-8A5E0C481075', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'47BC1410-1752-5DB1-8BEC-C5D245F8CF42', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Imported from spring2026_results.xlsx on 2026-04-30', '2026-10-03T18:55:00.000', '2026-04-30T03:00:00.000', '2026-04-20T00:00:00.000', 0, N'original'),
-    (N'6287A725-F1DC-58F3-B152-AFA83341038E', N'092086B2-0CDB-54F5-A9C4-2AC8EB669825', N'397BDBD1-679B-52F4-B732-883F9FE0FD64', NULL, N'1882A57F-ABEC-5E7F-94B6-F2A3B9CC8DCA', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Imported from spring2026_results.xlsx on 2026-04-30', '2026-10-20T13:24:00.000', '2026-04-30T03:00:00.000', '2026-04-20T00:00:00.000', 0, N'original'),
-    (N'A1B91E2F-B4DF-5C2C-8645-04283B0DA829', N'0178C3A1-D26A-5EB6-B8B9-D4FE8806C806', N'2B9B608A-C7DA-56BD-BD3B-BE65D5F742E9', NULL, N'B1C138EC-B5C5-5B43-98C2-F6C22AB42BB9', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Imported from spring2026_results.xlsx on 2026-04-30', '2026-10-18T04:12:00.000', '2026-04-30T03:00:00.000', '2026-04-20T00:00:00.000', 0, N'original'),
-    (N'2C5A14A2-2186-5E5C-9E9E-0DCADDCC641D', N'54F25DA7-8AAA-5BEF-9E52-1DB5848BD825', N'580B177A-2FB3-508C-B05A-6D52E73B2E82', NULL, N'E0AB5662-23FF-51CA-87C3-F217E57D69EC', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Imported from spring2026_results.xlsx on 2026-04-30', '2026-10-13T23:30:00.000', '2026-04-30T03:00:00.000', '2026-04-20T00:00:00.000', 0, N'original'),
-    (N'459CA75A-0795-556C-B092-21D4041DFAF9', N'027BB85E-9643-5CC2-AE7D-751BE8FB6011', N'A129D94E-85CA-5CE2-AEE4-1561995004D3', NULL, N'C4611D54-864C-5396-8F65-AE11F4F76A4E', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Imported from spring2026_results.xlsx on 2026-04-30', '2026-10-03T16:27:00.000', '2026-04-30T03:00:00.000', '2026-04-20T00:00:00.000', 0, N'original'),
-    (N'4C6C3784-1459-5C9D-AF0C-F59A29FBB70C', N'015BABC9-D818-512D-A881-8A5E0C481075', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'47BC1410-1752-5DB1-8BEC-C5D245F8CF42', N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Correction approved on 2026-05-06', '2026-10-03T18:55:00.000', '2026-05-06T04:58:00.000', '2026-04-20T00:00:00.000', 0, N'correction');
+INSERT INTO [dbo].[STUDENTDATA] ([studentDataId], [attributeKeyId], [dataAttributeId], [dataSourceId], [studentId], [subjectId], [termId], [dataValue], [provenanceNote], [erasedAt], [transactionFrom], [validFrom], [isMissing], [status]) VALUES
+    (N'19B9880B-DC6A-5043-B2B0-51233EB1BCB7', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'333108A4-2CA8-5656-8B73-744E6579CD8C', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'9E1C0363-A884-534E-9D34-456C2074060D', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'333108A4-2CA8-5656-8B73-744E6579CD8C', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'91E96BA9-9F9E-5459-BCF5-B7FAED999E71', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'738287A1-757A-507E-9241-5A5FDA494D68', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'C852EC3C-F813-5414-8CE2-A7BA9F13C71F', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'738287A1-757A-507E-9241-5A5FDA494D68', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'155162EE-8EAD-584C-9097-EAE155B0C0C3', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'C4611D54-864C-5396-8F65-AE11F4F76A4E', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'CA003F48-8F78-5DE9-BF99-B5E0488064F1', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'C4611D54-864C-5396-8F65-AE11F4F76A4E', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'5460D82D-C359-5875-A42B-8540E941F245', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'36C02202-E321-5FDF-9816-276555DC567A', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'201ED10A-F4C0-594C-8481-7AB5BA39E0F5', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'36C02202-E321-5FDF-9816-276555DC567A', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'B8C3B9B7-84E1-5D08-8531-40D5A6C15709', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'108C23D8-9F70-5548-AFF5-BA08C5A34D11', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'B9C29A4C-7737-5BD4-A4C7-EA132F2B0C25', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'108C23D8-9F70-5548-AFF5-BA08C5A34D11', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'18F556FE-6E99-549A-82FF-0CB62B21829D', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'6BAC242E-558C-5F5B-8B2B-A0CCD5CF8A16', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'912E770F-D83F-5C30-B923-56D52244B385', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'6BAC242E-558C-5F5B-8B2B-A0CCD5CF8A16', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'78C92D2B-BD7C-598E-B9E1-14C62B95DC67', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'37FE0227-4AB0-5068-B5BA-47C4F9914D33', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'D3DA4D0A-502C-5FF4-A343-0A9D02BCC0AC', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'37FE0227-4AB0-5068-B5BA-47C4F9914D33', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'6BD49F83-3F45-5EBB-99E2-EFB019BDA942', NULL, N'607DBFCA-8BCF-5F14-B128-C91B483E5D46', NULL, N'ED3100B5-1F7B-5FB0-A2BA-AC3FFB606846', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'3BB73215-AD63-521D-83C2-55D2716988EE', NULL, N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'ED3100B5-1F7B-5FB0-A2BA-AC3FFB606846', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Missing in the import of spring2026_results.xlsx on 2026-04-30', NULL, '2026-04-30T03:00:00.000', '2026-04-26T00:00:00.000', 1, N'original'),
+    (N'1E896264-C402-5DAA-8CC4-0C71063AA8DE', N'015BABC9-D818-512D-A881-8A5E0C481075', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'47BC1410-1752-5DB1-8BEC-C5D245F8CF42', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Imported from spring2026_results.xlsx on 2026-04-30', '2026-10-03T18:55:00.000', '2026-04-30T03:00:00.000', '2026-04-20T00:00:00.000', 0, N'original'),
+    (N'6287A725-F1DC-58F3-B152-AFA83341038E', N'092086B2-0CDB-54F5-A9C4-2AC8EB669825', N'397BDBD1-679B-52F4-B732-883F9FE0FD64', NULL, N'1882A57F-ABEC-5E7F-94B6-F2A3B9CC8DCA', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Imported from spring2026_results.xlsx on 2026-04-30', '2026-10-20T13:24:00.000', '2026-04-30T03:00:00.000', '2026-04-20T00:00:00.000', 0, N'original'),
+    (N'A1B91E2F-B4DF-5C2C-8645-04283B0DA829', N'0178C3A1-D26A-5EB6-B8B9-D4FE8806C806', N'2B9B608A-C7DA-56BD-BD3B-BE65D5F742E9', NULL, N'B1C138EC-B5C5-5B43-98C2-F6C22AB42BB9', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Imported from spring2026_results.xlsx on 2026-04-30', '2026-10-18T04:12:00.000', '2026-04-30T03:00:00.000', '2026-04-20T00:00:00.000', 0, N'original'),
+    (N'2C5A14A2-2186-5E5C-9E9E-0DCADDCC641D', N'54F25DA7-8AAA-5BEF-9E52-1DB5848BD825', N'580B177A-2FB3-508C-B05A-6D52E73B2E82', NULL, N'E0AB5662-23FF-51CA-87C3-F217E57D69EC', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Imported from spring2026_results.xlsx on 2026-04-30', '2026-10-13T23:30:00.000', '2026-04-30T03:00:00.000', '2026-04-20T00:00:00.000', 0, N'original'),
+    (N'459CA75A-0795-556C-B092-21D4041DFAF9', N'027BB85E-9643-5CC2-AE7D-751BE8FB6011', N'A129D94E-85CA-5CE2-AEE4-1561995004D3', NULL, N'C4611D54-864C-5396-8F65-AE11F4F76A4E', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Imported from spring2026_results.xlsx on 2026-04-30', '2026-10-03T16:27:00.000', '2026-04-30T03:00:00.000', '2026-04-20T00:00:00.000', 0, N'original'),
+    (N'4C6C3784-1459-5C9D-AF0C-F59A29FBB70C', N'015BABC9-D818-512D-A881-8A5E0C481075', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618', NULL, N'47BC1410-1752-5DB1-8BEC-C5D245F8CF42', NULL, N'2929FCA6-0DE2-5976-AAFB-B698596B5C2E', NULL, N'Correction approved on 2026-05-06', '2026-10-03T18:55:00.000', '2026-05-06T04:58:00.000', '2026-04-20T00:00:00.000', 0, N'correction');
 GO
 
 -- ACCOUNT_SUBJECT: 13 rows
@@ -2803,35 +2813,6 @@ INSERT INTO [dbo].[CASES] ([caseId], [advisorId], [openedBy], [studentId], [subj
     (N'804A8B07-D0CC-5E40-B674-E48315CD3312', N'A5B03782-6A13-5E03-87ED-615183409D49', N'B1C138EC-B5C5-5B43-98C2-F6C22AB42BB9', N'B1C138EC-B5C5-5B43-98C2-F6C22AB42BB9', NULL, N'9285B8AC-C465-5254-8A87-CDFF33BC5A07', N'I want to apply for a student loan but do not understand the paperwork.', NULL, '2026-09-20T11:59:00.000', N'referred', N'urgent', N'open'),
     (N'8ACE5193-1955-5ED7-B581-D48BAE2CC7F3', N'A5B03782-6A13-5E03-87ED-615183409D49', N'333108A4-2CA8-5656-8B73-744E6579CD8C', N'333108A4-2CA8-5656-8B73-744E6579CD8C', NULL, N'49F96775-F067-58E3-A311-5E2FB1EA20F7', N'The dormitory room is too noisy to study and I want to change rooms.', NULL, '2026-09-21T21:18:00.000', N'contacted', N'high', N'open');
 GO
-
--- Brings an existing AdviseCare database up to date without resetting or reseeding its data. Run once before deploying the API; re-running is safe.
--- CASEMESSAGEATTACHMENTS (49): files sent with a case message (stored in the database, downloaded only through the API).
-USE [AdviseCareDB];
-GO
-
-IF OBJECT_ID(N'[dbo].[CASEMESSAGEATTACHMENTS]', N'U') IS NULL
-BEGIN
-    CREATE TABLE [dbo].[CASEMESSAGEATTACHMENTS] (
-        [caseMessageAttachmentId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASEMESSAGEATTACHMENTS_caseMessageAttachmentId] DEFAULT NEWSEQUENTIALID(),
-        [caseMessageId] UNIQUEIDENTIFIER NOT NULL,
-        [uploadedBy] UNIQUEIDENTIFIER NOT NULL,
-        [contentType] NVARCHAR(255) NOT NULL,
-        [fileContent] VARBINARY(MAX) NOT NULL,
-        [fileName] NVARCHAR(255) NOT NULL,
-        [fileSize] INT NOT NULL,
-        [createdAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_CASEMESSAGEATTACHMENTS_createdAt] DEFAULT SYSUTCDATETIME(),
-        CONSTRAINT [PK_CASEMESSAGEATTACHMENTS] PRIMARY KEY ([caseMessageAttachmentId]),
-        CONSTRAINT [FK_CASEMESSAGEATTACHMENTS_caseMessageId] FOREIGN KEY ([caseMessageId]) REFERENCES [dbo].[CASEMESSAGES]([caseMessageId]),
-        CONSTRAINT [FK_CASEMESSAGEATTACHMENTS_uploadedBy] FOREIGN KEY ([uploadedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
-        CONSTRAINT [CK_CASEMESSAGEATTACHMENTS_fileSize] CHECK ([fileSize] BETWEEN 1 AND 10485760),
-        CONSTRAINT [CK_CASEMESSAGEATTACHMENTS_fileName] CHECK (LEN(LTRIM(RTRIM([fileName]))) >= 1)
-    );
-END;
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_CASEMESSAGEATTACHMENTS_caseMessageId' AND [object_id] = OBJECT_ID(N'[dbo].[CASEMESSAGEATTACHMENTS]'))
-    CREATE INDEX [IX_CASEMESSAGEATTACHMENTS_caseMessageId] ON [dbo].[CASEMESSAGEATTACHMENTS] ([caseMessageId]);
-GO
-
 
 -- CASECHANGEREQUESTS: 5 rows
 INSERT INTO [dbo].[CASECHANGEREQUESTS] ([caseChangeRequestId], [caseId], [programmeHeadId], [proposedAdvisorId], [requestedBy], [decisionNotes], [reason], [decidedAt], [requestedAt], [status]) VALUES
@@ -3113,9 +3094,10 @@ INSERT INTO [dbo].[ESCALATIONS] ([escalationId], [caseId], [escalatedBy], [escal
     (N'ABAFB264-682B-598E-970F-8D0E83C98250', N'5F791948-D278-5C9A-9F9D-263E4DAD50B1', N'173E79C0-75D6-53C2-BF4E-45C3CFA18845', N'3C8C28D0-6B6D-5D71-8563-2C24ED667F8E', N'The student needs a decision only the Programme Head can make (deadline extension / study load).', N'Approved a reduced study load for this term.', '2026-10-12T15:09:00.000', N'responded');
 GO
 
--- PURPOSE_ATTRIBUTE: 37 rows
+-- PURPOSE_ATTRIBUTE: 38 rows
 INSERT INTO [dbo].[PURPOSE_ATTRIBUTE] ([consentPurposeId], [dataAttributeId]) VALUES
     (N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'8A95DB0E-4F7F-5086-B9AD-8DDFEBC95618'),
+    (N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'E1F10ED8-1DE9-5CF0-9F22-F57AEEB95A25'),
     (N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'61ABB48C-FCBB-5292-8689-1263F7F5A21D'),
     (N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'607DBFCA-8BCF-5F14-B128-C91B483E5D46'),
     (N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'2B9B608A-C7DA-56BD-BD3B-BE65D5F742E9'),
@@ -4341,7 +4323,7 @@ INSERT INTO [dbo].[ACCESSLOGS] ([accessLogId], [accessorId], [consentPurposeId],
     (N'9E59950E-73AF-5371-85BB-D6E97AEE5528', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'C4611D54-864C-5396-8F65-AE11F4F76A4E', N'CA003F48-8F78-5DE9-BF99-B5E0488064F1', N'StudentData/students/C4611D54-864C-5396-8F65-AE11F4F76A4E (Credits earned, Spring 2026)', '2026-05-27T12:35:00.000', 0, NULL),
     (N'34DB02EC-B90D-5495-BC31-93B57EE89B4B', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'36C02202-E321-5FDF-9816-276555DC567A', N'5460D82D-C359-5875-A42B-8540E941F245', N'StudentData/students/36C02202-E321-5FDF-9816-276555DC567A (GPA, Spring 2026)', '2026-06-04T22:58:00.000', 0, NULL),
     (N'2774C319-FAD3-57D7-A1AC-E1D22855C92C', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'36C02202-E321-5FDF-9816-276555DC567A', N'201ED10A-F4C0-594C-8481-7AB5BA39E0F5', N'StudentData/students/36C02202-E321-5FDF-9816-276555DC567A (Credits earned, Spring 2026)', '2026-05-18T20:50:00.000', 0, NULL),
-    (N'CC40F025-F957-5480-BEBB-ECC56CBB9FE8', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'108C23D8-9F70-5548-AFF5-BA08C5A34D11', N'B8C3B9B7-84E1-5D08-8531-40D5A6C15709', N'StudentData/students/108C23D8-9F70-5548-AFF5-BA08C5A34D11 (Attendance rate, Spring 2026)', '2026-06-01T10:31:00.000', 0, NULL),
+    (N'CC40F025-F957-5480-BEBB-ECC56CBB9FE8', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'108C23D8-9F70-5548-AFF5-BA08C5A34D11', N'B8C3B9B7-84E1-5D08-8531-40D5A6C15709', N'StudentData/students/108C23D8-9F70-5548-AFF5-BA08C5A34D11 (Credits earned, Spring 2026)', '2026-06-01T10:31:00.000', 0, NULL),
     (N'77BB067F-53AD-5AF7-853D-F15EE7114322', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'108C23D8-9F70-5548-AFF5-BA08C5A34D11', N'B9C29A4C-7737-5BD4-A4C7-EA132F2B0C25', N'StudentData/students/108C23D8-9F70-5548-AFF5-BA08C5A34D11 (GPA, Spring 2026)', '2026-06-08T10:56:00.000', 0, NULL),
     (N'17E6D9D1-B07D-59FC-AB9F-FA04F1354B15', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'6BAC242E-558C-5F5B-8B2B-A0CCD5CF8A16', N'18F556FE-6E99-549A-82FF-0CB62B21829D', N'StudentData/students/6BAC242E-558C-5F5B-8B2B-A0CCD5CF8A16 (GPA, Spring 2026)', '2026-05-08T22:19:00.000', 0, NULL),
     (N'A7974972-E2BE-5584-9D77-0C9B85C88360', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'62C800D3-1C1D-57A4-A911-4F345E58D26E', N'6BAC242E-558C-5F5B-8B2B-A0CCD5CF8A16', N'912E770F-D83F-5C30-B923-56D52244B385', N'StudentData/students/6BAC242E-558C-5F5B-8B2B-A0CCD5CF8A16 (Credits earned, Spring 2026)', '2026-05-23T17:05:00.000', 0, NULL),

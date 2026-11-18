@@ -34,6 +34,7 @@ erDiagram
         uniqueidentifier dataAttributeId PK "NOT NULL"
         nvarchar(max) attributeDescription "NULL"
         nvarchar(255) attributeName UK "NOT NULL"
+        bit isSubjectSpecific "NOT NULL"
         nvarchar(30) dataType "NOT NULL"
         nvarchar(30) status "NOT NULL"
     }

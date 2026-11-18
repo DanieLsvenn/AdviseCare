@@ -30,6 +30,7 @@ namespace AdviseCare.Application.Services
                 DataAttributeId = a.DataAttributeId,
                 AttributeDescription = a.AttributeDescription ?? string.Empty,
                 AttributeName = a.AttributeName,
+                IsSubjectSpecific = a.IsSubjectSpecific,
                 DataType = a.DataType,
                 Status = a.Status
             });
@@ -51,6 +52,7 @@ namespace AdviseCare.Application.Services
                     DataAttributeId = a.DataAttributeId,
                     AttributeDescription = a.AttributeDescription ?? string.Empty,
                     AttributeName = a.AttributeName,
+                    IsSubjectSpecific = a.IsSubjectSpecific,
                     DataType = a.DataType,
                     Status = a.Status
                 });
@@ -67,16 +69,18 @@ namespace AdviseCare.Application.Services
                 DataAttributeId = dataAttribute.DataAttributeId,
                 AttributeDescription = dataAttribute.AttributeDescription ?? string.Empty,
                 AttributeName = dataAttribute.AttributeName,
+                IsSubjectSpecific = dataAttribute.IsSubjectSpecific,
                 DataType = dataAttribute.DataType,
                 Status = dataAttribute.Status
             };
         }
 
-        // Search Data attributes by name, data type or status
+        // Search Data attributes by name, per-subject or per-term, data type or status
         public async Task<List<SearchDataAttributeResponse>> SearchAsync(SearchDataAttributeRequest request)
         {
             var dataAttributes = await _dataAttributeRepository.SearchAsyncOrderBy(a =>
                 (string.IsNullOrWhiteSpace(request.AttributeName) || a.AttributeName.Contains(request.AttributeName)) &&
+                (request.IsSubjectSpecific == null || a.IsSubjectSpecific == request.IsSubjectSpecific) &&
                 (string.IsNullOrWhiteSpace(request.DataType) || a.DataType == request.DataType) &&
                 (string.IsNullOrWhiteSpace(request.Status) || a.Status == request.Status),
                 a => a.AttributeName, true);
@@ -86,6 +90,7 @@ namespace AdviseCare.Application.Services
                 DataAttributeId = a.DataAttributeId,
                 AttributeDescription = a.AttributeDescription ?? string.Empty,
                 AttributeName = a.AttributeName,
+                IsSubjectSpecific = a.IsSubjectSpecific,
                 DataType = a.DataType,
                 Status = a.Status
             }).ToList();
@@ -103,24 +108,26 @@ namespace AdviseCare.Application.Services
                 DataAttributeId = Guid.NewGuid(),
                 AttributeDescription = string.IsNullOrWhiteSpace(request.AttributeDescription) ? null : request.AttributeDescription.Trim(),
                 AttributeName = attributeName,
+                IsSubjectSpecific = request.IsSubjectSpecific,
                 DataType = request.DataType,
                 Status = "active"
             };
             await _dataAttributeRepository.CreateAsync(dataAttribute);
 
-            await _activityLogService.LogCurrentAccountAsync("dataAttributeCreated", $"Created data attribute {dataAttribute.AttributeName} ({dataAttribute.DataType})");
+            await _activityLogService.LogCurrentAccountAsync("dataAttributeCreated", $"Created data attribute {dataAttribute.AttributeName} ({dataAttribute.DataType}{(dataAttribute.IsSubjectSpecific ? ", per subject" : string.Empty)})");
 
             return new CreateDataAttributeResponse
             {
                 DataAttributeId = dataAttribute.DataAttributeId,
                 AttributeDescription = dataAttribute.AttributeDescription ?? string.Empty,
                 AttributeName = dataAttribute.AttributeName,
+                IsSubjectSpecific = dataAttribute.IsSubjectSpecific,
                 DataType = dataAttribute.DataType,
                 Status = dataAttribute.Status
             };
         }
 
-        // Update Data attribute (only the description; the name and data type stay as created)
+        // Update Data attribute (only the description; the name, data type and per-subject setting stay as created)
         public async Task<UpdateDataAttributeResponse> UpdateAsync(Guid DataAttributeId, UpdateDataAttributeRequest request)
         {
             var dataAttribute = await _dataAttributeRepository.GetByIdAsync(DataAttributeId)
@@ -139,6 +146,7 @@ namespace AdviseCare.Application.Services
                 DataAttributeId = dataAttribute.DataAttributeId,
                 AttributeDescription = dataAttribute.AttributeDescription ?? string.Empty,
                 AttributeName = dataAttribute.AttributeName,
+                IsSubjectSpecific = dataAttribute.IsSubjectSpecific,
                 DataType = dataAttribute.DataType,
                 Status = dataAttribute.Status
             };

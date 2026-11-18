@@ -80,9 +80,9 @@ Files to prepare (keep them in a TestFiles folder next to this file)
 - accounts_valid.xlsx, accounts_invalid.xlsx (WF1)
 - studentdata_fall2026.xlsx, studentdata_fall2026_update.xlsx, studentdata_invalid.xlsx, studentdata_archived.xlsx (WF5)
 - avatar.png (under 2 MB), avatar_too_big.png (over 2 MB), avatar.bmp (EX16)
-Ready-made files in Documentation/AdviseCare_Mock_Data (for the mock data; the expected results are in its guide):
-- accounts_import_valid.xlsx / .csv, accounts_import_invalid_rows.xlsx, accounts_import_invalid_columns.xlsx (WF1 against the mock data)
-- mock_studentdata_*.xlsx, mock_studentdata_invalid.csv, mock_studentdata_invalid_columns.xlsx, mock_studentdata_student_gmail.csv (WF5 against the mock data)
+Ready-made demo files in Documentation/AdviseCare_Mock_Data (the team's two real Google accounts; each file has one invalid cell on purpose, expected results in its guide):
+- account_import.xlsx / .csv (WF1)
+- mock_data_sum2026.xlsx / .csv and mock_data_fall2026.xlsx / .csv (WF5)
 
 ==========
 RECOMMENDED RUN ORDER
@@ -666,15 +666,17 @@ WF3: Steward sets up consent
    {
      "attributeDescription": "Your cumulative grade point average for the term, on a 10-point scale",
      "attributeName": "GPA",
+     "isSubjectSpecific": false,
      "dataType": "numeric"
    }
-   Expect: 200, dataAttributeId, status = active
+   Expect: 200, dataAttributeId, isSubjectSpecific = false (one value per term), status = active
    Save: -> {attrGpaId}
    Other three:
-   { "attributeDescription": "How often you attended your classes this term (percentage of attended slots, 0-100)", "attributeName": "Attendance rate", "dataType": "numeric" } -> {attrAttendanceId}
+   { "attributeDescription": "How often you attended the classes of this subject this term (percentage of attended slots, 0-100)", "attributeName": "Attendance rate", "isSubjectSpecific": true, "dataType": "numeric" } -> {attrAttendanceId} (one value per subject and term)
    { "attributeDescription": "Where you are living this term (dormitory / rented / family / other)", "attributeName": "Accommodation status", "dataType": "categorical" } -> {attrAccommodationId}
    { "attributeDescription": "Whether you have reported financial difficulty", "attributeName": "Financial difficulty", "dataType": "boolean" } -> {attrFinancialId}
    Negative: "dataType": "text" -> 400; the same attributeName again -> 409; called with {academicAdvisorToken} -> 403
+   isSubjectSpecific cannot be changed later (PUT only edits the description)
    Edit: PUT /api/DataAttributes/{attrGpaId} [EXISTS]
    Body: { "attributeDescription": "Your cumulative GPA (10-point scale) for the current term" }
    Lists: GET /api/DataAttributes, GET /api/DataAttributes/search?status=active [EXISTS] (open to every signed-in role)
@@ -831,12 +833,14 @@ WF5: Admin imports student data
    Form (multipart/form-data): file = studentdata_fall2026.xlsx
    Expect: the header row and up to five sample rows, so the web app can show the column mapping; nothing is written
    studentdata_fall2026.xlsx:
-   Student email      | Data attribute       | Value     | Term      | Valid from
-   student@gmail.com  | GPA                  | 6.8       | Fall 2026 | 2026-10-15
-   student@gmail.com  | Attendance rate      | 72        | Fall 2026 | 2026-10-15
-   student@gmail.com  | Accommodation status | rented    | Fall 2026 | 2026-09-07
-   student@gmail.com  | Financial difficulty | true      | Fall 2026 | 2026-10-01
-   (no rows for student01: every imported data attribute becomes missing for them)
+   Student email      | Data attribute       | Value     | Term      | Valid from | Subject
+   student@gmail.com  | GPA                  | 6.8       | Fall 2026 | 2026-10-15 |
+   student@gmail.com  | Attendance rate      | 72        | Fall 2026 | 2026-10-15 | PRN212
+   student@gmail.com  | Attendance rate      | 86        | Fall 2026 | 2026-10-15 | SWP391
+   student@gmail.com  | Accommodation status | rented    | Fall 2026 | 2026-09-07 |
+   student@gmail.com  | Financial difficulty | true      | Fall 2026 | 2026-10-01 |
+   (no rows for student01: every imported per-term data attribute becomes missing for them; Attendance rate is per subject, so it gets no missing row)
+   The Subject column holds subject codes; it is filled only for per-subject data attributes (Attendance rate here) and left empty for the others
    The student column accepts an email, a username or a student code
    Google Sheet import is extra scope (ES6)
    Unhappy:
@@ -854,7 +858,8 @@ WF5: Admin imports student data
    Auth: {adminToken}
    Form (multipart/form-data):
    file = studentdata_fall2026.xlsx
-   columnMapping = { "studentIdentifier": "Student email", "dataAttribute": "Data attribute", "value": "Value", "term": "Term", "validFrom": "Valid from" }
+   columnMapping = { "studentIdentifier": "Student email", "dataAttribute": "Data attribute", "value": "Value", "term": "Term", "validFrom": "Valid from", "subject": "Subject" }
+   ("subject" is optional; it only has to be mapped when the file holds per-subject data attributes)
    Unhappy:
    - a required field empty or out of range -> 400 (errors per field)
    - 400 "Column mapping must be a JSON object."
@@ -868,21 +873,24 @@ WF5: Admin imports student data
 4.1. If any row is invalid, nothing is imported
    Form: file = studentdata_invalid.xlsx (same mapping)
    studentdata_invalid.xlsx:
-   Student email          | Data attribute  | Value | Term      | Valid from
-   student@gmail.com      | GPA             | 7.2   | Fall 2026 | 2026-10-20     (valid row)
-   nobody@gmail.com       | GPA             | 5.0   | Fall 2026 | 2026-10-20     (student does not exist)
-   student@gmail.com      | Height          | 170   | Fall 2026 | 2026-10-20     (data attribute does not exist)
-   student@gmail.com      | GPA             | abc   | Fall 2026 | 2026-10-20     (not numeric)
-   student@gmail.com      | Attendance rate | 80    | Winter 99 | 2026-10-20     (term does not exist)
-   Expect: isSuccess = false, the 4 invalid rows with their reasons in errors, no STUDENTDATA rows added (not even the valid one); activity log studentDataImportFailed
+   Student email          | Data attribute  | Value | Term      | Valid from | Subject
+   student@gmail.com      | GPA             | 7.2   | Fall 2026 | 2026-10-20 |            (valid row)
+   nobody@gmail.com       | GPA             | 5.0   | Fall 2026 | 2026-10-20 |            (student does not exist)
+   student@gmail.com      | Height          | 170   | Fall 2026 | 2026-10-20 |            (data attribute does not exist)
+   student@gmail.com      | GPA             | abc   | Fall 2026 | 2026-10-20 |            (not numeric)
+   student@gmail.com      | Attendance rate | 80    | Winter 99 | 2026-10-20 | PRN212     (term does not exist)
+   student@gmail.com      | Attendance rate | 80    | Fall 2026 | 2026-10-20 |            ("subject is empty, but 'Attendance rate' is recorded per subject")
+   student@gmail.com      | GPA             | 7.0   | Fall 2026 | 2026-10-20 | PRN212     ("'GPA' is recorded per term, so its subject must be empty")
+   student@gmail.com      | Attendance rate | 80    | Fall 2026 | 2026-10-20 | XYZ999     ("subject 'XYZ999' does not exist")
+   Expect: isSuccess = false, the 7 invalid rows with their reasons in errors, no STUDENTDATA rows added (not even the valid one); activity log studentDataImportFailed
 4.2. If all rows are valid, every value is inserted as a new row
    Form: file = studentdata_fall2026.xlsx
-   Expect: isSuccess = true, insertedCount = 4, missingCount = one per data attribute for every other enrolled, active student (e.g. student01); each row has dataSourceId = null, status = original, provenanceNote like "Imported from studentdata_fall2026.xlsx on 2026-10-21"; activity log studentDataImported
+   Expect: isSuccess = true, insertedCount = 5, missingCount = one per per-term data attribute (GPA, Accommodation status, Financial difficulty) for every other enrolled, active student (e.g. student01), none for Attendance rate; each row has dataSourceId = null, status = original, provenanceNote like "Imported from studentdata_fall2026.xlsx on 2026-10-21"; activity log studentDataImported
    Values are stored encrypted in STUDENTDATA.dataValue (VARBINARY, AES-256-GCM with the student's key for that attribute; the key is created on the first value). Member C calls IAttributeKeyService.EncryptValuesAsync
    Check: GET /api/AttributeKeys/search?studentId={studentId} [EXISTS] with {stewardToken} -> one active key per imported attribute, with masterKeyVersion (the key itself is never returned)
    For EX13, import studentdata_fall2026_update.xlsx afterwards (new rows, never updates):
    student@gmail.com | GPA             | 7.5 | Fall 2026 | 2026-11-20
-   student@gmail.com | Attendance rate | 85  | Fall 2026 | 2026-11-20
+   student@gmail.com | Attendance rate | 85  | Fall 2026 | 2026-11-20 | PRN212     (SWP391 keeps 86)
 4.3. Rows of an archived data attribute are left out, the rest is imported
    Form: file = studentdata_archived.xlsx
    student@gmail.com | GPA                | 7.0  | Fall 2026 | 2026-10-25
@@ -891,13 +899,13 @@ WF5: Admin imports student data
 5. Data missing for a student is flagged
    GET /api/StudentData/search?termId={termFall2026Id}&isMissing=true [EXISTS]
    Auth: {adminToken}
-   Expect: rows with isMissing = true for every enrolled student without a value (e.g. student01); values are never returned by these admin lists
+   Expect: rows with isMissing = true for every enrolled student without a value of a per-term data attribute (e.g. student01); values are never returned by these admin lists
    Unhappy:
    - a required field empty or out of range -> 400 (errors per field)
    - no token or an ended session -> 401
    - {studentToken} -> 403 "Your role cannot use this route."
 6. Early-support flags are raised or cleared (see EX17) [PLANNED]
-   Expect: after the 4.2 import, student@gmail.com (Attendance rate 72) gets an open flag of the "Low attendance" indicator (< 75) for Fall 2026
+   Expect: after the 4.2 import, student@gmail.com (Attendance rate 72 in PRN212, 86 in SWP391) gets one open flag of the "Low attendance" indicator (< 75) for Fall 2026 and PRN212
 7. Admin views the import result and the import history
    GET /api/ActivityLogs/search?activityType=studentDataImported [EXISTS]
    Auth: {adminToken}
@@ -1748,7 +1756,7 @@ EX17: Early-support indicators [PLANNED] (Member A; routes are a proposal)
 2. The system raises or clears flags after every import (WF5 step 6)
    GET /api/Indicators/flags?status=open [PLANNED]
    Auth: {programmeHeadToken}
-   Expect: one flag per student, rule and term, sorted by severity, priority, oldest; each shows the student's directory data, the rule name and description, severity, priority, term; never the value
+   Expect: one flag per student, rule, term and subject (subject empty for a per-term rule), sorted by severity, priority, oldest; each shows the student's directory data, the rule name and description, severity, priority, term, subject; never the value
    Check: GET /api/AccessLogs/search?recordedUserId={studentId} shows no row for the flag check (it is a server check, not an access)
    Negative: {studentToken} -> 403
 3. Programme Head opens a case from a flag or dismisses it
@@ -1805,6 +1813,8 @@ EX20: Anonymised welfare statistics and cohort data
    Expect: averageValue, minValue, maxValue and studentCount, or isSuppressed = true when fewer than 10 students consented; a categorical attribute gives valueCounts instead;
    each value read writes one ACCESSLOGS row with the statistics purpose (none for a suppressed cell); emergency access never counts
    Check: an advisor reading the same student outside a case (GET /api/StudentData/students/{studentId}) does not see a value shared only for statistics
+   Per-subject attribute: GET /api/Statistics/cohort?dataAttributeId={attrAttendanceId}&termId={termFall2026Id}&subjectId={subjectPrn212Id} [EXISTS] -> the cells for PRN212 only (subjectCode = PRN212)
+   Negative: {attrAttendanceId} without subjectId -> 400 "'Attendance rate' is recorded per subject, so choose a subject."; {attrGpaId} with a subjectId -> 400 "'GPA' is recorded per term, so leave the subject empty."; an unknown subjectId -> 404 "Subject not found."
    Negative: no active statistics purpose -> 409 "There is no active statistics consent purpose, so no cohort data can be shown."; an attribute the purpose does not cover -> 400; an unknown termId -> 404 "Academic term not found."; {welfareOfficerToken} -> 403
    Negative (Steward side): activating a second statistics purpose -> 409 "Another active consent purpose is already the statistics purpose; deactivate it first."; using it for a support category or a consent request -> 400
    GET /api/Statistics/cohort/export?dataAttributeId={attrGpaId}&termId={termFall2026Id}&format=csv [EXISTS] -> a file; activity log statisticsExported

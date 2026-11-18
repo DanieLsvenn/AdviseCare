@@ -1,8 +1,25 @@
-ADVISECARE MOCK DATA GUIDE (18/11/2026)
+ADVISECARE MOCK DATA GUIDE (18/11/2026, demo import files)
 
-What this covers: the mock data in section 4 of AdviseCare_Database_Script.sql, plus the mock import files in this folder
+What this covers: the mock data in section 4 of AdviseCare_Database_Script.sql, plus the demo import files in this folder
 (Documentation/AdviseCare_Mock_Data in the repo; AdviseCareTempFolder/AdviseCare_Mock_Data in the temp folder).
+The script's mock accounts and records stay, so the system looks lived-in; the import files only hold the team's two real Google accounts.
 Reference date of the data: 2026-10-30. Fall 2026 is the current term.
+
+Changes on 18/11/2026 (demo import files, QC-243):
+- The mock import files were replaced by three demo files for the team's two real Google accounts (ngophanthanhcong123456@gmail.com and t3nt3nyulie@gmail.com),
+  each as .xlsx and .csv: account_import, mock_data_sum2026, mock_data_fall2026.
+- Each file has exactly one invalid cell on purpose (a wrong value type), to show the all-or-nothing check and the editable preview; fix the cell and import again.
+- The mock students no longer get imported values: their screens show the seeded cases, consents and Spring 2026 rows only.
+- Removed: accounts_import_valid/.csv, accounts_import_invalid_rows, accounts_import_invalid_columns, mock_studentdata_* (summer, fall, update, archived, invalid, invalid_columns, student_gmail)
+  and the Documentation/Excel_import copy (QC-249).
+- The older change notes below mention files that no longer exist.
+
+Changes on 18/11/2026 (per-subject data attributes, QC-251):
+- Attendance rate, Absent slots and Late submissions are now recorded per subject, and the new per-subject attribute Subject mark (numeric, 0-10) was added (26 data attributes).
+- Every student data file has a sixth column, Subject (a subject code such as PRN212): filled on rows of per-subject attributes, empty on the others.
+  Each mock student has two subjects of their faculty (student@gmail.com: PRN212 and SWP391), with one value per subject, plus a Subject mark per subject.
+- Per-subject attributes get no missing rows. The one seeded Spring 2026 missing row of Attendance rate is now a missing Credits earned row.
+- mock_studentdata_invalid has 3 new invalid rows (per-subject row without a subject, per-term row with a subject, unknown subject code).
 
 Changes on 18/11/2026 (one role per account, QC-245):
 - Vũ Đăng Khoa now has two accounts, one per role: aa.khoavd (Academic Advisor) and the new ph.khoavd (Programme Head of SE).
@@ -21,56 +38,37 @@ Changes on 09/11/2026:
 ==========
 
 Step 1 - run AdviseCare_Database_Script.sql
-- It recreates all 48 tables and inserts the mock data (about 3,400 rows across 47 tables; INDICATORFLAGS starts empty).
+- It recreates all 49 tables and inserts the mock data (about 3,400 rows across 47 tables; INDICATORFLAGS and CASEMESSAGEATTACHMENTS start empty).
 
 Step 2 - start the API
 - Use the master key of your environment (Encryption:MasterKeys / Encryption:CurrentVersion).
 
-Step 3 - sign in as admin02@example.com (password 123456) and import the student data values, in this order:
-   POST /api/StudentData/import (multipart/form-data)
-   columnMapping = { "studentIdentifier": "Student", "dataAttribute": "Data attribute", "value": "Value", "term": "Term", "validFrom": "Valid from" }
-   1. mock_studentdata_summer2026.xlsx
-      - 1,056 rows, all valid (1,033 mock rows + 23 rows for student@gmail.com).
-      - Some (student, attribute) pairs are left out on purpose, so missing rows are created for enrolled students.
-   2. mock_studentdata_fall2026.xlsx
-      - 1,037 rows, all valid (1,014 mock rows + 23 rows for student@gmail.com).
-      - The Student column mixes emails, usernames and student codes: all 3 identifiers must work.
-      - student@gmail.com gets Attendance rate 72, so the active "Low attendance" indicator (< 75) flags it.
-   3. mock_studentdata_fall2026_update.xlsx
-      - 37 rows: new GPA and Attendance rate values for 16 students (student@gmail.com included), valid from 2026-10-28.
-      - Also 5 late "Absent slots" values that are valid from 2026-10-01 but recorded today (see the EX13 test in section 5).
-   4. mock_studentdata_archived.xlsx
-      - 4 rows: 2 for archived attributes (Club membership count, Dormitory block).
-      - Expect isSuccess = true, insertedCount = 2 and rejectedRows = the 2 archived rows.
-   5. mock_studentdata_invalid.xlsx (and the same rows as mock_studentdata_invalid.csv)
-      - 8 rows: 1 valid and 7 invalid.
-      - The invalid rows have: an unknown student, an unknown attribute, "abc" as a number, an unknown term, "yes" as a boolean, an empty value, and a bad date.
-      - Expect isSuccess = false, 7 errors and nothing inserted (all-or-nothing).
-   6. mock_studentdata_invalid_columns.xlsx
-      - Columns Student, Data attribute, Score, Term: "Value" is named "Score" and "Valid from" is missing.
-      - With the columnMapping above, expect 400 "Mapped column(s) not found in the file: Value, Valid from."
-      - Mapping value to "Score" still fails on validFrom: every field must be mapped to a column.
-   7. mock_studentdata_student_gmail.csv (optional, any time after file 3)
-      - 4 valid rows for student@gmail.com, valid from 2026-11-05 (GPA 6.3, Attendance rate 74, Late submissions 7, Tuition overdue true).
-      - Shows that a .csv works with the same columnMapping; Tuition overdue = true hits the "Tuition overdue" indicator.
-
-Step 4 (optional) - account import, signed in as an admin:
+Step 3 - sign in as admin02@example.com (password 123456) and import the two demo accounts
    POST /api/Accounts/import (multipart/form-data, file only; POST /api/Accounts/import/preview shows the same checks without writing)
    - Columns: email, fullName, userName, facultyCode, role (exactly one role name: every account has exactly one role), studentCode, academicStatus.
      Staff rows leave studentCode and academicStatus empty; an empty academicStatus on a Student row means enrolled.
-   1. accounts_import_valid.xlsx (or accounts_import_valid.csv, same 10 rows)
-      - 4 staff (aa.phuongnt, wa.huyld, wo.thanhpv, aa.ngocpt) and 6 students (SE180036, SE190037, SE180038, BA180149, BA190150, BA170151).
-      - Expect isSuccess = true and createdCount = 10. Importing the second file after the first gives 10 "already used" errors.
-   2. accounts_import_invalid_rows.xlsx
-      - 12 rows: row 2 is valid, rows 3-13 each have one problem.
-      - Row 3: email student@gmail.com already used. Row 4: email not valid. Row 5: fullName empty and userName aa.hungpt already used.
-        Row 6: faculty code IT does not exist. Row 7: role Teacher does not exist. Row 8: Student without studentCode.
-        Row 9: academicStatus suspended. Row 10: staff row with a studentCode. Row 11: studentCode SE180003 already used.
-        Row 12: the email of row 2 a second time in the file. Row 13: two roles (Academic Advisor, Programme Head) in one row.
-      - Expect isSuccess = false, 11 errors and nothing created (all-or-nothing, the valid row 2 is not created either).
-   3. accounts_import_invalid_columns.xlsx
-      - Columns email, fullName, userName, faculty, studentCode.
-      - Expect isSuccess = false with one error on row 1: "Missing column(s): facultyCode, role."
+   account_import.xlsx (or account_import.csv, same rows)
+   - 2 Student rows of faculty SE: ngophanthanhcong123456@gmail.com (Ngô Phan Thành Công, SE180099) and t3nt3nyulie@gmail.com (Nguyễn Như Thành, thanhcute, SE182739).
+   - Invalid cell on purpose: row 3 academicStatus "eenrolled". Expect isSuccess = false, 1 error on row 3 and nothing created (all-or-nothing).
+   - Fix it to enrolled (in the editable preview or the file) and import again: expect isSuccess = true and createdCount = 2.
+   - Then send the linking emails (POST /api/Accounts/linking-emails); each person opens the link and signs in with that Google account (EX1).
+
+Step 4 - import the student data values of the two demo accounts, Summer 2026 first
+   POST /api/StudentData/import (multipart/form-data)
+   columnMapping = { "studentIdentifier": "Student", "dataAttribute": "Data attribute", "value": "Value", "term": "Term", "validFrom": "Valid from", "subject": "Subject" }
+   (the Subject column holds subject codes and is filled only for the per-subject attributes Attendance rate, Absent slots, Late submissions and Subject mark)
+   1. mock_data_sum2026.xlsx (or mock_data_sum2026.csv)
+      - 56 rows, valid from 2026-08-10: every active data attribute for both students (two subjects each for the per-subject ones:
+        Công PRF192 and MAE101, Thành PRF192 and CSD201).
+      - Invalid cell on purpose: Công's "Financial difficulty" is "no" (not true/false). Expect isSuccess = false with 1 error; fix it to false and import again.
+      - Then expect insertedCount = 56; missing rows go to the other enrolled students (the mock ones), since they have no Summer values in this file.
+   2. mock_data_fall2026.xlsx (or mock_data_fall2026.csv)
+      - 48 rows, valid from 2026-11-12 (Công PRN212 and SWP391, Thành DBI202 and CSD201).
+      - Left out on purpose, so they become missing rows: Công's Credits attempted, Library visits, English level, Receives meal support;
+        Thành's LMS logins per week, Commute time, Scholarship status, Family income bracket.
+      - Invalid cell on purpose: Công's GPA is "7,2" (a decimal comma is not a number). Expect isSuccess = false with 1 error; fix it to 7.2 and import again.
+      - Then expect insertedCount = 48. Thành hits 4 active indicators: Low attendance (68 in DBI202 only, CSD201 is 80), Very low GPA (4.8),
+        Two or more failed subjects (2) and Tuition overdue (true). Công hits none.
 
 Why the values are not in the SQL script
 - STUDENTDATA values are AES-256-GCM encrypted with the student's attribute key, and that key is wrapped with the API master key.
@@ -95,7 +93,7 @@ The base test accounts (@gmail.com)
   - a closed "Stress and balance" wellbeing case with wa.ngocbt (opened 2026-09-20, closed 2026-10-10), 4 thread messages and a 5-star feedback;
   - an open PRN212 "Exam preparation" academic case with aa.hungpt, stage contacted, 2 thread messages;
   - 8 stage history rows, 4 CASE_ATTRIBUTE rows (Part-time work hours, Commute time, Late submissions, LMS logins per week) and the 4 matching granted consents;
-  - a full row of values in the Summer 2026 and Fall 2026 import files.
+  - no imported values any more (the demo import files only hold the two real Google accounts).
 - The master data has the same names as in the API workflow list (faculties SE/BA, BSE, the terms, PRN212/SWP391/MKT101, GPA/Attendance rate/...,
   Academic advising/Wellbeing support/Financial support, the support categories). So the create steps in EX11/WF3 return 409 with the reason;
   the workflow list shows that unhappy result too, then looks the ids up with GET/search.
@@ -185,7 +183,7 @@ Identity and access
 - 125 sessions: active and ended, on 5 kinds of devices.
 - 23 notification preferences.
 - 122 notifications: read and unread.
-- 1,141 activity logs, written for the seeded actions with the real activity types from AdviseCare_Activity_Types.txt.
+- 1,142 activity logs, written for the seeded actions with the real activity types from AdviseCare_Activity_Types.txt.
 
 Master data
 - 2 faculties, 1 programme (BSE).
@@ -194,15 +192,15 @@ Master data
 - 13 advisor-subject links.
 
 Consent and data protection
-- 25 data attributes:
-  - 23 active: 12 numeric, 6 categorical, 5 boolean;
+- 26 data attributes (4 per subject: Attendance rate, Absent slots, Late submissions, Subject mark; the rest per term):
+  - 24 active: 13 numeric, 6 categorical, 5 boolean;
   - 2 archived: Club membership count, Dormitory block.
 - 6 consent purposes:
   - Academic advising, Wellbeing support, Financial support (active);
   - Cohort statistics (active, isForStatistics = 1: the only purpose cohort data may use);
   - Career guidance (inactive);
   - Retention pilot 2025 (retired).
-- 37 purpose-attribute links (Cohort statistics covers GPA, Attendance rate, Failed subjects and Accommodation status).
+- 38 purpose-attribute links (Academic advising also covers Subject mark; Cohort statistics covers GPA, Attendance rate, Failed subjects and Accommodation status).
 - 9 access policies: 6 active (one of them: Programme Head on Cohort statistics), 2 draft, 1 revoked.
 - 605 consents:
   - 554 granted, some with an expiry that has already passed and some that expires in 2027;
@@ -224,7 +222,7 @@ Consent and data protection
 Early-support indicators
 - 6 indicators set by steward02: Low attendance (< 75), Very low GPA (< 5), Two or more failed subjects (>= 2), Academic probation (= probation),
   Tuition overdue (= true) are active; Many late submissions (> 5) is a draft and raises no flags.
-- INDICATORFLAGS has no seed rows: the flags appear after the Fall 2026 import (student@gmail.com is flagged for Low attendance).
+- INDICATORFLAGS has no seed rows: the flags appear after the Fall 2026 import (t3nt3nyulie@gmail.com: Low attendance in DBI202, Very low GPA, Two or more failed subjects, Tuition overdue; flags of per-subject rules carry the subject).
 
 Cases
 - 50 cases (48 mock + 2 of student@gmail.com). Every stage is covered:
@@ -265,8 +263,9 @@ Extra scope tables (small)
 - Welfare statistics: GET /api/Statistics/welfare?from=2026-09-01&to=2026-10-31 (wo.yennh or a Programme Head).
   Categories counted from fewer than 5 different students come back with isSuppressed = true and no counts.
 - Cohort data: GET /api/Statistics/cohort?dataAttributeId=<GPA>&termId=<Fall 2026> (ph.quanpm or ph.khoavd), after the Fall 2026 import.
-  - The whole cohort is shown (about 30 consented students).
-  - With isByFaculty=true, SE is shown and BA (1 student) is suppressed.
+  - Only the two demo students have Fall values, and only if they consented under Cohort statistics, so every cell is suppressed (fewer than 10 students).
+    That is the expected result and shows the suppression; the 60 seeded statistics consents belong to mock students without imported values.
+  - Attendance rate is per subject, so its cohort data needs &subjectId=<a subject> (e.g. DBI202).
   - Every value read is written to ACCESSLOGS with the Cohort statistics purpose.
 
 ==========
@@ -287,19 +286,15 @@ Extra scope tables (small)
   - Review the 5 completed erasures.
   - Edit the indicators (activate the draft one and re-check the flags).
 - Correction requests (shared advisor pool, QC-214)
-  - Sign in as a mock student, call POST /api/CorrectionRequests with one of their Fall 2026 studentDataIds and the Academic advising purpose.
+  - Sign in as one of the two demo students, call POST /api/CorrectionRequests with one of their Fall 2026 studentDataIds and the Academic advising purpose.
   - Every Academic Advisor sees it in GET /api/CorrectionRequests; the first one to approve or reject decides.
 - Point-in-time (EX13)
-  - Pick a student from the update file and call /api/StudentData/students/{id}/as-of.
-  - Valid time with the late "Absent slots" rows (valid from 2026-10-01, but recorded when you import the update file):
-    - as-of 2026-10-05 with timeAxis=valid shows the late value, because nothing else was valid yet;
-    - as-of 2026-10-20 with timeAxis=valid shows the Fall value from mock_studentdata_fall2026.xlsx (valid from 2026-10-12 to 2026-10-18), because it is valid later.
-  - System time:
-    - transactionFrom is the moment you ran the import;
-    - so as-of any date before your import with timeAxis=system shows no Fall values;
-    - as-of today shows the latest recorded value.
+  - Sign in as an advisor with consent or emergency access to t3nt3nyulie@gmail.com and call /api/StudentData/students/{id}/as-of (or the Private data tab as the student).
+  - Valid time: as-of 2026-09-01 with timeAxis=valid shows the Summer 2026 values only (valid from 2026-08-10); as-of 2026-11-15 also shows the Fall ones (valid from 2026-11-12).
+  - System time: transactionFrom is the moment you ran each import, so as-of a date before your imports with timeAxis=system shows nothing.
+  - Re-importing a corrected value (e.g. Thành's DBI202 Attendance rate 75) adds a new row; the old one stays in the history and the Low attendance flag for DBI202 clears.
 - Student's own data
-  - Sign in as student@gmail.com or any enrolled mock student (e.g. binhnqse180003, thaodase180005).
+  - Sign in with one of the two demo Google accounts after linking (or student@gmail.com for the seeded cases and consents, without imported values).
   - Use GET /api/StudentData/me, GET /api/StudentProfiles/me and GET /api/StudentData/me/export.
 
 ==========

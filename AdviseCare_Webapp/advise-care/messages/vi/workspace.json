@@ -286,6 +286,8 @@
   "isMissing": "Thiếu giá trị",
   "isShared": "Đã chia sẻ",
   "dataAttributeName": "Thuộc tính dữ liệu",
+  "isSubjectSpecific": "Ghi theo môn học",
+  "importSubjectColumn": "Cột môn học (chỉ cho dữ liệu theo môn)",
   "consentPurposeName": "Mục đích đồng ý",
   "toAccountName": "Tài khoản nhận",
   "fromAccountName": "Tài khoản gửi",

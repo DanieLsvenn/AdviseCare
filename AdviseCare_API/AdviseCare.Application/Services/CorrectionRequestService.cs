@@ -488,7 +488,7 @@ namespace AdviseCare.Application.Services
             return purpose;
         }
 
-        // Helper: the disputed row must be the student's current (latest recorded) value for its attribute and term, with a value and an active key
+        // Helper: the disputed row must be the student's current (latest recorded) value for its attribute, term and subject, with a value and an active key
         private async Task<Studentdata> GetCurrentSourceAsync(Guid StudentDataId)
         {
             var source = (await _studentDataRepository.SearchAsyncInclude(d => d.StudentDataId == StudentDataId,
@@ -498,8 +498,8 @@ namespace AdviseCare.Application.Services
                 throw new ConflictException("A missing or erased value cannot be corrected.");
             if (await _studentDataRepository.ExistsAsync(d =>
                     d.StudentId == source.StudentId && d.DataAttributeId == source.DataAttributeId && d.TermId == source.TermId &&
-                    d.TransactionFrom > source.TransactionFrom))
-                throw new ConflictException("Only the latest value of an attribute and term can be corrected.");
+                    d.SubjectId == source.SubjectId && d.TransactionFrom > source.TransactionFrom))
+                throw new ConflictException("Only the latest value of an attribute and term (and subject, for a per-subject attribute) can be corrected.");
             return source;
         }
 

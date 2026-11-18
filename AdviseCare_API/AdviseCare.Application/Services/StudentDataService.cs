@@ -27,6 +27,7 @@ namespace AdviseCare.Application.Services
         private readonly IGenericRepository<Studentprofile> _studentProfileRepository;
         private readonly IGenericRepository<Dataattribute> _dataAttributeRepository;
         private readonly IGenericRepository<Academicterm> _academicTermRepository;
+        private readonly IGenericRepository<Subject> _subjectRepository;
         private readonly IGenericRepository<Case> _caseRepository;
         private readonly IExcelReader _excelReader;
         private readonly ICsvReader _csvReader;
@@ -43,6 +44,7 @@ namespace AdviseCare.Application.Services
             IGenericRepository<Studentprofile> studentProfileRepository,
             IGenericRepository<Dataattribute> dataAttributeRepository,
             IGenericRepository<Academicterm> academicTermRepository,
+            IGenericRepository<Subject> subjectRepository,
             IGenericRepository<Case> caseRepository,
             IExcelReader excelReader,
             ICsvReader csvReader,
@@ -58,6 +60,7 @@ namespace AdviseCare.Application.Services
             _studentProfileRepository = studentProfileRepository;
             _dataAttributeRepository = dataAttributeRepository;
             _academicTermRepository = academicTermRepository;
+            _subjectRepository = subjectRepository;
             _caseRepository = caseRepository;
             _excelReader = excelReader;
             _csvReader = csvReader;
@@ -79,10 +82,13 @@ namespace AdviseCare.Application.Services
                 DataAttributeId = d.DataAttributeId,
                 DataSourceId = d.DataSourceId,
                 StudentId = d.StudentId,
+                SubjectId = d.SubjectId,
                 TermId = d.TermId,
                 AttributeName = d.DataAttribute.AttributeName,
                 ProvenanceNote = d.ProvenanceNote ?? string.Empty,
                 StudentFullName = d.Student.FullName,
+                SubjectCode = d.Subject?.SubjectCode ?? string.Empty,
+                SubjectName = d.Subject?.SubjectName ?? string.Empty,
                 TermName = d.Term.TermName,
                 ErasedAt = d.ErasedAt,
                 TransactionFrom = d.TransactionFrom,
@@ -109,10 +115,13 @@ namespace AdviseCare.Application.Services
                     DataAttributeId = d.DataAttributeId,
                     DataSourceId = d.DataSourceId,
                     StudentId = d.StudentId,
+                    SubjectId = d.SubjectId,
                     TermId = d.TermId,
                     AttributeName = d.DataAttribute.AttributeName,
                     ProvenanceNote = d.ProvenanceNote ?? string.Empty,
                     StudentFullName = d.Student.FullName,
+                    SubjectCode = d.Subject?.SubjectCode ?? string.Empty,
+                    SubjectName = d.Subject?.SubjectName ?? string.Empty,
                     TermName = d.Term.TermName,
                     ErasedAt = d.ErasedAt,
                     TransactionFrom = d.TransactionFrom,
@@ -134,10 +143,13 @@ namespace AdviseCare.Application.Services
                 DataAttributeId = row.DataAttributeId,
                 DataSourceId = row.DataSourceId,
                 StudentId = row.StudentId,
+                SubjectId = row.SubjectId,
                 TermId = row.TermId,
                 AttributeName = row.DataAttribute.AttributeName,
                 ProvenanceNote = row.ProvenanceNote ?? string.Empty,
                 StudentFullName = row.Student.FullName,
+                SubjectCode = row.Subject?.SubjectCode ?? string.Empty,
+                SubjectName = row.Subject?.SubjectName ?? string.Empty,
                 TermName = row.Term.TermName,
                 ErasedAt = row.ErasedAt,
                 TransactionFrom = row.TransactionFrom,
@@ -147,12 +159,13 @@ namespace AdviseCare.Application.Services
             };
         }
 
-        // Search Student data rows by attribute, student, term, missing flag or status (e.g. every missing value of a term; never the values)
+        // Search Student data rows by attribute, student, subject, term, missing flag or status (e.g. every missing value of a term; never the values)
         public async Task<List<SearchStudentDataResponse>> SearchAsync(SearchStudentDataRequest request)
         {
             var rows = await GetRowsAsync(d =>
                 (request.DataAttributeId == null || d.DataAttributeId == request.DataAttributeId) &&
                 (request.StudentId == null || d.StudentId == request.StudentId) &&
+                (request.SubjectId == null || d.SubjectId == request.SubjectId) &&
                 (request.TermId == null || d.TermId == request.TermId) &&
                 (request.IsMissing == null || d.IsMissing == request.IsMissing) &&
                 (string.IsNullOrWhiteSpace(request.Status) || d.Status == request.Status));
@@ -163,10 +176,13 @@ namespace AdviseCare.Application.Services
                 DataAttributeId = d.DataAttributeId,
                 DataSourceId = d.DataSourceId,
                 StudentId = d.StudentId,
+                SubjectId = d.SubjectId,
                 TermId = d.TermId,
                 AttributeName = d.DataAttribute.AttributeName,
                 ProvenanceNote = d.ProvenanceNote ?? string.Empty,
                 StudentFullName = d.Student.FullName,
+                SubjectCode = d.Subject?.SubjectCode ?? string.Empty,
+                SubjectName = d.Subject?.SubjectName ?? string.Empty,
                 TermName = d.Term.TermName,
                 ErasedAt = d.ErasedAt,
                 TransactionFrom = d.TransactionFrom,
@@ -177,7 +193,7 @@ namespace AdviseCare.Application.Services
         }
 
         // Create Student data by importing an .xlsx/.csv file: every valid row is encrypted and inserted as a new row (never an update), every enrolled student
-        // without a value for an imported attribute/term gets a missing row, all in one save. Any invalid row fails the whole import; rows of archived
+        // without a value for an imported per-term attribute/term gets a missing row (per-subject attributes get none), all in one save. Any invalid row fails the whole import; rows of archived
         // data attributes are not imported but listed in RejectedRows, and the other rows still go in
         public async Task<CreateStudentDataResponse> CreateAsync(Guid CreatorId, CreateStudentDataRequest request)
         {
@@ -196,6 +212,7 @@ namespace AdviseCare.Application.Services
                 DataSourceId = null,
                 DataAttributeId = r.DataAttribute.DataAttributeId,
                 StudentId = r.Student.AccountId,
+                SubjectId = r.Subject?.SubjectId,
                 TermId = r.Term.TermId,
                 ProvenanceNote = $"Imported from {fileName} on {transactionAt:yyyy-MM-dd}.",
                 TransactionFrom = transactionAt,
@@ -220,13 +237,14 @@ namespace AdviseCare.Application.Services
                 _studentDataRepository.PrepareCreate(newRows[index]);
             }
 
-            // Missing rows: every enrolled student without a value for an imported attribute/term pair
+            // Missing rows: every enrolled student without a value for an imported attribute/term pair; only for per-term attributes, since
+            // AdviseCare does not know which subjects a student takes and cannot tell a missing per-subject value from a subject not taken
             var enrolledStudentIds = (await _studentProfileRepository.SearchAsyncInclude(p =>
                     p.AcademicStatus == "enrolled" && p.Student.Status == "active", p => p.Student))
                 .Select(p => p.StudentId)
                 .ToList();
             var importedTriples = import.Rows.Select(r => (r.Student.AccountId, r.DataAttribute.DataAttributeId, r.Term.TermId)).ToHashSet();
-            var importedPairs = import.Rows.Select(r => (r.DataAttribute, r.Term)).DistinctBy(p => (p.DataAttribute.DataAttributeId, p.Term.TermId)).ToList();
+            var importedPairs = import.Rows.Where(r => !r.DataAttribute.IsSubjectSpecific).Select(r => (r.DataAttribute, r.Term)).DistinctBy(p => (p.DataAttribute.DataAttributeId, p.Term.TermId)).ToList();
             var missingCount = 0;
             foreach (var studentId in enrolledStudentIds)
             {
@@ -341,9 +359,9 @@ namespace AdviseCare.Application.Services
         public async Task<CompareStudentDataResponse> CompareAsync(Guid AccessorId, Guid StudentId, CompareStudentDataRequest request)
         {
             var valuesA = (await BuildSnapshotAsync(AccessorId, StudentId, request.CaseId, request.TermId, request.DateA, request.TimeAxis))
-                .ToDictionary(v => (v.DataAttributeId, v.TermId));
+                .ToDictionary(v => (v.DataAttributeId, v.TermId, v.SubjectId));
             var valuesB = (await BuildSnapshotAsync(AccessorId, StudentId, request.CaseId, request.TermId, request.DateB, request.TimeAxis))
-                .ToDictionary(v => (v.DataAttributeId, v.TermId));
+                .ToDictionary(v => (v.DataAttributeId, v.TermId, v.SubjectId));
 
             return new CompareStudentDataResponse
             {
@@ -361,8 +379,11 @@ namespace AdviseCare.Application.Services
                         return new CompareStudentDataValueResponse
                         {
                             DataAttributeId = k.DataAttributeId,
+                            SubjectId = k.SubjectId,
                             TermId = k.TermId,
                             AttributeName = any.AttributeName,
+                            SubjectCode = any.SubjectCode,
+                            SubjectName = any.SubjectName,
                             TermName = any.TermName,
                             DateAValue = valueA,
                             DateBValue = valueB
@@ -370,6 +391,7 @@ namespace AdviseCare.Application.Services
                     })
                     .OrderBy(v => v.TermName)
                     .ThenBy(v => v.AttributeName)
+                    .ThenBy(v => v.SubjectCode)
                     .ToList(),
                 TimeAxis = request.TimeAxis
             };
@@ -456,16 +478,17 @@ namespace AdviseCare.Application.Services
                     d.StudentId == StudentId &&
                     (TermId == null || d.TermId == TermId) &&
                     (cutoff == null || (useValidTime ? d.ValidFrom < cutoff : d.TransactionFrom < cutoff)),
-                d => d.DataAttribute, d => d.Term);
+                d => d.DataAttribute, d => d.Subject, d => d.Term);
 
-            // The row in effect for each attribute and term: system time = latest recorded; valid time = latest valid, a later recording winning on ties
+            // The row in effect for each attribute, term and subject (no subject for a per-term attribute): system time = latest recorded; valid time = latest valid, a later recording winning on ties
             var currentRows = rows
-                .GroupBy(d => new { d.DataAttributeId, d.TermId })
+                .GroupBy(d => new { d.DataAttributeId, d.TermId, d.SubjectId })
                 .Select(g => useValidTime
                     ? g.OrderByDescending(d => d.ValidFrom).ThenByDescending(d => d.TransactionFrom).First()
                     : g.OrderByDescending(d => d.TransactionFrom).ThenByDescending(d => d.ValidFrom).First())
                 .OrderBy(d => d.Term.StartDate)
                 .ThenBy(d => d.DataAttribute.AttributeName)
+                .ThenBy(d => d.Subject?.SubjectCode)
                 .ToList();
             if (currentRows.Count == 0)
                 return new List<StudentDataValueResponse>();
@@ -494,7 +517,9 @@ namespace AdviseCare.Application.Services
                 StudentId = StudentId,
                 StudentDataId = d.StudentDataId,
                 ConsentPurposeId = decisions[d.DataAttributeId].ConsentPurposeId,
-                AccessedResource = $"Student data: {d.DataAttribute.AttributeName} ({d.Term.TermName})"
+                AccessedResource = d.Subject == null
+                    ? $"Student data: {d.DataAttribute.AttributeName} ({d.Term.TermName})"
+                    : $"Student data: {d.DataAttribute.AttributeName} - {d.Subject.SubjectCode} ({d.Term.TermName})"
             }).ToList());
 
             return currentRows.Select(d =>
@@ -506,9 +531,12 @@ namespace AdviseCare.Application.Services
                     DataAttributeId = d.DataAttributeId,
                     DataSourceId = isShared ? d.DataSourceId : null,
                     StudentDataId = isShared ? d.StudentDataId : null,
+                    SubjectId = d.SubjectId,
                     TermId = d.TermId,
                     AttributeName = d.DataAttribute.AttributeName,
                     ProvenanceNote = isShared ? d.ProvenanceNote ?? string.Empty : string.Empty,
+                    SubjectCode = d.Subject?.SubjectCode ?? string.Empty,
+                    SubjectName = d.Subject?.SubjectName ?? string.Empty,
                     TermName = d.Term.TermName,
                     Value = value?.Value,
                     TransactionFrom = isShared ? d.TransactionFrom : null,
@@ -522,7 +550,7 @@ namespace AdviseCare.Application.Services
             }).ToList();
         }
 
-        // Helper: read the file and the column mapping, then check every row against the students, data attributes and terms;
+        // Helper: read the file and the column mapping, then check every row against the students, data attributes, terms and subjects;
         // rows of archived data attributes are set aside in RejectedRows instead of failing the import
         private async Task<ImportCheck> ReadImportAsync(CreateStudentDataRequest request)
         {
@@ -547,8 +575,12 @@ namespace AdviseCare.Application.Services
 
             var mappedHeaders = new[] { mapping.StudentIdentifier, mapping.DataAttribute, mapping.Value, mapping.Term, mapping.ValidFrom }
                 .Select(h => h?.Trim() ?? string.Empty).ToArray();
+            // The subject column is optional: it only has to be mapped when the file holds values of per-subject data attributes
+            var subjectHeader = mapping.Subject?.Trim() ?? string.Empty;
+            if (subjectHeader.Length > 0)
+                mappedHeaders = mappedHeaders.Append(subjectHeader).ToArray();
             var mappingError =
-                mappedHeaders.Any(string.IsNullOrWhiteSpace) ? "Every field (studentIdentifier, dataAttribute, value, term, validFrom) must be mapped to a column." :
+                mappedHeaders.Take(5).Any(string.IsNullOrWhiteSpace) ? "Every field (studentIdentifier, dataAttribute, value, term, validFrom) must be mapped to a column." :
                 mappedHeaders.Distinct(StringComparer.OrdinalIgnoreCase).Count() != mappedHeaders.Length ? "Each field must map to a different column." :
                 mappedHeaders.Where(h => !rows[0].Values.ContainsKey(h)).ToList() is { Count: > 0 } notFound ? $"Mapped column(s) not found in the file: {string.Join(", ", notFound)}." :
                 null;
@@ -566,9 +598,10 @@ namespace AdviseCare.Application.Services
             var dataAttributes = (await _dataAttributeRepository.GetAllAsync()).ToDictionary(a => a.AttributeName, StringComparer.OrdinalIgnoreCase);
             var terms = (await _academicTermRepository.GetAllAsync()).GroupBy(t => t.TermName, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+            var subjects = (await _subjectRepository.GetAllAsync()).ToDictionary(s => s.SubjectCode, StringComparer.OrdinalIgnoreCase);
 
-            // One value per student, data attribute and term in a file: a second row for the same triple is reported, not silently stacked
-            var seenTriples = new Dictionary<(Guid, Guid, Guid), int>();
+            // One value per student, data attribute, term and subject in a file: a second row for the same key is reported, not silently stacked
+            var seenKeys = new Dictionary<(Guid, Guid, Guid, Guid?), int>();
 
             foreach (var row in rows)
             {
@@ -577,6 +610,7 @@ namespace AdviseCare.Application.Services
                 var value = GetValue(row, mapping.Value);
                 var termName = GetValue(row, mapping.Term);
                 var validFromText = GetValue(row, mapping.ValidFrom);
+                var subjectCode = GetValue(row, mapping.Subject);
                 var messages = new List<string>();
 
                 List<Account>? matches = null;
@@ -589,6 +623,15 @@ namespace AdviseCare.Application.Services
                 else if (!dataAttributes.TryGetValue(attributeName, out dataAttribute)) messages.Add($"data attribute '{attributeName}' does not exist");
                 else if (string.IsNullOrEmpty(value)) messages.Add("value is empty");
                 else if (!DataValueValidator.IsValid(dataAttribute.DataType, value)) messages.Add($"value '{value}' is not valid for the {dataAttribute.DataType} data attribute '{attributeName}'");
+
+                Subject? subject = null;
+                if (dataAttribute != null && dataAttribute.IsSubjectSpecific)
+                {
+                    if (string.IsNullOrEmpty(subjectCode)) messages.Add($"subject is empty, but '{dataAttribute.AttributeName}' is recorded per subject");
+                    else if (!subjects.TryGetValue(subjectCode, out subject)) messages.Add($"subject '{subjectCode}' does not exist");
+                }
+                else if (dataAttribute != null && !string.IsNullOrEmpty(subjectCode))
+                    messages.Add($"'{dataAttribute.AttributeName}' is recorded per term, so its subject must be empty");
 
                 List<Academicterm>? termMatches = null;
                 if (string.IsNullOrEmpty(termName)) messages.Add("term is empty");
@@ -611,15 +654,16 @@ namespace AdviseCare.Application.Services
                     continue;
                 }
 
-                var triple = (matches![0].AccountId, dataAttribute.DataAttributeId, termMatches![0].TermId);
-                if (seenTriples.TryGetValue(triple, out var firstRow))
+                var key = (matches![0].AccountId, dataAttribute.DataAttributeId, termMatches![0].TermId, subject?.SubjectId);
+                if (seenKeys.TryGetValue(key, out var firstRow))
                 {
-                    check.Errors.Add(new StudentDataRowErrorResponse { RowNumber = row.RowNumber, Messages = { $"row {firstRow} already gives '{dataAttribute.AttributeName}' of student '{identifier}' for term '{termName}'; keep one of the two rows" } });
+                    var subjectText = subject == null ? string.Empty : $" in subject '{subject.SubjectCode}'";
+                    check.Errors.Add(new StudentDataRowErrorResponse { RowNumber = row.RowNumber, Messages = { $"row {firstRow} already gives '{dataAttribute.AttributeName}' of student '{identifier}' for term '{termName}'{subjectText}; keep one of the two rows" } });
                     continue;
                 }
-                seenTriples[triple] = row.RowNumber;
+                seenKeys[key] = row.RowNumber;
 
-                check.Rows.Add(new ImportRow(matches![0], dataAttribute, termMatches![0], value, validFrom.UtcDateTime));
+                check.Rows.Add(new ImportRow(matches![0], dataAttribute, termMatches![0], subject, value, validFrom.UtcDateTime));
             }
 
             return check;
@@ -685,11 +729,11 @@ namespace AdviseCare.Application.Services
             return lookup;
         }
 
-        // Helper: load Student data rows with their attribute, student and term, newest first
+        // Helper: load Student data rows with their attribute, student, subject and term, newest first
         private async Task<List<Studentdata>> GetRowsAsync(Expression<Func<Studentdata, bool>> predicate)
         {
             return await _studentDataRepository.SearchAsyncIncludeOrderBy(predicate, d => d.TransactionFrom, false,
-                d => d.DataAttribute, d => d.Student, d => d.Term);
+                d => d.DataAttribute, d => d.Student, d => d.Subject, d => d.Term);
         }
 
         // Helper types for the import: the column mapping JSON, one checked row, and the result of the check
@@ -700,9 +744,10 @@ namespace AdviseCare.Application.Services
             public string? Value { get; set; }
             public string? Term { get; set; }
             public string? ValidFrom { get; set; }
+            public string? Subject { get; set; }
         }
 
-        private record ImportRow(Account Student, Dataattribute DataAttribute, Academicterm Term, string Value, DateTime ValidFrom);
+        private record ImportRow(Account Student, Dataattribute DataAttribute, Academicterm Term, Subject? Subject, string Value, DateTime ValidFrom);
 
         private class ImportCheck
         {

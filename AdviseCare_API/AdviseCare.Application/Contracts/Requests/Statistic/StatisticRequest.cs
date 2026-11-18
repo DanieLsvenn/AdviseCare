@@ -38,6 +38,8 @@ namespace AdviseCare.Application.Contracts.Requests.Statistic
         [Required(ErrorMessage = "Data attribute Id is required.")]
         public Guid DataAttributeId { get; set; } = Guid.Empty;
         public Guid? FacultyId { get; set; }
+        // Required for a per-subject data attribute, empty for a per-term one
+        public Guid? SubjectId { get; set; }
         [Required(ErrorMessage = "Term Id is required.")]
         public Guid TermId { get; set; } = Guid.Empty;
         public bool IsByFaculty { get; set; } = false;
@@ -48,6 +50,8 @@ namespace AdviseCare.Application.Contracts.Requests.Statistic
         [Required(ErrorMessage = "Data attribute Id is required.")]
         public Guid DataAttributeId { get; set; } = Guid.Empty;
         public Guid? FacultyId { get; set; }
+        // Required for a per-subject data attribute, empty for a per-term one
+        public Guid? SubjectId { get; set; }
         [Required(ErrorMessage = "Term Id is required.")]
         public Guid TermId { get; set; } = Guid.Empty;
         public bool IsByFaculty { get; set; } = false;

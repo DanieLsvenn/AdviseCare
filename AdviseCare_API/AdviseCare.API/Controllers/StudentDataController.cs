@@ -21,7 +21,7 @@ namespace AdviseCare.API.Controllers
         [HttpGet]
         [Authorize(Roles = "System Administrator,Data Protection Steward")]
         [SwaggerOperation(Summary = "[System Administrator, Data Protection Steward] Get all student data rows with optional pagination",
-            Description = "Lists the rows of the student data ledger, newest first: student, data attribute, term, source note, both bitemporal times, missing/erased flags and status. " +
+            Description = "Lists the rows of the student data ledger, newest first: student, data attribute, term, subject (per-subject attributes only), source note, both bitemporal times, missing/erased flags and status. " +
                 "The values themselves are never returned here. Pass page and pageSize together to page the results.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- Page and page size must be at least 1.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
@@ -42,7 +42,7 @@ namespace AdviseCare.API.Controllers
         [HttpGet("me")]
         [Authorize(Roles = "Student")]
         [SwaggerOperation(Summary = "[Student] Get own student data",
-            Description = "Returns the signed-in student's current value of every data attribute per term, with its source, missing and erased notices. No consent is needed and nothing is logged.")]
+            Description = "Returns the signed-in student's current value of every data attribute per term (and per subject for a per-subject attribute, with subjectCode and subjectName), with its source, missing and erased notices. No consent is needed and nothing is logged.")]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.\n- Only the advisor of this case may read the student's data through it.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status404NotFound, "- Student not found.\n- Case not found.\n- Case not found for this student.", typeof(ErrorResponse))]
@@ -88,7 +88,7 @@ namespace AdviseCare.API.Controllers
         [HttpGet("search")]
         [Authorize(Roles = "System Administrator,Data Protection Steward")]
         [SwaggerOperation(Summary = "[System Administrator, Data Protection Steward] Search/Filter student data rows",
-            Description = "Filters ledger rows by data attribute, student, term, missing flag and status (original/correction), e.g. every missing value of a term after an import. The values are never returned.")]
+            Description = "Filters ledger rows by data attribute, student, subject, term, missing flag and status (original/correction), e.g. every missing value of a term after an import. The values are never returned.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
@@ -104,7 +104,8 @@ namespace AdviseCare.API.Controllers
         [Consumes("multipart/form-data")]
         [SwaggerOperation(Summary = "[System Administrator] Import student data",
             Description = "Validates the whole .xlsx/.csv file with its column mapping, then encrypts every value with the student's key for that data attribute and inserts it as a new row; " +
-                "every enrolled student without a value for an imported attribute/term gets a missing row; everything is saved together. Any invalid row fails the whole import (isSuccess = false with the invalid rows). " +
+                "columnMapping may also map \"subject\" to a column of subject codes (e.g. PRN212): a per-subject data attribute needs a subject on every row and a per-term one must leave it empty. " +
+                "Every enrolled student without a value for an imported per-term attribute/term gets a missing row (per-subject attributes get none, since the subjects a student takes are not known); everything is saved together. Any invalid row fails the whole import (isSuccess = false with the invalid rows). " +
                 "Rows of archived data attributes are not imported but listed in rejectedRows; the other rows still go in.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- Column mapping must be a JSON object.\n- Column mapping must be valid JSON.\n- A non-empty .xlsx or .csv file is required.\n- Only .xlsx and .csv files can be imported.\n- The file could not be read as {extension} data.\n- (details of the failing rows or file)", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
@@ -136,7 +137,7 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [Consumes("multipart/form-data")]
         [SwaggerOperation(Summary = "[System Administrator] Validate a student data import",
-            Description = "Checks the column mapping and every row (student by email/username/student code, data attribute, value against its data type, term, valid-from date). Nothing is written.")]
+            Description = "Checks the column mapping and every row (student by email/username/student code, data attribute, value against its data type, term, valid-from date, and the subject code for a per-subject data attribute). Nothing is written.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- Column mapping must be a JSON object.\n- Column mapping must be valid JSON.\n- A non-empty .xlsx or .csv file is required.\n- Only .xlsx and .csv files can be imported.\n- The file could not be read as {extension} data.\n- (details of the failing rows or file)", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
@@ -186,7 +187,7 @@ namespace AdviseCare.API.Controllers
         [HttpGet("students/{studentId}/compare")]
         [Authorize(Roles = ReaderRoles)]
         [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor, Student Welfare Officer, Programme Head] Compare a student's data on two dates",
-            Description = "Returns both snapshots side by side per data attribute and term on the chosen time axis (system or valid). Each snapshot is authorized and logged on its own.")]
+            Description = "Returns both snapshots side by side per data attribute, term and subject on the chosen time axis (system or valid). Each snapshot is authorized and logged on its own.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.\n- Only the advisor of this case may read the student's data through it.", typeof(ErrorResponse))]

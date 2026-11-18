@@ -13,6 +13,8 @@ public partial class Dataattribute
 
     public string AttributeName { get; set; }
 
+    public bool IsSubjectSpecific { get; set; }
+
     public string DataType { get; set; }
 
     public string Status { get; set; }

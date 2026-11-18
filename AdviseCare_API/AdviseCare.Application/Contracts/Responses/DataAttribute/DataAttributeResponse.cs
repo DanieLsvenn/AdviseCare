@@ -5,6 +5,7 @@ namespace AdviseCare.Application.Contracts.Responses.DataAttribute
         public Guid DataAttributeId { get; set; } = Guid.Empty;
         public string AttributeDescription { get; set; } = string.Empty;
         public string AttributeName { get; set; } = string.Empty;
+        public bool IsSubjectSpecific { get; set; } = false;
         public string DataType { get; set; } = "numeric";
         public string Status { get; set; } = "active";
     }
@@ -14,6 +15,7 @@ namespace AdviseCare.Application.Contracts.Responses.DataAttribute
         public Guid DataAttributeId { get; set; } = Guid.Empty;
         public string AttributeDescription { get; set; } = string.Empty;
         public string AttributeName { get; set; } = string.Empty;
+        public bool IsSubjectSpecific { get; set; } = false;
         public string DataType { get; set; } = "numeric";
         public string Status { get; set; } = "active";
     }
@@ -23,6 +25,7 @@ namespace AdviseCare.Application.Contracts.Responses.DataAttribute
         public Guid DataAttributeId { get; set; } = Guid.Empty;
         public string AttributeDescription { get; set; } = string.Empty;
         public string AttributeName { get; set; } = string.Empty;
+        public bool IsSubjectSpecific { get; set; } = false;
         public string DataType { get; set; } = "numeric";
         public string Status { get; set; } = "active";
     }
@@ -32,6 +35,7 @@ namespace AdviseCare.Application.Contracts.Responses.DataAttribute
         public Guid DataAttributeId { get; set; } = Guid.Empty;
         public string AttributeDescription { get; set; } = string.Empty;
         public string AttributeName { get; set; } = string.Empty;
+        public bool IsSubjectSpecific { get; set; } = false;
         public string DataType { get; set; } = "numeric";
         public string Status { get; set; } = "active";
     }
@@ -41,6 +45,7 @@ namespace AdviseCare.Application.Contracts.Responses.DataAttribute
         public Guid DataAttributeId { get; set; } = Guid.Empty;
         public string AttributeDescription { get; set; } = string.Empty;
         public string AttributeName { get; set; } = string.Empty;
+        public bool IsSubjectSpecific { get; set; } = false;
         public string DataType { get; set; } = "numeric";
         public string Status { get; set; } = "active";
     }
@@ -50,6 +55,7 @@ namespace AdviseCare.Application.Contracts.Responses.DataAttribute
         public Guid DataAttributeId { get; set; } = Guid.Empty;
         public string AttributeDescription { get; set; } = string.Empty;
         public string AttributeName { get; set; } = string.Empty;
+        public bool IsSubjectSpecific { get; set; } = false;
         public string DataType { get; set; } = "numeric";
         public string Status { get; set; } = "active";
     }

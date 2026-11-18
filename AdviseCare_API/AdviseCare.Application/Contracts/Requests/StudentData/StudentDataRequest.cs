@@ -7,6 +7,7 @@ namespace AdviseCare.Application.Contracts.Requests.StudentData
     {
         public Guid? DataAttributeId { get; set; }
         public Guid? StudentId { get; set; }
+        public Guid? SubjectId { get; set; }
         public Guid? TermId { get; set; }
         public bool? IsMissing { get; set; }
         public string Status { get; set; } = string.Empty;
@@ -16,7 +17,8 @@ namespace AdviseCare.Application.Contracts.Requests.StudentData
     {
         [Required(ErrorMessage = "An .xlsx or .csv file is required.")]
         public IFormFile? File { get; set; }
-        // JSON: { "studentIdentifier": "...", "dataAttribute": "...", "value": "...", "term": "...", "validFrom": "..." } (file column names)
+        // JSON: { "studentIdentifier": "...", "dataAttribute": "...", "value": "...", "term": "...", "validFrom": "...", "subject": "..." } (file column names);
+        // "subject" is optional and only needed when the file has values of per-subject data attributes (the column holds subject codes, e.g. PRN212)
         [Required(ErrorMessage = "Column mapping is required.")]
         public string ColumnMapping { get; set; } = string.Empty;
     }

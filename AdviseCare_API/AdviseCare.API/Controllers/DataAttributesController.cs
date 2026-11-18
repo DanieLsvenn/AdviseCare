@@ -48,7 +48,7 @@ namespace AdviseCare.API.Controllers
         // Search Data attributes by name, data type or status
         [HttpGet("search")]
         [SwaggerOperation(Summary = "[All roles] Search/Filter data attributes",
-            Description = "Filters data attributes by name (contains), data type (numeric/categorical/boolean) and status (active/archived). Empty fields are ignored.")]
+            Description = "Filters data attributes by name (contains), isSubjectSpecific (true/false), data type (numeric/categorical/boolean) and status (active/archived). Empty fields are ignored.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         public async Task<IActionResult> Search([FromQuery] SearchDataAttributeRequest request)
@@ -61,7 +61,8 @@ namespace AdviseCare.API.Controllers
         [HttpPost]
         [Authorize(Roles = "Data Protection Steward")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Create data attribute",
-            Description = "Creates an active data attribute (name, description shown to students and staff, data type). The name must be unique; it is also the value the student data import matches.")]
+            Description = "Creates an active data attribute (name, description shown to students and staff, isSubjectSpecific, data type). The name must be unique; it is also the value the student data import matches. " +
+                "isSubjectSpecific = true means every value belongs to one subject (e.g. Attendance rate per subject): the import then needs a subject for it and creates no missing rows for it.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
@@ -76,7 +77,7 @@ namespace AdviseCare.API.Controllers
         [HttpPut("{id}")]
         [Authorize(Roles = "Data Protection Steward")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Update data attribute",
-            Description = "Edits the description. The name and the data type cannot be changed, and an archived data attribute cannot be edited.")]
+            Description = "Edits the description. The name, isSubjectSpecific and the data type cannot be changed, and an archived data attribute cannot be edited.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]

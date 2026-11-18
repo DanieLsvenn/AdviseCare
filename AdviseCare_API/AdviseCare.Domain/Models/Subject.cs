@@ -22,4 +22,8 @@ public partial class Subject
     public virtual ICollection<Case> Cases { get; set; } = new List<Case>();
 
     public virtual Faculty Faculty { get; set; }
+
+    public virtual ICollection<Indicatorflag> Indicatorflags { get; set; } = new List<Indicatorflag>();
+
+    public virtual ICollection<Studentdata> Studentdata { get; set; } = new List<Studentdata>();
 }

@@ -40,6 +40,7 @@ erDiagram
         uniqueidentifier dataAttributeId FK "NOT NULL"
         uniqueidentifier dataSourceId FK "NULL"
         uniqueidentifier studentId FK "NOT NULL"
+        uniqueidentifier subjectId FK "NULL"
         uniqueidentifier termId FK "NOT NULL"
         varbinary(max) dataValue "NULL"
         nvarchar(max) provenanceNote "NULL"
@@ -61,6 +62,9 @@ erDiagram
     DATAATTRIBUTES {
         uniqueidentifier dataAttributeId PK "referenced table, see its own section"
     }
+    SUBJECTS {
+        uniqueidentifier subjectId PK "referenced table, see its own section"
+    }
     ACCOUNTS |o--o{ DATASOURCES : "createdBy"
     DATAATTRIBUTES ||--o| DATASOURCES : "dataAttributeId"
     DATASOURCES ||--o{ INGESTIONSCHEDULES : "dataSourceId"
@@ -69,4 +73,5 @@ erDiagram
     DATAATTRIBUTES ||--o{ STUDENTDATA : "dataAttributeId"
     DATASOURCES |o--o{ STUDENTDATA : "dataSourceId"
     ACCOUNTS ||--o{ STUDENTDATA : "studentId"
+    SUBJECTS |o--o{ STUDENTDATA : "subjectId"
     ACADEMICTERMS ||--o{ STUDENTDATA : "termId"

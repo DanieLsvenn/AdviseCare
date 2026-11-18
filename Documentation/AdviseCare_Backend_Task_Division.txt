@@ -40,7 +40,7 @@ A5. Own account: profile (username, preferred language), avatar upload (Supabase
 A6. Admin configuration panel (extra scope, ES15; not officially registered in docs; not started): the settings listed in AdviseCare_Functional_Requirements.txt, needs a SYSTEMSETTINGS table
 A7. Early-support indicators (new 09/11/2026; entities and seed done, service and controller to do)
 A7.1. Indicators CRUD (Data Protection Steward): name, description, data attribute, comparison operator + threshold (checked against the attribute's data type), severity, priority, support category; draft -> active -> archived
-A7.2. Flag check (server-side, no ACCESSLOGS row): after every student data import and when a rule is activated or changed, compare each enrolled student's latest value per term with every active rule; raise one open flag per student, rule and term; clear an open flag whose student no longer hits the rule. Member C's import calls it after its save
+A7.2. Flag check (server-side, no ACCESSLOGS row): after every student data import and when a rule is activated or changed, compare each enrolled student's latest value per term (per term and subject for a per-subject attribute) with every active rule; raise one open flag per student, rule, term and subject (INDICATORFLAGS.subjectId, copied from the flagged STUDENTDATA row, empty for a per-term rule); clear an open flag whose student no longer hits the rule in that subject. Member C's import calls it after its save
 A7.3. Flag queue (Programme Head): list by severity, priority, oldest; open a case from a flag (calls Member D's case creation with openedBy = the Programme Head, the rule's priority and category, then sets the flag's caseId, status caseOpened); dismiss with a reason
 A7.4. Advisor request: an advisor asks to take a flagged student on (status requested, requestedBy); the Programme Head approves (case opened for that advisor) or turns it down (back to open)
 A7.5. Responses show directory data, rule, severity, priority and term, never the value
@@ -57,7 +57,7 @@ Tables owned: DATAATTRIBUTES, CONSENTPURPOSES, PURPOSE_ATTRIBUTE, ACCESSPOLICIES
 ==========
 
 B1. Steward configuration
-B1.1. Data attributes (the student data that is only shown with consent): name, description, data type (numeric/categorical/boolean); archive (one-way)
+B1.1. Data attributes (the student data that is only shown with consent): name, description, per subject or per term (isSubjectSpecific, set at creation, done 18/11/2026), data type (numeric/categorical/boolean); archive (one-way)
 B1.2. Consent purposes: create (starts inactive), attach/remove attributes, activate/deactivate, retire; isForStatistics marks the one statistics purpose (at most one active; it cannot govern a support category or be asked for in a consent request)
 B1.3. Access policies: role + purpose (draft -> active -> revoked, no edit once active); test a policy against a sample student
 B2. Access guard (IAccessGuardService, used by Member C for every student data, point-in-time and correction read)
@@ -88,9 +88,10 @@ C1. Student data import (Admin; StudentDataController)
 C1.1. Upload Excel/CSV (Google Sheet is extra scope, ES6); preview the header and sample rows; map columns to data attributes
 C1.2. Validate the whole file (also as a dry run), all-or-nothing; return the list of invalid rows; rows of archived data attributes are not imported but listed in rejectedRows, and the rest still goes in
 C1.3. Insert new STUDENTDATA rows only (dataSourceId null, provenanceNote = file name + import date); never update; encrypt each value with Member B's IAttributeKeyService.EncryptValuesAsync before saving (new keys are saved by the same SaveAsync)
-C1.4. Flag missing values (isMissing) for every enrolled, active student without a value for an imported attribute and term
+C1.4. Flag missing values (isMissing) for every enrolled, active student without a value for an imported per-term attribute and term (per-subject attributes get none)
 C1.5. Import history through ACTIVITYLOGS
 C1.6. After the save, call Member A's indicator flag check (A7.2) for the imported attributes and terms
+C1.7. Per-subject data attributes (done 18/11/2026, QC-251): optional subject column in the mapping (subject codes), required for per-subject attributes and refused for per-term ones; STUDENTDATA.subjectId; current/as-of/compare views, correction requests and cohort data keyed per subject; no missing rows for per-subject attributes; subjectCode/subjectName in the responses
 C2. Student data and history
 C2.1. Student data API: data attribute values with sources and missing-data notices, inside a case (the case category's purpose, only the case's advisor) or outside a case (any purpose the staff role has a policy for, or emergency access); every value passed through Member B's access guard (IAccessGuardService, then IAttributeKeyService.DecryptValuesAsync and LogAccessAsync for each value shown; an erased value is shown as erased)
 C2.2. Point-in-time view ("way back machine") on both time axes: system time (latest transactionFrom up to the chosen date) and valid time (latest validFrom up to the chosen date, a later recording winning on ties); compare two dates
@@ -104,7 +105,7 @@ C3.3. External services list; external referrals with follow-up due date, follow
 C3.4. Escalations: officer raises, Programme Head responds, status tracking
 C4. Anonymised statistics (done 09/11/2026; StatisticService, StatisticsController, QC-024)
 C4.1. Welfare statistics (Student Welfare Officer, Programme Head): per support category (and faculty) in a date range, cases opened, referred cases, interventions, support grants, external referrals, escalations, distinct students; cells from fewer than 5 students hidden; export xlsx/csv/pdf
-C4.2. Cohort data (Programme Head): one attribute and term (and faculty), latest value per student, only consents under the statistics purpose (no emergency access), every value read logged, cells and values from fewer than 10 students hidden; export xlsx/csv/pdf
+C4.2. Cohort data (Programme Head): one attribute and term (and one subject for a per-subject attribute, and faculty), latest value per student, only consents under the statistics purpose (no emergency access), every value read logged, cells and values from fewer than 10 students hidden; export xlsx/csv/pdf
 Note: welfare works on existing CASES rows (from the seed data), so it does not wait for Member D's case APIs
 
 ==========

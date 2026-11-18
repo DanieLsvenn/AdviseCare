@@ -286,6 +286,8 @@
   "isMissing": "Missing value",
   "isShared": "Shared",
   "dataAttributeName": "Data attribute",
+  "isSubjectSpecific": "Recorded per subject",
+  "importSubjectColumn": "Subject column (per-subject data only)",
   "consentPurposeName": "Consent purpose",
   "toAccountName": "Receiving account",
   "fromAccountName": "Sending account",

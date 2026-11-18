@@ -9,10 +9,13 @@ namespace AdviseCare.Application.Contracts.Responses.StudentData
         public Guid DataAttributeId { get; set; } = Guid.Empty;
         public Guid? DataSourceId { get; set; }
         public Guid StudentId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
         public Guid TermId { get; set; } = Guid.Empty;
         public string AttributeName { get; set; } = string.Empty;
         public string ProvenanceNote { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
         public string TermName { get; set; } = string.Empty;
         public DateTime? ErasedAt { get; set; }
         public DateTime TransactionFrom { get; set; }
@@ -27,10 +30,13 @@ namespace AdviseCare.Application.Contracts.Responses.StudentData
         public Guid DataAttributeId { get; set; } = Guid.Empty;
         public Guid? DataSourceId { get; set; }
         public Guid StudentId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
         public Guid TermId { get; set; } = Guid.Empty;
         public string AttributeName { get; set; } = string.Empty;
         public string ProvenanceNote { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
         public string TermName { get; set; } = string.Empty;
         public DateTime? ErasedAt { get; set; }
         public DateTime TransactionFrom { get; set; }
@@ -45,10 +51,13 @@ namespace AdviseCare.Application.Contracts.Responses.StudentData
         public Guid DataAttributeId { get; set; } = Guid.Empty;
         public Guid? DataSourceId { get; set; }
         public Guid StudentId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
         public Guid TermId { get; set; } = Guid.Empty;
         public string AttributeName { get; set; } = string.Empty;
         public string ProvenanceNote { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
         public string TermName { get; set; } = string.Empty;
         public DateTime? ErasedAt { get; set; }
         public DateTime TransactionFrom { get; set; }
@@ -63,10 +72,13 @@ namespace AdviseCare.Application.Contracts.Responses.StudentData
         public Guid DataAttributeId { get; set; } = Guid.Empty;
         public Guid? DataSourceId { get; set; }
         public Guid StudentId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
         public Guid TermId { get; set; } = Guid.Empty;
         public string AttributeName { get; set; } = string.Empty;
         public string ProvenanceNote { get; set; } = string.Empty;
         public string StudentFullName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
         public string TermName { get; set; } = string.Empty;
         public DateTime? ErasedAt { get; set; }
         public DateTime TransactionFrom { get; set; }
@@ -145,8 +157,11 @@ namespace AdviseCare.Application.Contracts.Responses.StudentData
     public class CompareStudentDataValueResponse
     {
         public Guid DataAttributeId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
         public Guid TermId { get; set; } = Guid.Empty;
         public string AttributeName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
         public string TermName { get; set; } = string.Empty;
         public StudentDataValueResponse? DateAValue { get; set; }
         public StudentDataValueResponse? DateBValue { get; set; }
@@ -160,15 +175,18 @@ namespace AdviseCare.Application.Contracts.Responses.StudentData
         public List<StudentDataValueResponse> Values { get; set; } = new();
     }
 
-    // One value of one data attribute in one term, as shown to the reader (Value is null when not shared, missing or erased)
+    // One value of one data attribute in one term (and one subject for a per-subject attribute), as shown to the reader (Value is null when not shared, missing or erased)
     public class StudentDataValueResponse
     {
         public Guid DataAttributeId { get; set; } = Guid.Empty;
         public Guid? DataSourceId { get; set; }
         public Guid? StudentDataId { get; set; }
+        public Guid? SubjectId { get; set; }
         public Guid TermId { get; set; } = Guid.Empty;
         public string AttributeName { get; set; } = string.Empty;
         public string ProvenanceNote { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
         public string TermName { get; set; } = string.Empty;
         public string? Value { get; set; }
         public DateTime? TransactionFrom { get; set; }

@@ -53,12 +53,12 @@ namespace AdviseCare.API.Controllers
         [HttpGet("cohort")]
         [Authorize(Roles = "Programme Head")]
         [SwaggerOperation(Summary = "[Programme Head] View anonymised cohort data of one data attribute",
-            Description = "dataAttributeId and termId are required; facultyId filters, isByFaculty = true splits the result per faculty. Uses only the latest value per student that the student shared under the statistics consent purpose (isForStatistics), never emergency access. " +
+            Description = "dataAttributeId and termId are required; subjectId is required for a per-subject data attribute (e.g. Attendance rate) and must be empty for a per-term one; facultyId filters, isByFaculty = true splits the result per faculty. Uses only the latest value per student that the student shared under the statistics consent purpose (isForStatistics), never emergency access. " +
                 "Numeric attributes give the average, minimum and maximum; categorical and boolean ones give the number of students per value. Every cell (and every value) with fewer than 10 students is suppressed. Each value read is written to the access log.")]
-        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- This data attribute is not covered by '{PurposeName}', so it has no cohort data.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- This data attribute is not covered by '{PurposeName}', so it has no cohort data.\n- '{AttributeName}' is recorded per subject, so choose a subject.\n- '{AttributeName}' is recorded per term, so leave the subject empty.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
-        [SwaggerResponse(StatusCodes.Status404NotFound, "- Academic term not found.\n- Faculty not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Academic term not found.\n- Faculty not found.\n- Subject not found.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status409Conflict, "- There is no active statistics consent purpose, so no cohort data can be shown.\n- A stored value does not belong to this student and data attribute.\n- A stored value could not be decrypted (it was changed or moved, or its master key version is missing).", typeof(ErrorResponse))]
         public async Task<IActionResult> GetCohortStatistic([FromQuery] GetCohortStatisticRequest request)
         {
@@ -72,10 +72,10 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "Programme Head")]
         [SwaggerOperation(Summary = "[Programme Head] Export the cohort data",
             Description = "Same filters as /cohort plus format = xlsx (default), csv or pdf. Suppressed cells are written as \"hidden\". Downloads the file; nothing is stored, and the export is recorded in the activity log (statisticsExported).")]
-        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- This data attribute is not covered by '{PurposeName}', so it has no cohort data.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- This data attribute is not covered by '{PurposeName}', so it has no cohort data.\n- '{AttributeName}' is recorded per subject, so choose a subject.\n- '{AttributeName}' is recorded per term, so leave the subject empty.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
-        [SwaggerResponse(StatusCodes.Status404NotFound, "- Academic term not found.\n- Faculty not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Academic term not found.\n- Faculty not found.\n- Subject not found.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status409Conflict, "- There is no active statistics consent purpose, so no cohort data can be shown.\n- A stored value does not belong to this student and data attribute.\n- A stored value could not be decrypted (it was changed or moved, or its master key version is missing).", typeof(ErrorResponse))]
         public async Task<IActionResult> ExportCohortStatistic([FromQuery] ExportCohortStatisticRequest request)
         {

@@ -93,7 +93,7 @@ WF2b: Welfare Officer handles a financial referral (continuation of WF2 step 8.2
 WF3: Steward sets up consent
 1. Steward signs in
 2. Steward defines the shareable data
-2.1. Creates the data attributes (name, description shown to students and staff, data type numeric/categorical/boolean)
+2.1. Creates the data attributes (name, description shown to students and staff, per subject or per term, data type numeric/categorical/boolean)
 2.2. Archives data attributes that are no longer used (one-way; existing values and consents are kept)
 3. Steward defines consent purposes
 3.1. Creates a purpose (e.g. Academic advising, Wellbeing support, Financial support); it starts inactive
@@ -120,12 +120,12 @@ WF4: Programme Head lists, reports and exports
 WF5: Admin imports student data
 1. Admin signs in and opens "Import student data"
 2. Admin uploads an .xlsx/.csv file (Google Sheet import is extra scope, see ES6) and previews its header and first rows
-3. Admin maps the file columns (student identifier: email, username or student code; data attribute; value; term; valid-from date)
+3. Admin maps the file columns (student identifier: email, username or student code; data attribute; value; term; valid-from date; subject code, needed only when the file holds per-subject data attributes such as Attendance rate)
 4. System validates the whole file (it can also be validated alone, without saving)
-4.1. If any row is invalid, nothing is imported and the system lists the invalid rows (all-or-nothing)
+4.1. If any row is invalid, nothing is imported and the system lists the invalid rows (all-or-nothing); a per-subject attribute needs an existing subject code on its row, a per-term one must leave it empty
 4.2. Rows of an archived data attribute are not imported; they are listed separately and the other rows still go in
 4.3. Otherwise the system writes each value straight into STUDENTDATA as a new row (dataSourceId stays null), encrypted with the student's key for that attribute (created on the first value), with the file name and import date kept as its source note (provenanceNote)
-5. Every enrolled student without a value for an imported attribute and term gets a missing row (missing-data notice)
+5. Every enrolled student without a value for an imported per-term attribute and term gets a missing row (missing-data notice); per-subject attributes get no missing rows, because AdviseCare does not know which subjects a student takes
 6. After the import the system compares every enrolled student's latest values with the active early-support indicators and raises or clears flags (see EX17)
 7. Admin views the import result and the import history
 8. Note: scheduled automatic ingestion (data sources, schedules, jobs) is kept in the ERD but is extra scope (ES1, see AdviseCare_Extra_Scope_List.txt)
@@ -261,12 +261,12 @@ EX16: Notifications, language and settings
 
 EX17: Early-support indicators (owner: Member A)
 1. Steward defines an indicator: a rule on one data attribute (comparison and threshold, e.g. Attendance rate < 75), its severity (low/moderate/high/critical), the case priority (low/medium/high/urgent) and the support category a case would get; it starts as a draft and is activated, edited or archived later
-2. After every student data import (and when a rule is activated or changed) the system compares each enrolled student's latest value per term with every active rule
-2.1. A hit raises a flag (one open flag per student, rule and term); a later value that no longer hits the rule clears an open flag
+2. After every student data import (and when a rule is activated or changed) the system compares each enrolled student's latest value per term (per term and subject for a per-subject attribute) with every active rule
+2.1. A hit raises a flag (one open flag per student, rule, term and subject; e.g. Attendance rate 60 in PRN212 and 70 in SWP391 give two Low attendance flags); a later value that no longer hits the rule clears that subject's open flag
 2.2. The check runs inside the server only: it is not an access by a person and writes no access log
-3. Staff see a flagged student's directory data, the rule (name, description), severity, priority and term, but never the value; the value stays behind consent
+3. Staff see a flagged student's directory data, the rule (name, description), severity, priority, term and subject, but never the value; the value stays behind consent
 4. Programme Head works through the flag queue (severity, then priority, then oldest)
-4.1. Opens a case from a flag for an advisor of the rule's support type (the case gets the rule's priority and category; the flag is linked to the case), or
+4.1. Opens a case from a flag for an advisor of the rule's support type (the case gets the rule's priority and category, and the flag's subject; the flag is linked to the case), or
 4.2. Dismisses the flag with a reason
 5. An advisor can ask to take a flagged student on; the Programme Head approves it (a case is opened for that advisor) or turns it down (the flag goes back to open)
 6. Cases are never opened automatically; the student is notified as in EX3 and the case continues as WF2 from step 5
@@ -289,7 +289,7 @@ EX20: Anonymised welfare statistics and cohort data
 1.3. Every cell counted from fewer than 5 different students is hidden; no student-level data is shown
 1.4. Exports the statistics (Excel/CSV/PDF); the export is logged
 2. Cohort data (Programme Head)
-2.1. Chooses one data attribute and one term, and optionally a faculty or a split per faculty
+2.1. Chooses one data attribute and one term (and one subject for a per-subject attribute), and optionally a faculty or a split per faculty
 2.2. Views the average, minimum and maximum (numeric attribute) or the number of students per value (categorical/boolean attribute)
 2.3. Only the latest value of students who shared it under the statistics consent purpose (set up by the Steward) counts; emergency access never counts
 2.4. Every value read is written to the access log; every cell or value with fewer than 10 students is hidden

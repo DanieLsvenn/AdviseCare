@@ -21,6 +21,8 @@ public partial class Indicatorflag
 
     public Guid StudentId { get; set; }
 
+    public Guid? SubjectId { get; set; }
+
     public Guid TermId { get; set; }
 
     public string DismissReason { get; set; }
@@ -48,6 +50,8 @@ public partial class Indicatorflag
     public virtual Account Student { get; set; }
 
     public virtual Studentdata StudentData { get; set; }
+
+    public virtual Subject Subject { get; set; }
 
     public virtual Academicterm Term { get; set; }
 }

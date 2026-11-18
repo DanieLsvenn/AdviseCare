@@ -518,6 +518,7 @@ export function getWorkspaceDefinitions(
           [
             ["studentFullName", "student"],
             ["attributeName", "dataAttributeName"],
+            ["subjectCode", "subject"],
             ["termName", "term"],
             ["validFrom", "ledgerValidFrom"],
             ["transactionFrom", "ledgerRecordedAt"],
@@ -533,6 +534,7 @@ export function getWorkspaceDefinitions(
                 valueKey: "dataAttributeId",
                 labelKeys: ["attributeName"],
               }, false, "select", "dataAttributeName"),
+              picker("subjectId", subjectSource, false, "select", "subject"),
               picker("termId", {
                 path: "AcademicTerms",
                 valueKey: "termId",
@@ -597,12 +599,13 @@ export function getWorkspaceDefinitions(
         workspace(
           "dataAttributes",
           "DataAttributes/search",
-          ["dataAttributeId", "attributeName", "dataType", "status"],
+          ["dataAttributeId", "attributeName", "isSubjectSpecific", "dataType", "status"],
           {
-            queryFields: [field("attributeName"), field("status")],
+            queryFields: [field("attributeName"), field("isSubjectSpecific", "checkbox"), field("status")],
             create: operation("create", "POST", "DataAttributes", [
               field("attributeName", "text", true),
               field("attributeDescription", "textarea"),
+              field("isSubjectSpecific", "checkbox"),
               selectValues("dataType", [
                 { label: "numericType", value: "numeric" },
                 { label: "categoricalType", value: "categorical" },
@@ -893,6 +896,7 @@ export function getWorkspaceDefinitions(
           "StudentData/me",
           [
             ["attributeName", "dataAttributeName"],
+            ["subjectCode", "subject"],
             ["value", "privateDataValue"],
             ["termName", "term"],
             "isMissing",
@@ -1172,7 +1176,7 @@ export function getWorkspaceDefinitions(
         workspace(
           "studentData",
           "StudentData/students/:studentId",
-          [["attributeName", "dataAttributeName"], "value", "termName", "isShared", "isMissing", "validFrom"],
+          [["attributeName", "dataAttributeName"], ["subjectCode", "subject"], "value", "termName", "isShared", "isMissing", "validFrom"],
           {
             queryFields: [
               picker("caseId", advisorCaseSource, false, "select", "case"),
@@ -1187,7 +1191,7 @@ export function getWorkspaceDefinitions(
         workspace(
           "studentData",
           "StudentData/students/:studentId/as-of",
-          [["attributeName", "dataAttributeName"], "value", "termName", "isShared", "isMissing", "validFrom"],
+          [["attributeName", "dataAttributeName"], ["subjectCode", "subject"], "value", "termName", "isShared", "isMissing", "validFrom"],
           {
             queryFields: [
               field("date", "date", true),
@@ -1204,7 +1208,7 @@ export function getWorkspaceDefinitions(
         workspace(
           "studentData",
           "StudentData/students/:studentId/compare",
-          [["attributeName", "dataAttributeName"], "dateA", "dateB", "valueA", "valueB"],
+          [["attributeName", "dataAttributeName"], ["subjectCode", "subject"], "dateA", "dateB", "valueA", "valueB"],
           {
             queryFields: [
               field("dateA", "date", true),

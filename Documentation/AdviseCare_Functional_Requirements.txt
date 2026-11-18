@@ -41,8 +41,8 @@ Setting up the basic calendar and the shared lookup lists the rest of the system
 Since the school has no data source or API to connect to, student data (attendance, grades, ...) comes in as files that the admin uploads. The import is all-or-nothing: if one row is invalid, nothing is imported. Rows of an archived data attribute are the only exception: they are left out and listed, and the other rows are still imported.
 
 + Upload an Excel/CSV file of student data values (a Google Sheet is extra scope, see ES6 in AdviseCare_Extra_Scope_List.txt)
-+ Preview the file and map its columns (student identifier, data attribute, value, term, valid-from date)
-+ Validate the whole file before saving (all-or-nothing); valid values are encrypted and go straight into the student data history, and every enrolled student without a value gets a missing-data notice
++ Preview the file and map its columns (student identifier, data attribute, value, term, valid-from date, and a subject code column when the file holds per-subject data attributes)
++ Validate the whole file before saving (all-or-nothing); valid values are encrypted and go straight into the student data history, and every enrolled student without a value of a per-term data attribute gets a missing-data notice (per-subject data attributes get none, since the subjects each student takes are not known)
 + View the import result and the list of invalid rows when it fails
 + View import history (who imported what, when; kept in the admin's activity log)
 + After every import, the active early-support indicators are re-checked and flags raised or cleared (see the Steward and the Programme Head)
@@ -84,7 +84,7 @@ Data Protection Steward
 
 Deciding which pieces of student data exist in the system and can be shared (e.g. GPA, attendance rate, accommodation status). Only these attributes are imported, offered to students when they share data with a case, and covered by consent.
 
-+ Create a data attribute (name, description, data type: numeric/categorical/boolean)
++ Create a data attribute (name, description, per subject or per term, data type: numeric/categorical/boolean); a per-subject attribute (e.g. Attendance rate, Subject mark) holds one value per subject and term, a per-term one (e.g. GPA) one value per term; consent stays per data attribute, for every subject
 + Edit the description shown to students and staff
 + Archive a data attribute that is no longer used (one-way; it can no longer be attached, granted, requested or imported, but existing values and consents are kept)
 + View the list of data attributes
@@ -170,7 +170,7 @@ Advisors can also start a case themselves when a student's data (merits, attenda
 + View a student's data outside a case (only what consent allows under a purpose the advisor's role has a policy for: "if you consent, we serve"; attributes not shared show as "exists, not shared"), or through an approved emergency access
 + Open a case for a student with a reason
 + Get the student notified that the advisor wants to meet
-+ View the early-support flags (student directory data, rule, severity, priority, term; never the value) and ask the Programme Head to take a flagged student on
++ View the early-support flags (student directory data, rule, severity, priority, term, and the subject for a rule on a per-subject attribute; never the value) and ask the Programme Head to take a flagged student on
 
 - Open a student profile with source provenance and missing-data notices:
 
@@ -312,7 +312,7 @@ The main entry point: the student asks for help, picks the kind of help, explain
 - View own profile, data and the sources behind them:
 
 + View own consolidated profile (including own student code and academic status)
-+ View own data and its sources
++ View own data and its sources (per term, and per subject for per-subject data attributes such as attendance), in the Private data tab
 + See notice where data about them is missing
 + View own consent status per section
 
@@ -363,7 +363,7 @@ Matching is manual. An advisor suggestion algorithm (ES4) and an AI advisor as a
 
 - Work through the early-support flag queue:
 
-+ View the open flags sorted by severity, then priority, then oldest (student directory data, rule, severity, priority, term; never the value)
++ View the open flags sorted by severity, then priority, then oldest (student directory data, rule, severity, priority, term, and the subject for a rule on a per-subject attribute; never the value)
 + Open a case from a flag for an advisor of the rule's support type (the case gets the rule's priority and category)
 + Dismiss a flag with a reason
 + Approve or turn down an advisor's request to take a flagged student on
@@ -390,7 +390,7 @@ Matching is manual. An advisor suggestion algorithm (ES4) and an AI advisor as a
 - View anonymised welfare statistics and cohort data:
 
 + View the welfare statistics (same page as the Student Welfare Officer)
-+ View cohort data of one data attribute for one term, the whole cohort or per faculty: average, minimum and maximum for a numeric attribute, the number of students per value otherwise
++ View cohort data of one data attribute for one term (and one subject for a per-subject attribute), the whole cohort or per faculty: average, minimum and maximum for a numeric attribute, the number of students per value otherwise
 + Only values the students shared under the statistics purpose count (never emergency access); every value read is logged; every cell or value with fewer than 10 students is hidden
 + Export the cohort data (Excel/CSV/PDF)
 
