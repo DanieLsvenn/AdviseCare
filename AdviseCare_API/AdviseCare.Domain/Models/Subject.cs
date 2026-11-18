@@ -26,4 +26,6 @@ public partial class Subject
     public virtual ICollection<Indicatorflag> Indicatorflags { get; set; } = new List<Indicatorflag>();
 
     public virtual ICollection<Studentdata> Studentdata { get; set; } = new List<Studentdata>();
+
+    public virtual ICollection<Studentsubjectresult> Studentsubjectresults { get; set; } = new List<Studentsubjectresult>();
 }

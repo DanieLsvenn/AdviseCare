@@ -115,6 +115,7 @@ namespace AdviseCare.Application.Services
                 CaseId = i.CaseId,
                 OfficerId = i.OfficerId,
                 StudentId = i.Case.StudentId,
+                StudentFullName = i.Case.Student.FullName,
                 Notes = i.Notes ?? string.Empty,
                 OfficerFullName = i.Officer.FullName,
                 Outcome = i.Outcome ?? string.Empty,
@@ -246,11 +247,11 @@ namespace AdviseCare.Application.Services
                 throw new ForbiddenException("This case has not been referred to you (or you have not accepted the referral yet).");
         }
 
-        // Helper: load Interventions with their case and officer, newest first
+        // Helper: load Interventions with their case, student and officer, newest first
         private async Task<List<Intervention>> GetInterventionsAsync(Expression<Func<Intervention, bool>> predicate)
         {
             return await _interventionRepository.SearchAsyncIncludeOrderBy(predicate, i => i.InterventionDate, false,
-                i => i.Case, i => i.Officer);
+                i => i.Case.Student, i => i.Officer);
         }
     }
 }

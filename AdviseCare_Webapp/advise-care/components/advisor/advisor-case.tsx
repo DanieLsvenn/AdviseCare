@@ -24,6 +24,7 @@ import { CaseMessages } from "@/components/case/case-messages";
 import { SearchPicker } from "@/components/workspace/search-picker";
 import type { WorkspaceOptionSource } from "@/components/workspace/api-workspace";
 import { CaseSharedData } from "@/components/case/case-shared-data";
+import { AcademicResultsView } from "@/components/academic/academic-results";
 import { CaseProgress } from "@/components/case/case-progress";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -224,12 +225,13 @@ export function AdvisorCase({ caseId, viewerId }: { caseId: string; viewerId: st
             </p>
           </section>
 
-        <CaseSharedData
-          record={record}
-          audience="staff"
-          canReadValues={record.advisorId === viewerId}
-          className="lg:[grid-area:shared]"
-        />
+        <div className="flex flex-col gap-space-lg lg:[grid-area:shared]">
+          <CaseSharedData record={record} audience="staff" canReadValues={record.advisorId === viewerId} />
+          {/* Grade and attendance per subject, read for this case (only what the student consented under its purpose) */}
+          {record.advisorId === viewerId ? (
+            <AcademicResultsView audience="staff" studentId={record.studentId} caseId={record.caseId} />
+          ) : null}
+        </div>
 
         <CaseMessages
           caseId={record.caseId}

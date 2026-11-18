@@ -14,5 +14,7 @@ public partial class Studentprofile
 
     public string AcademicStatus { get; set; }
 
+    public string CurriculumCode { get; set; }
+
     public virtual Account Student { get; set; }
 }

@@ -19,6 +19,7 @@ export default async function AdminLayout({
     { href: "/admin/m08", label: t("administrator.specialisations"), icon: "school" },
     { href: "/admin/m04", label: t("administrator.reference"), icon: "category" },
     { href: "/admin/m03", label: t("administrator.sources"), icon: "upload_file" },
+    { href: "/admin/m09", label: t("administrator.academicResults"), icon: "school" },
     { href: "/admin/m05", label: t("administrator.health"), icon: "history" },
     { href: "/admin/m07", label: t("administrator.sessions"), icon: "devices" },
   ];

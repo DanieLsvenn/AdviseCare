@@ -22,4 +22,6 @@ public partial class Academicterm
     public virtual ICollection<Report> Reports { get; set; } = new List<Report>();
 
     public virtual ICollection<Studentdata> Studentdata { get; set; } = new List<Studentdata>();
+
+    public virtual ICollection<Studentsubjectresult> Studentsubjectresults { get; set; } = new List<Studentsubjectresult>();
 }

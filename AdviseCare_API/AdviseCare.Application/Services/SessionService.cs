@@ -84,15 +84,16 @@ namespace AdviseCare.Application.Services
         // Search Sessions by account or active state
         public async Task<List<SearchSessionResponse>> SearchAsync(SearchSessionRequest request)
         {
-            var sessions = await _sessionRepository.SearchAsyncOrderBy(s =>
+            var sessions = await _sessionRepository.SearchAsyncIncludeOrderBy(s =>
                 (request.AccountId == null || s.AccountId == request.AccountId) &&
                 (request.IsActive == null || s.IsActive == request.IsActive),
-                s => s.LoginAt, false);
+                s => s.LoginAt, false, s => s.Account);
 
             return sessions.Select(s => new SearchSessionResponse
             {
                 SessionId = s.SessionId,
                 AccountId = s.AccountId,
+                AccountFullName = s.Account.FullName,
                 DeviceInfo = s.DeviceInfo ?? string.Empty,
                 LoginAt = s.LoginAt,
                 LogoutAt = s.LogoutAt,
