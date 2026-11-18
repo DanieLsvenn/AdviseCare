@@ -34,6 +34,7 @@ namespace AdviseCare.Application.Contracts.Responses.Session
     {
         public Guid SessionId { get; set; } = Guid.Empty;
         public Guid AccountId { get; set; } = Guid.Empty;
+        public string AccountFullName { get; set; } = string.Empty;
         public string DeviceInfo { get; set; } = string.Empty;
         public DateTime LoginAt { get; set; }
         public DateTime? LogoutAt { get; set; }

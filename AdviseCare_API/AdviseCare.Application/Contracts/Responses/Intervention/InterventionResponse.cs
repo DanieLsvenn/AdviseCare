@@ -51,6 +51,7 @@ namespace AdviseCare.Application.Contracts.Responses.Intervention
         public Guid CaseId { get; set; } = Guid.Empty;
         public Guid OfficerId { get; set; } = Guid.Empty;
         public Guid StudentId { get; set; } = Guid.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
         public string Notes { get; set; } = string.Empty;
         public string OfficerFullName { get; set; } = string.Empty;
         public string Outcome { get; set; } = string.Empty;
