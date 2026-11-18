@@ -57,6 +57,8 @@
   "consent": "Consent",
   "supportRequest": "Request support",
   "studentData": "Student data",
+  "privateData": "Private data",
+  "privateDataValue": "Value",
   "masterData": "Master data",
   "accounts": "Accounts",
   "supportCategories": "Support categories",
