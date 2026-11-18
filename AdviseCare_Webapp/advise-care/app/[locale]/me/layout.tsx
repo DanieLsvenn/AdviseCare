@@ -21,6 +21,7 @@ export default async function StudentLayout({
   ];
   const moreNavItems: NavItem[] = [
     { href: "/me/profile", label: t("student.profile"), icon: "account_circle" },
+    { href: "/me/private-data", label: t("student.privateData"), icon: "lock_person" },
     { href: "/me/corrections", label: t("student.corrections"), icon: "edit_note" },
     { href: "/me/export", label: t("student.export"), icon: "download" },
   ];

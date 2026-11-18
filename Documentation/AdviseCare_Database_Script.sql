@@ -1,4 +1,4 @@
-/* =====================================================================
+﻿/* =====================================================================
    AdviseCare - Microsoft SQL Server database script
    Source: AdviseCare_ERD_Tables.txt (49 tables)
    1. Creates database AdviseCareDB if it does not exist
@@ -2801,6 +2801,35 @@ INSERT INTO [dbo].[CASES] ([caseId], [advisorId], [openedBy], [studentId], [subj
     (N'804A8B07-D0CC-5E40-B674-E48315CD3312', N'A5B03782-6A13-5E03-87ED-615183409D49', N'B1C138EC-B5C5-5B43-98C2-F6C22AB42BB9', N'B1C138EC-B5C5-5B43-98C2-F6C22AB42BB9', NULL, N'9285B8AC-C465-5254-8A87-CDFF33BC5A07', N'I want to apply for a student loan but do not understand the paperwork.', NULL, '2026-09-20T11:59:00.000', N'referred', N'urgent', N'open'),
     (N'8ACE5193-1955-5ED7-B581-D48BAE2CC7F3', N'A5B03782-6A13-5E03-87ED-615183409D49', N'333108A4-2CA8-5656-8B73-744E6579CD8C', N'333108A4-2CA8-5656-8B73-744E6579CD8C', NULL, N'49F96775-F067-58E3-A311-5E2FB1EA20F7', N'The dormitory room is too noisy to study and I want to change rooms.', NULL, '2026-09-21T21:18:00.000', N'contacted', N'high', N'open');
 GO
+
+-- Brings an existing AdviseCare database up to date without resetting or reseeding its data. Run once before deploying the API; re-running is safe.
+-- CASEMESSAGEATTACHMENTS (49): files sent with a case message (stored in the database, downloaded only through the API).
+USE [AdviseCareDB];
+GO
+
+IF OBJECT_ID(N'[dbo].[CASEMESSAGEATTACHMENTS]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[CASEMESSAGEATTACHMENTS] (
+        [caseMessageAttachmentId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASEMESSAGEATTACHMENTS_caseMessageAttachmentId] DEFAULT NEWSEQUENTIALID(),
+        [caseMessageId] UNIQUEIDENTIFIER NOT NULL,
+        [uploadedBy] UNIQUEIDENTIFIER NOT NULL,
+        [contentType] NVARCHAR(255) NOT NULL,
+        [fileContent] VARBINARY(MAX) NOT NULL,
+        [fileName] NVARCHAR(255) NOT NULL,
+        [fileSize] INT NOT NULL,
+        [createdAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_CASEMESSAGEATTACHMENTS_createdAt] DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT [PK_CASEMESSAGEATTACHMENTS] PRIMARY KEY ([caseMessageAttachmentId]),
+        CONSTRAINT [FK_CASEMESSAGEATTACHMENTS_caseMessageId] FOREIGN KEY ([caseMessageId]) REFERENCES [dbo].[CASEMESSAGES]([caseMessageId]),
+        CONSTRAINT [FK_CASEMESSAGEATTACHMENTS_uploadedBy] FOREIGN KEY ([uploadedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+        CONSTRAINT [CK_CASEMESSAGEATTACHMENTS_fileSize] CHECK ([fileSize] BETWEEN 1 AND 10485760),
+        CONSTRAINT [CK_CASEMESSAGEATTACHMENTS_fileName] CHECK (LEN(LTRIM(RTRIM([fileName]))) >= 1)
+    );
+END;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_CASEMESSAGEATTACHMENTS_caseMessageId' AND [object_id] = OBJECT_ID(N'[dbo].[CASEMESSAGEATTACHMENTS]'))
+    CREATE INDEX [IX_CASEMESSAGEATTACHMENTS_caseMessageId] ON [dbo].[CASEMESSAGEATTACHMENTS] ([caseMessageId]);
+GO
+
 
 -- CASECHANGEREQUESTS: 5 rows
 INSERT INTO [dbo].[CASECHANGEREQUESTS] ([caseChangeRequestId], [caseId], [programmeHeadId], [proposedAdvisorId], [requestedBy], [decisionNotes], [reason], [decidedAt], [requestedAt], [status]) VALUES

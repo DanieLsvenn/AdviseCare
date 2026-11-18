@@ -35,6 +35,7 @@
   },
   "student": {
     "profile": "Hồ sơ của tôi",
+    "privateData": "Dữ liệu riêng tư",
     "consent": "Đồng ý",
     "cases": "Yêu cầu",
     "accessHistory": "Lịch sử xem",

@@ -889,12 +889,12 @@ export function getWorkspaceDefinitions(
     case "student.data":
       return [
         workspace(
-          "studentData",
+          "privateData",
           "StudentData/me",
           [
             ["attributeName", "dataAttributeName"],
-            "value",
-            "termName",
+            ["value", "privateDataValue"],
+            ["termName", "term"],
             "isMissing",
             "isErased",
             "validFrom",
