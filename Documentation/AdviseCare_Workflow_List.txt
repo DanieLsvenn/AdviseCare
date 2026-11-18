@@ -128,6 +128,10 @@ WF5: Admin imports student data
 5. Every enrolled student without a value for an imported per-term attribute and term gets a missing row (missing-data notice); per-subject attributes get no missing rows, because AdviseCare does not know which subjects a student takes
 6. After the import the system compares every enrolled student's latest values with the active early-support indicators and raises or clears flags (see EX17)
 7. Admin views the import result and the import history
+7.1. Transcript PDFs (per-subject values): Admin opens "Academic results import" and drops any number of grade transcripts and attendance files (one student per file); they are sent in parts into one import batch
+7.2. System reads every PDF and checks it: the printed Student ID belongs to an active student, each semester (e.g. Fall2026 -> Fall 2026) and subject code already exists, marks are 0-10 and attendance 0-100, no subject twice in a term, one file per student and type in the batch; rows without a semester or a value are left out with a warning
+7.3. Admin removes the files with errors (or drops fixed ones in) and imports the batch; nothing is imported while any file has errors (all-or-nothing), or Admin cancels the batch
+7.4. On import every row is written into STUDENTDATA like an Excel/CSV row: Subject mark (grade file) or Attendance rate (attendance file) for the student, subject and term, encrypted, valid from the import day kept inside the term, with the file name as provenanceNote; no missing rows are recorded
 8. Note: scheduled automatic ingestion (data sources, schedules, jobs) is kept in the ERD but is extra scope (ES1, see AdviseCare_Extra_Scope_List.txt)
 
 ==========

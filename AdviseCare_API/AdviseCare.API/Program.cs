@@ -69,14 +69,13 @@ builder.Services.AddScoped<IAttributeKeyService, AttributeKeyService>();
 
 // Member C
 builder.Services.AddScoped<IStudentDataService, StudentDataService>();
+builder.Services.AddScoped<ITranscriptImportBatchService, TranscriptImportBatchService>();
 builder.Services.AddScoped<ICorrectionRequestService, CorrectionRequestService>();
 builder.Services.AddScoped<IExternalServiceService, ExternalServiceService>();
 builder.Services.AddScoped<IExternalReferralService, ExternalReferralService>();
 builder.Services.AddScoped<IInterventionService, InterventionService>();
 builder.Services.AddScoped<ISupportGrantService, SupportGrantService>();
 builder.Services.AddScoped<IEscalationService, EscalationService>();
-// Academic results (per-subject grade and attendance, imported from transcript PDFs)
-builder.Services.AddScoped<IAcademicResultService, AcademicResultService>();
 
 // Member D
 builder.Services.AddScoped<ISupportCategoryService, SupportCategoryService>();

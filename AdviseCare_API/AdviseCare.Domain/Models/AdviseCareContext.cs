@@ -108,8 +108,6 @@ public partial class AdviseCareContext : DbContext
 
     public virtual DbSet<Studentprofile> Studentprofiles { get; set; }
 
-    public virtual DbSet<Studentsubjectresult> Studentsubjectresults { get; set; }
-
     public virtual DbSet<Subject> Subjects { get; set; }
 
     public virtual DbSet<Supportcategory> Supportcategories { get; set; }
@@ -1829,9 +1827,6 @@ public partial class AdviseCareContext : DbContext
                 .HasMaxLength(30)
                 .HasDefaultValue("enrolled")
                 .HasColumnName("academicStatus");
-            entity.Property(e => e.CurriculumCode)
-                .HasMaxLength(50)
-                .HasColumnName("curriculumCode");
             entity.Property(e => e.StudentCode)
                 .IsRequired()
                 .HasMaxLength(50)
@@ -1938,72 +1933,15 @@ public partial class AdviseCareContext : DbContext
                 .HasConstraintName("FK_SUPPORTGRANTS_interventionId");
         });
 
-        modelBuilder.Entity<Studentsubjectresult>(entity =>
-        {
-            entity.ToTable("STUDENTSUBJECTRESULTS");
-
-            entity.HasIndex(e => new { e.StudentId, e.SubjectId, e.TermId }, "UQ_STUDENTSUBJECTRESULTS_student_subject_term").IsUnique();
-
-            entity.Property(e => e.StudentSubjectResultId)
-                .HasDefaultValueSql("(newsequentialid())")
-                .HasColumnName("studentSubjectResultId");
-            entity.Property(e => e.AttendanceImportFileId).HasColumnName("attendanceImportFileId");
-            entity.Property(e => e.AttendanceRate)
-                .HasColumnType("decimal(5, 2)")
-                .HasColumnName("attendanceRate");
-            entity.Property(e => e.AttendanceUpdatedAt)
-                .HasPrecision(3)
-                .HasColumnName("attendanceUpdatedAt");
-            entity.Property(e => e.CurriculumTerm).HasColumnName("curriculumTerm");
-            entity.Property(e => e.Grade)
-                .HasColumnType("decimal(4, 2)")
-                .HasColumnName("grade");
-            entity.Property(e => e.GradeImportFileId).HasColumnName("gradeImportFileId");
-            entity.Property(e => e.GradeUpdatedAt)
-                .HasPrecision(3)
-                .HasColumnName("gradeUpdatedAt");
-            // DEFAULT 1 in the database; no HasDefaultValue here, otherwise EF would skip "false" on insert (it is the CLR default)
-            entity.Property(e => e.IsInCurriculum).HasColumnName("isInCurriculum");
-            entity.Property(e => e.Status)
-                .HasMaxLength(30)
-                .HasColumnName("status");
-            entity.Property(e => e.StudentId).HasColumnName("studentId");
-            entity.Property(e => e.SubjectId).HasColumnName("subjectId");
-            entity.Property(e => e.TermId).HasColumnName("termId");
-
-            entity.HasOne(d => d.AttendanceImportFile).WithMany(p => p.StudentsubjectresultAttendanceImportFiles)
-                .HasForeignKey(d => d.AttendanceImportFileId)
-                .HasConstraintName("FK_STUDENTSUBJECTRESULTS_attendanceImportFileId");
-
-            entity.HasOne(d => d.GradeImportFile).WithMany(p => p.StudentsubjectresultGradeImportFiles)
-                .HasForeignKey(d => d.GradeImportFileId)
-                .HasConstraintName("FK_STUDENTSUBJECTRESULTS_gradeImportFileId");
-
-            entity.HasOne(d => d.Student).WithMany(p => p.Studentsubjectresults)
-                .HasForeignKey(d => d.StudentId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_STUDENTSUBJECTRESULTS_studentId");
-
-            entity.HasOne(d => d.Subject).WithMany(p => p.Studentsubjectresults)
-                .HasForeignKey(d => d.SubjectId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_STUDENTSUBJECTRESULTS_subjectId");
-
-            entity.HasOne(d => d.Term).WithMany(p => p.Studentsubjectresults)
-                .HasForeignKey(d => d.TermId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_STUDENTSUBJECTRESULTS_termId");
-        });
-
         modelBuilder.Entity<Transcriptimportbatch>(entity =>
         {
-            entity.HasKey(e => e.ImportBatchId);
+            entity.HasKey(e => e.TranscriptImportBatchId);
 
             entity.ToTable("TRANSCRIPTIMPORTBATCHES");
 
-            entity.Property(e => e.ImportBatchId)
+            entity.Property(e => e.TranscriptImportBatchId)
                 .HasDefaultValueSql("(newsequentialid())")
-                .HasColumnName("importBatchId");
+                .HasColumnName("transcriptImportBatchId");
             entity.Property(e => e.CommittedAt)
                 .HasPrecision(3)
                 .HasColumnName("committedAt");
@@ -2026,17 +1964,17 @@ public partial class AdviseCareContext : DbContext
 
         modelBuilder.Entity<Transcriptimportfile>(entity =>
         {
-            entity.HasKey(e => e.ImportFileId);
+            entity.HasKey(e => e.TranscriptImportFileId);
 
             entity.ToTable("TRANSCRIPTIMPORTFILES");
 
             entity.HasIndex(e => e.FileHash, "IX_TRANSCRIPTIMPORTFILES_fileHash");
 
-            entity.HasIndex(e => e.ImportBatchId, "IX_TRANSCRIPTIMPORTFILES_importBatchId");
+            entity.HasIndex(e => e.TranscriptImportBatchId, "IX_TRANSCRIPTIMPORTFILES_transcriptImportBatchId");
 
-            entity.Property(e => e.ImportFileId)
+            entity.Property(e => e.TranscriptImportFileId)
                 .HasDefaultValueSql("(newsequentialid())")
-                .HasColumnName("importFileId");
+                .HasColumnName("transcriptImportFileId");
             entity.Property(e => e.CurriculumCode)
                 .HasMaxLength(50)
                 .HasColumnName("curriculumCode");
@@ -2051,7 +1989,7 @@ public partial class AdviseCareContext : DbContext
             entity.Property(e => e.FullNameInFile)
                 .HasMaxLength(255)
                 .HasColumnName("fullNameInFile");
-            entity.Property(e => e.ImportBatchId).HasColumnName("importBatchId");
+            entity.Property(e => e.TranscriptImportBatchId).HasColumnName("transcriptImportBatchId");
             entity.Property(e => e.ImportType)
                 .HasMaxLength(30)
                 .HasColumnName("importType");
@@ -2072,10 +2010,10 @@ public partial class AdviseCareContext : DbContext
                 .HasColumnName("uploadedAt");
             entity.Property(e => e.ValidationResult).HasColumnName("validationResult");
 
-            entity.HasOne(d => d.ImportBatch).WithMany(p => p.Transcriptimportfiles)
-                .HasForeignKey(d => d.ImportBatchId)
+            entity.HasOne(d => d.TranscriptImportBatch).WithMany(p => p.Transcriptimportfiles)
+                .HasForeignKey(d => d.TranscriptImportBatchId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_TRANSCRIPTIMPORTFILES_importBatchId");
+                .HasConstraintName("FK_TRANSCRIPTIMPORTFILES_transcriptImportBatchId");
 
             entity.HasOne(d => d.Student).WithMany(p => p.Transcriptimportfiles)
                 .HasForeignKey(d => d.StudentId)

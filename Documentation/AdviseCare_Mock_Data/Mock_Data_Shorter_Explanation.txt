@@ -8,4 +8,6 @@ mock_data_sum2026 (POST /api/StudentData/import, with the columnMapping from the
 
 mock_data_fall2026: 48 Fall 2026 rows (the current term). Four per-term values per student are left out on purpose, so they show as missing. Invalid cell: Công’s GPA “7,2”. After the fix, expect insertedCount = 48; Thành then gets four early-support flags (Low attendance in DBI202, Very low GPA, Two or more failed subjects, Tuition overdue).
 
+Transcripts (Admin > Academic results import, or POST /api/TranscriptImportBatches): a grade transcript and an attendance file (PDF) for each of the two students, with the same Subject mark and Attendance rate values as the two term files, plus Transcript_SE182739_invalid.pdf with one invalid cell (DBI202 graded 45). Upload them together: the invalid file blocks the batch until it is removed (all-or-nothing); the 4 valid files then write 16 values.
+
 AdviseCare_Mock_Data_Guide.txt: the load order, the accounts, what the seed data contains and the test starting points.

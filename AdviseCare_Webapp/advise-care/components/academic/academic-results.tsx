@@ -14,7 +14,7 @@ import { Notice } from "@/components/ui/notice";
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/states";
 import { StatusChip } from "@/components/ui/status-chip";
 
-/** Fields of AcademicResultsResponse (AdviseCare.Application/Contracts/Responses/AcademicResult). */
+/** Per-subject results built from the StudentData values (StudentDataValueResponse) of the two per-subject data attributes. */
 interface Summary {
   subjectCount: number;
   passedCount: number;
@@ -30,8 +30,6 @@ interface SubjectResult {
   id: string;
   subjectCode: string;
   subjectName: string;
-  curriculumTerm: number | null;
-  isInCurriculum: boolean;
   grade: number | null;
   attendanceRate: number | null;
   absenceRate: number | null;
@@ -46,9 +44,6 @@ interface TermResults {
 }
 
 interface AcademicResults {
-  studentCode: string;
-  fullName: string;
-  curriculumCode: string;
   isGradeShared: boolean;
   isAttendanceShared: boolean;
   minAttendanceRate: number;
@@ -58,53 +53,105 @@ interface AcademicResults {
   terms: TermResults[];
 }
 
-const num = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) ? value : null);
-const text = (value: unknown): string => (typeof value === "string" ? value : "");
-const rec = (value: unknown): Record<string, unknown> => (isRecord(value) ? value : {});
-const list = (value: unknown): Record<string, unknown>[] => (Array.isArray(value) ? value.filter(isRecord) : []);
+/** Data attributes (DATAATTRIBUTES.attributeName) the transcript import fills, and the marking thresholds (FPT rule: at least 80% attendance; pass mark 5/10). */
+const GRADE_ATTRIBUTE = "Subject mark";
+const ATTENDANCE_ATTRIBUTE = "Attendance rate";
+const MIN_ATTENDANCE_RATE = 80;
+const PASSING_GRADE = 5;
+const SEASONS: Record<string, number> = { spring: 1, summer: 2, fall: 3 };
 
-function toSummary(value: unknown): Summary {
-  const r = rec(value);
+const text = (value: unknown): string => (typeof value === "string" ? value : "");
+const list = (value: unknown): Record<string, unknown>[] => (Array.isArray(value) ? value.filter(isRecord) : []);
+const numberOf = (value: unknown): number | null => {
+  const parsed = typeof value === "string" && value.trim() ? Number(value) : NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+};
+const average = (values: number[]) => (values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null);
+
+/** "Fall 2026" → 2026.3, so terms sort newest first; unknown names go last. */
+function termOrder(termName: string) {
+  const match = /^(spring|summer|fall)\s*(\d{4})$/i.exec(termName.trim());
+  return match ? Number(match[2]) + SEASONS[match[1].toLowerCase()] / 10 : 0;
+}
+
+/** Passed / not passed / attendance fail, worked out from the mark and the attendance; empty while there is no mark. */
+function statusOf(grade: number | null, attendanceRate: number | null) {
+  if (attendanceRate !== null && attendanceRate < MIN_ATTENDANCE_RATE) return "attendanceFail";
+  if (grade === null) return "";
+  return grade >= PASSING_GRADE ? "passed" : "notPassed";
+}
+
+function summarize(results: SubjectResult[]): Summary {
+  const grades = results.map((item) => item.grade).filter((value): value is number => value !== null);
+  const rates = results.map((item) => item.attendanceRate).filter((value): value is number => value !== null);
   return {
-    subjectCount: num(r.subjectCount) ?? 0,
-    passedCount: num(r.passedCount) ?? 0,
-    gradedCount: num(r.gradedCount) ?? 0,
-    averageGrade: num(r.averageGrade),
-    lowGradeCount: num(r.lowGradeCount) ?? 0,
-    attendanceCount: num(r.attendanceCount) ?? 0,
-    averageAttendanceRate: num(r.averageAttendanceRate),
-    lowAttendanceCount: num(r.lowAttendanceCount) ?? 0,
+    subjectCount: results.length,
+    passedCount: results.filter((item) => item.status === "passed").length,
+    gradedCount: grades.length,
+    averageGrade: average(grades),
+    lowGradeCount: grades.filter((value) => value < PASSING_GRADE).length,
+    attendanceCount: rates.length,
+    averageAttendanceRate: average(rates),
+    lowAttendanceCount: rates.filter((value) => value < MIN_ATTENDANCE_RATE).length,
   };
 }
 
-function toResults(payload: unknown): AcademicResults {
-  const r = rec(payload);
+/** Groups the per-subject Subject mark and Attendance rate values (StudentData/me or StudentData/students/{id}) by term and subject. */
+function toResults(payload: unknown, audience: "student" | "staff"): AcademicResults {
+  const values = list(isRecord(payload) ? payload.values : null).filter(
+    (item) => text(item.subjectId) && [GRADE_ATTRIBUTE, ATTENDANCE_ATTRIBUTE].includes(text(item.attributeName)),
+  );
+  // A value not shared with staff comes back with isShared = false and no value; the student always sees everything
+  const sharedFor = (name: string) =>
+    audience === "student" || values.some((item) => text(item.attributeName) === name && item.isShared === true);
+  const isGradeShared = sharedFor(GRADE_ATTRIBUTE);
+  const isAttendanceShared = sharedFor(ATTENDANCE_ATTRIBUTE);
+
+  const terms = new Map<string, { termName: string; subjects: Map<string, SubjectResult> }>();
+  let lastUpdatedAt = "";
+  for (const item of values) {
+    const termId = text(item.termId);
+    const term = terms.get(termId) ?? { termName: text(item.termName), subjects: new Map<string, SubjectResult>() };
+    terms.set(termId, term);
+    const subjectId = text(item.subjectId);
+    const result = term.subjects.get(subjectId) ?? {
+      id: `${subjectId}-${termId}`,
+      subjectCode: text(item.subjectCode),
+      subjectName: text(item.subjectName),
+      grade: null,
+      attendanceRate: null,
+      absenceRate: null,
+      status: "",
+    };
+    term.subjects.set(subjectId, result);
+    const value = item.isMissing === true || item.isErased === true ? null : numberOf(item.value);
+    if (text(item.attributeName) === GRADE_ATTRIBUTE) result.grade = value;
+    else result.attendanceRate = value;
+    const recordedAt = text(item.transactionFrom);
+    if (recordedAt > lastUpdatedAt) lastUpdatedAt = recordedAt;
+  }
+
+  const termResults = [...terms.entries()]
+    .map(([termId, term]) => {
+      const results = [...term.subjects.values()]
+        .map((item) => ({
+          ...item,
+          absenceRate: item.attendanceRate === null ? null : 100 - item.attendanceRate,
+          status: statusOf(item.grade, item.attendanceRate),
+        }))
+        .sort((a, b) => a.subjectCode.localeCompare(b.subjectCode));
+      return { termId, termName: term.termName, summary: summarize(results), results };
+    })
+    .sort((a, b) => termOrder(b.termName) - termOrder(a.termName));
+
   return {
-    studentCode: text(r.studentCode),
-    fullName: text(r.fullName),
-    curriculumCode: text(r.curriculumCode),
-    isGradeShared: r.isGradeShared === true,
-    isAttendanceShared: r.isAttendanceShared === true,
-    minAttendanceRate: num(r.minAttendanceRate) ?? 80,
-    passingGrade: num(r.passingGrade) ?? 5,
-    lastUpdatedAt: text(r.lastUpdatedAt),
-    summary: toSummary(r.summary),
-    terms: list(r.terms).map((term) => ({
-      termId: text(term.termId),
-      termName: text(term.termName),
-      summary: toSummary(term.summary),
-      results: list(term.results).map((item) => ({
-        id: text(item.studentSubjectResultId) || `${text(item.subjectCode)}-${text(term.termId)}`,
-        subjectCode: text(item.subjectCode),
-        subjectName: text(item.subjectName),
-        curriculumTerm: num(item.curriculumTerm),
-        isInCurriculum: item.isInCurriculum !== false,
-        grade: num(item.grade),
-        attendanceRate: num(item.attendanceRate),
-        absenceRate: num(item.absenceRate),
-        status: text(item.status),
-      })),
-    })),
+    isGradeShared,
+    isAttendanceShared,
+    minAttendanceRate: MIN_ATTENDANCE_RATE,
+    passingGrade: PASSING_GRADE,
+    lastUpdatedAt,
+    summary: summarize(termResults.flatMap((term) => term.results)),
+    terms: termResults,
   };
 }
 
@@ -112,9 +159,6 @@ const statusTone: Record<string, StatusTone> = {
   passed: "ontrack",
   notPassed: "urgent",
   attendanceFail: "urgent",
-  studying: "info",
-  exempt: "sealed",
-  notStarted: "sealed",
 };
 
 const numberFormat = new Intl.NumberFormat("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
@@ -122,10 +166,11 @@ const formatNumber = (value: number) => numberFormat.format(value);
 const formatPercent = (value: number) => `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value)}%`;
 
 /**
- * Per-subject grade and attendance, one block per term (newest first, the two
- * latest open). The student sees everything; staff see only the part the
- * student shared (GPA → grade and status, Attendance rate → attendance), read
- * through the access guard and written to the access log by the API.
+ * Per-subject mark and attendance, one block per term (newest first, the two
+ * latest open), built from the per-subject data attributes Subject mark and
+ * Attendance rate (filled by the transcript import or the Excel/CSV import).
+ * The student sees everything; staff see only the attributes the student
+ * shared, read through the access guard and written to the access log by the API.
  *
  * A subject is marked when its grade is under the passing grade or its
  * attendance under the minimum (absence over 20%): text + icon, never colour alone.
@@ -153,11 +198,11 @@ export function AcademicResultsView({
     try {
       const payload =
         audience === "student"
-          ? await clientApiGet<unknown>("AcademicResults/me")
-          : await clientApiGet<unknown>(`AcademicResults/students/${encodeURIComponent(studentId ?? "")}`, {
+          ? await clientApiGet<unknown>("StudentData/me")
+          : await clientApiGet<unknown>(`StudentData/students/${encodeURIComponent(studentId ?? "")}`, {
               query: caseId ? { caseId } : undefined,
             });
-      setData(toResults(payload));
+      setData(toResults(payload, audience));
     } catch (cause) {
       setError(cause instanceof ApiError && cause.status < 500 && cause.message ? cause.message : t("loadError"));
     } finally {
@@ -231,11 +276,6 @@ export function AcademicResultsView({
       ) : (
         <div className="flex flex-col gap-space-base px-space-lg py-space-base">
           <p className="flex flex-wrap gap-x-space-md gap-y-1 text-[0.8125rem] text-text-faint">
-            {data.curriculumCode ? (
-              <span>
-                {t("curriculum")} <span className="font-mono text-text-muted">{data.curriculumCode}</span>
-              </span>
-            ) : null}
             {data.lastUpdatedAt ? (
               <span>
                 {t("updatedAt")} <span className="font-mono text-text-muted">{formatDateTime(data.lastUpdatedAt)}</span>
@@ -394,13 +434,6 @@ function TermBlock({ term, data, open }: { term: TermResults; data: AcademicResu
                   <td className="px-space-md py-space-sm">
                     <span className="font-mono text-[0.8125rem] font-semibold text-text">{item.subjectCode}</span>
                     <span className="ml-space-sm text-text">{item.subjectName}</span>
-                    <span className="block text-[0.75rem] text-text-faint">
-                      {item.isInCurriculum
-                        ? item.curriculumTerm !== null
-                          ? t("curriculumTerm", { term: item.curriculumTerm })
-                          : t("inCurriculum")
-                        : t("outsideCurriculum")}
-                    </span>
                   </td>
                   {data.isGradeShared ? (
                     <td className="px-space-sm py-space-sm text-right font-mono">

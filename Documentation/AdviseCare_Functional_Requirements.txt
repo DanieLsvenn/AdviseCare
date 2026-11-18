@@ -38,13 +38,16 @@ Setting up the basic calendar and the shared lookup lists the rest of the system
 
 - Import student data:
 
-Since the school has no data source or API to connect to, student data (attendance, grades, ...) comes in as files that the admin uploads. The import is all-or-nothing: if one row is invalid, nothing is imported. Rows of an archived data attribute are the only exception: they are left out and listed, and the other rows are still imported.
+Since the school has no data source or API to connect to, student data (attendance, grades, ...) comes in as files that the admin uploads: Excel/CSV files of any data attribute, or the students' transcript PDFs for the per-subject mark and attendance. The import is all-or-nothing: if one row is invalid, nothing is imported. Rows of an archived data attribute are the only exception: they are left out and listed, and the other rows are still imported.
 
 + Upload an Excel/CSV file of student data values (a Google Sheet is extra scope, see ES6 in AdviseCare_Extra_Scope_List.txt)
 + Preview the file and map its columns (student identifier, data attribute, value, term, valid-from date, and a subject code column when the file holds per-subject data attributes)
 + Validate the whole file before saving (all-or-nothing); valid values are encrypted and go straight into the student data history, and every enrolled student without a value of a per-term data attribute gets a missing-data notice (per-subject data attributes get none, since the subjects each student takes are not known)
++ Upload transcript PDFs in one batch (any number of files, sent in parts; one student per file): a grade transcript fills the per-subject data attribute Subject mark and an attendance file of the same layout fills Attendance rate, one value per student, subject and term
++ Preview the batch: each PDF is read and checked on upload (the printed student code belongs to an active student, every semester and subject code is already in AdviseCare, marks 0-10 and attendance 0-100, one file per student and type); rows without a semester or a value (not started, studying, exempt) are left out with a warning
++ Remove files with errors (or drop fixed files in) and import the batch; it is imported only when every file is valid, or cancel it (nothing is written)
 + View the import result and the list of invalid rows when it fails
-+ View import history (who imported what, when; kept in the admin's activity log)
++ View import history (who imported what, when; kept in the admin's activity log, and the recent transcript batches with their files)
 + After every import, the active early-support indicators are re-checked and flags raised or cleared (see the Steward and the Programme Head)
 
 - Configure data source connections and ingestion schedules (extra scope, ES1, see AdviseCare_Extra_Scope_List.txt):
@@ -312,7 +315,7 @@ The main entry point: the student asks for help, picks the kind of help, explain
 - View own profile, data and the sources behind them:
 
 + View own consolidated profile (including own student code and academic status)
-+ View own data and its sources (per term, and per subject for per-subject data attributes such as attendance), in the Private data tab
++ View own data and its sources (per term, and per subject for per-subject data attributes such as attendance), in the Private data tab, with an academic results summary per term (mark and attendance per subject, pass/fail worked out from the two)
 + See notice where data about them is missing
 + View own consent status per section
 

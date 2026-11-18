@@ -61,6 +61,7 @@ Thư mục `demo-samples` cũ đã được thay bằng `AdviseCare_Mock_Data` (
 | [`account_import.xlsx`](./AdviseCare_Mock_Data/account_import.xlsx) (hoặc `.csv`) | Admin → "Tài khoản" → "Nhập từ Excel" | 2 tài khoản sinh viên Google thật của nhóm (`ngophanthanhcong123456@gmail.com`, `t3nt3nyulie@gmail.com`). **Lần đầu bị từ chối** vì ô `academicStatus` dòng 3 là `eenrolled` → sửa thành `enrolled` rồi nhập lại → tạo 2 tài khoản |
 | [`mock_data_sum2026.xlsx`](./AdviseCare_Mock_Data/mock_data_sum2026.xlsx) (hoặc `.csv`) | Admin → "Nhập dữ liệu sinh viên" | 56 dòng Summer 2026 cho 2 sinh viên trên. **Lần đầu bị từ chối** vì `Financial difficulty` của Công là `no` → sửa thành `false` → nhập 56 dòng |
 | [`mock_data_fall2026.xlsx`](./AdviseCare_Mock_Data/mock_data_fall2026.xlsx) (hoặc `.csv`) | cùng chỗ trên | 48 dòng Fall 2026 (mỗi sinh viên thiếu 4 mục để thấy "thiếu dữ liệu"). **Lần đầu bị từ chối** vì GPA của Công là `7,2` → sửa thành `7.2` → nhập 48 dòng; Thành bị 4 cờ hỗ trợ sớm |
+| [`Transcripts/`](./AdviseCare_Mock_Data/Transcripts) (5 file PDF) | Admin → "Nhập kết quả học tập" | Bảng điểm (`Transcript_…`) và file điểm danh (`Attendance_…`) của 2 sinh viên trên, cùng điểm môn và tỉ lệ điểm danh như 2 file trên. Tải cả 5 file cùng lúc: **`Transcript_SE182739_invalid.pdf` bị lỗi** (DBI202 ghi `45`) nên cả đợt không nhập được → gỡ file đó → nhập 4 file → 16 giá trị |
 
 > Dữ liệu mẫu trong script SQL (các tài khoản giả, các ca, đồng ý...) vẫn giữ nguyên để hệ thống trông như thật; các file import chỉ dùng 2 tài khoản Google thật để demo liên kết và đăng nhập. Cột `Subject` (mã môn, ví dụ `PRN212`) chỉ điền cho các mục theo môn: Attendance rate, Absent slots, Late submissions, Subject mark.
 
@@ -107,7 +108,7 @@ Cố vấn ── đóng ca ─────────────────�
 ## 3. Phần A — Quản trị viên (Admin): dựng dữ liệu nền
 
 Đăng nhập `admin@gmail.com`. Menu bên trái (nhóm "Quản trị hệ thống"):
-**Tài khoản và vai trò · Danh mục học thuật · Nhập dữ liệu sinh viên · Danh mục hỗ trợ · Lịch sử hoạt động · Thông báo · Cài đặt tài khoản · Phân vai trò · Phiên đăng nhập · Chuyên môn cố vấn.**
+**Tài khoản và vai trò · Danh mục học thuật · Nhập dữ liệu sinh viên · Nhập kết quả học tập · Danh mục hỗ trợ · Lịch sử hoạt động · Thông báo · Cài đặt tài khoản · Phân vai trò · Phiên đăng nhập · Chuyên môn cố vấn.**
 
 ### A.1. Tài khoản (`/vi/admin/m01` — "Tài khoản và vai trò")
 
@@ -192,6 +193,15 @@ Thao tác (file `.xlsx` hoặc `.csv`):
 Khi còn lỗi, nút "Nhập dữ liệu" vẫn bị khóa: chỉ cần một ô sai là không có dòng nào được nhập.
 
 > Nhập lại cùng một file chỉ **thêm dòng mới**, không ghi đè/cập nhật dòng cũ.
+
+### A.5b. Nhập kết quả học tập từ bảng điểm PDF (`/vi/admin/m09`)
+
+Cách thứ hai để có **Subject mark** và **Attendance rate** theo từng môn: tải bảng điểm PDF (mỗi file một sinh viên). File bảng điểm (cột Grade) → Subject mark; file điểm danh cùng bố cục (cột Attendance) → Attendance rate.
+
+1. Kéo thả cả 5 file trong [`Transcripts/`](./AdviseCare_Mock_Data/Transcripts) → **"Đọc và kiểm tra"**. Mỗi file được đọc và kiểm tra riêng (mã sinh viên, kỳ học và mã môn phải có sẵn trong AdviseCare, điểm 0–10, điểm danh 0–100). Dòng SWE201 (chưa học) được bỏ qua kèm cảnh báo.
+2. `Transcript_SE182739_invalid.pdf` báo lỗi *"Row 3 (DBI202): grade 45 is not between 0 and 10."* → nút **Nhập** bị khóa (tất cả hoặc không). Bấm **"Gỡ"** ở file đó.
+3. Bấm **"Nhập 4 file"** → 16 giá trị được ghi vào dữ liệu sinh viên (mã hóa, mỗi môn một dòng). Nếu đã nhập 2 file Excel ở A.5, cả 16 giá trị là bản mới thay cho giá trị hiện tại (giá trị cũ vẫn còn trong lịch sử).
+4. Đăng nhập bằng tài khoản Google của Công hoặc Thành → tab **"Dữ liệu riêng tư"** → thẻ **"Kết quả học tập"** hiện điểm và điểm danh theo môn, theo kỳ.
 
 ### A.6. Danh mục hỗ trợ (`/vi/admin/m04`)
 

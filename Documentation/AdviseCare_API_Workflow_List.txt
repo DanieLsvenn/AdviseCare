@@ -83,6 +83,7 @@ Files to prepare (keep them in a TestFiles folder next to this file)
 Ready-made demo files in Documentation/AdviseCare_Mock_Data (the team's two real Google accounts; each file has one invalid cell on purpose, expected results in its guide):
 - account_import.xlsx / .csv (WF1)
 - mock_data_sum2026.xlsx / .csv and mock_data_fall2026.xlsx / .csv (WF5)
+- Transcripts/Transcript_SE180099.pdf, Attendance_SE180099.pdf, Transcript_SE182739.pdf, Attendance_SE182739.pdf and Transcript_SE182739_invalid.pdf (WF5 step 7.1)
 
 ==========
 RECOMMENDED RUN ORDER
@@ -914,6 +915,35 @@ WF5: Admin imports student data
    - a required field empty or out of range -> 400 (errors per field)
    - no token or an ended session -> 401
    - {studentToken} -> 403 "Your role cannot use this route."
+7.1. Admin imports transcript PDFs (per-subject Subject mark and Attendance rate)
+   (Needs the two demo accounts from account_import, i.e. SE180099 and SE182739.)
+   POST /api/TranscriptImportBatches [EXISTS]
+   Auth: {adminToken}
+   Form (multipart/form-data): files = Transcript_SE180099.pdf, Attendance_SE180099.pdf, Transcript_SE182739_invalid.pdf (up to 50 per request; the web app sends a large batch in parts)
+   Expect: status = previewed; per file the student (matched by the printed Student ID), importType grade/attendance, rowCount = 4, skippedRowCount = 1 (SWE201, not started) with a warning;
+   Transcript_SE182739_invalid.pdf is invalid with "Row 3 (DBI202): grade 45 is not between 0 and 10."; insertCount / replaceCount per file (replaceCount counts subjects that already have a value, e.g. after the mock_data_* imports); nothing is written to STUDENTDATA
+   Save: transcriptImportBatchId -> {transcriptBatchId}, the invalid file's transcriptImportFileId -> {badTranscriptFileId}
+   Unhappy:
+   - 400 "At least one PDF file is required."
+   - 400 "Send at most 50 files at a time."
+   - 400 "Data attribute 'Subject mark' is archived, so transcripts cannot be imported." (same for 'Attendance rate', or when either is missing or not per subject)
+   - a file that is not a PDF, empty or over 5 MB, without a readable table, with an unknown Student ID, a semester like "Winter 99", a term or subject code not in AdviseCare ("term 'Fall 2022' does not exist", "subject 'OTP101' does not exist"), a subject twice in a term, a second file of the same student and type, or the same file twice -> that file is invalid (errors listed), the others are still read
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   POST /api/TranscriptImportBatches/{transcriptBatchId}/commit [EXISTS] while a file is invalid
+   Expect: 400 "The batch has 1 invalid file(s); remove them (or upload fixed files) before importing." (all-or-nothing, nothing written)
+   DELETE /api/TranscriptImportBatches/{transcriptBatchId}/files/{badTranscriptFileId} [EXISTS]
+   Expect: the batch preview without the file
+   POST /api/TranscriptImportBatches/{transcriptBatchId}/files [EXISTS]
+   Form: files = Transcript_SE182739.pdf, Attendance_SE182739.pdf
+   Expect: 4 valid files, 0 invalid; insertCount = 16 for the batch
+   Unhappy: 404 "Transcript import batch not found."; 409 "This transcript import batch is already committed; start a new one." (also for DELETE, commit and cancel); 400 "A transcript import batch holds at most 500 files; import this one and start another."
+   POST /api/TranscriptImportBatches/{transcriptBatchId}/commit [EXISTS]
+   Expect: committedFiles = 4, insertedCount = 16, replacedCount = how many already had a value; 16 new STUDENTDATA rows (Subject mark from the grade files, Attendance rate from the attendance files, one per student, subject and term) with
+   dataSourceId = null, status = original, provenanceNote "Imported from transcript Transcript_SE180099.pdf on {date}", validFrom = the import day kept inside the term (Summer 2026 rows: 2026-08-23); the batch and its files become committed; activity log transcriptImportCommitted
+   Check: GET /api/StudentData/me with the demo student's token -> Subject mark and Attendance rate per subject; the Private data tab shows them in "Academic results" (pass/fail worked out from mark >= 5 and attendance >= 80)
+   Cancel instead: POST /api/TranscriptImportBatches/{id}/cancel [EXISTS] -> status = cancelled, nothing written, activity log transcriptImportCancelled
+   History: GET /api/TranscriptImportBatches?page=1&pageSize=8 [EXISTS] (newest first, file counts); GET /api/TranscriptImportBatches/{id} [EXISTS]; GET /api/TranscriptImportBatches/search?status=committed [EXISTS]
 8. Scheduled automatic ingestion is extra scope (ES1) [NO API]
 
 ==========

@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { useTranslations } from "next-intl";
 import { ApiError, isRecord } from "@/lib/api-contract";
-import { clientApiGet, clientApiPost, clientApiRequest } from "@/lib/client-api";
+import { clientApiDelete, clientApiGet, clientApiPost, clientApiRequest } from "@/lib/client-api";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
 import type { StatusTone } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import { controlClass } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
 import { Notice } from "@/components/ui/notice";
 import { Pager, usePaged } from "@/components/ui/pager";
@@ -22,17 +21,17 @@ const CHUNK_BYTES = 20 * 1024 * 1024;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const PAGE_SIZE = 20;
 
-/** Fields of TranscriptImportBatchResponse (AdviseCare.Application/Contracts/Responses/AcademicResult). */
+/** Fields of GetTranscriptImportBatchByIdResponse (AdviseCare.Application/Contracts/Responses/TranscriptImportBatch). */
 interface ImportFile {
-  importFileId: string;
+  transcriptImportFileId: string;
   fileName: string;
   importType: string;
   studentCode: string;
   studentName: string;
   fullNameInFile: string;
   rowCount: number;
-  createCount: number;
-  updateCount: number;
+  insertCount: number;
+  replaceCount: number;
   skippedRowCount: number;
   status: string;
   errors: string[];
@@ -40,7 +39,7 @@ interface ImportFile {
 }
 
 interface Batch {
-  importBatchId: string;
+  transcriptImportBatchId: string;
   importedByName: string;
   createdAt: string;
   committedAt: string;
@@ -49,13 +48,13 @@ interface Batch {
   validFiles: number;
   invalidFiles: number;
   committedFiles: number;
+  insertCount: number;
+  replaceCount: number;
   files: ImportFile[];
-  newSubjects: { subjectCode: string; subjectName: string; fileCount: number; facultyId: string; facultyName: string }[];
-  newTerms: string[];
 }
 
 interface BatchSummary {
-  importBatchId: string;
+  transcriptImportBatchId: string;
   importedByName: string;
   createdAt: string;
   status: string;
@@ -67,11 +66,8 @@ interface BatchSummary {
 
 interface CommitResult {
   committedFiles: number;
-  skippedFiles: number;
-  createdResults: number;
-  updatedResults: number;
-  createdSubjects: string[];
-  createdTerms: string[];
+  insertedCount: number;
+  replacedCount: number;
 }
 
 const text = (value: unknown) => (typeof value === "string" ? value : "");
@@ -82,7 +78,7 @@ const records = (value: unknown) => (Array.isArray(value) ? value.filter(isRecor
 function toBatch(payload: unknown): Batch {
   const r = isRecord(payload) ? payload : {};
   return {
-    importBatchId: text(r.importBatchId),
+    transcriptImportBatchId: text(r.transcriptImportBatchId),
     importedByName: text(r.importedByName),
     createdAt: text(r.createdAt),
     committedAt: text(r.committedAt),
@@ -91,35 +87,29 @@ function toBatch(payload: unknown): Batch {
     validFiles: count(r.validFiles),
     invalidFiles: count(r.invalidFiles),
     committedFiles: count(r.committedFiles),
+    insertCount: count(r.insertCount),
+    replaceCount: count(r.replaceCount),
     files: records(r.files).map((f) => ({
-      importFileId: text(f.importFileId),
+      transcriptImportFileId: text(f.transcriptImportFileId),
       fileName: text(f.fileName),
       importType: text(f.importType),
       studentCode: text(f.studentCode),
       studentName: text(f.studentName),
       fullNameInFile: text(f.fullNameInFile),
       rowCount: count(f.rowCount),
-      createCount: count(f.createCount),
-      updateCount: count(f.updateCount),
+      insertCount: count(f.insertCount),
+      replaceCount: count(f.replaceCount),
       skippedRowCount: count(f.skippedRowCount),
       status: text(f.status),
       errors: strings(f.errors),
       warnings: strings(f.warnings),
     })),
-    newSubjects: records(r.newSubjects).map((s) => ({
-      subjectCode: text(s.subjectCode),
-      subjectName: text(s.subjectName),
-      fileCount: count(s.fileCount),
-      facultyId: text(s.facultyId),
-      facultyName: text(s.facultyName),
-    })),
-    newTerms: strings(r.newTerms),
   };
 }
 
 function toSummary(item: Record<string, unknown>): BatchSummary {
   return {
-    importBatchId: text(item.importBatchId),
+    transcriptImportBatchId: text(item.transcriptImportBatchId),
     importedByName: text(item.importedByName),
     createdAt: text(item.createdAt),
     status: text(item.status),
@@ -134,11 +124,8 @@ function toCommit(payload: unknown): CommitResult {
   const r = isRecord(payload) ? payload : {};
   return {
     committedFiles: count(r.committedFiles),
-    skippedFiles: count(r.skippedFiles),
-    createdResults: count(r.createdResults),
-    updatedResults: count(r.updatedResults),
-    createdSubjects: strings(r.createdSubjects),
-    createdTerms: strings(r.createdTerms),
+    insertedCount: count(r.insertedCount),
+    replacedCount: count(r.replacedCount),
   };
 }
 
@@ -168,13 +155,14 @@ function formatSize(bytes: number) {
 }
 
 /**
- * Import of academic results from transcript PDFs (one student per file: the
- * university's grade transcript, or the attendance file of the same layout).
+ * Import of per-subject student data from transcript PDFs (one student per
+ * file: the university's grade transcript → "Subject mark", or the attendance
+ * file of the same layout → "Attendance rate").
  *
  * Select or drop any number of PDFs → they are sent in parts into one import
  * batch, where the API reads and checks each file → the preview lists every
- * file as valid or with its errors → commit writes all valid files together;
- * invalid ones are left out and can be fixed and added before committing.
+ * file as valid or with its errors → invalid files are removed (or fixed files
+ * added) → the import writes every file together, all-or-nothing.
  */
 export function TranscriptImportWorkflow() {
   const t = useTranslations("ui.transcriptImport");
@@ -185,12 +173,10 @@ export function TranscriptImportWorkflow() {
   const [dragging, setDragging] = useState(false);
   const [batch, setBatch] = useState<Batch | null>(null);
   const [progress, setProgress] = useState<{ sent: number; total: number } | null>(null);
-  const [busy, setBusy] = useState<"upload" | "commit" | "cancel" | "open" | null>(null);
+  const [busy, setBusy] = useState<"upload" | "commit" | "cancel" | "open" | "remove" | null>(null);
   const [error, setError] = useState("");
   const [result, setResult] = useState<CommitResult | null>(null);
   const [filter, setFilter] = useState<"all" | "invalid" | "warnings">("all");
-  const [faculties, setFaculties] = useState<{ id: string; label: string }[]>([]);
-  const [facultyId, setFacultyId] = useState("");
   const [history, setHistory] = useState<BatchSummary[]>([]);
 
   const messageOf = useCallback(
@@ -200,7 +186,7 @@ export function TranscriptImportWorkflow() {
 
   const loadHistory = useCallback(async () => {
     try {
-      const payload = await clientApiGet<unknown>("AcademicResults/imports", { query: { count: 8 } });
+      const payload = await clientApiGet<unknown>("TranscriptImportBatches", { query: { page: 1, pageSize: 8 } });
       setHistory(records(payload).map(toSummary));
     } catch {
       setHistory([]);
@@ -208,22 +194,7 @@ export function TranscriptImportWorkflow() {
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadHistory();
-      void clientApiGet<unknown>("Faculties")
-        .then((payload) =>
-          setFaculties(
-            records(payload)
-              .filter((item) => item.status === undefined || item.status === "active")
-              .map((item) => ({
-                id: text(item.facultyId),
-                label: [text(item.facultyCode), text(item.facultyName)].filter(Boolean).join(" — "),
-              }))
-              .filter((item) => item.id),
-          ),
-        )
-        .catch(() => setFaculties([]));
-    }, 0);
+    const timer = window.setTimeout(() => void loadHistory(), 0);
     return () => window.clearTimeout(timer);
   }, [loadHistory]);
 
@@ -261,8 +232,8 @@ export function TranscriptImportWorkflow() {
         const body = new FormData();
         for (const file of group) body.append("files", file);
         const path = current
-          ? `AcademicResults/imports/${encodeURIComponent(current.importBatchId)}/files`
-          : "AcademicResults/imports";
+          ? `TranscriptImportBatches/${encodeURIComponent(current.transcriptImportBatchId)}/files`
+          : "TranscriptImportBatches";
         current = toBatch(await clientApiRequest<unknown>(path, { method: "POST", body, timeoutMs: 120_000 }));
         setBatch(current);
         sent += group.length;
@@ -285,8 +256,8 @@ export function TranscriptImportWorkflow() {
     if (!batch) return;
     const ok = await confirm({
       title: t("commitConfirmTitle"),
-      body: t("commitConfirmBody", { valid: batch.validFiles, invalid: batch.invalidFiles }),
-      confirmLabel: t("commit", { count: batch.validFiles }),
+      body: t("commitConfirmBody", { files: batch.totalFiles, values: batch.insertCount, replaced: batch.replaceCount }),
+      confirmLabel: t("commit", { count: batch.totalFiles }),
       cancelLabel: tu("cancel"),
       icon: "upload",
     });
@@ -295,12 +266,12 @@ export function TranscriptImportWorkflow() {
     setError("");
     try {
       const payload = await clientApiPost<unknown>(
-        `AcademicResults/imports/${encodeURIComponent(batch.importBatchId)}/commit`,
-        facultyId ? { facultyId } : {},
+        `TranscriptImportBatches/${encodeURIComponent(batch.transcriptImportBatchId)}/commit`,
+        undefined,
         { timeoutMs: 120_000 },
       );
       setResult(toCommit(payload));
-      setBatch(toBatch(await clientApiGet<unknown>(`AcademicResults/imports/${encodeURIComponent(batch.importBatchId)}`)));
+      setBatch(toBatch(await clientApiGet<unknown>(`TranscriptImportBatches/${encodeURIComponent(batch.transcriptImportBatchId)}`)));
     } catch (cause) {
       setError(messageOf(cause));
     } finally {
@@ -322,7 +293,27 @@ export function TranscriptImportWorkflow() {
     setBusy("cancel");
     setError("");
     try {
-      setBatch(toBatch(await clientApiPost<unknown>(`AcademicResults/imports/${encodeURIComponent(batch.importBatchId)}/cancel`)));
+      setBatch(toBatch(await clientApiPost<unknown>(`TranscriptImportBatches/${encodeURIComponent(batch.transcriptImportBatchId)}/cancel`)));
+    } catch (cause) {
+      setError(messageOf(cause));
+    } finally {
+      setBusy(null);
+      void loadHistory();
+    }
+  }
+
+  async function removeFile(fileId: string) {
+    if (!batch) return;
+    setBusy("remove");
+    setError("");
+    try {
+      setBatch(
+        toBatch(
+          await clientApiDelete<unknown>(
+            `TranscriptImportBatches/${encodeURIComponent(batch.transcriptImportBatchId)}/files/${encodeURIComponent(fileId)}`,
+          ),
+        ),
+      );
     } catch (cause) {
       setError(messageOf(cause));
     } finally {
@@ -336,7 +327,7 @@ export function TranscriptImportWorkflow() {
     setError("");
     setResult(null);
     try {
-      setBatch(toBatch(await clientApiGet<unknown>(`AcademicResults/imports/${encodeURIComponent(id)}`)));
+      setBatch(toBatch(await clientApiGet<unknown>(`TranscriptImportBatches/${encodeURIComponent(id)}`)));
       setFilter("all");
     } catch (cause) {
       setError(messageOf(cause));
@@ -349,7 +340,6 @@ export function TranscriptImportWorkflow() {
     setBatch(null);
     setResult(null);
     setSelected([]);
-    setFacultyId("");
     setFilter("all");
     setError("");
   }
@@ -464,13 +454,7 @@ export function TranscriptImportWorkflow() {
                 </Button>
               }
             >
-              {t("doneBody", {
-                created: result.createdResults,
-                updated: result.updatedResults,
-                skipped: result.skippedFiles,
-              })}
-              {result.createdSubjects.length ? ` ${t("doneSubjects", { list: result.createdSubjects.join(", ") })}` : ""}
-              {result.createdTerms.length ? ` ${t("doneTerms", { list: result.createdTerms.join(", ") })}` : ""}
+              {t("doneBody", { values: result.insertedCount, replaced: result.replacedCount })}
             </Notice>
           ) : null}
 
@@ -479,10 +463,8 @@ export function TranscriptImportWorkflow() {
               batch={batch}
               filter={filter}
               setFilter={setFilter}
-              faculties={faculties}
-              facultyId={facultyId}
-              setFacultyId={setFacultyId}
               busy={busy}
+              onRemove={(fileId) => void removeFile(fileId)}
               onCommit={() => void commit()}
               onCancel={() => void cancel()}
               onNew={startNew}
@@ -500,7 +482,7 @@ export function TranscriptImportWorkflow() {
         {history.length ? (
           <ul className="divide-y divide-rule">
             {history.map((item) => (
-              <li key={item.importBatchId} className="flex flex-wrap items-center gap-x-space-md gap-y-1 px-space-lg py-space-sm">
+              <li key={item.transcriptImportBatchId} className="flex flex-wrap items-center gap-x-space-md gap-y-1 px-space-lg py-space-sm">
                 <span className="font-mono text-[0.8125rem] text-text-faint">{formatDateTime(item.createdAt)}</span>
                 <StatusChip size="sm" tone={batchTone[item.status] ?? "sealed"} label={t(`batchStatus.${item.status === "committed" || item.status === "cancelled" ? item.status : "previewed"}`)} />
                 <span className="text-sm text-text">
@@ -513,7 +495,7 @@ export function TranscriptImportWorkflow() {
                   className="ml-auto"
                   iconAfter="chevron_right"
                   disabled={busy !== null}
-                  onClick={() => void openBatch(item.importBatchId)}
+                  onClick={() => void openBatch(item.transcriptImportBatchId)}
                 >
                   {item.status === "previewed" ? t("resume") : t("view")}
                 </Button>
@@ -533,10 +515,8 @@ function BatchPreview({
   batch,
   filter,
   setFilter,
-  faculties,
-  facultyId,
-  setFacultyId,
   busy,
+  onRemove,
   onCommit,
   onCancel,
   onNew,
@@ -544,10 +524,8 @@ function BatchPreview({
   batch: Batch;
   filter: "all" | "invalid" | "warnings";
   setFilter: (value: "all" | "invalid" | "warnings") => void;
-  faculties: { id: string; label: string }[];
-  facultyId: string;
-  setFacultyId: (value: string) => void;
   busy: string | null;
+  onRemove: (fileId: string) => void;
   onCommit: () => void;
   onCancel: () => void;
   onNew: () => void;
@@ -566,16 +544,6 @@ function BatchPreview({
     [batch.files, filter],
   );
   const paged = usePaged(shown, PAGE_SIZE);
-  // A new subject goes to the faculty of a student who has it; the admin chooses only for subjects whose students have none
-  const withoutFaculty = batch.newSubjects.filter((subject) => !subject.facultyId);
-  const needsFaculty = previewing && withoutFaculty.length > 0;
-  const byFaculty = Object.entries(
-    batch.newSubjects.reduce<Record<string, string[]>>((groups, subject) => {
-      const key = subject.facultyName || "";
-      (groups[key] ??= []).push(subject.subjectCode);
-      return groups;
-    }, {}),
-  );
   const statusKey = batch.status === "committed" || batch.status === "cancelled" ? batch.status : "previewed";
 
   return (
@@ -605,50 +573,9 @@ function BatchPreview({
         ))}
       </dl>
 
-      {previewing && batch.newSubjects.length ? (
-        <Notice
-          tone={needsFaculty ? "attention" : "info"}
-          icon="library_add"
-          title={t("newSubjectsTitle", { count: batch.newSubjects.length })}
-        >
-          <p>{needsFaculty ? t("newSubjectsBodyChoose", { count: withoutFaculty.length }) : t("newSubjectsBody")}</p>
-          <ul className="mt-1 flex flex-col gap-0.5">
-            {byFaculty.map(([faculty, codes]) => (
-              <li key={faculty || "none"} className="text-[0.8125rem]">
-                <span className="font-semibold text-text">{faculty || t("noFaculty")}:</span>{" "}
-                <span className="font-mono text-text">
-                  {codes.slice(0, 30).join(", ")}
-                  {codes.length > 30 ? ", …" : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {needsFaculty ? (
-            <label className="mt-space-sm flex flex-wrap items-center gap-space-sm">
-              <span className="text-sm font-semibold text-text">
-                {t("faculty")} <span aria-hidden className="text-red-ink">*</span>
-              </span>
-              <select
-                className={cn(controlClass, "h-9 min-w-64 pr-8")}
-                value={facultyId}
-                onChange={(event) => setFacultyId(event.target.value)}
-                required
-              >
-                <option value="">{t("chooseFaculty")}</option>
-                {faculties.map((faculty) => (
-                  <option key={faculty.id} value={faculty.id}>
-                    {faculty.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-        </Notice>
-      ) : null}
-
-      {previewing && batch.newTerms.length ? (
-        <Notice tone="info" icon="event" title={t("newTermsTitle", { count: batch.newTerms.length })}>
-          {t("newTermsBody", { list: batch.newTerms.join(", ") })}
+      {previewing && batch.invalidFiles > 0 ? (
+        <Notice tone="attention" icon="error" title={t("invalidBlocksTitle", { count: batch.invalidFiles })}>
+          {t("invalidBlocksBody")}
         </Notice>
       ) : null}
 
@@ -692,7 +619,7 @@ function BatchPreview({
           </thead>
           <tbody className="divide-y divide-rule">
             {paged.items.map((file) => (
-              <tr key={file.importFileId} className="align-top">
+              <tr key={file.transcriptImportFileId} className="align-top">
                 <td className="max-w-[16rem] px-space-md py-space-sm">
                   <span className="block truncate font-mono text-[0.8125rem] text-text" title={file.fileName}>
                     {file.fileName}
@@ -716,7 +643,7 @@ function BatchPreview({
                   {file.skippedRowCount ? <span className="block whitespace-nowrap text-[0.75rem] text-text-faint">+{file.skippedRowCount} {t("skipped")}</span> : null}
                 </td>
                 <td className="whitespace-nowrap px-space-sm py-space-sm text-right font-mono text-[0.8125rem] text-text-muted">
-                  {file.status === "invalid" ? "—" : t("changes", { created: file.createCount, updated: file.updateCount })}
+                  {file.status === "invalid" ? "—" : t("changes", { values: file.insertCount, replaced: file.replaceCount })}
                 </td>
                 <td className="px-space-md py-space-sm">
                   <StatusChip
@@ -737,6 +664,19 @@ function BatchPreview({
                       ))}
                     </ul>
                   ) : null}
+                  {previewing ? (
+                    <Button
+                      size="sm"
+                      variant="quiet"
+                      icon="delete"
+                      className="mt-1"
+                      disabled={busy !== null}
+                      loading={busy === "remove"}
+                      onClick={() => onRemove(file.transcriptImportFileId)}
+                    >
+                      {t("removeFile")}
+                    </Button>
+                  ) : null}
                 </td>
               </tr>
             ))}
@@ -754,11 +694,11 @@ function BatchPreview({
           </Button>
           <Button
             icon="upload"
-            disabled={busy !== null || batch.validFiles === 0 || (needsFaculty && !facultyId)}
+            disabled={busy !== null || batch.totalFiles === 0 || batch.invalidFiles > 0}
             loading={busy === "commit"}
             onClick={onCommit}
           >
-            {t("commit", { count: batch.validFiles })}
+            {t("commit", { count: batch.totalFiles })}
           </Button>
         </div>
       ) : (
