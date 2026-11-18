@@ -95,6 +95,11 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[Student, Academic Advisor, Wellbeing Advisor] Write a message with files on a case",
             Description = "multipart/form-data: caseId, messageText (1-1000 characters) and up to 5 files (10 MB each; PDF, Word, Excel, PowerPoint, text, CSV, PNG, JPG, GIF, WEBP). " +
                 "Same rules as POST /api/CaseMessages; the message and its files are saved together and cannot be edited or deleted.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- Message text is required.\n- Message text cannot exceed 1000 characters.\n- One of the files is empty.\n- A message can carry at most 5 files.\n- Every file needs a name.\n- The file name '...' is longer than 255 characters.\n- '{fileName}' is larger than 10 MB.\n- '{fileName}' cannot be attached. Allowed: PDF, Word, Excel, PowerPoint, text, CSV and images (PNG, JPG, GIF, WEBP).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.\n- Only the student of the case and its current advisor can write messages.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Case not found.\n- Case message not found.\n- Account not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- The case is closed. Messages can be written again if the advisor reopens it.\n- Your case has no advisor yet. You can write once an advisor is assigned.", typeof(ErrorResponse))]
         public async Task<IActionResult> CreateWithFiles([FromForm] CreateCaseMessageWithFilesRequest request)
         {
             var creatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -106,6 +111,9 @@ namespace AdviseCare.API.Controllers
         [HttpGet("attachments/{id}")]
         [SwaggerOperation(Summary = "[Student, advisors, Student Welfare Officer, Programme Head] Download a file sent with a case message",
             Description = "Same readers as the thread (the student of the case, its current advisor, the Programme Head, and anyone who sent or received a referral of it); others get 404.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- File not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> DownloadAttachment([FromRoute] Guid id)
         {
             var callerId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);

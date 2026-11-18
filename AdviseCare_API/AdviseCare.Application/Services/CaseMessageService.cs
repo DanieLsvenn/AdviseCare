@@ -322,9 +322,6 @@ namespace AdviseCare.Application.Services
                 }).ToList());
         }
 
-        // Helper type: an uploaded file that passed the checks
-        private record UploadedFile(string FileName, string ContentType, byte[] Content);
-
         // Helper: the thread is read by the student of the case and by its staff (current advisor, Programme Head, referral sender or receiver)
         private async Task<bool> CanReadThreadAsync(Case CaseRecord, Guid CallerId)
         {
@@ -336,5 +333,8 @@ namespace AdviseCare.Application.Services
         {
             return Message.Case != null && Message.AuthorId == Message.Case.StudentId ? StudentAuthor : AdvisorAuthor;
         }
+
+        // Helper type: an uploaded file that passed the checks
+        private record UploadedFile(string FileName, string ContentType, byte[] Content);
     }
 }

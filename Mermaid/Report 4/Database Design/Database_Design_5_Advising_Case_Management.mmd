@@ -60,6 +60,16 @@ erDiagram
         nvarchar(1000) messageText "NOT NULL"
         datetime2(3) createdAt "NOT NULL"
     }
+    CASEMESSAGEATTACHMENTS {
+        uniqueidentifier caseMessageAttachmentId PK "NOT NULL"
+        uniqueidentifier caseMessageId FK "NOT NULL"
+        uniqueidentifier uploadedBy FK "NOT NULL"
+        nvarchar(255) contentType "NOT NULL"
+        varbinary(max) fileContent "NOT NULL"
+        nvarchar(255) fileName "NOT NULL"
+        int fileSize "NOT NULL"
+        datetime2(3) createdAt "NOT NULL"
+    }
     CASESTAGEHISTORIES {
         uniqueidentifier caseStageHistoryId PK "NOT NULL"
         uniqueidentifier caseId FK "NOT NULL"
@@ -153,6 +163,8 @@ erDiagram
     CASES ||--o{ CASENOTES : "caseId"
     ACCOUNTS ||--o{ CASEMESSAGES : "authorId"
     CASES ||--o{ CASEMESSAGES : "caseId"
+    CASEMESSAGES ||--o{ CASEMESSAGEATTACHMENTS : "caseMessageId"
+    ACCOUNTS ||--o{ CASEMESSAGEATTACHMENTS : "uploadedBy"
     CASES ||--o{ CASESTAGEHISTORIES : "caseId"
     ACCOUNTS ||--o{ CASESTAGEHISTORIES : "changedBy"
     CASES |o--o{ INDICATORFLAGS : "caseId"

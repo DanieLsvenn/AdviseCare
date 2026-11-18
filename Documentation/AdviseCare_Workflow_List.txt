@@ -29,7 +29,7 @@ WF1: Admin creates accounts
 6. Admin views the account dashboard
 6.1. Sort/filter accounts by role, faculty, student code, academic status, link status or account status
 6.2. Resend the linking email to accounts still in emailSent
-6.3. Open an account to edit its details or roles, deactivate or ban it (see EX12)
+6.3. Open an account to edit its details or its role, deactivate or ban it (see EX12)
 6.4. Open a Student account to edit its student profile (studentCode, academicStatus), e.g. when the student goes on leave or graduates (see EX12)
 
 WF2: Student requests support and gets advised
@@ -225,7 +225,7 @@ EX11: Master data setup
 EX12: Account management
 1. Admin opens an account from the dashboard
 2. Admin edits the account details (email, full name, username, faculty); changing the email unlinks the Google account and the linking email has to be sent again
-3. Admin adjusts roles (the last System Administrator role cannot be removed); giving the Student role to an account without a student profile also asks for studentCode and academicStatus
+3. Admin changes the account's role: every account has exactly one role, staff move from one staff role to another, a Student account stays a Student account (a person who needs two roles gets two accounts); the last System Administrator role cannot be removed
 3.1. Admin edits a Student account's student profile (studentCode, academicStatus), e.g. enrolled -> onLeave when the student takes a leave of absence
 4. Admin deactivates/activates or bans/unbans the account (not their own account)
 5. Deactivating or banning ends all active sessions of the account

@@ -1,8 +1,14 @@
-ADVISECARE MOCK DATA GUIDE (09/11/2026)
+ADVISECARE MOCK DATA GUIDE (18/11/2026)
 
 What this covers: the mock data in section 4 of AdviseCare_Database_Script.sql, plus the mock import files in this folder
 (Documentation/AdviseCare_Mock_Data in the repo; AdviseCareTempFolder/AdviseCare_Mock_Data in the temp folder).
 Reference date of the data: 2026-10-30. Fall 2026 is the current term.
+
+Changes on 18/11/2026 (one role per account, QC-245):
+- Vũ Đăng Khoa now has two accounts, one per role: aa.khoavd (Academic Advisor) and the new ph.khoavd (Programme Head of SE).
+  His Programme Head actions (matching, case change decisions, escalation answers, reports) moved to ph.khoavd.
+- accounts_import_valid: aa.ngocpt has only the Academic Advisor role; accounts_import_invalid_rows has a new row 13 with two roles.
+- The seed also has CASEMESSAGEATTACHMENTS (table 27) with no rows; files are added through POST /api/CaseMessages/with-files.
 
 Changes on 09/11/2026:
 - student@gmail.com now has its own mock data (QC-203) and a full row of values in every term import file (no more "missing" rows for it).
@@ -50,18 +56,18 @@ Step 3 - sign in as admin02@example.com (password 123456) and import the student
 
 Step 4 (optional) - account import, signed in as an admin:
    POST /api/Accounts/import (multipart/form-data, file only; POST /api/Accounts/import/preview shows the same checks without writing)
-   - Columns: email, fullName, userName, facultyCode, role (comma-separated for several roles), studentCode, academicStatus.
+   - Columns: email, fullName, userName, facultyCode, role (exactly one role name: every account has exactly one role), studentCode, academicStatus.
      Staff rows leave studentCode and academicStatus empty; an empty academicStatus on a Student row means enrolled.
    1. accounts_import_valid.xlsx (or accounts_import_valid.csv, same 10 rows)
-      - 4 staff (aa.phuongnt, wa.huyld, wo.thanhpv, aa.ngocpt with 2 roles) and 6 students (SE180036, SE190037, SE180038, BA180149, BA190150, BA170151).
+      - 4 staff (aa.phuongnt, wa.huyld, wo.thanhpv, aa.ngocpt) and 6 students (SE180036, SE190037, SE180038, BA180149, BA190150, BA170151).
       - Expect isSuccess = true and createdCount = 10. Importing the second file after the first gives 10 "already used" errors.
    2. accounts_import_invalid_rows.xlsx
-      - 11 rows: row 2 is valid, rows 3-12 each have one problem.
+      - 12 rows: row 2 is valid, rows 3-13 each have one problem.
       - Row 3: email student@gmail.com already used. Row 4: email not valid. Row 5: fullName empty and userName aa.hungpt already used.
         Row 6: faculty code IT does not exist. Row 7: role Teacher does not exist. Row 8: Student without studentCode.
         Row 9: academicStatus suspended. Row 10: staff row with a studentCode. Row 11: studentCode SE180003 already used.
-        Row 12: the email of row 2 a second time in the file.
-      - Expect isSuccess = false, 10 errors and nothing created (all-or-nothing, the valid row 2 is not created either).
+        Row 12: the email of row 2 a second time in the file. Row 13: two roles (Academic Advisor, Programme Head) in one row.
+      - Expect isSuccess = false, 11 errors and nothing created (all-or-nothing, the valid row 2 is not created either).
    3. accounts_import_invalid_columns.xlsx
       - Columns email, fullName, userName, faculty, studentCode.
       - Expect isSuccess = false with one error on row 1: "Missing column(s): facultyCode, role."
@@ -94,12 +100,13 @@ The base test accounts (@gmail.com)
   Academic advising/Wellbeing support/Financial support, the support categories). So the create steps in EX11/WF3 return 409 with the reason;
   the workflow list shows that unhappy result too, then looks the ids up with GET/search.
 
-Mock staff (12)
+Mock staff (13)
 - admin02@example.com / admin02 - Trần Quốc Bảo - System Administrator - faculty - - active
 - steward02@example.com / steward02 - Lê Thị Thu Hà - Data Protection Steward - faculty - - active
 - aa.hungpt@example.com / aa.hungpt - Phạm Thanh Hùng - Academic Advisor - faculty SE - active
 - aa.lannt@example.com / aa.lannt - Nguyễn Thị Lan - Academic Advisor - faculty SE - active
-- aa.khoavd@example.com / aa.khoavd - Vũ Đăng Khoa - Academic Advisor, Programme Head - faculty SE - active
+- aa.khoavd@example.com / aa.khoavd - Vũ Đăng Khoa - Academic Advisor - faculty SE - active
+- ph.khoavd@example.com / ph.khoavd - Vũ Đăng Khoa - Programme Head - faculty SE - active
 - aa.maidt@example.com / aa.maidt - Đỗ Thanh Mai - Academic Advisor - faculty BA - active
 - aa.sonhm@example.com / aa.sonhm - Hồ Minh Sơn - Academic Advisor - faculty SE - deactivated
 - wa.ngocbt@example.com / wa.ngocbt - Bùi Thị Ngọc - Wellbeing Advisor - faculty SE - active
@@ -109,7 +116,7 @@ Mock staff (12)
 - ph.quanpm@example.com / ph.quanpm - Phan Minh Quân - Programme Head - faculty BA - active
 
 Notes:
-- aa.khoavd has 2 roles: he is also the Programme Head of SE.
+- Every account has exactly one role. Vũ Đăng Khoa advises as aa.khoavd and is the Programme Head of SE as ph.khoavd (two accounts, one per role).
 - ph.quanpm is the Programme Head of BA.
 - aa.sonhm is deactivated, to test refused sign-in.
 
@@ -174,11 +181,11 @@ Mock students (49; plus the base student = 50 students)
 ==========
 
 Identity and access
-- 68 accounts, 69 account roles, 50 student profiles.
+- 69 accounts, 69 account roles (one per account), 50 student profiles.
 - 125 sessions: active and ended, on 5 kinds of devices.
 - 23 notification preferences.
 - 122 notifications: read and unread.
-- 1,140 activity logs, written for the seeded actions with the real activity types from AdviseCare_Activity_Types.txt.
+- 1,141 activity logs, written for the seeded actions with the real activity types from AdviseCare_Activity_Types.txt.
 
 Master data
 - 2 faculties, 1 programme (BSE).
@@ -257,7 +264,7 @@ Extra scope tables (small)
 
 - Welfare statistics: GET /api/Statistics/welfare?from=2026-09-01&to=2026-10-31 (wo.yennh or a Programme Head).
   Categories counted from fewer than 5 different students come back with isSuppressed = true and no counts.
-- Cohort data: GET /api/Statistics/cohort?dataAttributeId=<GPA>&termId=<Fall 2026> (ph.quanpm or aa.khoavd), after the Fall 2026 import.
+- Cohort data: GET /api/Statistics/cohort?dataAttributeId=<GPA>&termId=<Fall 2026> (ph.quanpm or ph.khoavd), after the Fall 2026 import.
   - The whole cohort is shown (about 30 consented students).
   - With isByFaculty=true, SE is shown and BA (1 student) is suppressed.
   - Every value read is written to ACCESSLOGS with the Cohort statistics purpose.
@@ -269,7 +276,7 @@ Extra scope tables (small)
 - Paging and search
   - GET /api/StudentProfiles?page=2&pageSize=20, GET /api/ActivityLogs/search?activityType=consentGranted.
 - Programme Head matching queue
-  - The 6 pending cases (sign in as aa.khoavd for SE or ph.quanpm for BA).
+  - The 6 pending cases (sign in as ph.khoavd for SE or ph.quanpm for BA).
 - Welfare officer work
   - Sign in as wo.yennh or wo.duongvm.
   - Their accepted referrals have interventions, grants, external referrals (2 overdue) and escalations.

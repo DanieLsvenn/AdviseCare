@@ -132,7 +132,7 @@ WF1: Admin creates accounts
    yourgmail+student02@gmail.com  | Tran Thi Binh      | student02 | SE          | Student                          | SE180102    | enrolled
    yourgmail+student03@gmail.com  | Le Hoang Cuong     | student03 | BA          | Student                          | BA180103    | onLeave
    yourgmail+advisor01@gmail.com  | Pham Minh Duc      | advisor01 | SE          | Academic Advisor                 |             |
-   yourgmail+staff01@gmail.com    | Vo Thi Em          | staff01   | SE          | Academic Advisor, Programme Head |             |
+   yourgmail+staff01@gmail.com    | Vo Thi Em          | staff01   | SE          | Academic Advisor                 |             |
    Unhappy:
    - a required field empty or out of range -> 400 (errors per field)
    - 400 "A non-empty .xlsx or .csv file is required."
@@ -157,6 +157,7 @@ WF1: Admin creates accounts
    yourgmail+student09@gmail.com  | Used Code       | student09 | SE          | Student          | SE180001    | enrolled     (studentCode of the seed student)
    yourgmail+student10@gmail.com  | Bad Status      | student10 | SE          | Student          | SE180110    | studying     (academicStatus not enrolled/onLeave/withdrawn/graduated)
    yourgmail+advisor02@gmail.com  | Staff With Code | advisor02 | SE          | Academic Advisor | SE180111    |              (staff row with a studentCode)
+   yourgmail+advisor03@gmail.com  | Two Roles       | advisor03 | SE          | Academic Advisor, Programme Head |   |   (two roles: an account has exactly one role)
    Expect: 200, isSuccess = false, createdCount = 0, one error per invalid row with its row number; student04 is not created either
    Unhappy:
    - a required field empty or out of range -> 400 (errors per field)
@@ -229,7 +230,7 @@ WF1: Admin creates accounts
    - a required field empty or out of range -> 400 (errors per field)
    - no token or an ended session -> 401
    - {studentToken} -> 403 "Your role cannot use this route."
-6.3. Open an account to edit it, change roles, deactivate or ban it -> see EX12
+6.3. Open an account to edit it, change its role, deactivate or ban it -> see EX12
    GET /api/Accounts/{student01Id} [EXISTS]
    Auth: {adminToken}
    Unhappy:
@@ -1560,15 +1561,16 @@ EX12: Account management
    Email change on a linked account (from EX1): send a new email
    Expect: linkStatus = notLinked, the Google link is removed; resend the linking email (WF1 4.2)
    Negative: an email or username used by another account -> 400
-3. Admin adjusts roles
+3. Admin changes the role of an account (every account has exactly one role)
+   PUT /api/Accounts/{advisor01Id}/roles [EXISTS]
+   Body: { "roleNames": ["Wellbeing Advisor"] }
+   Expect: advisor01 is now a Wellbeing Advisor only (the change is in the JWT from the next sign-in); change it back with { "roleNames": ["Academic Advisor"] }
+   Negative: { "roleNames": ["Academic Advisor", "Programme Head"] } -> 400 "An account has exactly one role, but 2 were given (Academic Advisor, Programme Head)."
+   Negative: { "roleNames": ["Student"] } on advisor01 -> 400 "A staff account cannot be turned into a Student account. Create a separate Student account instead."; { "roleNames": ["Academic Advisor"] } on student01 -> 400 "A Student account cannot be given a staff role. Create a separate staff account instead."
    GET /api/Roles/search?roleName=Programme Head [EXISTS] -> {roleProgrammeHeadId}
-   POST /api/Accounts/roles [EXISTS]
-   Body: { "accountId": "{advisor01Id}", "roleId": "{roleProgrammeHeadId}" }
-   Expect: advisor01 has Academic Advisor and Programme Head (the new role is in the JWT from the next sign-in)
-   Student role for an account without a student profile: GET /api/Roles/search?roleName=Student [EXISTS] -> {roleStudentId}; POST /api/Accounts/roles [EXISTS], body { "accountId": "{advisor01Id}", "roleId": "{roleStudentId}", "studentCode": "SE180130", "academicStatus": "enrolled" } -> the profile is created with the role; the same call without studentCode/academicStatus -> 400
-   GET /api/Accounts/roles/search?roleId={roleProgrammeHeadId} [EXISTS] -> programmehead, staff01, advisor01
-   DELETE /api/Accounts/{advisor01Id}/roles/{roleProgrammeHeadId} [EXISTS]
-   Negative: GET /api/Roles/search?roleName=System Administrator -> {roleAdminId}; DELETE /api/Accounts/{adminId}/roles/{roleAdminId} while admin is the only System Administrator -> 400; the same role twice -> 400
+   POST /api/Accounts/roles [EXISTS], body { "accountId": "{advisor01Id}", "roleId": "{roleProgrammeHeadId}" } -> 409 "This account already has the role 'Academic Advisor'. An account has exactly one role; change the role instead of adding another."
+   GET /api/Accounts/roles/search?roleId={roleProgrammeHeadId} [EXISTS] -> programmehead only (one row per account)
+   Negative: GET /api/Roles/search?roleName=System Administrator -> {roleAdminId}; PUT /api/Accounts/{adminId}/roles { "roleNames": ["Data Protection Steward"] } or DELETE /api/Accounts/{adminId}/roles/{roleAdminId} while admin is the only System Administrator -> 403 "The last System Administrator role cannot be removed."
 3.1. Admin edits a Student account's student profile
    PUT /api/StudentProfiles/{student03Id} [EXISTS] (by studentId; staff read it with GET /api/StudentProfiles/{studentId})
    Auth: {adminToken}

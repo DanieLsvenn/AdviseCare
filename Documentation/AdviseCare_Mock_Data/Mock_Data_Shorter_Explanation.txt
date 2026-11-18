@@ -3,7 +3,7 @@ All of these are in Documentation/AdviseCare_Mock_Data. The guide in that folder
 Account import (POST /api/Accounts/import, columns email, fullName, userName, facultyCode, role, studentCode, academicStatus):
 
 accounts_import_valid.xlsx and .csv: the happy path. Both hold the same 10 rows: 4 staff and 6 students. Expect createdCount = 10. Importing the second one after the first gives 10 “already used” errors. The .csv version shows that CSV works too.
-accounts_import_invalid_rows.xlsx: 11 rows where row 2 is valid and rows 3–12 each have one problem (duplicate email, bad email, unknown faculty, unknown role, student without code, and so on). Expect isSuccess = false, 10 errors and nothing created, because the import is all-or-nothing.
+accounts_import_invalid_rows.xlsx: 12 rows where row 2 is valid and rows 3–13 each have one problem (duplicate email, bad email, unknown faculty, unknown role, student without code, two roles in one row, and so on). Expect isSuccess = false, 11 errors and nothing created, because the import is all-or-nothing.
 accounts_import_invalid_columns.xlsx: the headers are wrong (faculty instead of facultyCode, no role). Expect the error “Missing column(s): facultyCode, role.”
 
 Student data import (POST /api/StudentData/import, with the columnMapping from the guide):

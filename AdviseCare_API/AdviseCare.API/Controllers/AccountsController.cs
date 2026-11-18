@@ -69,10 +69,10 @@ namespace AdviseCare.API.Controllers
         [HttpPost]
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Create account",
-            Description = "Creates one account (email, full name, username, optional faculty, one or more role names) for special cases such as late enrolment or staff. " +
+            Description = "Creates one account (email, full name, username, optional faculty, exactly one role name) for special cases such as late enrolment or staff. " +
                 "A Student account also needs a unique studentCode and an academicStatus (enrolled/onLeave/withdrawn/graduated), which create its student profile; other accounts must leave both empty. " +
                 "The account has no password and linkStatus = notLinked; send it the account-linking email afterwards. Email and username must be unique and the faculty must be active.")]
-        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- (details of the failing rows or file)\n- Role '{roleName}' does not exist.\n- Faculty '{FacultyCode}' is archived.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- (details of the failing rows or file)\n- Role '{roleName}' does not exist.\n- An account has exactly one role, but {count} were given ({roleNames}).\n- Faculty '{FacultyCode}' is archived.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status404NotFound, "- Faculty not found.", typeof(ErrorResponse))]
@@ -105,9 +105,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "System Administrator")]
         [Consumes("multipart/form-data")]
         [SwaggerOperation(Summary = "[System Administrator] Import accounts from Excel or CSV (.xlsx/.csv)",
-            Description = "Uploads an .xlsx file whose first sheet has the header row email, fullName, userName, facultyCode, role, studentCode, academicStatus (role may hold several role names separated by commas). " +
+            Description = "Uploads an .xlsx file whose first sheet has the header row email, fullName, userName, facultyCode, role, studentCode, academicStatus (role holds exactly one role name; a row with several roles is refused). " +
                 "Student rows fill all 7 columns (studentCode unique, academicStatus enrolled/onLeave/withdrawn/graduated) and get a student profile; every other row fills only the first 5 and leaves studentCode and academicStatus empty. " +
-                "Every row is validated (required fields, email format, duplicate email/username/studentCode in the file or the system, faculty code exists and is active, role exists, student fields filled only for Student rows). " +
+                "Every row is validated (required fields, email format, duplicate email/username/studentCode in the file or the system, faculty code exists and is active, exactly one role that exists, student fields filled only for Student rows). " +
                 "All-or-nothing: if any row is invalid nothing is created and isSuccess = false with the list of invalid rows; otherwise every account is created and their ids are returned, ready for sending the linking emails.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- A non-empty .xlsx or .csv file is required.\n- Only .xlsx and .csv files can be imported.\n- (details of the failing rows or file)", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
@@ -274,13 +274,13 @@ namespace AdviseCare.API.Controllers
         [HttpPost("roles")]
         [Authorize(Roles = "System Administrator")]
         [SwaggerOperation(Summary = "[System Administrator] Add a role to an account",
-            Description = "Gives an account one more role. An account can hold several roles; the same role cannot be added twice. The new role is in the JWT from the account's next sign-in. " +
+            Description = "Gives a role to an account that has none yet. An account has exactly one role, so an account that already has a role is refused (change it with PUT /api/Accounts/{id}/roles instead). The role is in the JWT from the account's next sign-in. " +
                 "Giving the Student role to an account without a student profile also needs studentCode, which creates the profile (academicStatus is optional and defaults to enrolled).")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- (details of the failing rows or file)", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status404NotFound, "- Account not found.\n- Role not found.", typeof(ErrorResponse))]
-        [SwaggerResponse(StatusCodes.Status409Conflict, "- This account already has the role '{RoleName}'.\n- A student with student code '{studentCode}' already exists.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- This account already has the role '{RoleName}'.\n- This account already has the role '{RoleName}'. An account has exactly one role; change the role instead of adding another.\n- A student with student code '{studentCode}' already exists.", typeof(ErrorResponse))]
         public async Task<IActionResult> CreateAccountRole([FromBody] CreateAccountRoleRequest request)
         {
             var response = await _accountService.CreateAccountRoleAsync(request);
@@ -290,10 +290,10 @@ namespace AdviseCare.API.Controllers
         // Change an Account's roles in one step
         [HttpPut("{id}/roles")]
         [Authorize(Roles = "System Administrator")]
-        [SwaggerOperation(Summary = "[System Administrator] Change the roles of an account",
-            Description = "Sets the account's roles to exactly roleNames (roles not listed are removed, new ones are added). Adding the Student role to an account without a student profile needs studentCode; " +
+        [SwaggerOperation(Summary = "[System Administrator] Change the role of an account",
+            Description = "Replaces the account's role with the one role in roleNames. A Student account stays a Student account and a staff account stays staff (staff move from one staff role to another). Adding the Student role to an account without a student profile needs studentCode; " +
                 "the profile starts as enrolled. The last System Administrator role in the system cannot be removed. The change is in the JWT from the account's next sign-in.")]
-        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- An account needs at least one role.\n- The account already has exactly these roles.\n- A student code is required to give this account the Student role.\n- Student code must be under 50 characters.\n- Role '{roleName}' does not exist.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- An account needs at least one role.\n- An account has exactly one role, but {count} were given ({roleNames}).\n- A Student account cannot be given a staff role. Create a separate staff account instead.\n- A staff account cannot be turned into a Student account. Create a separate Student account instead.\n- The account already has exactly these roles.\n- A student code is required to give this account the Student role.\n- Student code must be under 50 characters.\n- Role '{roleName}' does not exist.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.\n- The last System Administrator role cannot be removed.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status404NotFound, "- Account not found.", typeof(ErrorResponse))]

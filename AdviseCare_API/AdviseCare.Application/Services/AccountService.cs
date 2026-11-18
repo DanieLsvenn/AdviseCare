@@ -1117,7 +1117,6 @@ namespace AdviseCare.Application.Services
                 throw new ValidationException($"Faculty '{faculty.FacultyCode}' is archived.");
         }
 
-        // Helper: resolves role names to Role entities, throwing if any role does not exist
         // Helper: every account has exactly one role (no Student + staff, no two staff roles)
         private static void EnsureSingleRole(List<Role> roles)
         {
@@ -1125,6 +1124,7 @@ namespace AdviseCare.Application.Services
                 throw new ValidationException($"An account has exactly one role, but {roles.Count} were given ({string.Join(", ", roles.Select(r => r.RoleName))}).");
         }
 
+        // Helper: resolves role names to Role entities, throwing if any role does not exist
         private async Task<List<Role>> ResolveRolesAsync(List<string> roleNames)
         {
             var resolvedRoles = new List<Role>();

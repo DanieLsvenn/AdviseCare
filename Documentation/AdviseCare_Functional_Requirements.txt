@@ -8,14 +8,14 @@ System Administrator
 
 Creating accounts for students and staff (one by one or in bulk from an import file), getting every account linked to its owner's personal Google account, and deciding which role each staff account plays.
 
-+ Create a single account (email, full name, username, faculty, roles); a Student account also gets its student profile (student code, academic status)
++ Create a single account (email, full name, username, faculty, exactly one role); a Student account also gets its student profile (student code, academic status)
 + Bulk import accounts from an .xlsx or .csv file (email, full name, username, faculty code, role, plus student code and academic status on Student rows only: up to 7 filled columns for a student, academic status empty = enrolled; 5 for staff); importing from a Google Sheet is extra scope (ES6)
 + Send account-linking emails to newly created accounts
 + Track each account's link status (not linked / email sent / linked) and resend the linking email
 + Edit account details (email, full name, username, faculty); changing the email unlinks the Google account, so the linking email has to be sent again
 + Edit a student's profile (student code, academic status: enrolled / on leave / withdrawn / graduated), e.g. when the student goes on leave or graduates; updating existing accounts through the import is extra scope (ES10)
 + Activate/Deactivate or Ban/Unban an account (not the admin's own account; deactivating or banning ends all of the account's sessions)
-+ Adjust roles for each account (the last System Administrator role cannot be removed)
++ Change the role of an account: every account has exactly one role; staff move from one staff role to another and a Student account stays a Student account, so a person who needs two roles gets two accounts (the last System Administrator role cannot be removed)
 + View the account dashboard, sorted/filtered by role, faculty, student code, academic status, link status or account status
 
 - Manage faculties, subjects and advisor specialisations:
