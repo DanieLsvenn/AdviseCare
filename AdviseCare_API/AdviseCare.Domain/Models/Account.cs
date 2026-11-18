@@ -137,5 +137,11 @@ public partial class Account
 
     public virtual Studentprofile Studentprofile { get; set; }
 
+    public virtual ICollection<Studentsubjectresult> Studentsubjectresults { get; set; } = new List<Studentsubjectresult>();
+
     public virtual ICollection<Supportcategory> Supportcategories { get; set; } = new List<Supportcategory>();
+
+    public virtual ICollection<Transcriptimportbatch> Transcriptimportbatches { get; set; } = new List<Transcriptimportbatch>();
+
+    public virtual ICollection<Transcriptimportfile> Transcriptimportfiles { get; set; } = new List<Transcriptimportfile>();
 }

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { StudentCaseList } from "@/components/student/student-case-list";
+import { AcademicResultsView } from "@/components/academic/academic-results";
 import { WorkspacePage } from "@/components/workspace/workspace-page";
 import type { WorkspaceScreen } from "@/components/workspace/workspace-definitions";
 
@@ -36,7 +37,13 @@ export default async function StudentWorkspacePage({
   } else if (route === "events" || /^events\/[^/]+$/.test(route)) {
     screen = "student.events";
   } else if (route === "private-data") {
-    screen = "student.data";
+    // Academic results (grade and attendance per subject) first, then the other data attributes
+    return (
+      <div className="flex flex-col gap-space-lg">
+        <AcademicResultsView audience="student" />
+        <WorkspacePage screen="student.data" />
+      </div>
+    );
   } else if (route === "export") {
     screen = "student.export";
   } else {

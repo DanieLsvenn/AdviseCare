@@ -75,6 +75,8 @@ builder.Services.AddScoped<IExternalReferralService, ExternalReferralService>();
 builder.Services.AddScoped<IInterventionService, InterventionService>();
 builder.Services.AddScoped<ISupportGrantService, SupportGrantService>();
 builder.Services.AddScoped<IEscalationService, EscalationService>();
+// Academic results (per-subject grade and attendance, imported from transcript PDFs)
+builder.Services.AddScoped<IAcademicResultService, AcademicResultService>();
 
 // Member D
 builder.Services.AddScoped<ISupportCategoryService, SupportCategoryService>();
@@ -113,6 +115,7 @@ builder.Services.AddScoped<IExcelReader, ExcelReader>();
 builder.Services.AddScoped<ICsvReader, CsvReader>();
 builder.Services.AddScoped<IExcelWriter, ExcelWriter>();
 builder.Services.AddScoped<IPdfWriter, SimplePdfWriter>();
+builder.Services.AddScoped<ITranscriptPdfReader, TranscriptPdfReader>();
 
 // -- HttpContextAccessor ---
 builder.Services.AddHttpContextAccessor();

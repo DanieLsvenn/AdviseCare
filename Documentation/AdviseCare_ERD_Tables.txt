@@ -60,6 +60,7 @@ studentProfileId (PK) - uuid - unique identifier for one student's school record
 studentId (FK) - uuid - the Student account this profile belongs to; unique, so a Student account has exactly one profile and staff accounts have none
 studentCode - string - the student code issued by the school (e.g. SE180001), unique; taken from the studentCode column of the account import sheet and used to match students in student data imports
 academicStatus - enum - the student's academic status (enrolled/onLeave/withdrawn/graduated), taken from the academicStatus column of the account import sheet and updated by the admin; separate from the account status (active/deactivated/banned), which only controls sign-in
+curriculumCode - string - the curriculum printed on the student's transcript (e.g. BIT_SE_NET_18A), filled by the transcript import (display only)
 
 2 STUDENTPROFILES - 1 ACCOUNTS: one to one (studentId)
 
@@ -686,6 +687,58 @@ createdAt - date - when the file was sent (same as its message); insert-only, ne
 
 49 CASEMESSAGEATTACHMENTS - 26 CASEMESSAGES: many to one (caseMessageId)
 49 CASEMESSAGEATTACHMENTS - 1 ACCOUNTS: many to one (uploadedBy)
+
+50. TRANSCRIPTIMPORTBATCHES
+importBatchId (PK) - uuid - unique identifier for one upload session of the admin importing academic results from transcript PDFs (preview first, then commit or cancel)
+importedBy (FK) - uuid - the System Administrator who started the batch
+createdAt - date - when the batch was started
+committedAt - date - when the valid files were written to STUDENTSUBJECTRESULTS; null while in preview or after a cancel
+status - enum - previewed/committed/cancelled; files can be added only while previewed, and a batch is committed or cancelled once
+
+50 TRANSCRIPTIMPORTBATCHES - 1 ACCOUNTS: many to one (importedBy)
+50 TRANSCRIPTIMPORTBATCHES - 51 TRANSCRIPTIMPORTFILES: one to many (importBatchId)
+
+51. TRANSCRIPTIMPORTFILES
+importFileId (PK) - uuid - unique identifier for one PDF of a batch: one student and one type (grade transcript or attendance file)
+importBatchId (FK) - uuid - the batch the file was uploaded in
+studentId (FK) - uuid - the student matched by the "Student ID" printed on the file (STUDENTPROFILES.studentCode); null when no student matches
+fileName - string - the uploaded file name, shown in the preview
+fileHash - string - SHA-256 of the file (hex), so a file uploaded twice in a batch is refused and a file already committed is warned about; the PDF itself is not kept
+importType - enum - grade/attendance, told by the value column of the file's table (Grade or Attendance); null when the file could not be read
+studentCodeInFile - string - the student code as printed on the file
+fullNameInFile - string - the name as printed; a different account name is only a warning
+curriculumCode - string - the curriculum printed on the file (e.g. BIT_SE_NET_18A), copied to STUDENTPROFILES.curriculumCode at commit
+rowCount - int - subject rows read (rows without a semester, i.e. not started, are left out)
+parsedRows - string - JSON of the checked rows (curriculum term, semester, subject code and name, value, status), kept between preview and commit; cleared when the batch is cancelled
+validationResult - string - JSON of the errors, warnings and the results to create/update found at preview
+uploadedAt - date - when the file was uploaded (files of a batch are committed in this order)
+status - enum - valid/invalid/committed; each file is valid or invalid on its own (an invalid file never blocks the others), one valid file per student and type in a batch
+
+51 TRANSCRIPTIMPORTFILES - 50 TRANSCRIPTIMPORTBATCHES: many to one (importBatchId)
+51 TRANSCRIPTIMPORTFILES - 1 ACCOUNTS: many to one (studentId)
+51 TRANSCRIPTIMPORTFILES - 52 STUDENTSUBJECTRESULTS: one to many (gradeImportFileId, attendanceImportFileId)
+
+52. STUDENTSUBJECTRESULTS
+studentSubjectResultId (PK) - uuid - unique identifier for the result of one student in one subject in one term
+studentId (FK) - uuid - the student
+subjectId (FK) - uuid - the subject; subjects missing from SUBJECTS are created by the commit (faculty of a student who has it, or the faculty the admin chooses)
+termId (FK) - uuid - the term the subject was taken in (transcript "Semester", e.g. Fall2024 -> Fall 2024); missing terms are created with the season dates
+curriculumTerm - int - the transcript "Term" column: the curriculum semester (0-9) the subject belongs to; null outside the curriculum
+isInCurriculum - bool - false for the rows of "SUBJECTS OUTSIDE THE CURRICULUM"
+grade - decimal - final grade on a 10-point scale; null when the transcript shows "-" (exempt, studying, passed without a grade)
+attendanceRate - decimal - percentage of attended slots (0-100); the absence rate shown is 100 - attendanceRate
+status - enum - passed/notPassed/attendanceFail/exempt/studying/notStarted, from the grade transcript (an attendance file fills it only while no grade file has)
+gradeImportFileId (FK) - uuid - the file the grade part came from
+attendanceImportFileId (FK) - uuid - the file the attendance part came from
+gradeUpdatedAt - date - when the grade part was last imported
+attendanceUpdatedAt - date - when the attendance part was last imported
+
+52 STUDENTSUBJECTRESULTS - 1 ACCOUNTS: many to one (studentId)
+52 STUDENTSUBJECTRESULTS - 12 SUBJECTS: many to one (subjectId)
+52 STUDENTSUBJECTRESULTS - 10 ACADEMICTERMS: many to one (termId)
+52 STUDENTSUBJECTRESULTS - 51 TRANSCRIPTIMPORTFILES: many to one (gradeImportFileId, attendanceImportFileId)
+- Unique (studentId, subjectId, termId): each import upserts the row (current values, not a ledger); the history of what was imported stays in TRANSCRIPTIMPORTFILES. A retake in another term is another row.
+- Reading: the student always sees all of it (Private data); staff see the grade part only with a consent on the "GPA" data attribute and the attendance part only with "Attendance rate", through the same access guard as STUDENTDATA, and every part shown writes an ACCESSLOGS row (studentDataId = null). Values are not encrypted, so an erasure of GPA/Attendance rate does not clear them (decided 18/11/2026).
 
 NOTES (current version)
 

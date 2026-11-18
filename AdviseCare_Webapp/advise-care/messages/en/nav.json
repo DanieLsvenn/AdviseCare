@@ -68,7 +68,8 @@
     "restore": "Notifications",
     "indicators": "Account settings",
     "sessions": "Active sessions",
-    "specialisations": "Advisor specialisations"
+    "specialisations": "Advisor specialisations",
+    "academicResults": "Academic results import"
   },
   "sectionGeneral": "Account",
   "more": "More"
