@@ -372,19 +372,6 @@ createdAt - date - when the message was written; messages are append-only and no
 26 CASEMESSAGES - 21 CASES: many to one (caseId)
 26 CASEMESSAGES - 49 CASEMESSAGEATTACHMENTS: one to many (caseMessageId)
 
-49. CASEMESSAGEATTACHMENTS
-caseMessageAttachmentId (PK) - uuid - unique identifier for one file sent with a case message
-caseMessageId (FK) - uuid - the message the file was sent with (a message carries at most 5 files)
-uploadedBy (FK) - uuid - who sent the file: the author of the message
-contentType - string - the type the file is served with, decided by the server from the extension (PDF, Word, Excel, PowerPoint, text, CSV, PNG, JPG, GIF, WEBP)
-fileContent - binary - the file itself (max 10 MB), kept in the database so it is downloaded only through the API by the readers of the thread
-fileName - string - the original file name (max 255 characters), shown in the thread and used for the download
-fileSize - int - size in bytes (1 to 10,485,760)
-createdAt - date - when the file was sent (same as its message); insert-only, never edited or deleted
-
-49 CASEMESSAGEATTACHMENTS - 26 CASEMESSAGES: many to one (caseMessageId)
-49 CASEMESSAGEATTACHMENTS - 1 ACCOUNTS: many to one (uploadedBy)
-
 27. CASESTAGEHISTORIES
 caseStageHistoryId (PK) - uuid - unique identifier for one stage transition, giving the case timeline its own queryable record
 caseId (FK) - uuid - which case this transition belongs to
@@ -686,6 +673,19 @@ status - enum - lifecycle state of the restore (e.g. running/verified/failed)
 
 48 RESTOREOPERATIONS - 47 BACKUPS: many to one (backupId)
 48 RESTOREOPERATIONS - 1 ACCOUNTS: many to one (executedBy)
+
+49. CASEMESSAGEATTACHMENTS
+caseMessageAttachmentId (PK) - uuid - unique identifier for one file sent with a case message
+caseMessageId (FK) - uuid - the message the file was sent with (a message carries at most 5 files)
+uploadedBy (FK) - uuid - who sent the file: the author of the message
+contentType - string - the type the file is served with, decided by the server from the extension (PDF, Word, Excel, PowerPoint, text, CSV, PNG, JPG, GIF, WEBP)
+fileContent - binary - the file itself (max 10 MB), kept in the database so it is downloaded only through the API by the readers of the thread
+fileName - string - the original file name (max 255 characters), shown in the thread and used for the download
+fileSize - int - size in bytes (1 to 10,485,760)
+createdAt - date - when the file was sent (same as its message); insert-only, never edited or deleted
+
+49 CASEMESSAGEATTACHMENTS - 26 CASEMESSAGES: many to one (caseMessageId)
+49 CASEMESSAGEATTACHMENTS - 1 ACCOUNTS: many to one (uploadedBy)
 
 NOTES (current version)
 
