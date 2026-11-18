@@ -45,6 +45,11 @@ A7.3. Flag queue (Programme Head): list by severity, priority, oldest; open a ca
 A7.4. Advisor request: an advisor asks to take a flagged student on (status requested, requestedBy); the Programme Head approves (case opened for that advisor) or turns it down (back to open)
 A7.5. Responses show directory data, rule, severity, priority and term, never the value
 A8. Advisor suggestion algorithm (extra scope, ES4; maybe Member A): rank advisors for the Programme Head from support category, subjects, familiar pair, caseload and CASEFEEDBACKS ratings
+A9. External services set-up (new 12/11/2026; Member A sets them up once and shares the values with the team privately, never in git)
+A9.1. Google sign-in: Google Cloud project, Google Auth Platform branding/audience (test users), Web OAuth client with the localhost and MonsterASP origins; Client ID in the API (Authentication:Google:ClientId) and the web app (NEXT_PUBLIC_GOOGLE_CLIENT_ID); test EX1 linking and sign-in
+A9.2. Gmail SMTP: a project Gmail account with 2-Step Verification and an app password; Gmail section of appsettings.json (Username, AppPassword, FromName, FrontendBaseUrl); test linking, reset and notification emails
+A9.3. Supabase Storage: project, public "avatars" bucket (2 MB, PNG/JPEG/WEBP/GIF), secret key server-side only; Supabase section of appsettings.json; test POST /api/Auth/me/avatar
+A9.4. MonsterASP: the same values as environment variables (Authentication__Google__ClientId, Gmail__AppPassword, Supabase__SecretKey, ...) and the production origin/redirect URLs
 
 ==========
 MEMBER B - CONSENT AND DATA PROTECTION
