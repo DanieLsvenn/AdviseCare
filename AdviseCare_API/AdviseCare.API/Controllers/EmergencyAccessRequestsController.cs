@@ -1,4 +1,5 @@
 using AdviseCare.Application.Contracts.Requests.EmergencyAccessRequest;
+using AdviseCare.Application.Contracts.Responses;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,8 +19,11 @@ namespace AdviseCare.API.Controllers
         [HttpGet]
         [Authorize(Roles = "Data Protection Steward")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Get all emergency access requests with optional pagination",
-            Description = "Retrieves every emergency access request (pending review feature), newest first, with the requester, the student, the justification and the decision. " +
+            Description = "Retrieves every emergency access request, newest first, with the requester, the student, the justification and the decision. " +
                 "isExpired is true once an approved access window has passed. Pass page and pageSize together to page the results.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- Page and page size must be at least 1.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
             if (page.HasValue && pageSize.HasValue)
@@ -37,6 +41,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "Data Protection Steward")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Get emergency access request by Id",
             Description = "Retrieves one emergency access request with the requester's justification.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Emergency access request not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             var response = await _emergencyAccessRequestService.GetByIdAsync(id);
@@ -48,6 +55,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "Data Protection Steward")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Search/Filter emergency access requests",
             Description = "Filters requests by requester (requestedBy), deciding steward (stewardId), student and status (pending/approved/rejected). Empty fields are ignored.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> Search([FromQuery] SearchEmergencyAccessRequestRequest request)
         {
             var response = await _emergencyAccessRequestService.SearchAsync(request);
@@ -60,6 +70,11 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor, Student Welfare Officer, Programme Head] Request emergency access",
             Description = "Asks for access to a student's record beyond the student's consent, with a justification. Every Data Protection Steward is notified; they share one pool of requests and the first to act decides. While approved and unexpired, the requester can read every attribute of that student, and each read is logged as an emergency access. " +
                 "Only one pending request or running access per requester and student.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- Emergency access can only be requested for a student.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Student not found.\n- Account not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- You already have a pending request or a running emergency access for this student.", typeof(ErrorResponse))]
         public async Task<IActionResult> Create([FromBody] CreateEmergencyAccessRequestRequest request)
         {
             var requesterId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -72,6 +87,11 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "Academic Advisor,Wellbeing Advisor,Student Welfare Officer,Programme Head")]
         [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor, Student Welfare Officer, Programme Head] Edit my emergency access request",
             Description = "Rewords the justification of one of the signed-in staff member's own pending requests. Returns 404 for another staff member's request.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Emergency access request not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- Only a pending request can be edited.", typeof(ErrorResponse))]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateEmergencyAccessRequestRequest request)
         {
             var requesterId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -85,6 +105,11 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[Data Protection Steward] Approve emergency access",
             Description = "Approves a pending request until scopeExpiresAt (must be in the future); the access ends on its own after that. The signed-in steward is recorded as the decider. " +
                 "Returns 409 when another steward has already decided the request.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- The end of the access window must be in the future.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Emergency access request not found.\n- Account not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- This request was already {Status} by {emergencyRequest.Steward?.FullName ?? ", typeof(ErrorResponse))]
         public async Task<IActionResult> Approve([FromRoute] Guid id, [FromBody] ApproveEmergencyAccessRequestRequest request)
         {
             var stewardId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -97,6 +122,11 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "Data Protection Steward")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Reject emergency access",
             Description = "Rejects a pending request with a reason; the requester is notified with the reason and the signed-in steward is recorded as the decider. Returns 409 when another steward has already decided the request.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Emergency access request not found.\n- Account not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- This request was already {Status} by {emergencyRequest.Steward?.FullName ?? ", typeof(ErrorResponse))]
         public async Task<IActionResult> Reject([FromRoute] Guid id, [FromBody] RejectEmergencyAccessRequestRequest request)
         {
             var stewardId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -109,6 +139,8 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "Academic Advisor,Wellbeing Advisor,Student Welfare Officer,Programme Head")]
         [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor, Student Welfare Officer, Programme Head] Get my emergency access requests",
             Description = "Lists the signed-in staff member's emergency access requests, newest first, with their status and access window.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetMine()
         {
             var requesterId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);

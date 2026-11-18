@@ -5,36 +5,42 @@ title: AdviseCare - Sequence Diagram SD-22 - Correction Request and Review
 sequenceDiagram
     autonumber
     actor STU as Student
-    actor ADV as Advisor
+    actor ADV as Advisor (any advisor of the purpose's pool)
     participant W as Web App
     participant C as CorrectionRequestsController
     participant S as CorrectionRequestService
+    participant CS as IConsentService
     participant G as IAccessGuardService
     participant K as IAttributeKeyService
     participant N as INotificationService
     participant R as IGenericRepository
     participant DB as SQL Server
-    STU->>W: Pick a value, give the correct value and a reason
-    W->>C: POST /api/CorrectionRequests {studentDataId, proposedValue, explanation}
+    STU->>W: Pick a value and a consent purpose, give the correct value and a reason
+    W->>C: POST /api/CorrectionRequests {consentPurposeId, studentDataId, proposedValue, explanation}
     C->>S: CreateAsync(CreatorId, request)
     S->>R: Row must be the student's latest value, not missing or erased, no pending request for it
+    S->>R: Purpose must be active, not the statistics purpose, cover the attribute and have an advisor policy
+    S->>CS: CreateAsync(student, purpose, [attribute]) - consent on that one attribute (an existing one is kept)
+    CS->>DB: INSERT CONSENTS / CONSENTHISTORIES (when new)
     S->>K: EncryptValuesAsync(currentValue, proposedValue)
-    S->>R: CreateAsync(request, status = pending)
+    S->>R: CreateAsync(request, consentPurposeId, status = pending) - no case is opened
     R->>DB: INSERT CORRECTIONREQUESTS
-    ADV->>W: Open pending correction requests
+    ADV->>W: Open the correction request list (separate from cases)
     W->>C: GET /api/CorrectionRequests/search?status=pending
     C->>S: SearchAsync(AdvisorId, request)
-    S->>G: CheckAccessAsync (values only shown when allowed) and LogAccessBatchAsync
-    alt approve
+    S->>R: Pool = purposes with an active access policy for one of the advisor's roles
+    S->>G: CheckAccessAsync(advisor, student, attribute, request's purpose) and LogAccessBatchAsync
+    alt approve (first advisor to decide)
         W->>C: PUT /api/CorrectionRequests/{id}/approve {decisionNotes}
         C->>S: ApproveAsync(AdvisorId, Id, request)
+        S->>S: Still pending, advisor in the pool, attribute still shared under the purpose
         S->>K: EncryptValuesAsync(proposed value)
         S->>R: PrepareCreate STUDENTDATA row (status = correction, same validFrom, transactionFrom = now)
-        S->>R: PrepareUpdate request (approved, reviewedBy, decidedAt), SaveAsync()
-    else reject
+        S->>R: Update request (approved, reviewedBy = this advisor, decidedAt), SaveAsync()
+    else reject (first advisor to decide)
         W->>C: PUT /api/CorrectionRequests/{id}/reject {decisionNotes}
         C->>S: RejectAsync(AdvisorId, Id, request)
-        S->>R: UpdateAsync(rejected, reviewedBy, decidedAt)
+        S->>R: Update request (rejected, reviewedBy = this advisor, decidedAt), SaveAsync()
     end
     R->>DB: INSERT/UPDATE
     S->>N: NotifyAsync(student, decision)

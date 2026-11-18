@@ -19,6 +19,7 @@ flowchart LR
         subgraph SUP["Support Requests and Case Matching"]
             UC37(["UC-37<br/>Open Case for Student"])
             UC41(["UC-41<br/>Request Case Advisor Change"])
+            UC63(["UC-63<br/>Request Flagged Student"])
         end
         subgraph CWF["Case Workflow and Referrals"]
             UC43(["UC-43<br/>View Assigned Cases"])
@@ -28,6 +29,7 @@ flowchart LR
             UC47(["UC-47<br/>Refer Case"])
             UC48(["UC-48<br/>Answer Referral"])
             UC49(["UC-49<br/>View Case History"])
+            UC59(["UC-59<br/>Write in Case Thread"])
         end
     end
     ACT --- UC22
@@ -44,6 +46,8 @@ flowchart LR
     ACT --- UC47
     ACT --- UC48
     ACT --- UC49
+    ACT --- UC59
+    ACT --- UC63
     linkStyle default stroke-width: 1pt;
     classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
     class ACT,GEN actor;

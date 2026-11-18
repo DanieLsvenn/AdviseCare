@@ -1,0 +1,30 @@
+---
+title: AdviseCare - Sequence Diagram SD-36 - View and Export Welfare Statistics
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor U as Student Welfare Officer / Programme Head
+    participant W as Web App
+    participant C as StatisticsController
+    participant S as StatisticService
+    participant R as IGenericRepository
+    participant X as IExcelWriter / IPdfWriter
+    participant L as IActivityLogService
+    participant DB as SQL Server
+    U->>W: Choose a date range (optional faculty, support type, split per faculty)
+    W->>C: GET /api/Statistics/welfare?from&to&facultyId&supportType&isByFaculty
+    C->>S: GetWelfareStatisticAsync(request)
+    S->>S: Both dates required, to not before from
+    S->>R: Cases opened in the range or with a referral, intervention, grant, external referral or escalation dated in it
+    R->>DB: SELECT CASES (+ category, student faculty, child records)
+    S->>S: Group per support category (and faculty), count records and different students
+    S->>S: Hide every cell counted from fewer than 5 different students (isSuppressed, counts null)
+    C-->>W: 200 OK (cells, no student-level data)
+    opt export
+        W->>C: GET /api/Statistics/welfare/export?...&format=xlsx|csv|pdf
+        C->>S: ExportWelfareStatisticAsync(AccessorId, request)
+        S->>X: Write the cells (suppressed cells as "hidden")
+        S->>L: LogAsync(statisticsExported)
+        C-->>W: File download (nothing stored)
+    end

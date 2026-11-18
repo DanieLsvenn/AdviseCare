@@ -37,6 +37,8 @@ public partial class Case
 
     public virtual ICollection<Casechangerequest> Casechangerequests { get; set; } = new List<Casechangerequest>();
 
+    public virtual Casefeedback Casefeedback { get; set; }
+
     public virtual ICollection<Casemessage> Casemessages { get; set; } = new List<Casemessage>();
 
     public virtual ICollection<Casenote> Casenotes { get; set; } = new List<Casenote>();
@@ -46,6 +48,8 @@ public partial class Case
     public virtual ICollection<Escalation> Escalations { get; set; } = new List<Escalation>();
 
     public virtual ICollection<Externalreferral> Externalreferrals { get; set; } = new List<Externalreferral>();
+
+    public virtual ICollection<Indicatorflag> Indicatorflags { get; set; } = new List<Indicatorflag>();
 
     public virtual ICollection<Intervention> Interventions { get; set; } = new List<Intervention>();
 

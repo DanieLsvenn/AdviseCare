@@ -35,6 +35,6 @@ erDiagram
     }
     ACCOUNTS ||--o{ REPORTS : "generatedBy"
     ACADEMICTERMS ||--o{ REPORTS : "termId"
+    ACCOUNTS |o--o{ BACKUPS : "createdBy"
     BACKUPS ||--o{ RESTOREOPERATIONS : "backupId"
     ACCOUNTS ||--o{ RESTOREOPERATIONS : "executedBy"
-    ACCOUNTS |o--o{ BACKUPS : "createdBy"

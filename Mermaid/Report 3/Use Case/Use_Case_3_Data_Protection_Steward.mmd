@@ -16,6 +16,9 @@ flowchart LR
             UC28(["UC-28<br/>Execute Cryptographic Erasure"])
             UC29(["UC-29<br/>Rotate Master Key"])
         end
+        subgraph SDA["Student Data Management"]
+            UC61(["UC-61<br/>Manage Early-Support Indicators"])
+        end
     end
     ACT --- UC18
     ACT --- UC19
@@ -24,6 +27,7 @@ flowchart LR
     ACT --- UC27
     ACT --- UC28
     ACT --- UC29
+    ACT --- UC61
     linkStyle default stroke-width: 1pt;
     classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
     class ACT,GEN actor;

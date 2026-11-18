@@ -17,6 +17,12 @@ erDiagram
         nvarchar(30) priority "NOT NULL"
         nvarchar(30) status "NOT NULL"
     }
+    CASE_ATTRIBUTE {
+        uniqueidentifier caseId PK, FK "NOT NULL"
+        uniqueidentifier dataAttributeId PK, FK "NOT NULL"
+        nvarchar(1000) shareReason "NULL"
+        datetime2(3) sharedAt "NOT NULL"
+    }
     CASECHANGEREQUESTS {
         uniqueidentifier caseChangeRequestId PK "NOT NULL"
         uniqueidentifier caseId FK "NOT NULL"
@@ -29,6 +35,15 @@ erDiagram
         datetime2(3) requestedAt "NOT NULL"
         nvarchar(30) status "NOT NULL"
     }
+    CASEFEEDBACKS {
+        uniqueidentifier caseFeedbackId PK "NOT NULL"
+        uniqueidentifier advisorId FK "NOT NULL"
+        uniqueidentifier caseId FK, UK "NOT NULL"
+        uniqueidentifier createdBy FK "NOT NULL"
+        nvarchar(1000) comment "NULL"
+        datetime2(3) createdAt "NOT NULL"
+        int rating "NOT NULL"
+    }
     CASENOTES {
         uniqueidentifier caseNoteId PK "NOT NULL"
         uniqueidentifier authorId FK "NOT NULL"
@@ -38,6 +53,13 @@ erDiagram
         datetime2(3) editedAt "NULL"
         bit isFinalized "NOT NULL"
     }
+    CASEMESSAGES {
+        uniqueidentifier caseMessageId PK "NOT NULL"
+        uniqueidentifier authorId FK "NOT NULL"
+        uniqueidentifier caseId FK "NOT NULL"
+        nvarchar(1000) messageText "NOT NULL"
+        datetime2(3) createdAt "NOT NULL"
+    }
     CASESTAGEHISTORIES {
         uniqueidentifier caseStageHistoryId PK "NOT NULL"
         uniqueidentifier caseId FK "NOT NULL"
@@ -46,6 +68,23 @@ erDiagram
         datetime2(3) changedAt "NOT NULL"
         nvarchar(30) fromStage "NOT NULL"
         nvarchar(30) toStage "NOT NULL"
+    }
+    INDICATORFLAGS {
+        uniqueidentifier indicatorFlagId PK "NOT NULL"
+        uniqueidentifier caseId FK "NULL"
+        uniqueidentifier indicatorId FK "NOT NULL"
+        uniqueidentifier requestedBy FK "NULL"
+        uniqueidentifier resolvedBy FK "NULL"
+        uniqueidentifier studentDataId FK "NOT NULL"
+        uniqueidentifier studentId FK "NOT NULL"
+        uniqueidentifier termId FK "NOT NULL"
+        nvarchar(1000) dismissReason "NULL"
+        datetime2(3) flaggedAt "NOT NULL"
+        datetime2(3) requestedAt "NULL"
+        datetime2(3) resolvedAt "NULL"
+        nvarchar(30) priority "NOT NULL"
+        nvarchar(30) severity "NOT NULL"
+        nvarchar(30) status "NOT NULL"
     }
     REFERRALS {
         uniqueidentifier referralId PK "NOT NULL"
@@ -60,6 +99,7 @@ erDiagram
     }
     CORRECTIONREQUESTS {
         uniqueidentifier correctionRequestId PK "NOT NULL"
+        uniqueidentifier consentPurposeId FK "NOT NULL"
         uniqueidentifier reviewedBy FK "NULL"
         uniqueidentifier studentDataId FK "NOT NULL"
         uniqueidentifier studentId FK "NOT NULL"
@@ -71,8 +111,20 @@ erDiagram
         datetime2(3) submittedAt "NOT NULL"
         nvarchar(30) status "NOT NULL"
     }
+    ACADEMICTERMS {
+        uniqueidentifier termId PK "referenced table, see its own section"
+    }
     ACCOUNTS {
         uniqueidentifier accountId PK "referenced table, see its own section"
+    }
+    CONSENTPURPOSES {
+        uniqueidentifier consentPurposeId PK "referenced table, see its own section"
+    }
+    DATAATTRIBUTES {
+        uniqueidentifier dataAttributeId PK "referenced table, see its own section"
+    }
+    INDICATORS {
+        uniqueidentifier indicatorId PK "referenced table, see its own section"
     }
     STUDENTDATA {
         uniqueidentifier studentDataId PK "referenced table, see its own section"
@@ -83,22 +135,37 @@ erDiagram
     SUPPORTCATEGORIES {
         uniqueidentifier supportCategoryId PK "referenced table, see its own section"
     }
-    CASES ||--o{ REFERRALS : "caseId"
-    ACCOUNTS ||--o{ REFERRALS : "fromAccountId"
-    ACCOUNTS ||--o{ REFERRALS : "toAccountId"
-    ACCOUNTS |o--o{ CORRECTIONREQUESTS : "reviewedBy"
-    STUDENTDATA ||--o{ CORRECTIONREQUESTS : "studentDataId"
-    ACCOUNTS ||--o{ CORRECTIONREQUESTS : "studentId"
     ACCOUNTS |o--o{ CASES : "advisorId"
     ACCOUNTS ||--o{ CASES : "openedBy"
     ACCOUNTS ||--o{ CASES : "studentId"
     SUBJECTS |o--o{ CASES : "subjectId"
     SUPPORTCATEGORIES ||--o{ CASES : "supportCategoryId"
-    ACCOUNTS ||--o{ CASENOTES : "authorId"
-    CASES ||--o{ CASENOTES : "caseId"
-    CASES ||--o{ CASESTAGEHISTORIES : "caseId"
-    ACCOUNTS ||--o{ CASESTAGEHISTORIES : "changedBy"
+    CASES ||--o{ CASE_ATTRIBUTE : "caseId"
+    DATAATTRIBUTES ||--o{ CASE_ATTRIBUTE : "dataAttributeId"
     CASES ||--o{ CASECHANGEREQUESTS : "caseId"
     ACCOUNTS |o--o{ CASECHANGEREQUESTS : "programmeHeadId"
     ACCOUNTS ||--o{ CASECHANGEREQUESTS : "proposedAdvisorId"
     ACCOUNTS ||--o{ CASECHANGEREQUESTS : "requestedBy"
+    ACCOUNTS ||--o{ CASEFEEDBACKS : "advisorId"
+    CASES ||--o| CASEFEEDBACKS : "caseId"
+    ACCOUNTS ||--o{ CASEFEEDBACKS : "createdBy"
+    ACCOUNTS ||--o{ CASENOTES : "authorId"
+    CASES ||--o{ CASENOTES : "caseId"
+    ACCOUNTS ||--o{ CASEMESSAGES : "authorId"
+    CASES ||--o{ CASEMESSAGES : "caseId"
+    CASES ||--o{ CASESTAGEHISTORIES : "caseId"
+    ACCOUNTS ||--o{ CASESTAGEHISTORIES : "changedBy"
+    CASES |o--o{ INDICATORFLAGS : "caseId"
+    INDICATORS ||--o{ INDICATORFLAGS : "indicatorId"
+    ACCOUNTS |o--o{ INDICATORFLAGS : "requestedBy"
+    ACCOUNTS |o--o{ INDICATORFLAGS : "resolvedBy"
+    STUDENTDATA ||--o{ INDICATORFLAGS : "studentDataId"
+    ACCOUNTS ||--o{ INDICATORFLAGS : "studentId"
+    ACADEMICTERMS ||--o{ INDICATORFLAGS : "termId"
+    CASES ||--o{ REFERRALS : "caseId"
+    ACCOUNTS ||--o{ REFERRALS : "fromAccountId"
+    ACCOUNTS ||--o{ REFERRALS : "toAccountId"
+    CONSENTPURPOSES ||--o{ CORRECTIONREQUESTS : "consentPurposeId"
+    ACCOUNTS |o--o{ CORRECTIONREQUESTS : "reviewedBy"
+    STUDENTDATA ||--o{ CORRECTIONREQUESTS : "studentDataId"
+    ACCOUNTS ||--o{ CORRECTIONREQUESTS : "studentId"

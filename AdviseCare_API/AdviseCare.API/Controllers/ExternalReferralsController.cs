@@ -1,4 +1,5 @@
 using AdviseCare.Application.Contracts.Requests.ExternalReferral;
+using AdviseCare.Application.Contracts.Responses;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +19,9 @@ namespace AdviseCare.API.Controllers
         [HttpGet]
         [SwaggerOperation(Summary = "[Student Welfare Officer] Get all external referrals with optional pagination",
             Description = "Lists the referrals to outside services, newest first, with the service, the referring officer, the follow-up date and outcome, and whether the referral is overdue. Pass page and pageSize together to page the results.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- Page and page size must be at least 1.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? pageSize)
         {
             if (page.HasValue && pageSize.HasValue)
@@ -34,6 +38,9 @@ namespace AdviseCare.API.Controllers
         [HttpGet("{id}")]
         [SwaggerOperation(Summary = "[Student Welfare Officer] Get external referral by Id",
             Description = "Retrieves one external referral.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- External referral not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             var response = await _externalReferralService.GetByIdAsync(id);
@@ -44,6 +51,9 @@ namespace AdviseCare.API.Controllers
         [HttpGet("search")]
         [SwaggerOperation(Summary = "[Student Welfare Officer] Search/Filter external referrals",
             Description = "Filters external referrals by case, service, status (sent/followedUp/closed) and overdue state. A sent referral past its follow-up date counts as overdue at once; the background check also stores the flag every 5 minutes. Empty fields are ignored.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> Search([FromQuery] SearchExternalReferralRequest request)
         {
             var response = await _externalReferralService.SearchAsync(request);
@@ -54,6 +64,11 @@ namespace AdviseCare.API.Controllers
         [HttpPost]
         [SwaggerOperation(Summary = "[Student Welfare Officer] Refer a case to an external service",
             Description = "Sends an open case that was referred to (and accepted by) the signed-in officer to an active external service, with an optional follow-up due date. The referring officer is taken from the token.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.\n- This case has not been referred to you (or you have not accepted the referral yet).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- External service not found.\n- Case not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- New referrals can only be sent to an active external service.\n- The case is closed.", typeof(ErrorResponse))]
         public async Task<IActionResult> Create([FromBody] CreateExternalReferralRequest request)
         {
             var officerId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -65,6 +80,11 @@ namespace AdviseCare.API.Controllers
         [HttpPut("{id}")]
         [SwaggerOperation(Summary = "[Student Welfare Officer] Record an external referral's follow-up",
             Description = "Records the follow-up outcome of a sent referral; the status becomes followedUp and the overdue flag is cleared.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- External referral not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- Only a sent referral can receive a follow-up outcome.", typeof(ErrorResponse))]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateExternalReferralRequest request)
         {
             var response = await _externalReferralService.UpdateAsync(id, request);
@@ -75,6 +95,10 @@ namespace AdviseCare.API.Controllers
         [HttpPut("{id}/close")]
         [SwaggerOperation(Summary = "[Student Welfare Officer] Close an external referral",
             Description = "Closes a followed-up referral (followedUp -> closed).")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- External referral not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- Only a followed-up referral can be closed.", typeof(ErrorResponse))]
         public async Task<IActionResult> Close([FromRoute] Guid id)
         {
             var response = await _externalReferralService.CloseAsync(id);

@@ -1,0 +1,21 @@
+# Line endings (QC-090): text files are stored with LF in git and checked out with CRLF on every machine,
+# so a commit never turns a whole file from CRLF into LF (or back) again.
+* text=auto eol=crlf
+
+# Binary files: never touched
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.pptx binary
+*.zip binary
+*.drawio binary
+*.dll binary
+*.exe binary
+*.woff binary
+*.woff2 binary
+*.ttf binary

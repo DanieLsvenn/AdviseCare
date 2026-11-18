@@ -68,11 +68,11 @@ erDiagram
     FACULTIES {
         uniqueidentifier facultyId PK "referenced table, see its own section"
     }
-    ACCOUNTS ||--o{ ACTIVITYLOGS : "accountId"
-    ACCOUNTS ||--o{ SESSIONS : "accountId"
-    ACCOUNTS ||--o{ NOTIFICATIONPREFERENCES : "accountId"
-    ACCOUNTS ||--o{ NOTIFICATIONS : "accountId"
     FACULTIES |o--o{ ACCOUNTS : "facultyId"
     ACCOUNTS ||--o| STUDENTPROFILES : "studentId"
     ACCOUNTS ||--o{ ACCOUNT_ROLE : "accountId"
     ROLES ||--o{ ACCOUNT_ROLE : "roleId"
+    ACCOUNTS ||--o{ SESSIONS : "accountId"
+    ACCOUNTS ||--o{ NOTIFICATIONS : "accountId"
+    ACCOUNTS ||--o{ NOTIFICATIONPREFERENCES : "accountId"
+    ACCOUNTS ||--o{ ACTIVITYLOGS : "accountId"

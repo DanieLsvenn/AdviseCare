@@ -68,6 +68,7 @@ flowchart TB
             UC34(["UC-34<br/>Request Data Correction"])
             UC35(["UC-35<br/>Review Correction Request"])
             UC30 ~~~ UC31 ~~~ UC32 ~~~ UC33 ~~~ UC34 ~~~ UC35
+            UC61(["UC-61<br/>Manage Early-Support Indicators"])
         end
         subgraph SUP["Support Requests and Case Matching"]
             UC36(["UC-36<br/>Request Support"])
@@ -78,6 +79,8 @@ flowchart TB
             UC41(["UC-41<br/>Request Case Advisor Change"])
             UC42(["UC-42<br/>Decide Case Advisor Change"])
             UC36 ~~~ UC37 ~~~ UC38 ~~~ UC39 ~~~ UC40 ~~~ UC41 ~~~ UC42
+            UC62(["UC-62<br/>Handle Early-Support Flags"])
+            UC63(["UC-63<br/>Request Flagged Student"])
         end
         subgraph CWF["Case Workflow and Referrals"]
             UC43(["UC-43<br/>View Assigned Cases"])
@@ -88,6 +91,8 @@ flowchart TB
             UC48(["UC-48<br/>Answer Referral"])
             UC49(["UC-49<br/>View Case History"])
             UC43 ~~~ UC44 ~~~ UC45 ~~~ UC46 ~~~ UC47 ~~~ UC48 ~~~ UC49
+            UC59(["UC-59<br/>Write in Case Thread"])
+            UC60(["UC-60<br/>Rate Closed Case"])
         end
         subgraph WEL["Student Welfare"]
             UC50(["UC-50<br/>Record Interventions"])
@@ -103,6 +108,9 @@ flowchart TB
             UC57(["UC-57<br/>View Caseload and Closure Report"])
             UC58(["UC-58<br/>Export Report"])
             UC56 ~~~ UC57 ~~~ UC58
+            UC64(["UC-64<br/>View Welfare Statistics"])
+            UC65(["UC-65<br/>View Cohort Data"])
+            UC66(["UC-66<br/>Export Statistics"])
         end
     end
     %% actor - use case associations
@@ -191,6 +199,19 @@ flowchart TB
     PH --- UC56
     PH --- UC57
     PH --- UC58
+    STU --- UC59
+    AA --- UC59
+    WA --- UC59
+    STU --- UC60
+    STW --- UC61
+    PH --- UC62
+    AA --- UC63
+    WA --- UC63
+    SWO --- UC64
+    PH --- UC64
+    PH --- UC65
+    SWO --- UC66
+    PH --- UC66
     linkStyle default stroke-width: 1pt;
     classDef actor fill:transparent,stroke:transparent,stroke-width:0px;
     class ALL,ADM,STW,PH,AA,WA,SWO,STU actor;

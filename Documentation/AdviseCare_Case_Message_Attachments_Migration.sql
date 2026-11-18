@@ -1,5 +1,5 @@
 ﻿-- Brings an existing AdviseCare database up to date without resetting or reseeding its data. Run once before deploying the API; re-running is safe.
--- CASEMESSAGEATTACHMENTS (46): files sent with a case message (stored in the database, downloaded only through the API).
+-- CASEMESSAGEATTACHMENTS (49): files sent with a case message (stored in the database, downloaded only through the API).
 USE [AdviseCareDB];
 GO
 

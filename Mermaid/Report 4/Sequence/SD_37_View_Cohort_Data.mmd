@@ -1,0 +1,30 @@
+---
+title: AdviseCare - Sequence Diagram SD-37 - View and Export Cohort Data
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor PH as Programme Head
+    participant W as Web App
+    participant C as StatisticsController
+    participant S as StatisticService
+    participant G as IAccessGuardService
+    participant K as IAttributeKeyService
+    participant R as IGenericRepository
+    participant DB as SQL Server
+    PH->>W: Choose a data attribute and a term (optional faculty, split per faculty)
+    W->>C: GET /api/Statistics/cohort?dataAttributeId&termId&facultyId&isByFaculty
+    C->>S: GetCohortStatisticAsync(AccessorId, request)
+    S->>R: The active statistics purpose (isForStatistics) must exist and cover the attribute
+    S->>R: Latest STUDENTDATA row per student for the attribute and term (missing or erased skipped)
+    S->>G: CheckAccessForStudentsAsync(accessor, students, [attribute], statistics purpose)
+    G->>DB: Policies of the accessor's roles, granted unexpired consents under that purpose
+    S->>S: Keep allowed values only (never emergency access), group per faculty if asked
+    S->>K: DecryptValuesAsync (only cells with at least 10 students)
+    S->>G: LogAccessBatchAsync (one ACCESSLOGS row per value read, statistics purpose)
+    S->>S: Average / min / max, or students per value, hide cells and values under 10 students
+    C-->>W: 200 OK (cells only)
+    opt export
+        W->>C: GET /api/Statistics/cohort/export?...&format=xlsx|csv|pdf
+        C-->>W: File download (logged as statisticsExported, nothing stored)
+    end

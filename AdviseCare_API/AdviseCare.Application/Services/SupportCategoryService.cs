@@ -259,13 +259,15 @@ namespace AdviseCare.Application.Services
             return categories.OrderBy(c => c.SupportType).ThenBy(c => c.CategoryName).ToList();
         }
 
-        // Helper: the governing consent purpose must exist and must not be retired
+        // Helper: the governing consent purpose must exist, must not be retired and must not be the statistics purpose
         private async Task<Consentpurpose> GetGoverningPurposeAsync(Guid ConsentPurposeId)
         {
             var purpose = await _consentPurposeRepository.GetByIdAsync(ConsentPurposeId)
                 ?? throw new NotFoundException("Consent purpose not found.");
             if (purpose.Status == "retired")
                 throw new ValidationException($"'{purpose.PurposeName}' is retired and cannot govern a support category.");
+            if (purpose.IsForStatistics)
+                throw new ValidationException($"'{purpose.PurposeName}' is the statistics purpose and cannot govern a support category.");
             return purpose;
         }
 

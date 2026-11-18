@@ -7,6 +7,7 @@ namespace AdviseCare.Application.Contracts.Responses.ConsentPurpose
         public string CreatorFullName { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string PurposeName { get; set; } = string.Empty;
+        public bool IsForStatistics { get; set; } = false;
         public string Status { get; set; } = "inactive";
     }
 
@@ -17,6 +18,7 @@ namespace AdviseCare.Application.Contracts.Responses.ConsentPurpose
         public string CreatorFullName { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string PurposeName { get; set; } = string.Empty;
+        public bool IsForStatistics { get; set; } = false;
         public string Status { get; set; } = "inactive";
     }
 
@@ -28,6 +30,7 @@ namespace AdviseCare.Application.Contracts.Responses.ConsentPurpose
         public string Description { get; set; } = string.Empty;
         public string PurposeName { get; set; } = string.Empty;
         public List<ConsentPurposeAttributeResponse> DataAttributes { get; set; } = new();
+        public bool IsForStatistics { get; set; } = false;
         public string Status { get; set; } = "inactive";
     }
 
@@ -46,6 +49,7 @@ namespace AdviseCare.Application.Contracts.Responses.ConsentPurpose
         public string CreatorFullName { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string PurposeName { get; set; } = string.Empty;
+        public bool IsForStatistics { get; set; } = false;
         public string Status { get; set; } = "inactive";
     }
 
@@ -56,6 +60,7 @@ namespace AdviseCare.Application.Contracts.Responses.ConsentPurpose
         public string CreatorFullName { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string PurposeName { get; set; } = string.Empty;
+        public bool IsForStatistics { get; set; } = false;
         public string Status { get; set; } = "inactive";
     }
 
@@ -66,6 +71,7 @@ namespace AdviseCare.Application.Contracts.Responses.ConsentPurpose
         public string CreatorFullName { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string PurposeName { get; set; } = string.Empty;
+        public bool IsForStatistics { get; set; } = false;
         public string Status { get; set; } = "inactive";
     }
 

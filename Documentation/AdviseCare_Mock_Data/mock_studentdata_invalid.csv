@@ -1,0 +1,9 @@
+﻿Student,Data attribute,Value,Term,Valid from
+binhnqse180003@example.com,GPA,7.2,Fall 2026,2026-10-20
+nobody@example.com,GPA,5.0,Fall 2026,2026-10-20
+binhnqse180003@example.com,Height,170,Fall 2026,2026-10-20
+binhnqse180003@example.com,GPA,abc,Fall 2026,2026-10-20
+thaodase180005@example.com,Attendance rate,80,Winter 99,2026-10-20
+thaodase180005@example.com,Financial difficulty,yes,Fall 2026,2026-10-20
+thaodase180005@example.com,Accommodation status,,Fall 2026,2026-10-20
+thaodase180005@example.com,Commute time,20,Fall 2026,20/31/2026

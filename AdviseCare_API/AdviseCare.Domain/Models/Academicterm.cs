@@ -17,6 +17,8 @@ public partial class Academicterm
 
     public string Status { get; set; }
 
+    public virtual ICollection<Indicatorflag> Indicatorflags { get; set; } = new List<Indicatorflag>();
+
     public virtual ICollection<Report> Reports { get; set; } = new List<Report>();
 
     public virtual ICollection<Studentdata> Studentdata { get; set; } = new List<Studentdata>();

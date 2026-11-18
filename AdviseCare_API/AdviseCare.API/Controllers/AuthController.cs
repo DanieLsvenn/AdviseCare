@@ -1,4 +1,5 @@
 using AdviseCare.Application.Contracts.Requests.Account;
+using AdviseCare.Application.Contracts.Responses;
 using AdviseCare.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,6 +24,9 @@ namespace AdviseCare.API.Controllers
                 "On success, opens a new session (with the optional device info, e.g. the browser user agent) and returns the profile, roles, hasPassword and a JWT valid for 1 month. " +
                 "The JWT carries the accountId, sessionId, email, full name and every role name. " +
                 "Returns 401 for a wrong identifier/password or an account with no password yet, and 403 for a deactivated/banned account.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- Invalid email/username or password.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Account is not active. Current status: {Status}.", typeof(ErrorResponse))]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             var response = await _accountService.LoginAsync(request);
@@ -36,6 +40,9 @@ namespace AdviseCare.API.Controllers
             Description = "Takes the ID token from the Google sign-in button and verifies it with Google. " +
                 "Only an account already linked to that Google account (through the account-linking email) can sign in; any other Google account is refused with 401. " +
                 "On success, opens a session and returns the same response as the password login.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- This Google account is not linked to any AdviseCare account.\n- Invalid Google token.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Account is not active. Current status: {Status}.", typeof(ErrorResponse))]
         public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
         {
             var response = await _accountService.GoogleLoginAsync(request);
@@ -50,6 +57,10 @@ namespace AdviseCare.API.Controllers
                 "Checks that the token is valid and not expired (7 days), that the Google email matches the account email, and that the Google account is not linked to another account. " +
                 "Then stores the Google id, sets linkStatus = linked, clears the token and signs the user in. " +
                 "hasPassword = false in the response tells the web app to show the optional set-password step (with a Skip button).")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- This linking link is not valid or has already been used.\n- This linking link has expired. Ask the System Administrator to send a new one.\n- The Google account {Email} does not match the email of this AdviseCare account. Sign in with the Google account of {Email}.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- Invalid Google token.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Account is not active. Current status: {Status}.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- This Google account is already linked to another AdviseCare account.", typeof(ErrorResponse))]
         public async Task<IActionResult> LinkGoogle([FromBody] LinkGoogleAccountRequest request)
         {
             var response = await _accountService.LinkGoogleAccountAsync(request);
@@ -62,6 +73,7 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[Anonymous] Forgot password",
             Description = "Emails a one-time reset link (valid for 1 hour) when a linked, active account uses this email. " +
                 "Accounts that are not linked yet get nothing, so a pending linking link is never replaced. Always returns the same message, so it can't be used to find out which emails exist.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
             var response = await _accountService.ForgotPasswordAsync(request);
@@ -73,6 +85,7 @@ namespace AdviseCare.API.Controllers
         [AllowAnonymous]
         [SwaggerOperation(Summary = "[Anonymous] Reset password",
             Description = "Sets a new password using the token from the reset email. The token works once; afterwards every session of the account is logged out, so the user signs in again.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- Passwords do not match.\n- This reset link is not valid or has expired.", typeof(ErrorResponse))]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
         {
             var response = await _accountService.ResetPasswordAsync(request);
@@ -85,6 +98,9 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[All roles] Set or change password",
             Description = "One endpoint for both cases, decided by the server: when the account has no password yet (skipped at setup), oldPassword is not needed and the new password is set; " +
                 "when it already has one, oldPassword is required and checked. The other sessions of the account are logged out; the current one stays signed in.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- Passwords do not match.\n- Old password is required.\n- Old password is incorrect.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Account not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
         {
             var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -99,6 +115,8 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[All roles] Get my profile",
             Description = "Retrieves the profile of the account in the JWT: faculty, avatar, sign-in method, linking status, preferred language, status, roles and hasPassword (which form to show in Settings). " +
                 "The web app uses it to restore the signed-in user after a page reload.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Account not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> Me()
         {
             var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -111,6 +129,10 @@ namespace AdviseCare.API.Controllers
         [Authorize]
         [SwaggerOperation(Summary = "[All roles] Update my profile",
             Description = "Changes the username and the preferred interface language (vi/en) of the signed-in account. The full name and email can only be changed by the System Administrator.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Account not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- The username '{userName}' is already taken.", typeof(ErrorResponse))]
         public async Task<IActionResult> UpdateMe([FromBody] UpdateMyProfileRequest request)
         {
             var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -124,6 +146,9 @@ namespace AdviseCare.API.Controllers
         [Consumes("multipart/form-data")]
         [SwaggerOperation(Summary = "[All roles] Upload my avatar",
             Description = "Uploads a PNG, JPEG, WEBP or GIF image of at most 2 MB to Supabase Storage and saves its public URL as the avatar of the signed-in account. Returns the new avatar URL.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- An image file is required.\n- The avatar must be an image of at most 2 MB.\n- The avatar must be a PNG, JPEG, WEBP or GIF image.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Account not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> UploadAvatar([FromForm] UploadAvatarRequest request)
         {
             var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -136,6 +161,8 @@ namespace AdviseCare.API.Controllers
         [Authorize]
         [SwaggerOperation(Summary = "[All roles] Logout",
             Description = "Ends the session in the JWT (isActive = false, logoutAt = now). After this, every request with the same JWT is rejected with 401. Calling it again still returns success.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Session not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> Logout()
         {
             var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -149,6 +176,7 @@ namespace AdviseCare.API.Controllers
         [Authorize]
         [SwaggerOperation(Summary = "[All roles] Get my active sessions",
             Description = "Lists the sessions of the signed-in account that are still live (not logged out and less than 1 month old), newest first, with the device, sign-in time, expiry time and which one is the current session.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         public async Task<IActionResult> GetMySessions()
         {
             var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -162,6 +190,8 @@ namespace AdviseCare.API.Controllers
         [Authorize]
         [SwaggerOperation(Summary = "[All roles] Log out one of my sessions",
             Description = "Ends one session of the signed-in account chosen from the session list (e.g. a forgotten computer). Returns 404 when the session belongs to another account.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Session not found.", typeof(ErrorResponse))]
         public async Task<IActionResult> LogoutSession([FromRoute] Guid id)
         {
             var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
@@ -175,6 +205,7 @@ namespace AdviseCare.API.Controllers
         [Authorize]
         [SwaggerOperation(Summary = "[All roles] Log out of other sessions",
             Description = "Ends every active session of the signed-in account except the current one.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         public async Task<IActionResult> LogoutOtherSessions()
         {
             var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
