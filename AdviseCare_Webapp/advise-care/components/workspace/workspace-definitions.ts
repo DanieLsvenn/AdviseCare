@@ -490,7 +490,7 @@ export function getWorkspaceDefinitions(
         workspace(
           "subjectAssignments",
           "Subjects/account-subjects/search",
-          ["accountId", "accountName", "subjectId", "subjectCode", "subjectName"],
+          ["accountId", ["advisorFullName", "accountName"], "subjectId", "subjectCode", "subjectName"],
           {
             queryFields: [search("accountId", staffSearch(["Academic Advisor"]), false, "advisor"), picker("subjectId", subjectSource, false, "select", "subject")],
             create: operation("create", "POST", "Subjects/account-subjects", [
@@ -560,7 +560,7 @@ export function getWorkspaceDefinitions(
             "supportCategoryId",
             "categoryName",
             "supportType",
-            "consentPurposeName",
+            ["purposeName", "consentPurposeName"],
             "status",
           ],
           {
@@ -630,9 +630,9 @@ export function getWorkspaceDefinitions(
           [
             "activityLogId",
             "activityType",
-            "actorAccountId",
-            "subjectAccountId",
-            "createdAt",
+            ["accountId", "actorAccountId"],
+            ["activityDetail", "details"],
+            "occurredAt",
           ],
           {
             queryFields: [
@@ -650,7 +650,7 @@ export function getWorkspaceDefinitions(
         workspace(
           "sessions",
           "Sessions/search",
-          ["sessionId", "accountName", "deviceInfo", "createdAt", "lastSeenAt", "isActive"],
+          ["sessionId", ["accountFullName", "accountName"], "deviceInfo", "loginAt", "isActive"],
           {
             queryFields: [search("accountId", accountSearch, false, "account"), field("isActive", "checkbox")],
             rowOperations: [
@@ -952,7 +952,7 @@ export function getWorkspaceDefinitions(
           "myCases",
           "Cases/assigned",
           [
-            "studentName",
+            ["studentFullName", "studentName"],
             "studentCode",
             ["categoryName", "supportCategoryName"],
             "subjectName",
@@ -988,7 +988,7 @@ export function getWorkspaceDefinitions(
           "Cases/:caseId",
           [
             "caseId",
-            "studentName",
+            ["studentFullName", "studentName"],
             ["categoryName", "supportCategoryName"],
             "supportType",
             "subjectName",
@@ -1034,12 +1034,12 @@ export function getWorkspaceDefinitions(
           "ConsentRequests/me/sent",
           [
             "consentRequestId",
-            "studentName",
-            "consentPurposeName",
+            ["studentFullName", "studentName"],
+            ["purposeName", "consentPurposeName"],
             ["attributeName", "dataAttributeName"],
             "purposeStated",
             "status",
-            "createdAt",
+            "requestedAt",
           ],
           {
             create: operation("create", "POST", "ConsentRequests", [
@@ -1071,13 +1071,14 @@ export function getWorkspaceDefinitions(
           "CorrectionRequests/search",
           [
             "correctionRequestId",
-            "studentName",
+            ["studentFullName", "studentName"],
             ["attributeName", "dataAttributeName"],
             "proposedValue",
             "status",
-            "createdAt",
+            "submittedAt",
           ],
           {
+            description: t("correctionValuesHint"),
             queryFields: [
               search("studentId", studentSearch, false, "student"),
               field("status"),
@@ -1100,9 +1101,9 @@ export function getWorkspaceDefinitions(
           "receivedRequests",
           "Referrals/me/incoming",
           [
-            "studentName",
+            ["studentFullName", "studentName"],
             ["categoryName", "supportCategoryName"],
-            "fromAccountName",
+            ["fromAccountFullName", "fromAccountName"],
             "referralReason",
             "priority",
             "status",
@@ -1128,9 +1129,9 @@ export function getWorkspaceDefinitions(
           "sentRequests",
           "Referrals/me/outgoing",
           [
-            "studentName",
+            ["studentFullName", "studentName"],
             ["categoryName", "supportCategoryName"],
-            "toAccountName",
+            ["toAccountFullName", "toAccountName"],
             "referralReason",
             "priority",
             "status",
@@ -1147,7 +1148,7 @@ export function getWorkspaceDefinitions(
           "EmergencyAccessRequests/me",
           [
             "emergencyAccessRequestId",
-            "studentName",
+            ["studentFullName", "studentName"],
             "justification",
             "status",
             "scopeExpiresAt",
@@ -1174,6 +1175,7 @@ export function getWorkspaceDefinitions(
           "StudentData/students/:studentId",
           [["attributeName", "dataAttributeName"], "value", "termName", "isShared", "isMissing", "validFrom"],
           {
+            collectionKey: "values",
             queryFields: [
               picker("caseId", advisorCaseSource, false, "select", "case"),
               picker("termId", termSource, false, "select", "term"),
@@ -1189,6 +1191,7 @@ export function getWorkspaceDefinitions(
           "StudentData/students/:studentId/as-of",
           [["attributeName", "dataAttributeName"], "value", "termName", "isShared", "isMissing", "validFrom"],
           {
+            collectionKey: "values",
             queryFields: [
               field("date", "date", true),
               select("timeAxis", ["system", "valid"]),
@@ -1204,8 +1207,9 @@ export function getWorkspaceDefinitions(
         workspace(
           "studentData",
           "StudentData/students/:studentId/compare",
-          [["attributeName", "dataAttributeName"], "dateA", "dateB", "valueA", "valueB"],
+          [["attributeName", "dataAttributeName"], ["dateAValue.value", "valueA"], ["dateBValue.value", "valueB"]],
           {
+            collectionKey: "values",
             queryFields: [
               field("dateA", "date", true),
               field("dateB", "date", true),
@@ -1227,8 +1231,8 @@ export function getWorkspaceDefinitions(
             "fromStage",
             "toStage",
             "reason",
-            "changedByName",
-            "createdAt",
+            ["changedByFullName", "changedByName"],
+            "changedAt",
           ],
           { queryFields: [picker("caseId", advisorCaseSource, true, "select", "case")] },
         ),
@@ -1296,7 +1300,7 @@ export function getWorkspaceDefinitions(
           [
             "interventionId",
             "caseId",
-            "studentName",
+            ["studentFullName", "studentName"],
             "interventionType",
             "interventionDate",
             "status",
@@ -1398,7 +1402,7 @@ export function getWorkspaceDefinitions(
           [
             "externalReferralId",
             "caseId",
-            "serviceName",
+            ["externalServiceName", "serviceName"],
             "status",
             "followUpDueAt",
             "followUpOutcome",
@@ -1748,8 +1752,8 @@ export function getWorkspaceDefinitions(
           "allCases",
           "Cases/search",
           [
-            "studentName",
-            "advisorName",
+            ["studentFullName", "studentName"],
+            ["advisorFullName", "advisorName"],
             ["categoryName", "supportCategoryName"],
             "supportType",
             "currentStage",
@@ -1784,11 +1788,11 @@ export function getWorkspaceDefinitions(
           "caseChangeRequests",
           "CaseChangeRequests/search",
           [
-            "studentName",
+            ["studentFullName", "studentName"],
             ["categoryName", "supportCategoryName"],
-            "currentAdvisorName",
-            "proposedAdvisorName",
-            "requestedByName",
+            ["currentAdvisorFullName", "currentAdvisorName"],
+            ["proposedAdvisorFullName", "proposedAdvisorName"],
+            ["requestedByFullName", "requestedByName"],
             "reason",
             "status",
             "requestedAt",
