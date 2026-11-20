@@ -125,6 +125,45 @@ namespace AdviseCare.Application.Contracts.Responses.StudentData
         public List<string> Messages { get; set; } = new();
     }
 
+    // The check of every transcript PDF; nothing is written. InsertCount = values the import would add, ReplaceCount = how many of them replace a current value
+    public class PreviewTranscriptsResponse
+    {
+        public int InsertCount { get; set; } = 0;
+        public int ReplaceCount { get; set; } = 0;
+        public List<TranscriptFileResponse> Files { get; set; } = new();
+        public bool IsValid { get; set; } = false;
+    }
+
+    // All-or-nothing: IsSuccess = false (nothing written) while any file has errors, which are listed per file
+    public class ImportTranscriptsResponse
+    {
+        public int ImportedFileCount { get; set; } = 0;
+        public int InsertedCount { get; set; } = 0;
+        public int ReplacedCount { get; set; } = 0;
+        public List<TranscriptFileResponse> Files { get; set; } = new();
+        public bool IsSuccess { get; set; } = false;
+    }
+
+    // One transcript PDF as read and checked
+    public class TranscriptFileResponse
+    {
+        public Guid? StudentId { get; set; }
+        public string CurriculumCode { get; set; } = string.Empty;
+        public string FileName { get; set; } = string.Empty;
+        public string FullNameInFile { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
+        public string StudentName { get; set; } = string.Empty;
+        public int RowCount { get; set; } = 0;
+        public int InsertCount { get; set; } = 0;
+        public int ReplaceCount { get; set; } = 0;
+        public int SkippedRowCount { get; set; } = 0;
+        public List<string> Errors { get; set; } = new();
+        public List<string> Warnings { get; set; } = new();
+        public bool IsValid { get; set; } = false;
+        // grade / attendance; empty when the file could not be read
+        public string ImportType { get; set; } = string.Empty;
+    }
+
     public class GetStudentDataOfStudentResponse
     {
         public Guid StudentId { get; set; } = Guid.Empty;

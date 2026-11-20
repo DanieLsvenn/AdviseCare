@@ -15,6 +15,8 @@ namespace AdviseCare.API.Controllers
     public class StudentDataController(IStudentDataService studentDataService) : ControllerBase
     {
         private const string ReaderRoles = "Academic Advisor,Wellbeing Advisor,Student Welfare Officer,Programme Head";
+        // One transcript request: at most 200 PDFs of 5 MB
+        private const long TranscriptUploadLimitBytes = 200L * 1024 * 1024;
         private readonly IStudentDataService _studentDataService = studentDataService;
 
         // Get all Student data rows, with optional pagination (never the values)
@@ -144,6 +146,46 @@ namespace AdviseCare.API.Controllers
         public async Task<IActionResult> ValidateImport([FromForm] CreateStudentDataRequest request)
         {
             var response = await _studentDataService.ValidateAsync(request);
+            return Ok(response);
+        }
+
+        // Preview transcript PDFs
+        [HttpPost("transcripts/preview")]
+        [Authorize(Roles = "System Administrator")]
+        [Consumes("multipart/form-data")]
+        [RequestSizeLimit(TranscriptUploadLimitBytes)]
+        [RequestFormLimits(MultipartBodyLengthLimit = TranscriptUploadLimitBytes)]
+        [SwaggerOperation(Summary = "[System Administrator] Preview transcript PDFs",
+            Description = "Reads each PDF (files: up to 200; one student per file; a grade transcript or an attendance file, told by its Grade or Attendance column) and checks it: " +
+                "the printed Student ID belongs to an active student, every semester is a term in AdviseCare (e.g. Fall2024 -> Fall 2024), every subject code is a subject in AdviseCare, " +
+                "grades are 0-10 and attendance 0-100, no subject twice in a term, one file per student and type, the same file only once. Rows without a semester or without a value (\"-\") are left out with a warning. " +
+                "Returns per file its student, type, rows, values to add and how many replace a current value, errors and warnings. Nothing is written or kept.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- At least one PDF file is required.\n- Send at most 200 transcript files at a time.\n- Data attribute '{name}' is not in AdviseCare / is archived / is not recorded per subject, so transcripts cannot be imported.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        public async Task<IActionResult> PreviewTranscripts([FromForm] PreviewTranscriptsRequest request)
+        {
+            var response = await _studentDataService.PreviewTranscriptsAsync(request);
+            return Ok(response);
+        }
+
+        // Import transcript PDFs
+        [HttpPost("transcripts/import")]
+        [Authorize(Roles = "System Administrator")]
+        [Consumes("multipart/form-data")]
+        [RequestSizeLimit(TranscriptUploadLimitBytes)]
+        [RequestFormLimits(MultipartBodyLengthLimit = TranscriptUploadLimitBytes)]
+        [SwaggerOperation(Summary = "[System Administrator] Import transcript PDFs",
+            Description = "Same checks as the preview, all-or-nothing: if any file is invalid nothing is written (isSuccess = false with each file's errors; activity log transcriptImportFailed). " +
+                "Otherwise every row is encrypted and inserted into the student data in one save as a per-subject value of Subject mark (grade files) or Attendance rate (attendance files) " +
+                "for the student, subject and term, valid from the import day kept inside the term, with the file name in provenanceNote; insert-only, no missing rows. Activity log transcriptImported.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- At least one PDF file is required.\n- Send at most 200 transcript files at a time.\n- Data attribute '{name}' is not in AdviseCare / is archived / is not recorded per subject, so transcripts cannot be imported.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        public async Task<IActionResult> ImportTranscripts([FromForm] ImportTranscriptsRequest request)
+        {
+            var creatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _studentDataService.ImportTranscriptsAsync(creatorId, request);
             return Ok(response);
         }
 

@@ -10,14 +10,25 @@ using AdviseCare.Domain.Models;
 using Microsoft.AspNetCore.Http;
 using System.Globalization;
 using System.Linq.Expressions;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace AdviseCare.Application.Services
 {
-    // Student data (STUDENTDATA, the bitemporal ledger of data attribute values): import, consent-guarded reads, point-in-time views and the student's own export
+    // Student data (STUDENTDATA, the bitemporal ledger of data attribute values): import (Excel/CSV, or transcript PDFs for the per-subject Subject mark and
+    // Attendance rate), consent-guarded reads, point-in-time views and the student's own export
     public class StudentDataService : IStudentDataService
     {
         private const string DataValueField = "dataValue";
+        // Transcript PDFs: a grade transcript fills "Subject mark", an attendance file "Attendance rate"
+        private const string TranscriptGradeAttribute = "Subject mark";
+        private const string TranscriptAttendanceAttribute = "Attendance rate";
+        private const int MaxTranscriptFiles = 200;
+        private const long MaxTranscriptBytes = 5 * 1024 * 1024;
+        private static readonly string EmptyHash = Convert.ToHexString(SHA256.HashData(Array.Empty<byte>()));
+        private static readonly Regex TranscriptSemesterPattern = new(@"^(spring|summer|fall)(\d{4})$", RegexOptions.IgnoreCase);
         private static readonly JsonSerializerOptions MappingJsonOptions = new() { PropertyNameCaseInsensitive = true };
         private static readonly JsonSerializerOptions ExportJsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
@@ -31,6 +42,7 @@ namespace AdviseCare.Application.Services
         private readonly IGenericRepository<Case> _caseRepository;
         private readonly IExcelReader _excelReader;
         private readonly ICsvReader _csvReader;
+        private readonly ITranscriptPdfReader _transcriptPdfReader;
         private readonly IAttributeKeyService _attributeKeyService;
         private readonly IAccessGuardService _accessGuardService;
         private readonly IAccessLogService _accessLogService;
@@ -48,6 +60,7 @@ namespace AdviseCare.Application.Services
             IGenericRepository<Case> caseRepository,
             IExcelReader excelReader,
             ICsvReader csvReader,
+            ITranscriptPdfReader transcriptPdfReader,
             IAttributeKeyService attributeKeyService,
             IAccessGuardService accessGuardService,
             IAccessLogService accessLogService,
@@ -64,6 +77,7 @@ namespace AdviseCare.Application.Services
             _caseRepository = caseRepository;
             _excelReader = excelReader;
             _csvReader = csvReader;
+            _transcriptPdfReader = transcriptPdfReader;
             _attributeKeyService = attributeKeyService;
             _accessGuardService = accessGuardService;
             _accessLogService = accessLogService;
@@ -321,6 +335,81 @@ namespace AdviseCare.Application.Services
                 RejectedRows = import.RejectedRows,
                 Errors = import.Errors,
                 IsValid = import.Errors.Count == 0
+            };
+        }
+
+        // Preview transcript PDFs (grade transcripts -> "Subject mark", attendance files -> "Attendance rate", per subject and term): every file is read
+        // and checked like an import row (student, term, subject, value range); nothing is written and nothing is kept
+        public async Task<PreviewTranscriptsResponse> PreviewTranscriptsAsync(PreviewTranscriptsRequest request)
+        {
+            var check = await ReadTranscriptsAsync(request.Files);
+
+            return new PreviewTranscriptsResponse
+            {
+                InsertCount = check.Files.Where(f => f.IsValid).Sum(f => f.InsertCount),
+                ReplaceCount = check.Files.Where(f => f.IsValid).Sum(f => f.ReplaceCount),
+                Files = check.Files,
+                IsValid = check.Files.All(f => f.IsValid)
+            };
+        }
+
+        // Import transcript PDFs: the files are read and checked again; only when every file is valid, every row is encrypted and inserted as a new
+        // STUDENTDATA row in one save (insert-only, no missing rows for per-subject attributes); any invalid file fails the whole import
+        public async Task<ImportTranscriptsResponse> ImportTranscriptsAsync(Guid CreatorId, ImportTranscriptsRequest request)
+        {
+            var check = await ReadTranscriptsAsync(request.Files);
+            if (check.Files.Any(f => !f.IsValid))
+            {
+                await _activityLogService.LogAsync(CreatorId, "transcriptImportFailed",
+                    $"Refused {check.Files.Count} transcript file(s): {check.Files.Count(f => !f.IsValid)} invalid");
+                return new ImportTranscriptsResponse { Files = check.Files, IsSuccess = false };
+            }
+
+            var transactionAt = DateTime.UtcNow;
+            var newRows = check.Rows.Select(r => new Studentdata
+            {
+                StudentDataId = Guid.NewGuid(),
+                DataSourceId = null,
+                DataAttributeId = r.Row.DataAttribute.DataAttributeId,
+                StudentId = r.Row.Student.AccountId,
+                SubjectId = r.Row.Subject?.SubjectId,
+                TermId = r.Row.Term.TermId,
+                ProvenanceNote = $"Imported from transcript {r.FileName} on {transactionAt:yyyy-MM-dd}.",
+                TransactionFrom = transactionAt,
+                ValidFrom = r.Row.ValidFrom,
+                IsMissing = false,
+                Status = "original"
+            }).ToList();
+
+            // Encrypt every value with the student's key for its attribute (new keys are staged and saved below with the rows)
+            var encrypted = await _attributeKeyService.EncryptValuesAsync(check.Rows.Select((r, index) => new PlainAttributeValue
+            {
+                StudentId = r.Row.Student.AccountId,
+                DataAttributeId = r.Row.DataAttribute.DataAttributeId,
+                RowId = newRows[index].StudentDataId,
+                FieldName = DataValueField,
+                Value = r.Row.Value
+            }).ToList());
+            for (var index = 0; index < newRows.Count; index++)
+            {
+                newRows[index].AttributeKeyId = encrypted[index].AttributeKeyId;
+                newRows[index].DataValue = encrypted[index].Payload;
+                _studentDataRepository.PrepareCreate(newRows[index]);
+            }
+            await _studentDataRepository.SaveAsync();
+
+            var gradeFiles = check.Files.Count(f => f.ImportType == "grade");
+            var replacedCount = check.Files.Sum(f => f.ReplaceCount);
+            await _activityLogService.LogAsync(CreatorId, "transcriptImported",
+                $"Imported {check.Files.Count} transcript file(s) ({gradeFiles} grade, {check.Files.Count - gradeFiles} attendance): {newRows.Count} value(s), {replacedCount} replacing a current value");
+
+            return new ImportTranscriptsResponse
+            {
+                ImportedFileCount = check.Files.Count,
+                InsertedCount = newRows.Count,
+                ReplacedCount = replacedCount,
+                Files = check.Files,
+                IsSuccess = true
             };
         }
 
@@ -729,6 +818,242 @@ namespace AdviseCare.Application.Services
             return lookup;
         }
 
+        // Helper: read and check transcript PDFs (one student and one type per file); a problem makes that file invalid, the others are still read
+        private async Task<TranscriptCheck> ReadTranscriptsAsync(List<IFormFile>? Files)
+        {
+            var uploads = (Files ?? new List<IFormFile>()).Where(f => f != null).ToList();
+            if (uploads.Count == 0)
+                throw new ValidationException("At least one PDF file is required.");
+            if (uploads.Count > MaxTranscriptFiles)
+                throw new ValidationException($"Send at most {MaxTranscriptFiles} transcript files at a time.");
+
+            // Read every file first, so everything the checks need can be loaded once
+            var read = new List<(string FileName, string Hash, ParsedTranscript Parsed, List<string> Errors)>();
+            foreach (var upload in uploads)
+            {
+                var fileName = Path.GetFileName(upload.FileName ?? string.Empty);
+                if (string.IsNullOrWhiteSpace(fileName))
+                    fileName = "transcript.pdf";
+                var errors = new List<string>();
+                var content = Array.Empty<byte>();
+                if (!fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+                    errors.Add("Only PDF files can be imported.");
+                else if (upload.Length == 0)
+                    errors.Add("The file is empty.");
+                else if (upload.Length > MaxTranscriptBytes)
+                    errors.Add("The file is larger than 5 MB.");
+                else
+                {
+                    using var stream = new MemoryStream();
+                    await upload.CopyToAsync(stream);
+                    content = stream.ToArray();
+                }
+
+                var parsed = content.Length > 0 ? _transcriptPdfReader.Read(content) : new ParsedTranscript();
+                errors.AddRange(parsed.Errors);
+                read.Add((fileName, Convert.ToHexString(SHA256.HashData(content)), parsed, errors));
+            }
+
+            var codes = read.Select(r => r.Parsed.StudentCode).Where(c => c.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var profiles = codes.Count == 0
+                ? new List<Studentprofile>()
+                : await _studentProfileRepository.SearchAsyncInclude(p => codes.Contains(p.StudentCode), p => p.Student);
+            var profileByCode = profiles
+                .GroupBy(p => p.StudentCode, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            var attributes = await _dataAttributeRepository.SearchAsync(a => a.AttributeName == TranscriptGradeAttribute || a.AttributeName == TranscriptAttendanceAttribute);
+            var gradeAttribute = TranscriptAttribute(attributes, TranscriptGradeAttribute);
+            var attendanceAttribute = TranscriptAttribute(attributes, TranscriptAttendanceAttribute);
+            var subjects = (await _subjectRepository.GetAllAsync())
+                .GroupBy(s => s.SubjectCode, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            var terms = (await _academicTermRepository.GetAllAsync())
+                .GroupBy(t => TermKey(t.TermName))
+                .ToDictionary(g => g.Key, g => g.First());
+
+            // (student, attribute, term, subject) of the values the students already have, to count the ones an import replaces
+            var studentIds = profiles.Select(p => p.StudentId).ToList();
+            var attributeIds = new[] { gradeAttribute.DataAttributeId, attendanceAttribute.DataAttributeId };
+            var currentKeys = studentIds.Count == 0
+                ? new HashSet<(Guid, Guid, Guid, Guid)>()
+                : (await _studentDataRepository.SearchAsync(d => studentIds.Contains(d.StudentId) && attributeIds.Contains(d.DataAttributeId)
+                        && d.SubjectId != null && !d.IsMissing && d.ErasedAt == null))
+                    .Select(d => (d.StudentId, d.DataAttributeId, d.TermId, d.SubjectId!.Value))
+                    .ToHashSet();
+
+            // One file per student and type, and each file once
+            var check = new TranscriptCheck();
+            var seenHashes = new Dictionary<string, string>();
+            var seenStudentTypes = new Dictionary<(Guid, string), string>();
+            foreach (var (fileName, hash, parsed, uploadErrors) in read)
+            {
+                var file = new TranscriptFileResponse
+                {
+                    CurriculumCode = parsed.CurriculumCode,
+                    FileName = fileName,
+                    FullNameInFile = parsed.FullName,
+                    StudentCode = parsed.StudentCode,
+                    ImportType = parsed.ImportType
+                };
+                file.Errors.AddRange(uploadErrors);
+
+                Account? student = null;
+                if (file.Errors.Count == 0)
+                {
+                    if (parsed.StudentCode.Length == 0)
+                        file.Errors.Add("No \"Student ID:\" was found at the top of the file.");
+                    else if (!profileByCode.TryGetValue(parsed.StudentCode, out var profile))
+                        file.Errors.Add($"Student {parsed.StudentCode} has no student profile in AdviseCare.");
+                    else if (profile.Student?.Status != "active")
+                        file.Errors.Add($"The account of student {parsed.StudentCode} is not active.");
+                    else
+                    {
+                        student = profile.Student;
+                        file.StudentId = student.AccountId;
+                        file.StudentName = student.FullName ?? string.Empty;
+                        if (parsed.FullName.Length > 0 && NormalizeName(parsed.FullName) != NormalizeName(student.FullName ?? string.Empty))
+                            file.Warnings.Add($"The name in the file ({parsed.FullName}) is not the account's name ({student.FullName}).");
+                    }
+                }
+
+                if (HasContent(hash) && seenHashes.TryGetValue(hash, out var sameFile))
+                    file.Errors.Add($"The same file as {sameFile} is uploaded twice.");
+                else if (HasContent(hash))
+                    seenHashes[hash] = fileName;
+
+                var rows = new List<ImportRow>();
+                if (file.Errors.Count == 0 && student != null)
+                {
+                    var dataAttribute = parsed.ImportType == "grade" ? gradeAttribute : attendanceAttribute;
+                    rows = BuildTranscriptRows(parsed, student, dataAttribute, subjects, terms, file);
+
+                    // An invalid file does not claim its student and type, so the fixed file can be uploaded next to it
+                    var studentType = (student.AccountId, parsed.ImportType);
+                    if (file.Errors.Count == 0 && seenStudentTypes.TryGetValue(studentType, out var otherFile))
+                        file.Errors.Add($"{otherFile} already has the {parsed.ImportType} file of {parsed.StudentCode}.");
+                    else if (file.Errors.Count == 0)
+                        seenStudentTypes[studentType] = fileName;
+                }
+
+                file.IsValid = file.Errors.Count == 0;
+                file.RowCount = rows.Count;
+                if (file.IsValid)
+                {
+                    file.InsertCount = rows.Count;
+                    file.ReplaceCount = rows.Count(r => currentKeys.Contains((r.Student.AccountId, r.DataAttribute.DataAttributeId, r.Term.TermId, r.Subject!.SubjectId)));
+                    check.Rows.AddRange(rows.Select(r => (r, fileName)));
+                }
+                check.Files.Add(file);
+            }
+            return check;
+
+            // An empty upload has the hash of no content and is reported by its own error, not as a duplicate
+            static bool HasContent(string Hash) => Hash != EmptyHash;
+        }
+
+        // Helper: turn the PDF's text rows into import rows. A row without a semester (not started yet) or without a value ("-", e.g. exempt or
+        // studying) is left out with a warning; a semester or subject code that is not in AdviseCare is an error, like in the Excel/CSV import
+        private static List<ImportRow> BuildTranscriptRows(ParsedTranscript Parsed, Account Student, Dataattribute DataAttribute,
+            Dictionary<string, Subject> Subjects, Dictionary<string, Academicterm> Terms, TranscriptFileResponse File)
+        {
+            var rows = new List<ImportRow>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var isGrade = Parsed.ImportType == "grade";
+            foreach (var row in Parsed.Rows)
+            {
+                var code = row.SubjectCode.Trim();
+                var label = $"Row {row.RowNumber}" + (code.Length > 0 && code != "-" ? $" ({code})" : string.Empty);
+                var semester = row.Semester.Trim();
+                var valueText = row.Value.Trim();
+                if (semester.Length == 0 || semester == "-" || valueText.Length == 0 || valueText == "-")
+                {
+                    File.SkippedRowCount++;
+                    continue;
+                }
+
+                var season = TranscriptSemesterPattern.Match(semester.Replace(" ", string.Empty));
+                if (!season.Success)
+                {
+                    File.Errors.Add($"{label}: semester \"{semester}\" is not like Fall2024.");
+                    continue;
+                }
+                var termName = $"{char.ToUpperInvariant(season.Groups[1].Value[0])}{season.Groups[1].Value[1..].ToLowerInvariant()} {season.Groups[2].Value}";
+                if (!Terms.TryGetValue(TermKey(termName), out var term))
+                {
+                    File.Errors.Add($"{label}: term '{termName}' does not exist.");
+                    continue;
+                }
+                if (code.Length == 0 || code == "-")
+                {
+                    File.Errors.Add($"{label}: the subject code is empty.");
+                    continue;
+                }
+                if (!Subjects.TryGetValue(code, out var subject))
+                {
+                    File.Errors.Add($"{label}: subject '{code}' does not exist.");
+                    continue;
+                }
+
+                // "8.3", "8,3", "85%" -> number; no thousands separators, so "8,3" is never read as 83
+                if (!decimal.TryParse(valueText.TrimEnd('%').Trim().Replace(',', '.'), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var number))
+                {
+                    File.Errors.Add($"{label}: \"{valueText}\" is not a number.");
+                    continue;
+                }
+                if (number < 0 || number > (isGrade ? 10m : 100m))
+                {
+                    File.Errors.Add(isGrade
+                        ? $"{label}: grade {valueText} is not between 0 and 10."
+                        : $"{label}: attendance {valueText} is not between 0 and 100.");
+                    continue;
+                }
+                if (!seen.Add($"{subject.SubjectCode}|{term.TermName}"))
+                {
+                    File.Errors.Add($"{label}: {subject.SubjectCode} in {term.TermName} appears more than once.");
+                    continue;
+                }
+
+                // Stored like every numeric STUDENTDATA value: invariant decimal text (DataValueValidator)
+                rows.Add(new ImportRow(Student, DataAttribute, term, subject, Math.Round(number, 2).ToString(CultureInfo.InvariantCulture), TranscriptValidFrom(term, DateTime.UtcNow)));
+            }
+
+            if (File.SkippedRowCount > 0)
+                File.Warnings.Add($"{File.SkippedRowCount} row(s) have no semester or no value yet (not started, studying, exempt) and are left out.");
+            if (rows.Count == 0 && File.Errors.Count == 0)
+                File.Errors.Add("No subject row with a semester and a value was found in the file.");
+            return rows;
+        }
+
+        // Helper: one of the two per-subject data attributes the transcripts fill; it must exist, be active and be recorded per subject
+        private static Dataattribute TranscriptAttribute(List<Dataattribute> Attributes, string AttributeName)
+        {
+            var attribute = Attributes.FirstOrDefault(a => a.AttributeName == AttributeName)
+                ?? throw new ValidationException($"Data attribute '{AttributeName}' is not in AdviseCare, so transcripts cannot be imported.");
+            if (attribute.Status != "active")
+                throw new ValidationException($"Data attribute '{AttributeName}' is archived, so transcripts cannot be imported.");
+            if (!attribute.IsSubjectSpecific)
+                throw new ValidationException($"Data attribute '{AttributeName}' is not recorded per subject, so transcripts cannot be imported.");
+            return attribute;
+        }
+
+        // Helper: valid from the import day, kept inside the term (the term's end once it is over, its start before it begins)
+        private static DateTime TranscriptValidFrom(Academicterm Term, DateTime TransactionAt)
+        {
+            var date = TransactionAt.Date;
+            if (date > Term.EndDate.Date)
+                return Term.EndDate.Date;
+            if (date < Term.StartDate.Date)
+                return Term.StartDate.Date;
+            return date;
+        }
+
+        // Helper: "Fall 2026", "Fall2026" and "fall 2026" are the same term
+        private static string TermKey(string TermName) => new string(TermName.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+
+        // Helper: the same person's name, ignoring case, accents and spacing
+        private static string NormalizeName(string Name) =>
+            new string(Name.Replace('đ', 'd').Replace('Đ', 'D').Normalize(NormalizationForm.FormD).Where(char.IsLetter).ToArray()).ToLowerInvariant();
+
         // Helper: load Student data rows with their attribute, student, subject and term, newest first
         private async Task<List<Studentdata>> GetRowsAsync(Expression<Func<Studentdata, bool>> predicate)
         {
@@ -754,6 +1079,13 @@ namespace AdviseCare.Application.Services
             public List<ImportRow> Rows { get; } = new();
             public List<StudentDataRowErrorResponse> RejectedRows { get; } = new();
             public List<StudentDataRowErrorResponse> Errors { get; } = new();
+        }
+
+        // The transcript files as checked, and the rows of the valid ones with the file each came from (for its provenance note)
+        private class TranscriptCheck
+        {
+            public List<TranscriptFileResponse> Files { get; } = new();
+            public List<(ImportRow Row, string FileName)> Rows { get; } = new();
         }
     }
 }

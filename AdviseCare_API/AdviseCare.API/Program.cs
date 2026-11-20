@@ -69,7 +69,6 @@ builder.Services.AddScoped<IAttributeKeyService, AttributeKeyService>();
 
 // Member C
 builder.Services.AddScoped<IStudentDataService, StudentDataService>();
-builder.Services.AddScoped<ITranscriptImportBatchService, TranscriptImportBatchService>();
 builder.Services.AddScoped<ICorrectionRequestService, CorrectionRequestService>();
 builder.Services.AddScoped<IExternalServiceService, ExternalServiceService>();
 builder.Services.AddScoped<IExternalReferralService, ExternalReferralService>();

@@ -29,6 +29,19 @@ namespace AdviseCare.Application.Contracts.Requests.StudentData
         public IFormFile? File { get; set; }
     }
 
+    public class PreviewTranscriptsRequest
+    {
+        // Transcript PDFs (grade transcripts and attendance files, one student per file, mixed freely)
+        [Required(ErrorMessage = "At least one PDF file is required.")]
+        public List<IFormFile> Files { get; set; } = new();
+    }
+
+    public class ImportTranscriptsRequest
+    {
+        [Required(ErrorMessage = "At least one PDF file is required.")]
+        public List<IFormFile> Files { get; set; } = new();
+    }
+
     public class GetStudentDataAsOfRequest
     {
         public Guid? CaseId { get; set; }

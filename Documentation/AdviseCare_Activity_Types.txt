@@ -64,8 +64,8 @@ supportCategoryUpdated - Admin - edited or archived a support category (D, now)
 
 studentDataImported - Admin - imported data attribute values from a file; detail has the file name, the inserted and missing counts and the rows left out for archived data attributes (C, now)
 studentDataImportFailed - Admin - an import was refused because of invalid rows; detail has the file name and invalid row count (C, now)
-transcriptImportCommitted - Admin - imported a transcript import batch (grade/attendance PDFs) into the student data; detail has the file counts per type, the values recorded and how many replace a current value (C, now)
-transcriptImportCancelled - Admin - cancelled a transcript import batch before importing it; detail has the file count (C, now)
+transcriptImported - Admin - imported transcript PDFs (grade/attendance) into the student data; detail has the file counts per type, the values recorded and how many replace a current value; also the history shown on the transcript import screen (C, now)
+transcriptImportFailed - Admin - a transcript import was refused because a file was invalid; detail has the file count and the invalid file count (C, now)
 
 ==========
 5. CONSENT AND DATA PROTECTION

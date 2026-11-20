@@ -1,9 +1,9 @@
 ﻿/* =====================================================================
    AdviseCare - Microsoft SQL Server database script
-   Source: AdviseCare_ERD_Tables.txt (51 tables)
+   Source: AdviseCare_ERD_Tables.txt (49 tables)
    1. Creates database AdviseCareDB if it does not exist
    2. Drops every AdviseCare table that exists, child tables first
-   3. Creates all 51 tables in dependency order (parents first)
+   3. Creates all 49 tables in dependency order (parents first)
    4. Seeds the 7 roles, one test account per role (password 123456) and mock data for every table
       (69 accounts incl. 50 students, 26 data attributes, 50 cases, early-support indicators, case feedback, ...);
       student data values are loaded through the API import (AdviseCare_Mock_Data folder)
@@ -22,11 +22,14 @@ USE [AdviseCareDB];
 GO
 
 /* ---------- 2. Drop tables (children first) ---------- */
--- Clean-up waypoint of 09/11/2026: only the current tables are dropped here (51 since 18/11/2026). When a later change renames or replaces a table,
+-- Clean-up waypoint of 09/11/2026: only the current tables are dropped here (49). When a later change renames or replaces a table,
 -- add its old name's DROP line below this list (children first), so older databases are still cleaned up.
--- Old table dropped first, since it references TRANSCRIPTIMPORTFILES: STUDENTSUBJECTRESULTS held per-subject results briefly on 18/11/2026
--- (removed the same day; per-subject values live in STUDENTDATA)
+-- Old tables, dropped first because they reference current ones (all removed; transcript values live in STUDENTDATA, and the
+-- transcript import keeps nothing between its preview and its import, like the Excel/CSV import):
+--   STUDENTSUBJECTRESULTS (18/11/2026 only), TRANSCRIPTIMPORTFILES and TRANSCRIPTIMPORTBATCHES (18/11/2026 to 20/11/2026)
 DROP TABLE IF EXISTS [dbo].[STUDENTSUBJECTRESULTS];
+DROP TABLE IF EXISTS [dbo].[TRANSCRIPTIMPORTFILES];
+DROP TABLE IF EXISTS [dbo].[TRANSCRIPTIMPORTBATCHES];
 DROP TABLE IF EXISTS [dbo].[RESTOREOPERATIONS];
 DROP TABLE IF EXISTS [dbo].[BACKUPS];
 DROP TABLE IF EXISTS [dbo].[REPORTS];
@@ -58,8 +61,6 @@ DROP TABLE IF EXISTS [dbo].[INDICATORS];
 DROP TABLE IF EXISTS [dbo].[SUPPORTCATEGORIES];
 DROP TABLE IF EXISTS [dbo].[CONSENTPURPOSES];
 DROP TABLE IF EXISTS [dbo].[ACCOUNT_SUBJECT];
-DROP TABLE IF EXISTS [dbo].[TRANSCRIPTIMPORTFILES];
-DROP TABLE IF EXISTS [dbo].[TRANSCRIPTIMPORTBATCHES];
 DROP TABLE IF EXISTS [dbo].[STUDENTDATA];
 DROP TABLE IF EXISTS [dbo].[ATTRIBUTEKEYS];
 DROP TABLE IF EXISTS [dbo].[INGESTIONJOBS];
@@ -247,7 +248,7 @@ CREATE TABLE [dbo].[DATAATTRIBUTES] (
 );
 GO
 
--- 48. ATTRIBUTEKEYS
+-- 46. ATTRIBUTEKEYS
 CREATE TABLE [dbo].[ATTRIBUTEKEYS] (
     [attributeKeyId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ATTRIBUTEKEYS_attributeKeyId] DEFAULT NEWSEQUENTIALID(),
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
@@ -362,49 +363,7 @@ CREATE TABLE [dbo].[STUDENTDATA] (
 );
 GO
 
--- 18. TRANSCRIPTIMPORTBATCHES (one transcript PDF import of the admin: preview, then imported all-or-nothing or cancelled)
-CREATE TABLE [dbo].[TRANSCRIPTIMPORTBATCHES] (
-    [transcriptImportBatchId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_TRANSCRIPTIMPORTBATCHES_transcriptImportBatchId] DEFAULT NEWSEQUENTIALID(),
-    [importedBy] UNIQUEIDENTIFIER NOT NULL,
-    [createdAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_TRANSCRIPTIMPORTBATCHES_createdAt] DEFAULT SYSUTCDATETIME(),
-    [committedAt] DATETIME2(3) NULL,
-    [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_TRANSCRIPTIMPORTBATCHES_status] DEFAULT N'previewed',
-    CONSTRAINT [PK_TRANSCRIPTIMPORTBATCHES] PRIMARY KEY ([transcriptImportBatchId]),
-    CONSTRAINT [FK_TRANSCRIPTIMPORTBATCHES_importedBy] FOREIGN KEY ([importedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
-    CONSTRAINT [CK_TRANSCRIPTIMPORTBATCHES_status] CHECK ([status] IN (N'previewed', N'committed', N'cancelled'))
-);
-GO
-
--- 19. TRANSCRIPTIMPORTFILES (one PDF of a batch: one student, one type; the checked rows are kept between preview and import, the PDF itself is not)
-CREATE TABLE [dbo].[TRANSCRIPTIMPORTFILES] (
-    [transcriptImportFileId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_TRANSCRIPTIMPORTFILES_transcriptImportFileId] DEFAULT NEWSEQUENTIALID(),
-    -- null when the printed Student ID matches no student
-    [studentId] UNIQUEIDENTIFIER NULL,
-    [transcriptImportBatchId] UNIQUEIDENTIFIER NOT NULL,
-    [curriculumCode] NVARCHAR(50) NULL,
-    -- SHA-256 of the file, hex; finds a file uploaded twice
-    [fileHash] NVARCHAR(64) NOT NULL,
-    [fileName] NVARCHAR(255) NOT NULL,
-    [fullNameInFile] NVARCHAR(255) NULL,
-    -- JSON: the checked rows (subject code, term, value); cleared when the batch is cancelled
-    [parsedRows] NVARCHAR(MAX) NULL,
-    [rowCount] INT NOT NULL CONSTRAINT [DF_TRANSCRIPTIMPORTFILES_rowCount] DEFAULT 0,
-    [studentCodeInFile] NVARCHAR(50) NULL,
-    [uploadedAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_TRANSCRIPTIMPORTFILES_uploadedAt] DEFAULT SYSUTCDATETIME(),
-    -- JSON: errors, warnings and the counts found at preview
-    [validationResult] NVARCHAR(MAX) NULL,
-    [importType] NVARCHAR(30) NULL,
-    [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_TRANSCRIPTIMPORTFILES_status] DEFAULT N'invalid',
-    CONSTRAINT [PK_TRANSCRIPTIMPORTFILES] PRIMARY KEY ([transcriptImportFileId]),
-    CONSTRAINT [FK_TRANSCRIPTIMPORTFILES_studentId] FOREIGN KEY ([studentId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
-    CONSTRAINT [FK_TRANSCRIPTIMPORTFILES_transcriptImportBatchId] FOREIGN KEY ([transcriptImportBatchId]) REFERENCES [dbo].[TRANSCRIPTIMPORTBATCHES]([transcriptImportBatchId]),
-    CONSTRAINT [CK_TRANSCRIPTIMPORTFILES_rowCount] CHECK ([rowCount] >= 0),
-    CONSTRAINT [CK_TRANSCRIPTIMPORTFILES_importType] CHECK ([importType] IN (N'grade', N'attendance')),
-    CONSTRAINT [CK_TRANSCRIPTIMPORTFILES_status] CHECK ([status] IN (N'valid', N'invalid', N'committed'))
-);
-GO
-
--- 20. ACCOUNT_SUBJECT
+-- 18. ACCOUNT_SUBJECT
 CREATE TABLE [dbo].[ACCOUNT_SUBJECT] (
     [accountId] UNIQUEIDENTIFIER NOT NULL,
     [subjectId] UNIQUEIDENTIFIER NOT NULL,
@@ -415,7 +374,7 @@ CREATE TABLE [dbo].[ACCOUNT_SUBJECT] (
 );
 GO
 
--- 39. CONSENTPURPOSES
+-- 37. CONSENTPURPOSES
 CREATE TABLE [dbo].[CONSENTPURPOSES] (
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTPURPOSES_consentPurposeId] DEFAULT NEWSEQUENTIALID(),
     [createdBy] UNIQUEIDENTIFIER NOT NULL,
@@ -430,7 +389,7 @@ CREATE TABLE [dbo].[CONSENTPURPOSES] (
 );
 GO
 
--- 21. SUPPORTCATEGORIES
+-- 19. SUPPORTCATEGORIES
 CREATE TABLE [dbo].[SUPPORTCATEGORIES] (
     [supportCategoryId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_SUPPORTCATEGORIES_supportCategoryId] DEFAULT NEWSEQUENTIALID(),
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
@@ -447,7 +406,7 @@ CREATE TABLE [dbo].[SUPPORTCATEGORIES] (
 );
 GO
 
--- 22. INDICATORS (early-support rules defined by the Data Protection Steward)
+-- 20. INDICATORS (early-support rules defined by the Data Protection Steward)
 CREATE TABLE [dbo].[INDICATORS] (
     [indicatorId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_INDICATORS_indicatorId] DEFAULT NEWSEQUENTIALID(),
     [createdBy] UNIQUEIDENTIFIER NOT NULL,
@@ -474,7 +433,7 @@ CREATE TABLE [dbo].[INDICATORS] (
 );
 GO
 
--- 23. CASES
+-- 21. CASES
 CREATE TABLE [dbo].[CASES] (
     [caseId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASES_caseId] DEFAULT NEWSEQUENTIALID(),
     [advisorId] UNIQUEIDENTIFIER NULL,
@@ -500,7 +459,7 @@ CREATE TABLE [dbo].[CASES] (
 );
 GO
 
--- 24. CASE_ATTRIBUTE (insert-only: the data attributes a student shared with a support request, with an optional note each)
+-- 22. CASE_ATTRIBUTE (insert-only: the data attributes a student shared with a support request, with an optional note each)
 CREATE TABLE [dbo].[CASE_ATTRIBUTE] (
     [caseId] UNIQUEIDENTIFIER NOT NULL,
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
@@ -512,7 +471,7 @@ CREATE TABLE [dbo].[CASE_ATTRIBUTE] (
 );
 GO
 
--- 25. CASECHANGEREQUESTS
+-- 23. CASECHANGEREQUESTS
 CREATE TABLE [dbo].[CASECHANGEREQUESTS] (
     [caseChangeRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASECHANGEREQUESTS_caseChangeRequestId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -535,7 +494,7 @@ CREATE TABLE [dbo].[CASECHANGEREQUESTS] (
 );
 GO
 
--- 26. CASEFEEDBACKS (one rating per closed case, given by its student)
+-- 24. CASEFEEDBACKS (one rating per closed case, given by its student)
 CREATE TABLE [dbo].[CASEFEEDBACKS] (
     [caseFeedbackId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASEFEEDBACKS_caseFeedbackId] DEFAULT NEWSEQUENTIALID(),
     [advisorId] UNIQUEIDENTIFIER NOT NULL,
@@ -553,7 +512,7 @@ CREATE TABLE [dbo].[CASEFEEDBACKS] (
 );
 GO
 
--- 27. CASENOTES
+-- 25. CASENOTES
 CREATE TABLE [dbo].[CASENOTES] (
     [caseNoteId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASENOTES_caseNoteId] DEFAULT NEWSEQUENTIALID(),
     [authorId] UNIQUEIDENTIFIER NOT NULL,
@@ -568,7 +527,7 @@ CREATE TABLE [dbo].[CASENOTES] (
 );
 GO
 
--- 28. CASEMESSAGES (append-only two-way thread between the student of a case and its current advisor)
+-- 26. CASEMESSAGES (append-only two-way thread between the student of a case and its current advisor)
 CREATE TABLE [dbo].[CASEMESSAGES] (
     [caseMessageId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASEMESSAGES_caseMessageId] DEFAULT NEWSEQUENTIALID(),
     [authorId] UNIQUEIDENTIFIER NOT NULL,
@@ -585,7 +544,7 @@ CREATE INDEX [IX_CASEMESSAGES_caseId_createdAt]
     ON [dbo].[CASEMESSAGES] ([caseId], [createdAt]);
 GO
 
--- 29. CASEMESSAGEATTACHMENTS (insert-only: files sent with a case message; kept in the database so only readers of the case can download them)
+-- 27. CASEMESSAGEATTACHMENTS (insert-only: files sent with a case message; kept in the database so only readers of the case can download them)
 CREATE TABLE [dbo].[CASEMESSAGEATTACHMENTS] (
     [caseMessageAttachmentId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASEMESSAGEATTACHMENTS_caseMessageAttachmentId] DEFAULT NEWSEQUENTIALID(),
     [caseMessageId] UNIQUEIDENTIFIER NOT NULL,
@@ -606,7 +565,7 @@ CREATE INDEX [IX_CASEMESSAGEATTACHMENTS_caseMessageId]
     ON [dbo].[CASEMESSAGEATTACHMENTS] ([caseMessageId]);
 GO
 
--- 30. CASESTAGEHISTORIES
+-- 28. CASESTAGEHISTORIES
 CREATE TABLE [dbo].[CASESTAGEHISTORIES] (
     [caseStageHistoryId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASESTAGEHISTORIES_caseStageHistoryId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -623,7 +582,7 @@ CREATE TABLE [dbo].[CASESTAGEHISTORIES] (
 );
 GO
 
--- 31. INDICATORFLAGS (a student hitting an early-support rule in a term, and in one subject for a per-subject data attribute; the value itself is never stored here)
+-- 29. INDICATORFLAGS (a student hitting an early-support rule in a term, and in one subject for a per-subject data attribute; the value itself is never stored here)
 CREATE TABLE [dbo].[INDICATORFLAGS] (
     [indicatorFlagId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_INDICATORFLAGS_indicatorFlagId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NULL,
@@ -658,7 +617,7 @@ CREATE TABLE [dbo].[INDICATORFLAGS] (
 );
 GO
 
--- 32. REFERRALS
+-- 30. REFERRALS
 CREATE TABLE [dbo].[REFERRALS] (
     [referralId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_REFERRALS_referralId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -678,7 +637,7 @@ CREATE TABLE [dbo].[REFERRALS] (
 );
 GO
 
--- 33. CORRECTIONREQUESTS
+-- 31. CORRECTIONREQUESTS
 CREATE TABLE [dbo].[CORRECTIONREQUESTS] (
     [correctionRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CORRECTIONREQUESTS_correctionRequestId] DEFAULT NEWSEQUENTIALID(),
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
@@ -702,7 +661,7 @@ CREATE TABLE [dbo].[CORRECTIONREQUESTS] (
 );
 GO
 
--- 34. INTERVENTIONS
+-- 32. INTERVENTIONS
 CREATE TABLE [dbo].[INTERVENTIONS] (
     [interventionId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_INTERVENTIONS_interventionId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -721,7 +680,7 @@ CREATE TABLE [dbo].[INTERVENTIONS] (
 );
 GO
 
--- 35. SUPPORTGRANTS
+-- 33. SUPPORTGRANTS
 CREATE TABLE [dbo].[SUPPORTGRANTS] (
     [supportGrantId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_SUPPORTGRANTS_supportGrantId] DEFAULT NEWSEQUENTIALID(),
     [interventionId] UNIQUEIDENTIFIER NOT NULL,
@@ -735,7 +694,7 @@ CREATE TABLE [dbo].[SUPPORTGRANTS] (
 );
 GO
 
--- 36. EXTERNALSERVICES
+-- 34. EXTERNALSERVICES
 CREATE TABLE [dbo].[EXTERNALSERVICES] (
     [externalServiceId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_EXTERNALSERVICES_externalServiceId] DEFAULT NEWSEQUENTIALID(),
     [contactInfo] NVARCHAR(MAX) NULL,
@@ -746,7 +705,7 @@ CREATE TABLE [dbo].[EXTERNALSERVICES] (
 );
 GO
 
--- 37. EXTERNALREFERRALS
+-- 35. EXTERNALREFERRALS
 CREATE TABLE [dbo].[EXTERNALREFERRALS] (
     [externalReferralId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_EXTERNALREFERRALS_externalReferralId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -765,7 +724,7 @@ CREATE TABLE [dbo].[EXTERNALREFERRALS] (
 );
 GO
 
--- 38. ESCALATIONS
+-- 36. ESCALATIONS
 CREATE TABLE [dbo].[ESCALATIONS] (
     [escalationId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ESCALATIONS_escalationId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -783,7 +742,7 @@ CREATE TABLE [dbo].[ESCALATIONS] (
 );
 GO
 
--- 40. PURPOSE_ATTRIBUTE
+-- 38. PURPOSE_ATTRIBUTE
 CREATE TABLE [dbo].[PURPOSE_ATTRIBUTE] (
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
@@ -793,7 +752,7 @@ CREATE TABLE [dbo].[PURPOSE_ATTRIBUTE] (
 );
 GO
 
--- 41. CONSENTS
+-- 39. CONSENTS
 CREATE TABLE [dbo].[CONSENTS] (
     [consentId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTS_consentId] DEFAULT NEWSEQUENTIALID(),
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
@@ -811,7 +770,7 @@ CREATE TABLE [dbo].[CONSENTS] (
 );
 GO
 
--- 42. CONSENTHISTORIES
+-- 40. CONSENTHISTORIES
 CREATE TABLE [dbo].[CONSENTHISTORIES] (
     [consentHistoryId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTHISTORIES_consentHistoryId] DEFAULT NEWSEQUENTIALID(),
     [changedBy] UNIQUEIDENTIFIER NOT NULL,
@@ -827,7 +786,7 @@ CREATE TABLE [dbo].[CONSENTHISTORIES] (
 );
 GO
 
--- 43. CONSENTREQUESTS
+-- 41. CONSENTREQUESTS
 CREATE TABLE [dbo].[CONSENTREQUESTS] (
     [consentRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTREQUESTS_consentRequestId] DEFAULT NEWSEQUENTIALID(),
     [advisorId] UNIQUEIDENTIFIER NOT NULL,
@@ -847,7 +806,7 @@ CREATE TABLE [dbo].[CONSENTREQUESTS] (
 );
 GO
 
--- 44. ACCESSPOLICIES
+-- 42. ACCESSPOLICIES
 CREATE TABLE [dbo].[ACCESSPOLICIES] (
     [accessPolicyId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ACCESSPOLICIES_accessPolicyId] DEFAULT NEWSEQUENTIALID(),
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
@@ -862,7 +821,7 @@ CREATE TABLE [dbo].[ACCESSPOLICIES] (
 );
 GO
 
--- 45. ACCESSLOGS
+-- 43. ACCESSLOGS
 CREATE TABLE [dbo].[ACCESSLOGS] (
     [accessLogId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ACCESSLOGS_accessLogId] DEFAULT NEWSEQUENTIALID(),
     [accessorId] UNIQUEIDENTIFIER NOT NULL,
@@ -882,7 +841,7 @@ CREATE TABLE [dbo].[ACCESSLOGS] (
 );
 GO
 
--- 46. EMERGENCYACCESSREQUESTS
+-- 44. EMERGENCYACCESSREQUESTS
 CREATE TABLE [dbo].[EMERGENCYACCESSREQUESTS] (
     [emergencyAccessRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_EMERGENCYACCESSREQUESTS_emergencyAccessRequestId] DEFAULT NEWSEQUENTIALID(),
     [requestedBy] UNIQUEIDENTIFIER NOT NULL,
@@ -902,7 +861,7 @@ CREATE TABLE [dbo].[EMERGENCYACCESSREQUESTS] (
 );
 GO
 
--- 47. ERASUREREQUESTS
+-- 45. ERASUREREQUESTS
 CREATE TABLE [dbo].[ERASUREREQUESTS] (
     [erasureRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ERASUREREQUESTS_erasureRequestId] DEFAULT NEWSEQUENTIALID(),
     [attributeKeyId] UNIQUEIDENTIFIER NOT NULL,
@@ -919,7 +878,7 @@ CREATE TABLE [dbo].[ERASUREREQUESTS] (
 );
 GO
 
--- 49. REPORTS
+-- 47. REPORTS
 CREATE TABLE [dbo].[REPORTS] (
     [reportId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_REPORTS_reportId] DEFAULT NEWSEQUENTIALID(),
     [generatedBy] UNIQUEIDENTIFIER NOT NULL,
@@ -936,7 +895,7 @@ CREATE TABLE [dbo].[REPORTS] (
 );
 GO
 
--- 50. BACKUPS
+-- 48. BACKUPS
 CREATE TABLE [dbo].[BACKUPS] (
     [backupId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_BACKUPS_backupId] DEFAULT NEWSEQUENTIALID(),
     [createdBy] UNIQUEIDENTIFIER NULL,
@@ -949,7 +908,7 @@ CREATE TABLE [dbo].[BACKUPS] (
 );
 GO
 
--- 51. RESTOREOPERATIONS
+-- 49. RESTOREOPERATIONS
 CREATE TABLE [dbo].[RESTOREOPERATIONS] (
     [restoreOperationId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_RESTOREOPERATIONS_restoreOperationId] DEFAULT NEWSEQUENTIALID(),
     [backupId] UNIQUEIDENTIFIER NOT NULL,
@@ -983,9 +942,6 @@ CREATE UNIQUE INDEX [UX_INDICATORFLAGS_student_indicator_term_subject_open] ON [
 CREATE UNIQUE INDEX [UX_CONSENTPURPOSES_statistics_active] ON [dbo].[CONSENTPURPOSES]([isForStatistics]) WHERE [isForStatistics] = 1 AND [status] = N'active';
 -- every value protected by one key, for erasure
 CREATE INDEX [IX_STUDENTDATA_attributeKeyId] ON [dbo].[STUDENTDATA]([attributeKeyId]) WHERE [attributeKeyId] IS NOT NULL;
--- the files of a batch, and a file uploaded again (same hash)
-CREATE INDEX [IX_TRANSCRIPTIMPORTFILES_transcriptImportBatchId] ON [dbo].[TRANSCRIPTIMPORTFILES]([transcriptImportBatchId]);
-CREATE INDEX [IX_TRANSCRIPTIMPORTFILES_fileHash] ON [dbo].[TRANSCRIPTIMPORTFILES]([fileHash]);
 GO
 
 /* ---------- 4. Seed and mock data ---------- */
@@ -995,7 +951,7 @@ GO
 --   a closed wellbeing case with messages and feedback, an open PRN212 case, and 4 consents.
 -- Mock accounts use the reserved domain example.com, so notification emails sent to them never reach a real person.
 -- Mock data covers every table. The only exception is encrypted values: STUDENTDATA values, their ATTRIBUTEKEYS and pending
---   CORRECTIONREQUESTS need the API master key, so they are loaded through the API: POST /api/StudentData/import with the mock_data_*.xlsx files, or POST /api/TranscriptImportBatches with the transcript PDFs
+--   CORRECTIONREQUESTS need the API master key, so they are loaded through the API: POST /api/StudentData/import with the mock_data_*.xlsx files, or POST /api/StudentData/transcripts/import with the transcript PDFs
 --   (see Documentation/AdviseCare_Mock_Data/AdviseCare_Mock_Data_Guide.txt). Seeded here without encryption: missing-value rows, erased rows and their destroyed keys,
 --   and correction requests decided before an erasure (values cleared).
 -- For local development only: delete or change these accounts before any real deployment.

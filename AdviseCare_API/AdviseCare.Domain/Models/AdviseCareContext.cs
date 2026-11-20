@@ -114,10 +114,6 @@ public partial class AdviseCareContext : DbContext
 
     public virtual DbSet<Supportgrant> Supportgrants { get; set; }
 
-    public virtual DbSet<Transcriptimportbatch> Transcriptimportbatches { get; set; }
-
-    public virtual DbSet<Transcriptimportfile> Transcriptimportfiles { get; set; }
-
     private string GetConnectionString()
     {
         IConfiguration configuration = new ConfigurationBuilder()
@@ -1931,93 +1927,6 @@ public partial class AdviseCareContext : DbContext
                 .HasForeignKey(d => d.InterventionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SUPPORTGRANTS_interventionId");
-        });
-
-        modelBuilder.Entity<Transcriptimportbatch>(entity =>
-        {
-            entity.HasKey(e => e.TranscriptImportBatchId);
-
-            entity.ToTable("TRANSCRIPTIMPORTBATCHES");
-
-            entity.Property(e => e.TranscriptImportBatchId)
-                .HasDefaultValueSql("(newsequentialid())")
-                .HasColumnName("transcriptImportBatchId");
-            entity.Property(e => e.CommittedAt)
-                .HasPrecision(3)
-                .HasColumnName("committedAt");
-            entity.Property(e => e.CreatedAt)
-                .HasPrecision(3)
-                .HasDefaultValueSql("(sysutcdatetime())")
-                .HasColumnName("createdAt");
-            entity.Property(e => e.ImportedBy).HasColumnName("importedBy");
-            entity.Property(e => e.Status)
-                .IsRequired()
-                .HasMaxLength(30)
-                .HasDefaultValue("previewed")
-                .HasColumnName("status");
-
-            entity.HasOne(d => d.ImportedByNavigation).WithMany(p => p.Transcriptimportbatches)
-                .HasForeignKey(d => d.ImportedBy)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_TRANSCRIPTIMPORTBATCHES_importedBy");
-        });
-
-        modelBuilder.Entity<Transcriptimportfile>(entity =>
-        {
-            entity.HasKey(e => e.TranscriptImportFileId);
-
-            entity.ToTable("TRANSCRIPTIMPORTFILES");
-
-            entity.HasIndex(e => e.FileHash, "IX_TRANSCRIPTIMPORTFILES_fileHash");
-
-            entity.HasIndex(e => e.TranscriptImportBatchId, "IX_TRANSCRIPTIMPORTFILES_transcriptImportBatchId");
-
-            entity.Property(e => e.TranscriptImportFileId)
-                .HasDefaultValueSql("(newsequentialid())")
-                .HasColumnName("transcriptImportFileId");
-            entity.Property(e => e.CurriculumCode)
-                .HasMaxLength(50)
-                .HasColumnName("curriculumCode");
-            entity.Property(e => e.FileHash)
-                .IsRequired()
-                .HasMaxLength(64)
-                .HasColumnName("fileHash");
-            entity.Property(e => e.FileName)
-                .IsRequired()
-                .HasMaxLength(255)
-                .HasColumnName("fileName");
-            entity.Property(e => e.FullNameInFile)
-                .HasMaxLength(255)
-                .HasColumnName("fullNameInFile");
-            entity.Property(e => e.TranscriptImportBatchId).HasColumnName("transcriptImportBatchId");
-            entity.Property(e => e.ImportType)
-                .HasMaxLength(30)
-                .HasColumnName("importType");
-            entity.Property(e => e.ParsedRows).HasColumnName("parsedRows");
-            entity.Property(e => e.RowCount).HasColumnName("rowCount");
-            entity.Property(e => e.Status)
-                .IsRequired()
-                .HasMaxLength(30)
-                .HasDefaultValue("invalid")
-                .HasColumnName("status");
-            entity.Property(e => e.StudentCodeInFile)
-                .HasMaxLength(50)
-                .HasColumnName("studentCodeInFile");
-            entity.Property(e => e.StudentId).HasColumnName("studentId");
-            entity.Property(e => e.UploadedAt)
-                .HasPrecision(3)
-                .HasDefaultValueSql("(sysutcdatetime())")
-                .HasColumnName("uploadedAt");
-            entity.Property(e => e.ValidationResult).HasColumnName("validationResult");
-
-            entity.HasOne(d => d.TranscriptImportBatch).WithMany(p => p.Transcriptimportfiles)
-                .HasForeignKey(d => d.TranscriptImportBatchId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_TRANSCRIPTIMPORTFILES_transcriptImportBatchId");
-
-            entity.HasOne(d => d.Student).WithMany(p => p.Transcriptimportfiles)
-                .HasForeignKey(d => d.StudentId)
-                .HasConstraintName("FK_TRANSCRIPTIMPORTFILES_studentId");
         });
 
         OnModelCreatingPartial(modelBuilder);

@@ -50,29 +50,6 @@ erDiagram
         bit isMissing "NOT NULL"
         nvarchar(30) status "NOT NULL"
     }
-    TRANSCRIPTIMPORTBATCHES {
-        uniqueidentifier transcriptImportBatchId PK "NOT NULL"
-        uniqueidentifier importedBy FK "NOT NULL"
-        datetime2(3) createdAt "NOT NULL"
-        datetime2(3) committedAt "NULL"
-        nvarchar(30) status "NOT NULL"
-    }
-    TRANSCRIPTIMPORTFILES {
-        uniqueidentifier transcriptImportFileId PK "NOT NULL"
-        uniqueidentifier studentId FK "NULL"
-        uniqueidentifier transcriptImportBatchId FK "NOT NULL"
-        nvarchar(50) curriculumCode "NULL"
-        nvarchar(64) fileHash "NOT NULL"
-        nvarchar(255) fileName "NOT NULL"
-        nvarchar(255) fullNameInFile "NULL"
-        nvarchar(max) parsedRows "NULL"
-        int rowCount "NOT NULL"
-        nvarchar(50) studentCodeInFile "NULL"
-        datetime2(3) uploadedAt "NOT NULL"
-        nvarchar(max) validationResult "NULL"
-        nvarchar(30) importType "NULL"
-        nvarchar(30) status "NOT NULL"
-    }
     ACADEMICTERMS {
         uniqueidentifier termId PK "referenced table, see its own section"
     }
@@ -98,6 +75,3 @@ erDiagram
     ACCOUNTS ||--o{ STUDENTDATA : "studentId"
     SUBJECTS |o--o{ STUDENTDATA : "subjectId"
     ACADEMICTERMS ||--o{ STUDENTDATA : "termId"
-    ACCOUNTS ||--o{ TRANSCRIPTIMPORTBATCHES : "importedBy"
-    TRANSCRIPTIMPORTBATCHES ||--o{ TRANSCRIPTIMPORTFILES : "transcriptImportBatchId"
-    ACCOUNTS |o--o{ TRANSCRIPTIMPORTFILES : "studentId"

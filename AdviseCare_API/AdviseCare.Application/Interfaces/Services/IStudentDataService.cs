@@ -12,6 +12,8 @@ namespace AdviseCare.Application.Interfaces.Services
         Task<CreateStudentDataResponse> CreateAsync(Guid CreatorId, CreateStudentDataRequest request);
         Task<PreviewStudentDataResponse> PreviewAsync(PreviewStudentDataRequest request);
         Task<ValidateStudentDataResponse> ValidateAsync(CreateStudentDataRequest request);
+        Task<PreviewTranscriptsResponse> PreviewTranscriptsAsync(PreviewTranscriptsRequest request);
+        Task<ImportTranscriptsResponse> ImportTranscriptsAsync(Guid CreatorId, ImportTranscriptsRequest request);
         Task<GetStudentDataOfStudentResponse> GetStudentDataAsync(Guid AccessorId, Guid StudentId, Guid? CaseId, Guid? TermId);
         Task<GetStudentDataAsOfResponse> GetAsOfAsync(Guid AccessorId, Guid StudentId, GetStudentDataAsOfRequest request);
         Task<CompareStudentDataResponse> CompareAsync(Guid AccessorId, Guid StudentId, CompareStudentDataRequest request);
