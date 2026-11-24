@@ -20,6 +20,7 @@ namespace AdviseCare.Application.Services
         private readonly IGenericRepository<Referral> _referralRepository;
         private readonly INotificationService _notificationService;
         private readonly IActivityLogService _activityLogService;
+        private readonly IMeetupRequestService _meetupRequestService;
 
         public CaseChangeRequestService(
             IGenericRepository<Casechangerequest> caseChangeRequestRepository,
@@ -29,7 +30,8 @@ namespace AdviseCare.Application.Services
             IGenericRepository<AccountRole> accountRoleRepository,
             IGenericRepository<Referral> referralRepository,
             INotificationService notificationService,
-            IActivityLogService activityLogService)
+            IActivityLogService activityLogService,
+            IMeetupRequestService meetupRequestService)
         {
             _caseChangeRequestRepository = caseChangeRequestRepository;
             _caseRepository = caseRepository;
@@ -39,6 +41,7 @@ namespace AdviseCare.Application.Services
             _referralRepository = referralRepository;
             _notificationService = notificationService;
             _activityLogService = activityLogService;
+            _meetupRequestService = meetupRequestService;
         }
 
         // Get all Case change requests the caller may see, newest first (the Programme Head sees every request;
@@ -281,6 +284,7 @@ namespace AdviseCare.Application.Services
             _caseRepository.PrepareUpdate(caseRecord);
             await _caseChangeRequestRepository.SaveAsync();
 
+            await _meetupRequestService.CancelOpenMeetupsForCaseAsync(caseRecord.CaseId, ProgrammeHeadId, $"The case moved to another advisor ({newAdvisor.FullName})");
             var categoryName = caseRecord.SupportCategory.CategoryName;
             await _activityLogService.LogAsync(ProgrammeHeadId, "caseChangeDecided",
                 $"Approved moving the {categoryName} case of {caseRecord.Student.FullName} from {oldAdvisor?.FullName} to {newAdvisor.FullName}");

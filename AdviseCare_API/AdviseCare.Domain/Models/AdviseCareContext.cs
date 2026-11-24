@@ -52,6 +52,10 @@ public partial class AdviseCareContext : DbContext
 
     public virtual DbSet<Casestagehistory> Casestagehistories { get; set; }
 
+    public virtual DbSet<Meetuprequest> Meetuprequests { get; set; }
+
+    public virtual DbSet<Meetupschedule> Meetupschedules { get; set; }
+
     public virtual DbSet<Consent> Consents { get; set; }
 
     public virtual DbSet<Consenthistory> Consenthistories { get; set; }
@@ -1506,6 +1510,134 @@ public partial class AdviseCareContext : DbContext
                 .HasForeignKey(d => d.OfficerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_INTERVENTIONS_officerId");
+        });
+
+        modelBuilder.Entity<Meetuprequest>(entity =>
+        {
+            entity.ToTable("MEETUPREQUESTS");
+
+            entity.HasIndex(e => new { e.AdvisorId, e.ProposedStartAt }, "IX_MEETUPREQUESTS_advisorId_proposedStartAt");
+
+            entity.HasIndex(e => e.CaseId, "UX_MEETUPREQUESTS_caseId_pending")
+                .IsUnique()
+                .HasFilter("([status]=N'pending')");
+
+            entity.Property(e => e.MeetupRequestId)
+                .HasDefaultValueSql("(newsequentialid())")
+                .HasColumnName("meetupRequestId");
+            entity.Property(e => e.AdvisorId).HasColumnName("advisorId");
+            entity.Property(e => e.CaseId).HasColumnName("caseId");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("createdAt");
+            entity.Property(e => e.DeclineReason)
+                .HasMaxLength(1000)
+                .HasColumnName("declineReason");
+            entity.Property(e => e.DurationMinutes).HasColumnName("durationMinutes");
+            entity.Property(e => e.Location)
+                .IsRequired()
+                .HasMaxLength(200)
+                .HasColumnName("location");
+            entity.Property(e => e.ProposedBy).HasColumnName("proposedBy");
+            entity.Property(e => e.ProposedStartAt)
+                .HasPrecision(3)
+                .HasColumnName("proposedStartAt");
+            entity.Property(e => e.Reason)
+                .IsRequired()
+                .HasMaxLength(1000)
+                .HasColumnName("reason");
+            entity.Property(e => e.RequestedBy).HasColumnName("requestedBy");
+            entity.Property(e => e.RescheduleCount).HasColumnName("rescheduleCount");
+            entity.Property(e => e.RespondedAt)
+                .HasPrecision(3)
+                .HasColumnName("respondedAt");
+            entity.Property(e => e.RespondedBy).HasColumnName("respondedBy");
+            entity.Property(e => e.Room)
+                .HasMaxLength(50)
+                .HasColumnName("room");
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(30)
+                .HasDefaultValue("pending")
+                .HasColumnName("status");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasColumnName("updatedAt");
+
+            entity.HasOne(d => d.Advisor).WithMany(p => p.MeetuprequestAdvisors)
+                .HasForeignKey(d => d.AdvisorId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_MEETUPREQUESTS_advisorId");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.Meetuprequests)
+                .HasForeignKey(d => d.CaseId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_MEETUPREQUESTS_caseId");
+
+            entity.HasOne(d => d.ProposedByNavigation).WithMany(p => p.MeetuprequestProposedByNavigations)
+                .HasForeignKey(d => d.ProposedBy)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_MEETUPREQUESTS_proposedBy");
+
+            entity.HasOne(d => d.RequestedByNavigation).WithMany(p => p.MeetuprequestRequestedByNavigations)
+                .HasForeignKey(d => d.RequestedBy)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_MEETUPREQUESTS_requestedBy");
+
+            entity.HasOne(d => d.RespondedByNavigation).WithMany(p => p.MeetuprequestRespondedByNavigations)
+                .HasForeignKey(d => d.RespondedBy)
+                .HasConstraintName("FK_MEETUPREQUESTS_respondedBy");
+        });
+
+        modelBuilder.Entity<Meetupschedule>(entity =>
+        {
+            entity.ToTable("MEETUPSCHEDULES");
+
+            entity.HasIndex(e => e.MeetupRequestId, "UQ_MEETUPSCHEDULES_meetupRequestId").IsUnique();
+
+            entity.HasIndex(e => e.ScheduledStartAt, "IX_MEETUPSCHEDULES_scheduledStartAt");
+
+            entity.Property(e => e.MeetupScheduleId)
+                .HasDefaultValueSql("(newsequentialid())")
+                .HasColumnName("meetupScheduleId");
+            entity.Property(e => e.CancelReason)
+                .HasMaxLength(1000)
+                .HasColumnName("cancelReason");
+            entity.Property(e => e.CancelledAt)
+                .HasPrecision(3)
+                .HasColumnName("cancelledAt");
+            entity.Property(e => e.CancelledBy).HasColumnName("cancelledBy");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("createdAt");
+            entity.Property(e => e.DurationMinutes).HasColumnName("durationMinutes");
+            entity.Property(e => e.Location)
+                .IsRequired()
+                .HasMaxLength(200)
+                .HasColumnName("location");
+            entity.Property(e => e.MeetupRequestId).HasColumnName("meetupRequestId");
+            entity.Property(e => e.Room)
+                .HasMaxLength(50)
+                .HasColumnName("room");
+            entity.Property(e => e.ScheduledStartAt)
+                .HasPrecision(3)
+                .HasColumnName("scheduledStartAt");
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(30)
+                .HasDefaultValue("scheduled")
+                .HasColumnName("status");
+
+            entity.HasOne(d => d.CancelledByNavigation).WithMany(p => p.Meetupschedules)
+                .HasForeignKey(d => d.CancelledBy)
+                .HasConstraintName("FK_MEETUPSCHEDULES_cancelledBy");
+
+            entity.HasOne(d => d.MeetupRequest).WithOne(p => p.Meetupschedule)
+                .HasForeignKey<Meetupschedule>(d => d.MeetupRequestId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_MEETUPSCHEDULES_meetupRequestId");
         });
 
         modelBuilder.Entity<Notification>(entity =>

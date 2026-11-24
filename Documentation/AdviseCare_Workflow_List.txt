@@ -61,15 +61,15 @@ WF2: Student requests support and gets advised
 5.2. Opens the student's profile (email, full name, username, faculty, student code, academic status: always visible, not logged) and the student's data: only consented data attributes are shown, with their source and missing-data notices, and every value shown is logged
 5.3. If more data is needed, the advisor sends a consent request (see EX7)
 6. Advisor and student meet
-6.1. They agree on when and how to meet (online, offline), e.g. in the case thread (see EX18); the app has no scheduling system (extra scope, ES7)
-6.2. Advisor moves the case to stage = contacted
+6.1. Advisor moves the case to stage = contacted
+6.2. The student or the advisor requests a meet-up and the other side accepts it, changes the date or declines it (see EX21); accepting schedules the meet-up and moves the case to stage = followUp
 6.3. Advisor and student can write in the case's message thread (e.g. next steps or a meeting suggestion, and the student's reply); each message notifies the other side
 7. Advisor records case notes (discussion, agreed actions) and finalizes them
    Case notes are internal staff records and are not the channel for student-facing communication; case messages are stored separately and cannot be edited or deleted
 8. If the case needs someone else
 8.1. Advisor refers it to another advisor of the same or the other type (see EX4)
 8.2. Wellbeing Advisor refers money matters to the Welfare Officer (see WF2b)
-9. Advisor follows up (stage = followUp) and closes the case (stage = closed)
+9. Advisor follows up (stage = followUp; more meet-ups can be arranged, see EX21) and closes the case (stage = closed)
 10. Every stage change is recorded in the case's stage history
 11. After closing, the student may rate the case once (see EX19)
 
@@ -299,6 +299,23 @@ EX20: Anonymised welfare statistics and cohort data
 2.4. Every value read is written to the access log; every cell or value with fewer than 10 students is hidden
 2.5. Exports the cohort data (Excel/CSV/PDF); the export is logged
 
+EX21: Meet-ups (owner: Member B)
+1. While a case is in stage contacted or followUp, its student or its current advisor requests a meet-up
+1.1. Chooses a date and a start time (Vietnam time, Monday to Friday, 08:30-11:30 or 13:30-18:00, 15-minute steps) and a duration (15 minutes or more, ending inside the same window)
+1.2. Writes the location (required, e.g. a building or "Online (Google Meet)"), the room (optional) and the reason for meeting
+1.3. A case has at most one pending request; a time that overlaps a scheduled meet-up of the advisor or the student is refused
+1.4. The other side is notified
+2. The other side answers
+2.1. Accept: the meet-up is scheduled; a case in stage contacted moves to followUp (written to the stage history); the requester is notified
+2.2. Change date: chooses another date, time, duration, location or room and presses accept; the same request goes back to the other side, who can accept, change the date again or decline (the number of changes is shown, no limit)
+2.3. Decline: writes a reason; the requester is notified
+3. The side that proposed the current date can cancel a pending request
+4. A scheduled meet-up
+4.1. Either side cancels it with a reason before it starts; the other side is notified
+4.2. After it has started, the advisor marks it as held (completed) or missed
+5. Closing the case or changing its advisor (reassignment, approved case change request, accepted referral to another advisor) cancels its pending requests and its meet-ups that have not started
+6. The advisor's schedule screen shows the week (Monday to Friday, 08:30-18:00, lunch break shaded): each scheduled, held or missed meet-up is a block from its start to its end, a pending request a dashed block; a block opens its case
+
 ==========
 EXTRA SCOPE (backup plans, not in the current version; details in AdviseCare_Extra_Scope_List.txt)
 ==========
@@ -309,7 +326,7 @@ ES3: Backup and restore with integrity check
 ES4: Advisor suggestion algorithm that ranks advisors for the Programme Head (support category, subjects, familiar pair, caseload, ratings; the Programme Head still decides)
 ES5: Evaluating the effectiveness of advising over a period
 ES6: Importing accounts and student data from a Google Sheet (Excel/CSV import only for now)
-ES7: Meeting scheduling inside the app (advisor time slots, students book, advisors swap)
+ES7: Advisor availability slots and meeting swaps (advisors publish free slots that students book, advisors swap meet-ups); agreeing a meet-up is in the current version (EX21)
 ES8: AI assistance in the case thread (e.g. suggested replies or summaries); not agreed by the team yet
 ES9: Accounts without a Google account on file, created with a one-time activation code
 ES10: Account import that also updates existing accounts (matched by studentCode; a new studentCode creates the account as today)

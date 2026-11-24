@@ -77,6 +77,16 @@ public partial class Account
 
     public virtual ICollection<Casestagehistory> Casestagehistories { get; set; } = new List<Casestagehistory>();
 
+    public virtual ICollection<Meetuprequest> MeetuprequestAdvisors { get; set; } = new List<Meetuprequest>();
+
+    public virtual ICollection<Meetuprequest> MeetuprequestProposedByNavigations { get; set; } = new List<Meetuprequest>();
+
+    public virtual ICollection<Meetuprequest> MeetuprequestRequestedByNavigations { get; set; } = new List<Meetuprequest>();
+
+    public virtual ICollection<Meetuprequest> MeetuprequestRespondedByNavigations { get; set; } = new List<Meetuprequest>();
+
+    public virtual ICollection<Meetupschedule> Meetupschedules { get; set; } = new List<Meetupschedule>();
+
     public virtual ICollection<Consent> Consents { get; set; } = new List<Consent>();
 
     public virtual ICollection<Consenthistory> Consenthistories { get; set; } = new List<Consenthistory>();

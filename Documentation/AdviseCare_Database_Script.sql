@@ -1,9 +1,9 @@
 ﻿/* =====================================================================
    AdviseCare - Microsoft SQL Server database script
-   Source: AdviseCare_ERD_Tables.txt (49 tables)
+   Source: AdviseCare_ERD_Tables.txt (51 tables)
    1. Creates database AdviseCareDB if it does not exist
    2. Drops every AdviseCare table that exists, child tables first
-   3. Creates all 49 tables in dependency order (parents first)
+   3. Creates all 51 tables in dependency order (parents first)
    4. Seeds the 7 roles, one test account per role (password 123456) and mock data for every table
       (69 accounts incl. 50 students, 26 data attributes, 50 cases, early-support indicators, case feedback, ...);
       student data values are loaded through the API import (AdviseCare_Mock_Data folder)
@@ -22,7 +22,7 @@ USE [AdviseCareDB];
 GO
 
 /* ---------- 2. Drop tables (children first) ---------- */
--- Clean-up waypoint of 09/11/2026: only the current tables are dropped here (49). When a later change renames or replaces a table,
+-- Clean-up waypoint of 09/11/2026: only the current tables are dropped here (51). When a later change renames or replaces a table,
 -- add its old name's DROP line below this list (children first), so older databases are still cleaned up.
 -- Old tables, dropped first because they reference current ones (all removed; transcript values live in STUDENTDATA, and the
 -- transcript import keeps nothing between its preview and its import, like the Excel/CSV import):
@@ -50,6 +50,8 @@ DROP TABLE IF EXISTS [dbo].[CORRECTIONREQUESTS];
 DROP TABLE IF EXISTS [dbo].[INDICATORFLAGS];
 DROP TABLE IF EXISTS [dbo].[REFERRALS];
 DROP TABLE IF EXISTS [dbo].[CASESTAGEHISTORIES];
+DROP TABLE IF EXISTS [dbo].[MEETUPSCHEDULES];
+DROP TABLE IF EXISTS [dbo].[MEETUPREQUESTS];
 DROP TABLE IF EXISTS [dbo].[CASEMESSAGEATTACHMENTS];
 DROP TABLE IF EXISTS [dbo].[CASEMESSAGES];
 DROP TABLE IF EXISTS [dbo].[CASENOTES];
@@ -248,7 +250,7 @@ CREATE TABLE [dbo].[DATAATTRIBUTES] (
 );
 GO
 
--- 46. ATTRIBUTEKEYS
+-- 48. ATTRIBUTEKEYS
 CREATE TABLE [dbo].[ATTRIBUTEKEYS] (
     [attributeKeyId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ATTRIBUTEKEYS_attributeKeyId] DEFAULT NEWSEQUENTIALID(),
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
@@ -374,7 +376,7 @@ CREATE TABLE [dbo].[ACCOUNT_SUBJECT] (
 );
 GO
 
--- 37. CONSENTPURPOSES
+-- 39. CONSENTPURPOSES
 CREATE TABLE [dbo].[CONSENTPURPOSES] (
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTPURPOSES_consentPurposeId] DEFAULT NEWSEQUENTIALID(),
     [createdBy] UNIQUEIDENTIFIER NOT NULL,
@@ -565,7 +567,75 @@ CREATE INDEX [IX_CASEMESSAGEATTACHMENTS_caseMessageId]
     ON [dbo].[CASEMESSAGEATTACHMENTS] ([caseMessageId]);
 GO
 
--- 28. CASESTAGEHISTORIES
+-- 28. MEETUPREQUESTS (meet-up negotiation on a case: the side that did not propose the current date accepts, changes the date or denies)
+CREATE TABLE [dbo].[MEETUPREQUESTS] (
+    [meetupRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_MEETUPREQUESTS_meetupRequestId] DEFAULT NEWSEQUENTIALID(),
+    [advisorId] UNIQUEIDENTIFIER NOT NULL,
+    [caseId] UNIQUEIDENTIFIER NOT NULL,
+    [proposedBy] UNIQUEIDENTIFIER NOT NULL,
+    [requestedBy] UNIQUEIDENTIFIER NOT NULL,
+    [respondedBy] UNIQUEIDENTIFIER NULL,
+    [declineReason] NVARCHAR(1000) NULL,
+    [location] NVARCHAR(200) NOT NULL,
+    [reason] NVARCHAR(1000) NOT NULL,
+    [room] NVARCHAR(50) NULL,
+    [durationMinutes] INT NOT NULL,
+    [rescheduleCount] INT NOT NULL CONSTRAINT [DF_MEETUPREQUESTS_rescheduleCount] DEFAULT 0,
+    [createdAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_MEETUPREQUESTS_createdAt] DEFAULT SYSUTCDATETIME(),
+    -- UTC; the API keeps it on Monday to Friday, Vietnam time 08:30-11:30 or 13:30-18:00, on a 15-minute grid
+    [proposedStartAt] DATETIME2(3) NOT NULL,
+    [respondedAt] DATETIME2(3) NULL,
+    [updatedAt] DATETIME2(3) NULL,
+    [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_MEETUPREQUESTS_status] DEFAULT N'pending',
+    CONSTRAINT [PK_MEETUPREQUESTS] PRIMARY KEY ([meetupRequestId]),
+    CONSTRAINT [FK_MEETUPREQUESTS_advisorId] FOREIGN KEY ([advisorId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_MEETUPREQUESTS_caseId] FOREIGN KEY ([caseId]) REFERENCES [dbo].[CASES]([caseId]),
+    CONSTRAINT [FK_MEETUPREQUESTS_proposedBy] FOREIGN KEY ([proposedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_MEETUPREQUESTS_requestedBy] FOREIGN KEY ([requestedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_MEETUPREQUESTS_respondedBy] FOREIGN KEY ([respondedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [CK_MEETUPREQUESTS_status] CHECK ([status] IN (N'pending', N'accepted', N'declined', N'cancelled')),
+    CONSTRAINT [CK_MEETUPREQUESTS_durationMinutes] CHECK ([durationMinutes] BETWEEN 15 AND 270 AND [durationMinutes] % 15 = 0),
+    CONSTRAINT [CK_MEETUPREQUESTS_rescheduleCount] CHECK ([rescheduleCount] >= 0),
+    CONSTRAINT [CK_MEETUPREQUESTS_declineReason] CHECK ([status] <> N'declined' OR [declineReason] IS NOT NULL),
+    CONSTRAINT [CK_MEETUPREQUESTS_reason] CHECK (LEN(LTRIM(RTRIM([reason]))) >= 1),
+    CONSTRAINT [CK_MEETUPREQUESTS_location] CHECK (LEN(LTRIM(RTRIM([location]))) >= 1)
+);
+GO
+-- At most one pending request per case
+CREATE UNIQUE INDEX [UX_MEETUPREQUESTS_caseId_pending]
+    ON [dbo].[MEETUPREQUESTS] ([caseId]) WHERE [status] = N'pending';
+GO
+CREATE INDEX [IX_MEETUPREQUESTS_advisorId_proposedStartAt]
+    ON [dbo].[MEETUPREQUESTS] ([advisorId], [proposedStartAt]);
+GO
+
+-- 29. MEETUPSCHEDULES (agreed meet-ups, one per accepted request; the blocks on the advisor's schedule)
+CREATE TABLE [dbo].[MEETUPSCHEDULES] (
+    [meetupScheduleId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_MEETUPSCHEDULES_meetupScheduleId] DEFAULT NEWSEQUENTIALID(),
+    [cancelledBy] UNIQUEIDENTIFIER NULL,
+    [meetupRequestId] UNIQUEIDENTIFIER NOT NULL,
+    [cancelReason] NVARCHAR(1000) NULL,
+    [location] NVARCHAR(200) NOT NULL,
+    [room] NVARCHAR(50) NULL,
+    [durationMinutes] INT NOT NULL,
+    [cancelledAt] DATETIME2(3) NULL,
+    [createdAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_MEETUPSCHEDULES_createdAt] DEFAULT SYSUTCDATETIME(),
+    [scheduledStartAt] DATETIME2(3) NOT NULL,
+    [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_MEETUPSCHEDULES_status] DEFAULT N'scheduled',
+    CONSTRAINT [PK_MEETUPSCHEDULES] PRIMARY KEY ([meetupScheduleId]),
+    CONSTRAINT [FK_MEETUPSCHEDULES_cancelledBy] FOREIGN KEY ([cancelledBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_MEETUPSCHEDULES_meetupRequestId] FOREIGN KEY ([meetupRequestId]) REFERENCES [dbo].[MEETUPREQUESTS]([meetupRequestId]),
+    CONSTRAINT [UQ_MEETUPSCHEDULES_meetupRequestId] UNIQUE ([meetupRequestId]),
+    CONSTRAINT [CK_MEETUPSCHEDULES_status] CHECK ([status] IN (N'scheduled', N'completed', N'missed', N'cancelled')),
+    CONSTRAINT [CK_MEETUPSCHEDULES_durationMinutes] CHECK ([durationMinutes] BETWEEN 15 AND 270 AND [durationMinutes] % 15 = 0),
+    CONSTRAINT [CK_MEETUPSCHEDULES_cancelReason] CHECK ([status] <> N'cancelled' OR [cancelReason] IS NOT NULL)
+);
+GO
+CREATE INDEX [IX_MEETUPSCHEDULES_scheduledStartAt]
+    ON [dbo].[MEETUPSCHEDULES] ([scheduledStartAt]);
+GO
+
+-- 30. CASESTAGEHISTORIES
 CREATE TABLE [dbo].[CASESTAGEHISTORIES] (
     [caseStageHistoryId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CASESTAGEHISTORIES_caseStageHistoryId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -582,7 +652,7 @@ CREATE TABLE [dbo].[CASESTAGEHISTORIES] (
 );
 GO
 
--- 29. INDICATORFLAGS (a student hitting an early-support rule in a term, and in one subject for a per-subject data attribute; the value itself is never stored here)
+-- 31. INDICATORFLAGS (a student hitting an early-support rule in a term, and in one subject for a per-subject data attribute; the value itself is never stored here)
 CREATE TABLE [dbo].[INDICATORFLAGS] (
     [indicatorFlagId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_INDICATORFLAGS_indicatorFlagId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NULL,
@@ -617,7 +687,7 @@ CREATE TABLE [dbo].[INDICATORFLAGS] (
 );
 GO
 
--- 30. REFERRALS
+-- 32. REFERRALS
 CREATE TABLE [dbo].[REFERRALS] (
     [referralId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_REFERRALS_referralId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -637,7 +707,7 @@ CREATE TABLE [dbo].[REFERRALS] (
 );
 GO
 
--- 31. CORRECTIONREQUESTS
+-- 33. CORRECTIONREQUESTS
 CREATE TABLE [dbo].[CORRECTIONREQUESTS] (
     [correctionRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CORRECTIONREQUESTS_correctionRequestId] DEFAULT NEWSEQUENTIALID(),
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
@@ -661,7 +731,7 @@ CREATE TABLE [dbo].[CORRECTIONREQUESTS] (
 );
 GO
 
--- 32. INTERVENTIONS
+-- 34. INTERVENTIONS
 CREATE TABLE [dbo].[INTERVENTIONS] (
     [interventionId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_INTERVENTIONS_interventionId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -680,7 +750,7 @@ CREATE TABLE [dbo].[INTERVENTIONS] (
 );
 GO
 
--- 33. SUPPORTGRANTS
+-- 35. SUPPORTGRANTS
 CREATE TABLE [dbo].[SUPPORTGRANTS] (
     [supportGrantId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_SUPPORTGRANTS_supportGrantId] DEFAULT NEWSEQUENTIALID(),
     [interventionId] UNIQUEIDENTIFIER NOT NULL,
@@ -694,7 +764,7 @@ CREATE TABLE [dbo].[SUPPORTGRANTS] (
 );
 GO
 
--- 34. EXTERNALSERVICES
+-- 36. EXTERNALSERVICES
 CREATE TABLE [dbo].[EXTERNALSERVICES] (
     [externalServiceId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_EXTERNALSERVICES_externalServiceId] DEFAULT NEWSEQUENTIALID(),
     [contactInfo] NVARCHAR(MAX) NULL,
@@ -705,7 +775,7 @@ CREATE TABLE [dbo].[EXTERNALSERVICES] (
 );
 GO
 
--- 35. EXTERNALREFERRALS
+-- 37. EXTERNALREFERRALS
 CREATE TABLE [dbo].[EXTERNALREFERRALS] (
     [externalReferralId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_EXTERNALREFERRALS_externalReferralId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -724,7 +794,7 @@ CREATE TABLE [dbo].[EXTERNALREFERRALS] (
 );
 GO
 
--- 36. ESCALATIONS
+-- 38. ESCALATIONS
 CREATE TABLE [dbo].[ESCALATIONS] (
     [escalationId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ESCALATIONS_escalationId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -742,7 +812,7 @@ CREATE TABLE [dbo].[ESCALATIONS] (
 );
 GO
 
--- 38. PURPOSE_ATTRIBUTE
+-- 40. PURPOSE_ATTRIBUTE
 CREATE TABLE [dbo].[PURPOSE_ATTRIBUTE] (
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
@@ -752,7 +822,7 @@ CREATE TABLE [dbo].[PURPOSE_ATTRIBUTE] (
 );
 GO
 
--- 39. CONSENTS
+-- 41. CONSENTS
 CREATE TABLE [dbo].[CONSENTS] (
     [consentId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTS_consentId] DEFAULT NEWSEQUENTIALID(),
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
@@ -770,7 +840,7 @@ CREATE TABLE [dbo].[CONSENTS] (
 );
 GO
 
--- 40. CONSENTHISTORIES
+-- 42. CONSENTHISTORIES
 CREATE TABLE [dbo].[CONSENTHISTORIES] (
     [consentHistoryId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTHISTORIES_consentHistoryId] DEFAULT NEWSEQUENTIALID(),
     [changedBy] UNIQUEIDENTIFIER NOT NULL,
@@ -786,7 +856,7 @@ CREATE TABLE [dbo].[CONSENTHISTORIES] (
 );
 GO
 
--- 41. CONSENTREQUESTS
+-- 43. CONSENTREQUESTS
 CREATE TABLE [dbo].[CONSENTREQUESTS] (
     [consentRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTREQUESTS_consentRequestId] DEFAULT NEWSEQUENTIALID(),
     [advisorId] UNIQUEIDENTIFIER NOT NULL,
@@ -806,7 +876,7 @@ CREATE TABLE [dbo].[CONSENTREQUESTS] (
 );
 GO
 
--- 42. ACCESSPOLICIES
+-- 44. ACCESSPOLICIES
 CREATE TABLE [dbo].[ACCESSPOLICIES] (
     [accessPolicyId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ACCESSPOLICIES_accessPolicyId] DEFAULT NEWSEQUENTIALID(),
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
@@ -821,7 +891,7 @@ CREATE TABLE [dbo].[ACCESSPOLICIES] (
 );
 GO
 
--- 43. ACCESSLOGS
+-- 45. ACCESSLOGS
 CREATE TABLE [dbo].[ACCESSLOGS] (
     [accessLogId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ACCESSLOGS_accessLogId] DEFAULT NEWSEQUENTIALID(),
     [accessorId] UNIQUEIDENTIFIER NOT NULL,
@@ -841,7 +911,7 @@ CREATE TABLE [dbo].[ACCESSLOGS] (
 );
 GO
 
--- 44. EMERGENCYACCESSREQUESTS
+-- 46. EMERGENCYACCESSREQUESTS
 CREATE TABLE [dbo].[EMERGENCYACCESSREQUESTS] (
     [emergencyAccessRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_EMERGENCYACCESSREQUESTS_emergencyAccessRequestId] DEFAULT NEWSEQUENTIALID(),
     [requestedBy] UNIQUEIDENTIFIER NOT NULL,
@@ -861,7 +931,7 @@ CREATE TABLE [dbo].[EMERGENCYACCESSREQUESTS] (
 );
 GO
 
--- 45. ERASUREREQUESTS
+-- 47. ERASUREREQUESTS
 CREATE TABLE [dbo].[ERASUREREQUESTS] (
     [erasureRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ERASUREREQUESTS_erasureRequestId] DEFAULT NEWSEQUENTIALID(),
     [attributeKeyId] UNIQUEIDENTIFIER NOT NULL,
@@ -878,7 +948,7 @@ CREATE TABLE [dbo].[ERASUREREQUESTS] (
 );
 GO
 
--- 47. REPORTS
+-- 49. REPORTS
 CREATE TABLE [dbo].[REPORTS] (
     [reportId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_REPORTS_reportId] DEFAULT NEWSEQUENTIALID(),
     [generatedBy] UNIQUEIDENTIFIER NOT NULL,
@@ -895,7 +965,7 @@ CREATE TABLE [dbo].[REPORTS] (
 );
 GO
 
--- 48. BACKUPS
+-- 50. BACKUPS
 CREATE TABLE [dbo].[BACKUPS] (
     [backupId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_BACKUPS_backupId] DEFAULT NEWSEQUENTIALID(),
     [createdBy] UNIQUEIDENTIFIER NULL,
@@ -908,7 +978,7 @@ CREATE TABLE [dbo].[BACKUPS] (
 );
 GO
 
--- 49. RESTOREOPERATIONS
+-- 51. RESTOREOPERATIONS
 CREATE TABLE [dbo].[RESTOREOPERATIONS] (
     [restoreOperationId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_RESTOREOPERATIONS_restoreOperationId] DEFAULT NEWSEQUENTIALID(),
     [backupId] UNIQUEIDENTIFIER NOT NULL,
@@ -4471,6 +4541,24 @@ INSERT INTO [dbo].[CASEFEEDBACKS] ([caseFeedbackId], [advisorId], [caseId], [cre
     (N'CAA3F174-FF9F-51C3-9FF4-14A4A6ED118E', N'A6E940DF-7FE9-551A-A267-C50775E7BA4E', N'C65E2EA6-74F9-5629-B4EA-590FBA1136FA', N'ED3100B5-1F7B-5FB0-A2BA-AC3FFB606846', N'Good follow-up after the meeting.', '2026-10-05T14:55:00.000', 4),
     (N'4BB54341-2013-5A2F-AFD4-D1860BC7A046', N'437A2A74-E052-50DE-9C3D-994B084CFF40', N'95F5FA1F-D09A-55D8-A19C-28049CF13200', N'E0AB5662-23FF-51CA-87C3-F217E57D69EC', NULL, '2026-10-26T21:09:00.000', 3),
     (N'BB88F0BE-EE28-5B7D-A613-1E91C46B8B6B', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'51694D26-7E9D-5436-BAD5-F980F6C0695C', N'F6DE86F1-4DBC-534E-8447-5918824BFC41', N'Could have been more specific about next steps.', '2026-10-08T13:03:00.000', 3);
+GO
+
+-- MEETUPREQUESTS: 6 rows (times in UTC; Vietnam time is UTC+7)
+INSERT INTO [dbo].[MEETUPREQUESTS] ([meetupRequestId], [advisorId], [caseId], [proposedBy], [requestedBy], [respondedBy], [declineReason], [location], [reason], [room], [durationMinutes], [rescheduleCount], [createdAt], [proposedStartAt], [respondedAt], [updatedAt], [status]) VALUES
+    (N'64A7999F-EABF-539D-B7CC-F18E09A5B6FC', N'5976E918-C022-5F18-81E7-911498BDD788', N'3647311A-1ABA-5E76-BCA9-C945AFDAE544', N'32E850CB-8C33-5D2F-BB28-12A1FF53C4CA', N'32E850CB-8C33-5D2F-BB28-12A1FF53C4CA', N'5976E918-C022-5F18-81E7-911498BDD788', NULL, N'Campus Beta building', N'I would like to go through my study plan with you in person', N'Room 305', 60, 0, '2026-10-03T10:00:00.000', '2026-10-05T02:00:00.000', '2026-10-04T02:00:00.000', NULL, N'accepted'),
+    (N'F79786E3-2E12-5D71-AA73-D3D7FE5CEE42', N'5976E918-C022-5F18-81E7-911498BDD788', N'3647311A-1ABA-5E76-BCA9-C945AFDAE544', N'32E850CB-8C33-5D2F-BB28-12A1FF53C4CA', N'5976E918-C022-5F18-81E7-911498BDD788', N'5976E918-C022-5F18-81E7-911498BDD788', NULL, N'Online (Google Meet)', N'Check the progress on the study plan two weeks later', NULL, 90, 1, '2026-11-20T03:00:00.000', '2026-12-02T07:00:00.000', '2026-11-21T02:00:00.000', '2026-11-20T13:00:00.000', N'accepted'),
+    (N'3DC67322-706E-50EF-9C86-5CD6B8EFE31C', N'A5B03782-6A13-5E03-87ED-615183409D49', N'E085ED5C-97F5-5F73-895A-128239B673CA', N'C84874F4-7EB4-58D6-9C21-44D6CE74C456', N'C84874F4-7EB4-58D6-9C21-44D6CE74C456', N'A5B03782-6A13-5E03-87ED-615183409D49', N'I am at a staff training that afternoon; please pick another day', N'Campus Alpha building', N'Talk about my dormitory problem', N'Room 112', 45, 0, '2026-10-09T12:00:00.000', '2026-10-12T09:00:00.000', '2026-10-10T01:00:00.000', NULL, N'declined'),
+    (N'9C6E0FC4-2173-5F42-A6ED-6E0D3592C2DD', N'A5B03782-6A13-5E03-87ED-615183409D49', N'E085ED5C-97F5-5F73-895A-128239B673CA', N'C84874F4-7EB4-58D6-9C21-44D6CE74C456', N'C84874F4-7EB4-58D6-9C21-44D6CE74C456', N'A5B03782-6A13-5E03-87ED-615183409D49', NULL, N'Campus Alpha building', N'Talk about my dormitory problem (new date)', N'Room 112', 45, 0, '2026-10-10T02:00:00.000', '2026-10-13T03:00:00.000', '2026-10-10T08:00:00.000', NULL, N'accepted'),
+    (N'9A6D57F6-8482-503C-8011-47CF5A4BBAB7', N'437A2A74-E052-50DE-9C3D-994B084CFF40', N'B5F22DE3-E0D5-5E35-BBF4-9A557D35F52F', N'437A2A74-E052-50DE-9C3D-994B084CFF40', N'437A2A74-E052-50DE-9C3D-994B084CFF40', N'FB6E160D-111B-5E62-AD9A-C0B6327D8290', NULL, N'Online (Google Meet)', N'Review the support plan together', NULL, 60, 0, '2026-10-19T03:00:00.000', '2026-10-21T08:00:00.000', '2026-10-19T09:00:00.000', NULL, N'accepted'),
+    (N'25B07A14-441E-59C5-A835-380FF61F9509', N'5976E918-C022-5F18-81E7-911498BDD788', N'71840355-CF87-59D8-BA64-FBF1A249FAFD', N'5976E918-C022-5F18-81E7-911498BDD788', N'5976E918-C022-5F18-81E7-911498BDD788', NULL, NULL, N'Campus Beta building', N'Go through your attendance this term and agree on next steps', N'Room 305', 30, 0, '2026-11-23T02:00:00.000', '2026-12-01T02:30:00.000', NULL, NULL, N'pending');
+GO
+
+-- MEETUPSCHEDULES: 4 rows
+INSERT INTO [dbo].[MEETUPSCHEDULES] ([meetupScheduleId], [cancelledBy], [meetupRequestId], [cancelReason], [location], [room], [durationMinutes], [cancelledAt], [createdAt], [scheduledStartAt], [status]) VALUES
+    (N'B75F6B13-A9DD-5E23-A95D-97D788FEACB7', NULL, N'64A7999F-EABF-539D-B7CC-F18E09A5B6FC', NULL, N'Campus Beta building', N'Room 305', 60, NULL, '2026-10-04T02:00:00.000', '2026-10-05T02:00:00.000', N'completed'),
+    (N'9885C8E2-C90F-5243-A5CA-22DCB64FCC0E', NULL, N'F79786E3-2E12-5D71-AA73-D3D7FE5CEE42', NULL, N'Online (Google Meet)', NULL, 90, NULL, '2026-11-21T02:00:00.000', '2026-12-02T07:00:00.000', N'scheduled'),
+    (N'4AB6ACCA-70B7-5C84-ACF9-FD1EA0791A20', NULL, N'9C6E0FC4-2173-5F42-A6ED-6E0D3592C2DD', NULL, N'Campus Alpha building', N'Room 112', 45, NULL, '2026-10-10T08:00:00.000', '2026-10-13T03:00:00.000', N'completed'),
+    (N'81E68FFE-0569-54B8-A344-46FC0497113C', NULL, N'9A6D57F6-8482-503C-8011-47CF5A4BBAB7', NULL, N'Online (Google Meet)', NULL, 60, NULL, '2026-10-19T09:00:00.000', '2026-10-21T08:00:00.000', N'missed');
 GO
 
 -- CONSENTS: 60 rows

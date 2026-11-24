@@ -32,6 +32,7 @@ namespace AdviseCare.Application.Services
         private readonly IConsentService _consentService;
         private readonly INotificationService _notificationService;
         private readonly IActivityLogService _activityLogService;
+        private readonly IMeetupRequestService _meetupRequestService;
 
         public CaseService(
             IGenericRepository<Case> caseRepository,
@@ -48,7 +49,8 @@ namespace AdviseCare.Application.Services
             IGenericRepository<Notification> notificationRepository,
             IConsentService consentService,
             INotificationService notificationService,
-            IActivityLogService activityLogService)
+            IActivityLogService activityLogService,
+            IMeetupRequestService meetupRequestService)
         {
             _caseRepository = caseRepository;
             _caseStageHistoryRepository = caseStageHistoryRepository;
@@ -65,6 +67,7 @@ namespace AdviseCare.Application.Services
             _consentService = consentService;
             _notificationService = notificationService;
             _activityLogService = activityLogService;
+            _meetupRequestService = meetupRequestService;
         }
 
         // Get all Cases, newest first (Programme Head)
@@ -598,6 +601,7 @@ namespace AdviseCare.Application.Services
             _caseRepository.PrepareUpdate(caseRecord);
             await _caseRepository.SaveAsync();
 
+            await _meetupRequestService.CancelOpenMeetupsForCaseAsync(CaseId, ProgrammeHeadId, $"The case moved to another advisor ({advisor.FullName})");
             await _activityLogService.LogAsync(ProgrammeHeadId, "caseReassigned",
                 $"Moved the {caseRecord.SupportCategory.CategoryName} case of {caseRecord.Student.FullName} from {oldAdvisor?.FullName} to {advisor.FullName}: {reason}");
             await NotifyMatchAsync(caseRecord, advisor, true);
@@ -738,6 +742,7 @@ namespace AdviseCare.Application.Services
 
             if (request.ToStage == "closed")
             {
+                await _meetupRequestService.CancelOpenMeetupsForCaseAsync(CaseId, AdvisorId, $"The case was closed: {reason}");
                 await _activityLogService.LogAsync(AdvisorId, "caseClosed", $"Closed the {caseRecord.SupportCategory.CategoryName} case of {caseRecord.Student.FullName}: {reason}");
                 await _notificationService.NotifyAsync(caseRecord.StudentId, "Your case has been closed",
                     $"Your {caseRecord.SupportCategory.CategoryName} case was closed by {caseRecord.Advisor?.FullName}: {reason}",

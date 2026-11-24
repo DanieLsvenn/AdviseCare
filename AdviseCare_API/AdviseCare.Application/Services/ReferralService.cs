@@ -23,6 +23,7 @@ namespace AdviseCare.Application.Services
         private readonly IGenericRepository<AccountRole> _accountRoleRepository;
         private readonly INotificationService _notificationService;
         private readonly IActivityLogService _activityLogService;
+        private readonly IMeetupRequestService _meetupRequestService;
 
         public ReferralService(
             IGenericRepository<Referral> referralRepository,
@@ -31,7 +32,8 @@ namespace AdviseCare.Application.Services
             IGenericRepository<Account> accountRepository,
             IGenericRepository<AccountRole> accountRoleRepository,
             INotificationService notificationService,
-            IActivityLogService activityLogService)
+            IActivityLogService activityLogService,
+            IMeetupRequestService meetupRequestService)
         {
             _referralRepository = referralRepository;
             _caseRepository = caseRepository;
@@ -40,6 +42,7 @@ namespace AdviseCare.Application.Services
             _accountRoleRepository = accountRoleRepository;
             _notificationService = notificationService;
             _activityLogService = activityLogService;
+            _meetupRequestService = meetupRequestService;
         }
 
         // Get all Referrals, newest first (Programme Head)
@@ -326,6 +329,8 @@ namespace AdviseCare.Application.Services
                 _caseRepository.PrepareUpdate(caseRecord);
             }
             await _referralRepository.SaveAsync();
+            if (!isWelfareReferral)
+                await _meetupRequestService.CancelOpenMeetupsForCaseAsync(caseRecord.CaseId, ReceiverId, $"The case moved to another advisor ({receiver.FullName})");
 
             var categoryName = caseRecord.SupportCategory.CategoryName;
             await _activityLogService.LogAsync(ReceiverId, "referralAnswered", $"Accepted the referral of the {categoryName} case of {caseRecord.Student.FullName} from {sender?.FullName}");

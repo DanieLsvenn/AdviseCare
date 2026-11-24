@@ -187,13 +187,23 @@ Every value shown says where it came from (which import) and if something is mis
 
 - Record case notes and agreed actions:
 
-Advisor and student agree how and when to meet (online, offline), e.g. in the case thread. The advisor writes down what was discussed. Once finalized, a note can't be edited.
+Advisor and student agree when and where to meet through a meet-up request (see below). The advisor writes down what was discussed. Once finalized, a note can't be edited.
 
 + Add a case note
 + Record agreed actions in the note
 + Edit a note before it's finalized
 + Finalize a note
 + View history of past notes for a student
+
+- Arrange meet-ups with the student (owner: Member B):
+
+While the case is in stage contacted or followUp, the advisor or the student requests a meet-up: a date, a start time and a duration (Vietnam time, Monday to Friday, 08:30-11:30 or 13:30-18:00, in 15-minute steps, inside one window), a location, an optional room and a reason. The other side accepts, changes the date (the request goes back) or declines with a reason. Accepting schedules it and moves a contacted case to follow-up. A time that overlaps another scheduled meet-up of the advisor or the student is refused.
+
++ Request a meet-up on a case (one pending request per case)
++ Accept, change the date of, or decline (with a reason) a request the student sent; cancel my own pending request
++ Cancel a scheduled meet-up with a reason before it starts; mark it as held or missed after it has started
++ View my schedule: the week's meet-ups as blocks from 08:30 to 18:00, Monday to Friday, with pending requests shown dashed
++ Closing a case or handing it to another advisor cancels its pending requests and meet-ups that have not started
 
 - Talk with the student in the case thread (owner: Member B; chat rules to be decided):
 
@@ -310,6 +320,7 @@ The main entry point: the student asks for help, picks the kind of help, explain
 + Receive the matched advisor's contact information by email and in-app notification
 + View own cases, their stages and history
 + Write in the case thread once an advisor is assigned
++ Request a meet-up with the advisor (case in stage contacted or followUp), and accept, change the date of or decline (with a reason) the advisor's requests; cancel a scheduled meet-up with a reason before it starts
 + Rate a closed case once (1-5 stars and an optional comment; owner: Member D, who may read it is to be decided)
 
 - View own profile, data and the sources behind them:

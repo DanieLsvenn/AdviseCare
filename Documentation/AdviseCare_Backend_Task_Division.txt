@@ -53,7 +53,7 @@ A9.4. MonsterASP: the same values as environment variables (Authentication__Goog
 
 ==========
 MEMBER B - CONSENT AND DATA PROTECTION
-Tables owned: DATAATTRIBUTES, CONSENTPURPOSES, PURPOSE_ATTRIBUTE, ACCESSPOLICIES, CONSENTS, CONSENTHISTORIES, CONSENTREQUESTS, ACCESSLOGS, EMERGENCYACCESSREQUESTS, ERASUREREQUESTS, ATTRIBUTEKEYS, CASEMESSAGES
+Tables owned: DATAATTRIBUTES, CONSENTPURPOSES, PURPOSE_ATTRIBUTE, ACCESSPOLICIES, CONSENTS, CONSENTHISTORIES, CONSENTREQUESTS, ACCESSLOGS, EMERGENCYACCESSREQUESTS, ERASUREREQUESTS, ATTRIBUTEKEYS, CASEMESSAGES, MEETUPREQUESTS, MEETUPSCHEDULES
 ==========
 
 B1. Steward configuration
@@ -77,6 +77,7 @@ B5.2. Student's own access log
 B5.3. Export processing record for one student or a date range
 B6. Emergency access: request, approve with time limit, reject with a reason, auto-expire; Stewards share one pool, the first to act is stored as stewardId; the access guard allows an approved, unexpired request (logged with consentPurposeId = null)
 B7. Case messages and messaging (CASEMESSAGES, moved from Member D on 09/11/2026; the current CaseMessageService is the starting point; AI-written and AI-assisted messages come from Member C's C5): a two-way append-only thread on a case between its student and its current advisor (not on a closed case); the case staff can read it; each message notifies the other side; kept separate from the private CASENOTES. Chat rules (real-time or not, attachments, read receipts, who else may write, limits) are to be decided (Q&A)
+B8. Meet-ups (MEETUPREQUESTS, MEETUPSCHEDULES; new 24/11/2026, Q-271, QC-272; built 24/11/2026: MeetupRequestService, MeetupRequestsController, MeetupSchedulesController, case-page panel and the advisor's schedule screen; to test against SQL Server): while a case is in stage contacted or followUp, its student or current advisor requests a meet-up (date, start time, duration, location, optional room, reason; Vietnam time, Monday to Friday, 08:30-11:30 and 13:30-18:00, 15-minute steps, inside one window; one pending request per case; no overlap with a scheduled meet-up of the advisor or the student); the other side accepts (meet-up scheduled, contacted -> followUp with a stage history row, one save), changes the date (same request goes back, rescheduleCount + 1, no limit) or declines with a reason; the proposer can cancel a pending request; either side cancels a scheduled meet-up with a reason before it starts, the advisor marks it completed or missed after it has started; Member D's CaseService (close, reassign), CaseChangeRequestService (approve) and ReferralService (accept to another advisor) call CancelOpenMeetupsForCaseAsync; the advisor's schedule screen (GET /api/MeetupSchedules/search with a week) draws the blocks
 
 ==========
 MEMBER C - STUDENT DATA, PROFILE, WELFARE AND AI

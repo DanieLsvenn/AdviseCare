@@ -18,6 +18,7 @@ import {
   type StageHistoryRecord,
 } from "@/components/case/case-api";
 import { CaseMessages } from "@/components/case/case-messages";
+import { CaseMeetups } from "@/components/case/case-meetups";
 import { CaseSharedData } from "@/components/case/case-shared-data";
 import { CaseProgress } from "@/components/case/case-progress";
 import { Avatar } from "@/components/ui/avatar";
@@ -174,6 +175,16 @@ export function StudentCase({ caseId }: { caseId: string }) {
         canWrite={record.status !== "closed" && Boolean(record.advisorId)}
         closed={record.status === "closed"}
         waitingForAdvisor={!record.advisorId}
+      />
+
+      <CaseMeetups
+        caseId={record.caseId}
+        viewerId={record.studentId}
+        audience="student"
+        isParticipant={Boolean(record.advisorId)}
+        stage={record.currentStage}
+        closed={record.status === "closed"}
+        onCaseChanged={() => void load()}
       />
 
       <section className="rounded-lg border border-rule bg-paper p-space-lg">

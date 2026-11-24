@@ -82,6 +82,7 @@ builder.Services.AddScoped<ICaseService, CaseService>();
 builder.Services.AddScoped<ICaseAccessService, CaseAccessService>();
 builder.Services.AddScoped<ICaseNoteService, CaseNoteService>();
 builder.Services.AddScoped<ICaseMessageService, CaseMessageService>();
+builder.Services.AddScoped<IMeetupRequestService, MeetupRequestService>();
 builder.Services.AddScoped<IReferralService, ReferralService>();
 builder.Services.AddScoped<ICaseChangeRequestService, CaseChangeRequestService>();
 builder.Services.AddScoped<IReportService, ReportService>();

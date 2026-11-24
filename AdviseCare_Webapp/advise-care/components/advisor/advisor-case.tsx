@@ -21,6 +21,7 @@ import {
   type StageHistoryRecord,
 } from "@/components/case/case-api";
 import { CaseMessages } from "@/components/case/case-messages";
+import { CaseMeetups } from "@/components/case/case-meetups";
 import { SearchPicker } from "@/components/workspace/search-picker";
 import type { WorkspaceOptionSource } from "@/components/workspace/api-workspace";
 import { CaseSharedData } from "@/components/case/case-shared-data";
@@ -213,7 +214,7 @@ export function AdvisorCase({ caseId, viewerId }: { caseId: string; viewerId: st
 
       {/* Act before record: on narrow screens the next step comes right after
           the request; from 1024px the actions are a sticky right rail. */}
-      <div className="grid gap-space-lg lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_auto_auto_auto_1fr] lg:[grid-template-areas:'req_rail'_'shared_rail'_'messages_rail'_'notes_rail'_'hist_rail']">
+      <div className="grid gap-space-lg lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_auto_auto_auto_auto_1fr] lg:[grid-template-areas:'req_rail'_'shared_rail'_'messages_rail'_'meetups_rail'_'notes_rail'_'hist_rail']">
         <section className="rounded-lg border border-rule bg-paper p-space-lg lg:[grid-area:req]">
             <div className="flex flex-wrap items-baseline justify-between gap-space-sm">
               <h2 className="text-base font-semibold text-text">{t("request")}</h2>
@@ -240,6 +241,17 @@ export function AdvisorCase({ caseId, viewerId }: { caseId: string; viewerId: st
           canWrite={!closed && record.advisorId === viewerId}
           closed={closed}
           className="lg:[grid-area:messages]"
+        />
+
+        <CaseMeetups
+          caseId={record.caseId}
+          viewerId={viewerId}
+          audience="staff"
+          isParticipant={record.advisorId === viewerId}
+          stage={record.currentStage}
+          closed={closed || record.status === "closed"}
+          onCaseChanged={() => void load()}
+          className="lg:[grid-area:meetups]"
         />
 
         <aside

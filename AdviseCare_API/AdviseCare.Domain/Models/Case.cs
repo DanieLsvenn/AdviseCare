@@ -53,6 +53,8 @@ public partial class Case
 
     public virtual ICollection<Intervention> Interventions { get; set; } = new List<Intervention>();
 
+    public virtual ICollection<Meetuprequest> Meetuprequests { get; set; } = new List<Meetuprequest>();
+
     public virtual Account OpenedByNavigation { get; set; }
 
     public virtual ICollection<Referral> Referrals { get; set; } = new List<Referral>();

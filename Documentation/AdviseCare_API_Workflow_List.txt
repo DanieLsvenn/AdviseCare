@@ -89,7 +89,7 @@ Ready-made demo files in Documentation/AdviseCare_Mock_Data (the team's two real
 RECOMMENDED RUN ORDER
 ==========
 
-EX11 steps 1-3 (faculties, programmes, terms, subjects) -> WF1 -> EX1 -> EX2 -> EX12 -> WF3 -> EX11 step 4 (support categories) -> WF5 -> WF2 -> EX18 -> EX7 -> EX4 -> WF2b -> EX5 -> EX6 -> EX3 -> EX8 -> EX9 -> EX10 -> EX13 -> EX14 -> EX15 -> WF4 -> EX20 -> EX19 -> EX17 -> EX16
+EX11 steps 1-3 (faculties, programmes, terms, subjects) -> WF1 -> EX1 -> EX2 -> EX12 -> WF3 -> EX11 step 4 (support categories) -> WF5 -> WF2 -> EX18 -> EX21 -> EX7 -> EX4 -> WF2b -> EX5 -> EX6 -> EX3 -> EX8 -> EX9 -> EX10 -> EX13 -> EX14 -> EX15 -> WF4 -> EX20 -> EX19 -> EX17 -> EX16
 Everything is [EXISTS] except EX17 (early-support indicators, Member A) and EX19 (case feedback, Member D), which are [PLANNED].
 
 ==========
@@ -1843,6 +1843,32 @@ EX20: Anonymised welfare statistics and cohort data
    Negative (Steward side): activating a second statistics purpose -> 409 "Another active consent purpose is already the statistics purpose; deactivate it first."; using it for a support category or a consent request -> 400
    GET /api/Statistics/cohort/export?dataAttributeId={attrGpaId}&termId={termFall2026Id}&format=csv [EXISTS] -> a file; activity log statisticsExported
 
+EX21: Meet-ups (Member B)
+Times: meetupDate (yyyy-MM-dd) and startTime (HH:mm) are Vietnam time; Monday to Friday, inside 08:30-11:30 or 13:30-18:00, 15-minute steps; durationMinutes 15, 30 ... ending inside the same window. Responses carry UTC times plus localDate, localStartTime and localEndTime; awaitingResponseFrom is who must answer a pending request.
+1. Request a meet-up (case in stage contacted or followUp)
+   POST /api/MeetupRequests [EXISTS]
+   Auth: {studentToken}
+   Body: { "caseId": "{caseId}", "meetupDate": "2026-12-01", "startTime": "14:00", "durationMinutes": 60, "location": "Campus Beta building", "room": "Room 305", "reason": "Go through my study plan" }
+   Expect: status = pending, awaitingResponseFrom = the advisor, rescheduleCount = 0; the advisor gets a notification; activity log meetupRequested
+   Negative: a Saturday -> 400 "Meet-ups can only be booked from Monday to Friday."; startTime 11:00 with 60 minutes -> 400 "A meet-up must start and end inside 08:30-11:30 or 13:30-18:00 (Vietnam time)."; startTime 14:10 -> 400 "The start time must be on a 15-minute step (e.g. 14:00, 14:15, 14:30)."; durationMinutes 20 -> 400; a past date -> 400 "The meet-up time must be in the future."
+   Negative: a case in stage assigned -> 409 "Meet-ups can be arranged once the case is in stage contacted or followUp."; a second request while one is pending -> 409; a time overlapping a scheduled meet-up of the advisor or the student -> 409 "The advisor already has a meet-up at ..."; a closed case -> 409 "The case is closed."; another student -> 404 "Case not found."
+2. The advisor answers
+   PUT /api/MeetupRequests/{meetupRequestId} [EXISTS] with {academicAdvisorToken}: { "meetupDate": "2026-12-02", "startTime": "09:30", "durationMinutes": 45, "location": "Online (Google Meet)", "room": null }
+   Expect: same request, proposedBy = the advisor, rescheduleCount = 1, awaitingResponseFrom = the student; the student is notified; activity log meetupRescheduled
+   PUT /api/MeetupRequests/{meetupRequestId}/accept [EXISTS] with {studentToken}
+   Expect: status = accepted; GET /api/MeetupSchedules/search?caseId={caseId} shows it as scheduled; the case moves contacted -> followUp with a stage history row "Meet-up agreed for ..."; activity log meetupAccepted
+   Negative: the side that proposed the date accepting -> 403 "You proposed this date; the other side must answer. You can cancel the request instead."; answering twice -> 409 "This meet-up request has already been answered or cancelled."
+   Or: PUT /api/MeetupRequests/{meetupRequestId}/decline [EXISTS] { "declineReason": "I am at a staff training that afternoon" } -> status = declined (an empty reason -> 400)
+   Or: PUT /api/MeetupRequests/{meetupRequestId}/cancel [EXISTS] by the side that proposed the current date -> status = cancelled
+3. After the meet-up
+   PUT /api/MeetupSchedules/{meetupScheduleId}/cancel [EXISTS] with {studentToken} or {academicAdvisorToken}: { "cancelReason": "Exam moved" } before it starts -> status = cancelled; after it started -> 409
+   PUT /api/MeetupSchedules/{meetupScheduleId}/complete [EXISTS] / missed [EXISTS] with {academicAdvisorToken} once it has started -> completed / missed; before -> 409 "The meet-up has not started yet."; the student -> 403
+4. The advisor's schedule screen
+   GET /api/MeetupSchedules/search?fromDate=2026-11-30&toDate=2026-12-04 [EXISTS] with {academicAdvisorToken} -> the advisor's meet-ups of that week, soonest first
+   GET /api/MeetupRequests/search?fromDate=2026-11-30&toDate=2026-12-04&status=pending [EXISTS] -> the pending requests shown as dashed blocks
+   Mock data: aa.khoavd has a scheduled meet-up on 02/12/2026 14:00-15:30 (online) and a pending request for 01/12/2026 09:30-10:00
+5. Clean-up: closing the case (PUT /api/Cases/{caseId}/stage with "closed"), reassigning it, approving a case change request or accepting a referral to another advisor cancels its pending requests and its meet-ups that have not started; both sides are notified
+
 ==========
 NOTES
 ==========
@@ -1877,6 +1903,10 @@ GET /api/CaseNotes/{id} - one note (drafts only for their author)
 GET /api/CaseMessages/search?caseId={caseId} - student of the case and its staff: the case's message thread, oldest first, each with authorRole (student/advisor)
 POST /api/CaseMessages - the student of the case or its current advisor: { "caseId", "messageText" } (1-1000 characters); not on a closed case, a student only once an advisor is assigned; logs caseMessageSent and notifies the other side; no edit/delete endpoint
 GET /api/CaseMessages?page=1&pageSize=20 - student or advisor: the messages I wrote
+GET /api/MeetupRequests?page=1&pageSize=20 - student or advisor: my meet-up requests, newest first
+GET /api/MeetupRequests/{id} - one meet-up request (the student, its advisor, the staff of the case)
+GET /api/MeetupSchedules?page=1&pageSize=20 - student or advisor: my meet-ups, soonest first
+GET /api/MeetupSchedules/{id} - one meet-up
 GET /api/Accounts/staff/search?fullName=&email=&roleNames=Academic Advisor,Wellbeing Advisor - any staff role: the staff directory (active staff, name/email/roles only, at most 50) used by the web app's people pickers; students are never listed
 GET /api/Referrals?page=1&pageSize=20 - Programme Head: all referrals
 GET /api/Referrals/me/outgoing?status=pending - advisor: referrals I sent

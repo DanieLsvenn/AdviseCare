@@ -75,10 +75,10 @@ ES12: Anonymised statistics for the other roles
 (would need new tables or changes to existing ones)
 ==========
 
-ES7: In-app meeting scheduling
-- What it is: advisors publish available time slots, students book them, advisors can swap meetings with each other
-- Missing in the ERD: tables for advisor availability and meetings
-- Current version instead: advisor and student agree on a time in the case thread (CASEMESSAGES); the advisor records case notes
+ES7: Advisor availability slots and meeting swaps (narrowed 24/11/2026)
+- What it is: advisors publish available time slots that students book directly, and advisors can swap meet-ups with each other
+- Missing in the ERD: a table for advisor availability (e.g. ADVISORAVAILABILITIES: advisorId, weekday, start, end) and a way to hand a scheduled meet-up to another advisor
+- Current version instead: meet-ups are agreed through a request on the case (MEETUPREQUESTS: request, accept / change the date / decline) and kept in MEETUPSCHEDULES, shown on the advisor's schedule screen (Workflow EX21)
 
 ES9: Accounts without a Google account on file (activation code)
 - What it is: the admin creates an account without a Google-linked email. The system shows a one-time activation code, valid for a short time, which the admin gives to the student in person. The student enters the code, sets their own password straight away, and links a Google account later in Settings
