@@ -44,7 +44,7 @@ A7.2. Flag check (server-side, no ACCESSLOGS row): after every student data impo
 A7.3. Flag queue (Programme Head): list by severity, priority, oldest; open a case from a flag (calls Member D's case creation with openedBy = the Programme Head, the rule's priority and category, then sets the flag's caseId, status caseOpened); dismiss with a reason
 A7.4. Advisor request: an advisor asks to take a flagged student on (status requested, requestedBy); the Programme Head approves (case opened for that advisor) or turns it down (back to open)
 A7.5. Responses show directory data, rule, severity, priority and term, never the value
-A8. Advisor suggestion algorithm (extra scope, ES4; maybe Member A): rank advisors for the Programme Head from support category, subjects, familiar pair, caseload and CASEFEEDBACKS ratings
+A8. Advisor suggestion algorithm (extra scope, ES4; maybe Member A; not AI, a rule-based score): rank advisors for the Programme Head from support category, subjects, familiar pair, caseload and CASEFEEDBACKS ratings
 A9. External services set-up (new 12/11/2026; Member A sets them up once and shares the values with the team privately, never in git)
 A9.1. Google sign-in: Google Cloud project, Google Auth Platform branding/audience (test users), Web OAuth client with the localhost and MonsterASP origins; Client ID in the API (Authentication:Google:ClientId) and the web app (NEXT_PUBLIC_GOOGLE_CLIENT_ID); test EX1 linking and sign-in
 A9.2. Gmail SMTP: a project Gmail account with 2-Step Verification and an app password; Gmail section of appsettings.json (Username, AppPassword, FromName, FrontendBaseUrl); test linking, reset and notification emails
@@ -76,12 +76,13 @@ B5.1. Search/filter access log; flag entries; Steward review (cleared / confirme
 B5.2. Student's own access log
 B5.3. Export processing record for one student or a date range
 B6. Emergency access: request, approve with time limit, reject with a reason, auto-expire; Stewards share one pool, the first to act is stored as stewardId; the access guard allows an approved, unexpired request (logged with consentPurposeId = null)
-B7. Case messages and messaging (CASEMESSAGES, moved from Member D on 09/11/2026; the current CaseMessageService is the starting point): a two-way append-only thread on a case between its student and its current advisor (not on a closed case); the case staff can read it; each message notifies the other side; kept separate from the private CASENOTES. Chat rules (real-time or not, attachments, read receipts, who else may write, limits) are to be decided (Q&A)
+B7. Case messages and messaging (CASEMESSAGES, moved from Member D on 09/11/2026; the current CaseMessageService is the starting point; AI-written and AI-assisted messages come from Member C's C5): a two-way append-only thread on a case between its student and its current advisor (not on a closed case); the case staff can read it; each message notifies the other side; kept separate from the private CASENOTES. Chat rules (real-time or not, attachments, read receipts, who else may write, limits) are to be decided (Q&A)
 
 ==========
-MEMBER C - STUDENT DATA, PROFILE AND WELFARE
+MEMBER C - STUDENT DATA, PROFILE, WELFARE AND AI
 Tables owned: STUDENTDATA, CORRECTIONREQUESTS, INTERVENTIONS, SUPPORTGRANTS, EXTERNALSERVICES, EXTERNALREFERRALS, ESCALATIONS
 (DATASOURCES, INGESTIONSCHEDULES, INGESTIONJOBS are extra scope, ES1: no work now)
+(AI, C5: works on CASEMESSAGES (Member B) and CASES (Member D); its ERD changes are agreed with them first)
 ==========
 
 C1. Student data import (Admin; StudentDataController)
@@ -107,6 +108,13 @@ C3.4. Escalations: officer raises, Programme Head responds, status tracking
 C4. Anonymised statistics (done 09/11/2026; StatisticService, StatisticsController, QC-024)
 C4.1. Welfare statistics (Student Welfare Officer, Programme Head): per support category (and faculty) in a date range, cases opened, referred cases, interventions, support grants, external referrals, escalations, distinct students; cells from fewer than 5 students hidden; export xlsx/csv/pdf
 C4.2. Cohort data (Programme Head): one attribute and term (and one subject for a per-subject attribute, and faculty), latest value per student, only consents under the statistics purpose (no emergency access), every value read logged, cells and values from fewer than 10 students hidden; export xlsx/csv/pdf
+C5. AI (new 23/11/2026: ES8 and ES13 moved from the Extra Scope List into the current version, owner Member C; not started, design to agree first)
+C5.1. AI set-up: choose the AI provider and model; key in appsettings.json / MonsterASP environment variables only (never in git); one IAiService used by C5.2 and C5.3; time-out, cost limit and a clear error when the AI is unavailable (the case goes on without it)
+C5.2. AI help in the case thread (was ES8): the case's advisor asks for a suggested reply or a summary of the thread; a suggestion is never sent by itself (the advisor edits and sends it as their own message, marked as AI-assisted); the AI only sees the thread and the student data the advisor may see (Member B's access guard, every value logged in ACCESSLOGS like a staff read)
+C5.3. AI advisor as a backup (was ES13): an AI-suitability check per case (rules and score, e.g. simple academic questions; never wellbeing crises or anything under emergency access); the Programme Head always decides whether a case goes to the AI and can hand it to a human advisor at any time; the AI answers in the case thread, each AI message clearly labelled, and the student is told they are talking to an AI; it follows the same consent rules as a human advisor
+C5.4. ERD and DB script changes to agree with Member B (CASEMESSAGES) and Member D (CASES) before coding: e.g. a way to mark AI-written / AI-assisted messages in CASEMESSAGES, and an AI account or CASES.advisedBy (human/ai) plus the suitability score
+C5.5. Activity log types for AI use (e.g. aiReplySuggested, aiSummaryCreated, caseAssignedToAi, caseReturnedToHuman) in AdviseCare_Activity_Types.txt; FR, workflow lists and API workflow list updated
+C5.6. Frontend: suggest-reply and summary buttons in the advisor's case thread, "send to AI advisor" / "hand back" for the Programme Head, AI labels in the student's thread
 Note: welfare works on existing CASES rows (from the seed data), so it does not wait for Member D's case APIs
 
 ==========

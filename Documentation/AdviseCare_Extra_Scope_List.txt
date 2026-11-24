@@ -9,6 +9,9 @@ Moved into the current version on 09/11/2026 (no longer extra scope):
 - The welfare part of the old FU12 (welfare statistics for the Student Welfare Officer and the Programme Head) and the old FU13 (anonymised cohort data).
   What is left of FU12 (statistics for the other roles) stays here as ES12.
 
+Moved into the current version on 23/11/2026 (no longer extra scope, owner Member C, task division C5):
+- ES8 AI assistance in the case thread and ES13 AI advisor as a backup (their notes were moved to C5 of AdviseCare_Backend_Task_Division.txt).
+
 ==========
 1. EXTRA SCOPE, ALREADY IN THE ERD
 (the tables or data already exist in AdviseCare_ERD_Tables.txt, but no feature is built on them in the current version)
@@ -77,10 +80,6 @@ ES7: In-app meeting scheduling
 - Missing in the ERD: tables for advisor availability and meetings
 - Current version instead: advisor and student agree on a time in the case thread (CASEMESSAGES); the advisor records case notes
 
-ES8: AI assistance in the case thread
-- What it is: AI help inside a case's message thread (e.g. a suggested reply for the advisor or a summary of the thread); not agreed by the team yet
-- Missing in the ERD: a way to mark AI-written or AI-suggested messages in CASEMESSAGES
-
 ES9: Accounts without a Google account on file (activation code)
 - What it is: the admin creates an account without a Google-linked email. The system shows a one-time activation code, valid for a short time, which the admin gives to the student in person. The student enters the code, sets their own password straight away, and links a Google account later in Settings
 - Missing in the ERD: no new table, but ACCOUNTS.email must allow null (the unique index has to ignore nulls), and the code can reuse resetToken and resetTokenExpiresAt
@@ -91,11 +90,6 @@ ES11: Each student's programme
 - What it is: record which programme each student belongs to, so cases and statistics can be split per programme and routed to that programme's head
 - Missing in the ERD: STUDENTPROFILES.programmeId (FK to PROGRAMMES)
 - Why extra scope: there is only one programme / Programme Head for now; the faculty on ACCOUNTS is enough to group students
-
-ES13: AI advisor as a backup (owner: to be decided)
-- What it is: when there are not enough human advisors, an AI advisor can take on suitable cases (e.g. simple exam-preparation questions); the Programme Head always makes the final decision on whether a case goes to the AI, and can hand it to a human at any time
-- Missing in the ERD: a way to tell an AI-advised case apart (an AI account or CASES.advisedBy = human/ai), an AI-suitability score per case and its rules, and AI-written CASEMESSAGES (shared with ES8)
-- Open points: which cases are never suitable (wellbeing crises, anything with emergency access), what the AI may read (it must follow the same consent rules), and how the student is told they are talking to an AI
 
 ES14: Advisor profiles for the suggestion algorithm
 - What it is: a profile per advisor (expertise, languages, personality / working-style tags, availability) so ES4 can also match on fit, not only on subjects and ratings
