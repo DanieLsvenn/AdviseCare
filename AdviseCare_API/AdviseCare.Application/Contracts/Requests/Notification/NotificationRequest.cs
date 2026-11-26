@@ -9,6 +9,11 @@ namespace AdviseCare.Application.Contracts.Requests.Notification
         public bool? IsRead { get; set; }
     }
 
+    public class SearchMyNotificationRequest
+    {
+        public bool UnreadOnly { get; set; } = false;
+    }
+
     public class CreateNotificationRequest
     {
         [Required(ErrorMessage = "Account Id is required.")]

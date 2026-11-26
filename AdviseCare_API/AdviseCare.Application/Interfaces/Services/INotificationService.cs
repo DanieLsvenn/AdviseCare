@@ -12,7 +12,8 @@ namespace AdviseCare.Application.Interfaces.Services
         Task<CreateNotificationResponse> CreateAsync(CreateNotificationRequest request);
         Task<UpdateNotificationResponse> UpdateAsync(Guid NotificationId, UpdateNotificationRequest request);
         Task<bool> DeleteAsync(Guid NotificationId);
-        Task<List<GetMyNotificationResponse>> GetMyNotificationsAsync(Guid AccountId);
+        Task<List<GetMyNotificationResponse>> GetMyNotificationsAsync(Guid AccountId, SearchMyNotificationRequest request);
+        Task<IEnumerable<GetMyNotificationWithPaginationResponse>> GetMyNotificationsWithPaginationAsync(Guid AccountId, SearchMyNotificationRequest request, int page, int pageSize);
         Task<int> GetMyUnreadCountAsync(Guid AccountId);
         Task<bool> MarkAsReadAsync(Guid AccountId, Guid NotificationId);
         Task<int> MarkAllAsReadAsync(Guid AccountId);

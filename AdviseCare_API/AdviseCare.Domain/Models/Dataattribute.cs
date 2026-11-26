@@ -17,6 +17,8 @@ public partial class Dataattribute
 
     public string DataType { get; set; }
 
+    public string SummaryMethod { get; set; }
+
     public string Status { get; set; }
 
     public virtual ICollection<Attributekey> Attributekeys { get; set; } = new List<Attributekey>();

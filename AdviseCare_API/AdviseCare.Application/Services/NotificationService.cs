@@ -174,10 +174,10 @@ namespace AdviseCare.Application.Services
             return true;
         }
 
-        // Get the notifications of an Account, newest first
-        public async Task<List<GetMyNotificationResponse>> GetMyNotificationsAsync(Guid AccountId)
+        // Get the notifications of an Account, newest first, optionally only the unread ones
+        public async Task<List<GetMyNotificationResponse>> GetMyNotificationsAsync(Guid AccountId, SearchMyNotificationRequest request)
         {
-            var notifications = await _notificationRepository.SearchAsyncOrderBy(n => n.AccountId == AccountId, n => n.CreatedAt, false);
+            var notifications = await _notificationRepository.SearchAsyncOrderBy(n => n.AccountId == AccountId && (!request.UnreadOnly || !n.IsRead), n => n.CreatedAt, false);
 
             return notifications.Select(n => new GetMyNotificationResponse
             {
@@ -188,6 +188,28 @@ namespace AdviseCare.Application.Services
                 CreatedAt = n.CreatedAt,
                 IsRead = n.IsRead
             }).ToList();
+        }
+
+        // Get the notifications of an Account with pagination, newest first, optionally only the unread ones (e.g. the bell's drop-down of the latest 5)
+        public async Task<IEnumerable<GetMyNotificationWithPaginationResponse>> GetMyNotificationsWithPaginationAsync(Guid AccountId, SearchMyNotificationRequest request, int page, int pageSize)
+        {
+            if (page < 1 || pageSize < 1)
+                throw new ValidationException("Page and page size must be at least 1.");
+
+            var notifications = await _notificationRepository.SearchAsyncOrderBy(n => n.AccountId == AccountId && (!request.UnreadOnly || !n.IsRead), n => n.CreatedAt, false);
+
+            return notifications
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(n => new GetMyNotificationWithPaginationResponse
+                {
+                    NotificationId = n.NotificationId,
+                    Message = n.Message,
+                    RedirectUrl = n.RedirectUrl ?? string.Empty,
+                    Title = n.Title,
+                    CreatedAt = n.CreatedAt,
+                    IsRead = n.IsRead
+                });
         }
 
         // Count the unread notifications of an Account, for the unread badge

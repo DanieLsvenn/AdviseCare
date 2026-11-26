@@ -36,6 +36,7 @@ erDiagram
         nvarchar(255) attributeName UK "NOT NULL"
         bit isSubjectSpecific "NOT NULL"
         nvarchar(30) dataType "NOT NULL"
+        nvarchar(30) summaryMethod "NULL"
         nvarchar(30) status "NOT NULL"
     }
     FACULTIES ||--o{ PROGRAMMES : "facultyId"

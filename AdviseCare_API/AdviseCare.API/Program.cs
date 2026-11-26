@@ -54,6 +54,7 @@ builder.Services.AddScoped<IFacultyService, FacultyService>();
 builder.Services.AddScoped<IProgrammeService, ProgrammeService>();
 builder.Services.AddScoped<IAcademicTermService, AcademicTermService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
+builder.Services.AddScoped<IIndicatorFlagService, IndicatorFlagService>();
 
 // Member B
 builder.Services.AddScoped<IDataAttributeService, DataAttributeService>();
@@ -73,6 +74,7 @@ builder.Services.AddScoped<ICorrectionRequestService, CorrectionRequestService>(
 builder.Services.AddScoped<IExternalServiceService, ExternalServiceService>();
 builder.Services.AddScoped<IExternalReferralService, ExternalReferralService>();
 builder.Services.AddScoped<IInterventionService, InterventionService>();
+builder.Services.AddScoped<ITakeOnRequestService, TakeOnRequestService>();
 builder.Services.AddScoped<ISupportGrantService, SupportGrantService>();
 builder.Services.AddScoped<IEscalationService, EscalationService>();
 

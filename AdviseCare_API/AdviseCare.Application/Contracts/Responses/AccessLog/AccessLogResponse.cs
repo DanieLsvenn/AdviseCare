@@ -8,6 +8,7 @@
         public Guid RecordedUserId { get; set; } = Guid.Empty;
         public Guid? StudentDataId { get; set; }
         public string AccessorFullName { get; set; } = string.Empty;
+        public List<string> AccessorRoleNames { get; set; } = new();
         public string PurposeName { get; set; } = string.Empty;
         public string RecordedUserFullName { get; set; } = string.Empty;
         public string AccessedResource { get; set; } = string.Empty;
@@ -24,6 +25,7 @@
         public Guid RecordedUserId { get; set; } = Guid.Empty;
         public Guid? StudentDataId { get; set; }
         public string AccessorFullName { get; set; } = string.Empty;
+        public List<string> AccessorRoleNames { get; set; } = new();
         public string PurposeName { get; set; } = string.Empty;
         public string RecordedUserFullName { get; set; } = string.Empty;
         public string AccessedResource { get; set; } = string.Empty;
@@ -40,6 +42,7 @@
         public Guid RecordedUserId { get; set; } = Guid.Empty;
         public Guid? StudentDataId { get; set; }
         public string AccessorFullName { get; set; } = string.Empty;
+        public List<string> AccessorRoleNames { get; set; } = new();
         public string PurposeName { get; set; } = string.Empty;
         public string RecordedUserFullName { get; set; } = string.Empty;
         public string AccessedResource { get; set; } = string.Empty;
@@ -56,6 +59,7 @@
         public Guid RecordedUserId { get; set; } = Guid.Empty;
         public Guid? StudentDataId { get; set; }
         public string AccessorFullName { get; set; } = string.Empty;
+        public List<string> AccessorRoleNames { get; set; } = new();
         public string PurposeName { get; set; } = string.Empty;
         public string RecordedUserFullName { get; set; } = string.Empty;
         public string AccessedResource { get; set; } = string.Empty;

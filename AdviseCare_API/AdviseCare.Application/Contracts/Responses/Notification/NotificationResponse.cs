@@ -75,4 +75,14 @@ namespace AdviseCare.Application.Contracts.Responses.Notification
         public DateTime CreatedAt { get; set; }
         public bool IsRead { get; set; } = false;
     }
+
+    public class GetMyNotificationWithPaginationResponse
+    {
+        public Guid NotificationId { get; set; } = Guid.Empty;
+        public string Message { get; set; } = string.Empty;
+        public string RedirectUrl { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public bool IsRead { get; set; } = false;
+    }
 }

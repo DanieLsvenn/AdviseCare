@@ -10,7 +10,7 @@ namespace AdviseCare.Application.Services
 {
     // Case messages (CASEMESSAGES): a two-way thread on one case between its student and its current advisor.
     // Messages are append-only (no edit or delete) and cannot be added once the case is closed; each message notifies the other side.
-    // The thread is read by the student, the current advisor, the Programme Head and anyone who sent or received a referral of the case.
+    // The thread is read only by the student of the case and its current advisor (QC-238, 26/11/2026; not real time, read by request).
     // Private advisor records stay in CASENOTES.
     // A message can carry up to 5 files (CASEMESSAGEATTACHMENTS, 10 MB each, documents and images only), stored in the database
     // and downloaded only through the API by the readers of the thread
@@ -108,7 +108,7 @@ namespace AdviseCare.Application.Services
         {
             var message = await _caseMessageRepository.GetByIdAsyncInclude(CaseMessageId, m => m.Author, m => m.Case)
                 ?? throw new NotFoundException("Case message not found.");
-            if (!await CanReadThreadAsync(message.Case, CallerId))
+            if (!CanReadThread(message.Case, CallerId))
                 throw new NotFoundException("Case message not found.");
 
             return new GetCaseMessageByIdResponse
@@ -129,7 +129,7 @@ namespace AdviseCare.Application.Services
         {
             var caseRecord = await _caseRepository.GetByIdAsync(request.CaseId)
                 ?? throw new NotFoundException("Case not found.");
-            if (!await CanReadThreadAsync(caseRecord, CallerId))
+            if (!CanReadThread(caseRecord, CallerId))
                 throw new NotFoundException("Case not found.");
 
             var messages = await _caseMessageRepository.SearchAsyncIncludeOrderBy(m => m.CaseId == request.CaseId, m => m.CreatedAt, true, m => m.Author, m => m.Case);
@@ -170,7 +170,7 @@ namespace AdviseCare.Application.Services
         {
             var attachment = await _attachmentRepository.GetByIdAsyncInclude(CaseMessageAttachmentId, a => a.CaseMessage, a => a.CaseMessage.Case)
                 ?? throw new NotFoundException("File not found.");
-            if (!await CanReadThreadAsync(attachment.CaseMessage.Case, CallerId))
+            if (!CanReadThread(attachment.CaseMessage.Case, CallerId))
                 throw new NotFoundException("File not found.");
 
             return new DownloadCaseMessageAttachmentResponse
@@ -322,10 +322,10 @@ namespace AdviseCare.Application.Services
                 }).ToList());
         }
 
-        // Helper: the thread is read by the student of the case and by its staff (current advisor, Programme Head, referral sender or receiver)
-        private async Task<bool> CanReadThreadAsync(Case CaseRecord, Guid CallerId)
+        // Helper: the thread is read only by the student of the case and its current advisor
+        private static bool CanReadThread(Case CaseRecord, Guid CallerId)
         {
-            return CaseRecord.StudentId == CallerId || await _caseAccessService.CanViewCaseAsStaffAsync(CaseRecord, CallerId);
+            return CaseRecord.StudentId == CallerId || CaseRecord.AdvisorId == CallerId;
         }
 
         // Helper: whether a message was written by the student of the case or by an advisor

@@ -141,6 +141,8 @@ When a student withdraws consent, the Steward triggers the destruction of the en
 + Confirm audit trail remains intact after erasure
 + View erasure completion log
 + View the key status of each student's attributes (active/destroyed; the key itself is never shown)
++ Set how a per-subject numeric data attribute adds up in the student's Private data summary row: sum (e.g. Absent slots) or average (e.g. Subject mark)
++ Run the early-support flag check on request (it also runs after every student data import)
 
 - Define early-support indicators (owner: Member A):
 
@@ -161,19 +163,23 @@ Every staff role, every advisor included, can always see a student's directory d
 
 Their homepage: the cases the Programme Head matched to them, plus cases they opened themselves.
 
-+ View list of assigned cases sorted by priority/stage/date
++ View list of assigned cases sorted by priority/severity/stage/date
 + Filter cases by stage, category or subject
 + See count of new/unread cases
 + Open a case's full detail (reason, category, subject, shared data)
 
 - Reach out to students based on their data:
 
-Advisors can also start a case themselves when a student's data (merits, attendance, grades...) suggests the student needs help, or ask to take on a student flagged by an early-support indicator. There is no automatic case opening.
+Advisors can also start a case themselves when a student's data (merits, attendance, grades...) suggests the student needs help, or ask to take on a case from the "Students in need" tab: an unassigned case a student created, or a student flagged by an early-support indicator. The Programme Head decides every take-on request, so advisors can act on their own while matching stays under the Programme Head's management. There is no automatic case opening.
 
 + View a student's data outside a case (only what consent allows under a purpose the advisor's role has a policy for: "if you consent, we serve"; attributes not shared show as "exists, not shared"), or through an approved emergency access
 + Open a case for a student with a reason
 + Get the student notified that the advisor wants to meet
-+ View the early-support flags (student directory data, rule, severity, priority, term, and the subject for a rule on a per-subject attribute; never the value) and ask the Programme Head to take a flagged student on
++ View the early-support flags of their support type (student directory data, rule, severity, priority, term, and the subject for a rule on a per-subject attribute; never the value)
++ View the unassigned student-created cases of their support type (student directory data, category, subject, severity, priority, opened date, the student's reason and the names of the shared data attributes; never their values)
++ Ask the Programme Head to take on one of those cases or flags, with an optional note (owner: Member C)
++ View their own take-on requests ("My requests") with the decision and the reason of a decline, change the note of a pending one, or withdraw it
++ Get notified (in-app and email) when a request is approved, declined or cancelled
 
 - Open a student profile with source provenance and missing-data notices:
 
@@ -205,9 +211,9 @@ While the case is in stage contacted or followUp, the advisor or the student req
 + View my schedule: the week's meet-ups as blocks from 08:30 to 18:00, Monday to Friday, with pending requests shown dashed
 + Closing a case or handing it to another advisor cancels its pending requests and meet-ups that have not started
 
-- Talk with the student in the case thread (owner: Member B; chat rules to be decided):
+- Talk with the student in the case thread (owner: Member B):
 
-The case has a message thread that the student and the current advisor both write in, e.g. a next step or a meeting suggestion from the advisor and the student's reply. Messages are attributed and timestamped, are visible to the student and the staff of the case, and cannot be edited or deleted. Nothing can be written while the case is closed, and a student can write once an advisor is assigned. Internal case notes remain staff-only.
+The case has a message thread that the student and the current advisor both write in, e.g. a next step or a meeting suggestion from the advisor and the student's reply. It is not real time (the page loads the thread when it opens or is refreshed). Messages are attributed and timestamped, are read only by the student and the current advisor of the case (QC-238), and cannot be edited or deleted. Nothing can be written while the case is closed, and a student can write once an advisor is assigned. Internal case notes remain staff-only.
 
 + Write and read messages in the case thread
 + Notify the other side when a message is written
@@ -327,6 +333,7 @@ The main entry point: the student asks for help, picks the kind of help, explain
 
 + View own consolidated profile (including own student code and academic status)
 + View own data and its sources (per term, and per subject for per-subject data attributes such as attendance), in the Private data tab, with an academic results summary per term (mark and attendance per subject, pass/fail worked out from the two)
++ See one row per data attribute and term, with the total or the average of a per-subject numeric attribute (its summary method, e.g. Absent slots: total), and open a drawer with the per-subject values
 + See notice where data about them is missing
 + View own consent status per section
 
@@ -370,17 +377,21 @@ Usually there is one Programme Head for the whole app: the manager responsible f
 
 Matching is manual. An advisor suggestion algorithm (ES4) and an AI advisor as a backup when there are not enough advisors (ES13) are extra scope; the Programme Head always makes the final decision.
 
-+ View the queue of unassigned cases (type, category, subject, priority)
++ View the queue of unassigned cases (type, category, subject, severity, priority), sorted by severity (not rated right after critical), then priority, then oldest
++ Rate a case's severity (low/moderate/high/critical; a student-created case starts not rated, a case from a flag gets the flag's) and change its priority (the case's advisor can also change the priority)
++ See the advisors' take-on requests of each unassigned case (a red dot on its Requests button), approve one (the case is assigned to that advisor) or decline one with a reason (owner: Member C)
 + View suitable advisors (by type, subject specialisation, faculty, current workload)
 + Assign a case to an advisor (familiar advisor-student pairs suggested first: quality-of-life add-on, optional)
 + Reassign a case directly if needed
 
 - Work through the early-support flag queue:
 
-+ View the open flags sorted by severity, then priority, then oldest (student directory data, rule, severity, priority, term, and the subject for a rule on a per-subject attribute; never the value)
-+ Open a case from a flag for an advisor of the rule's support type (the case gets the rule's priority and category)
-+ Dismiss a flag with a reason
-+ Approve or turn down an advisor's request to take a flagged student on
++ View the flags in the "Students in need" tab sorted by severity, then priority, then oldest (student directory data, rule, severity, priority, term, and the subject for a rule on a per-subject attribute; never the value)
++ Open a case from a flag for an advisor of the rule's support type (the case gets the rule's category and the flag's severity and priority)
++ Dismiss a flag with a reason (it stays in the list as dismissed and is not raised again for the same student, rule, term and subject)
++ Open the Requests pop-up of a flag (a red dot shows pending requests): approve an advisor's request (a case is opened for that advisor) or decline it with a reason (the request leaves the pop-up)
++ Get notified when an advisor sends a take-on request and when the flag check raises new flags
++ Run the flag check on request
 
 - Approve case advisor changes:
 
@@ -423,7 +434,8 @@ Every account belongs to a personal Google account. After the first Google sign-
 
 - Receive notifications:
 
-+ Receive in-app and email notifications (case assigned, advisor contact info, referral, consent request, escalation, case message, correction decision)
++ Receive in-app and email notifications (case assigned, advisor contact info, referral, consent request, escalation, case message, correction decision, meet-ups, take-on requests and their decisions, new early-support flags)
++ See the unread count on the bell and the latest notifications in its drop-down
 + Mark a notification as read
 + Click through a notification to the relevant item
 + Set notification preferences (email vs in-app)

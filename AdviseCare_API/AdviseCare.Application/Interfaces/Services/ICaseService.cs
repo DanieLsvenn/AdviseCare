@@ -21,6 +21,8 @@ namespace AdviseCare.Application.Interfaces.Services
         Task<ChangeCaseStageResponse> ChangeStageAsync(Guid AdvisorId, Guid CaseId, ChangeCaseStageRequest request);
         Task<ReopenCaseResponse> ReopenAsync(Guid AdvisorId, Guid CaseId, ReopenCaseRequest request);
         Task<ChangeCasePriorityResponse> ChangePriorityAsync(Guid CallerId, Guid CaseId, ChangeCasePriorityRequest request);
+        Task<ChangeCaseSeverityResponse> ChangeSeverityAsync(Guid ProgrammeHeadId, Guid CaseId, ChangeCaseSeverityRequest request);
+        Task<List<GetTakeOnCaseResponse>> GetTakeOnCasesAsync(Guid AdvisorId);
         Task<List<SearchCaseStageHistoryResponse>> SearchCaseStageHistoryAsync(Guid CallerId, SearchCaseStageHistoryRequest request);
     }
 }

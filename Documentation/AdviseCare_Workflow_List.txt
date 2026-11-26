@@ -47,7 +47,9 @@ WF2: Student requests support and gets advised
 2.4.4. Each chosen attribute is recorded as consent for that purpose and, with its note, on the case
 2.5. Submits; the case is created with stage = pending and priority = medium (the student does not set the priority)
 3. Programme Head matches the case (manual; an advisor suggestion algorithm is extra scope, see ES4)
-3.1. Programme Head sees the case in the matching queue (cases can also start from an indicator flag, see EX17)
+3.1. Programme Head sees the case in the matching queue, sorted by severity (not rated right after critical), then priority, then oldest (cases can also start from an indicator flag, see EX17)
+3.1.1. Programme Head rates the case's severity (low/moderate/high/critical; a student-created case starts not rated) and may change its priority
+3.1.2. Advisors may have asked to take the case on (see EX22); a red dot on the case's Requests button shows pending requests, and approving one does steps 3.3-4 for that advisor
 3.2. Programme Head picks a suitable advisor
 3.2.1. Academic case: an academic advisor specialised in that subject, or a general academic advisor of the student's faculty
 3.2.2. Wellbeing case: a wellbeing advisor
@@ -258,33 +260,36 @@ It works like a case for one data attribute, but never opens a case (QC-214)
 6. Student is notified; while pending, the student can track or withdraw the request
 
 EX16: Notifications, language and settings
-1. User views notifications, marks them read, clicks through to the item and clears old ones
+1. User views notifications, marks them read, clicks through to the item and clears old ones; the bell shows the unread count and a drop-down of the latest ones
 2. User sets notification preferences (email/in-app)
 3. User switches language (Vietnamese/English); the choice is remembered
 4. User views own activity history and edits account settings (username, avatar)
 
-EX17: Early-support indicators (owner: Member A)
+EX17: Early-support indicators (owner: Member A; the flag check and the flag queue were built 26/11/2026, the take-on part moved to EX22)
 1. Steward defines an indicator: a rule on one data attribute (comparison and threshold, e.g. Attendance rate < 75), its severity (low/moderate/high/critical), the case priority (low/medium/high/urgent) and the support category a case would get; it starts as a draft and is activated, edited or archived later
-2. After every student data import (and when a rule is activated or changed) the system compares each enrolled student's latest value per term (per term and subject for a per-subject attribute) with every active rule
+2. After every student data import (and when a rule is activated or changed, or when the Programme Head or the Steward runs the check) the system compares each enrolled student's latest value per term (per term and subject for a per-subject attribute) with every active rule
 2.1. A hit raises a flag (one open flag per student, rule, term and subject; e.g. Attendance rate 60 in PRN212 and 70 in SWP391 give two Low attendance flags); a later value that no longer hits the rule clears that subject's open flag
+2.1.1. A flag the Programme Head already dismissed or opened a case from is not raised again for the same student, rule, term and subject
+2.1.2. The Programme Heads are notified when new flags are raised
 2.2. The check runs inside the server only: it is not an access by a person and writes no access log
 3. Staff see a flagged student's directory data, the rule (name, description), severity, priority, term and subject, but never the value; the value stays behind consent
-4. Programme Head works through the flag queue (severity, then priority, then oldest)
-4.1. Opens a case from a flag for an advisor of the rule's support type (the case gets the rule's priority and category, and the flag's subject; the flag is linked to the case), or
-4.2. Dismisses the flag with a reason
-5. An advisor can ask to take a flagged student on; the Programme Head approves it (a case is opened for that advisor) or turns it down (the flag goes back to open)
+4. Programme Head works through the flags in the "Students in need" tab (severity, then priority, then oldest)
+4.1. Opens a case from a flag for an advisor of the rule's support type (the case gets the rule's category, the flag's severity, priority and subject; stage assigned; the flag is linked to the case), or
+4.2. Dismisses the flag with a reason (it stays in the list as dismissed)
+5. Advisors can ask to take a flagged student on (see EX22); approving a request does step 4.1 for that advisor
 6. Cases are never opened automatically; the student is notified as in EX3 and the case continues as WF2 from step 5
 
 EX18: Case thread (owner: Member B)
 1. The student of a case and its current advisor write messages in the case's thread; each message notifies the other side
 2. A student can write once an advisor is assigned; nothing can be added while the case is closed; messages cannot be edited or deleted
-3. The Programme Head and referral staff can read the thread
-4. Still to be decided with Member B (tracked in the Q&A history): real-time or not, attachments, read receipts, who else may write and when, message length and rate limits
+3. Only the student of the case and its current advisor can read the thread (QC-238); the Programme Head and referral staff cannot
+4. Not real time for now: the thread is loaded when the case page opens or is refreshed; messages are 1-1000 characters and may carry up to 5 files
 
 EX19: Case feedback and ratings (owner: Member D)
 1. After a case is closed, its student may rate it once: 1-5 stars and an optional comment
 2. The rating stays tied to the advisor who handled the case (CASEFEEDBACKS.advisorId), even if the case is reopened or reassigned later
-3. Still to be decided with Member D (tracked in the Q&A history): who may read the feedback (the advisor, the Programme Head), whether it is anonymous to the advisor, and whether ratings feed the advisor suggestion algorithm (ES4)
+3. Who reads it (QC-239): the Programme Head sees every rating and comment with the names; the advisor sees only their average rating and the comments without the student's name
+4. Still to be decided with Member D: whether ratings feed the advisor suggestion algorithm (ES4)
 
 EX20: Anonymised welfare statistics and cohort data
 1. Welfare statistics (Student Welfare Officer, Programme Head)
@@ -315,6 +320,18 @@ EX21: Meet-ups (owner: Member B)
 4.2. After it has started, the advisor marks it as held (completed) or missed
 5. Closing the case or changing its advisor (reassignment, approved case change request, accepted referral to another advisor) cancels its pending requests and its meet-ups that have not started
 6. The advisor's schedule screen shows the week (Monday to Friday, 08:30-18:00, lunch break shaded): each scheduled, held or missed meet-up is a block from its start to its end, a pending request a dashed block; a block opens its case
+
+EX22: Take-on requests, "Students in need" (owner: Member C; new 26/11/2026, Q-275)
+1. An advisor opens the "Students in need" tab (below My cases), with two lists of their own support type (academic or wellbeing)
+1.1. Unassigned cases students created (stage pending, no advisor): student directory data, category, subject, severity, priority, opened date, the student's reason and the names of the shared data attributes, never their values
+1.2. Open indicator flags: student directory data, rule, severity, priority, term and subject, never the value
+2. The advisor asks to take one on, with an optional note to the Programme Head; one pending request per advisor and case or flag; every Programme Head is notified (in-app, and by email when that preference is on)
+3. The advisor follows their requests in "My requests": they can change the note of a pending request or withdraw it
+4. The Programme Head reviews the requests of a case (matching queue) or of a flag ("Students in need" tab) in the Requests pop-up; a red dot on the Requests button shows pending requests
+4.1. Approve: a case is assigned to that advisor (WF2 steps 3.3-4); a flag gets a case opened for that advisor (EX17 step 4.1)
+4.2. Decline: writes a reason (required); the request leaves the pop-up; the case or flag stays open for other advisors
+5. The advisor is notified of the decision (in-app, and by email when that preference is on); a declined request shows the reason
+6. Approving one request, assigning the case or opening a case from the flag directly, dismissing or clearing the flag, or closing the case cancels the other pending requests for the same case or flag, and their advisors are told why
 
 ==========
 EXTRA SCOPE (backup plans, not in the current version; details in AdviseCare_Extra_Scope_List.txt)

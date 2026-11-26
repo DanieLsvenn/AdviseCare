@@ -48,6 +48,7 @@ namespace AdviseCare.Application.Services
         private readonly IAccessLogService _accessLogService;
         private readonly IStudentProfileService _studentProfileService;
         private readonly IActivityLogService _activityLogService;
+        private readonly IIndicatorFlagService _indicatorFlagService;
 
         public StudentDataService(
             IGenericRepository<Studentdata> studentDataRepository,
@@ -65,7 +66,8 @@ namespace AdviseCare.Application.Services
             IAccessGuardService accessGuardService,
             IAccessLogService accessLogService,
             IStudentProfileService studentProfileService,
-            IActivityLogService activityLogService)
+            IActivityLogService activityLogService,
+            IIndicatorFlagService indicatorFlagService)
         {
             _studentDataRepository = studentDataRepository;
             _accountRepository = accountRepository;
@@ -83,6 +85,7 @@ namespace AdviseCare.Application.Services
             _accessLogService = accessLogService;
             _studentProfileService = studentProfileService;
             _activityLogService = activityLogService;
+            _indicatorFlagService = indicatorFlagService;
         }
 
         // Get all Student data rows (what was imported and when; never the values)
@@ -286,11 +289,15 @@ namespace AdviseCare.Application.Services
 
             await _activityLogService.LogAsync(CreatorId, "studentDataImported",
                 $"Imported {newRows.Count} value(s) from {fileName}; recorded {missingCount} missing value(s); left out {import.RejectedRows.Count} row(s) of archived data attributes");
+            // Compare the new values with the active indicators (A7.2): raise and clear flags
+            var flagCheck = await _indicatorFlagService.CheckAsync(CreatorId);
 
             return new CreateStudentDataResponse
             {
                 InsertedCount = newRows.Count,
                 MissingCount = missingCount,
+                ClearedFlagCount = flagCheck.ClearedCount,
+                RaisedFlagCount = flagCheck.RaisedCount,
                 RejectedRows = import.RejectedRows,
                 Errors = new List<StudentDataRowErrorResponse>(),
                 IsSuccess = true
@@ -402,12 +409,16 @@ namespace AdviseCare.Application.Services
             var replacedCount = check.Files.Sum(f => f.ReplaceCount);
             await _activityLogService.LogAsync(CreatorId, "transcriptImported",
                 $"Imported {check.Files.Count} transcript file(s) ({gradeFiles} grade, {check.Files.Count - gradeFiles} attendance): {newRows.Count} value(s), {replacedCount} replacing a current value");
+            // Compare the new values with the active indicators (A7.2): raise and clear flags
+            var flagCheck = await _indicatorFlagService.CheckAsync(CreatorId);
 
             return new ImportTranscriptsResponse
             {
                 ImportedFileCount = check.Files.Count,
                 InsertedCount = newRows.Count,
                 ReplacedCount = replacedCount,
+                ClearedFlagCount = flagCheck.ClearedCount,
+                RaisedFlagCount = flagCheck.RaisedCount,
                 Files = check.Files,
                 IsSuccess = true
             };
@@ -634,6 +645,8 @@ namespace AdviseCare.Application.Services
                     IsErased = isShared && (d.ErasedAt != null || (value?.IsErased ?? false)),
                     IsMissing = isShared && d.IsMissing,
                     IsShared = isShared,
+                    DataType = d.DataAttribute.DataType,
+                    SummaryMethod = d.DataAttribute.SummaryMethod,
                     Status = isShared ? d.Status : string.Empty
                 };
             }).ToList();

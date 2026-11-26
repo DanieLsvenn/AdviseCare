@@ -42,6 +42,7 @@ namespace AdviseCare.Application.Services
         public async Task<IEnumerable<GetAllAccessLogResponse>> GetAll()
         {
             var logs = await GetLogsAsync(l => true);
+            var accessorRoles = await GetAccessorRoleNamesAsync(logs);
 
             return logs.Select(l => new GetAllAccessLogResponse
             {
@@ -51,6 +52,7 @@ namespace AdviseCare.Application.Services
                 RecordedUserId = l.RecordedUserId,
                 StudentDataId = l.StudentDataId,
                 AccessorFullName = l.Accessor.FullName,
+                AccessorRoleNames = accessorRoles.GetValueOrDefault(l.AccessorId) ?? new List<string>(),
                 PurposeName = l.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,
                 RecordedUserFullName = l.RecordedUser.FullName,
                 AccessedResource = l.AccessedResource,
@@ -66,12 +68,13 @@ namespace AdviseCare.Application.Services
             if (page < 1 || pageSize < 1)
                 throw new ValidationException("Page and page size must be at least 1.");
 
-            var logs = await GetLogsAsync(l => true);
-
-            return logs
+            var logs = (await GetLogsAsync(l => true))
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(l => new GetAllAccessLogWithPaginationResponse
+                .ToList();
+            var accessorRoles = await GetAccessorRoleNamesAsync(logs);
+
+            return logs.Select(l => new GetAllAccessLogWithPaginationResponse
                 {
                     AccessLogId = l.AccessLogId,
                     AccessorId = l.AccessorId,
@@ -79,6 +82,7 @@ namespace AdviseCare.Application.Services
                     RecordedUserId = l.RecordedUserId,
                     StudentDataId = l.StudentDataId,
                     AccessorFullName = l.Accessor.FullName,
+                    AccessorRoleNames = accessorRoles.GetValueOrDefault(l.AccessorId) ?? new List<string>(),
                     PurposeName = l.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,
                     RecordedUserFullName = l.RecordedUser.FullName,
                     AccessedResource = l.AccessedResource,
@@ -93,6 +97,7 @@ namespace AdviseCare.Application.Services
         {
             var log = await _accessLogRepository.GetByIdAsyncInclude(AccessLogId, l => l.Accessor, l => l.ConsentPurpose, l => l.RecordedUser)
                 ?? throw new NotFoundException("Access log entry not found.");
+            var accessorRoles = await GetAccessorRoleNamesAsync(new List<Accesslog> { log });
 
             return new GetAccessLogByIdResponse
             {
@@ -102,6 +107,7 @@ namespace AdviseCare.Application.Services
                 RecordedUserId = log.RecordedUserId,
                 StudentDataId = log.StudentDataId,
                 AccessorFullName = log.Accessor.FullName,
+                AccessorRoleNames = accessorRoles.GetValueOrDefault(log.AccessorId) ?? new List<string>(),
                 PurposeName = log.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,
                 RecordedUserFullName = log.RecordedUser.FullName,
                 AccessedResource = log.AccessedResource,
@@ -122,6 +128,7 @@ namespace AdviseCare.Application.Services
                 (request.ToDate == null || l.AccessedAt <= request.ToDate) &&
                 (request.IsFlagged == null || l.IsFlagged == request.IsFlagged) &&
                 (string.IsNullOrWhiteSpace(request.Status) || l.Status == request.Status));
+            var accessorRoles = await GetAccessorRoleNamesAsync(logs);
 
             return logs.Select(l => new SearchAccessLogResponse
             {
@@ -131,6 +138,7 @@ namespace AdviseCare.Application.Services
                 RecordedUserId = l.RecordedUserId,
                 StudentDataId = l.StudentDataId,
                 AccessorFullName = l.Accessor.FullName,
+                AccessorRoleNames = accessorRoles.GetValueOrDefault(l.AccessorId) ?? new List<string>(),
                 PurposeName = l.ConsentPurpose?.PurposeName ?? EmergencyAccessLabel,
                 RecordedUserFullName = l.RecordedUser.FullName,
                 AccessedResource = l.AccessedResource,
@@ -183,10 +191,7 @@ namespace AdviseCare.Application.Services
                 (request.FromDate == null || l.AccessedAt >= request.FromDate) &&
                 (request.ToDate == null || l.AccessedAt <= request.ToDate));
 
-            var accessorIds = logs.Select(l => l.AccessorId).Distinct().ToList();
-            var accessorRoles = (await _accountRoleRepository.SearchAsyncInclude(ar => accessorIds.Contains(ar.AccountId), ar => ar.Role))
-                .GroupBy(ar => ar.AccountId)
-                .ToDictionary(g => g.Key, g => g.Select(ar => ar.Role.RoleName).OrderBy(r => r).ToList());
+            var accessorRoles = await GetAccessorRoleNamesAsync(logs);
 
             return logs
                 .Where(l => string.IsNullOrWhiteSpace(request.RoleName) ||
@@ -283,6 +288,15 @@ namespace AdviseCare.Application.Services
                     ? ToCsv(headers, rows)
                     : _excelWriter.WriteRows("Processing record", headers, rows)
             };
+        }
+
+        // Helper: the role names of each accessor of the logs (ACCESSLOGS keeps no role, so it is looked up), ordered by name
+        private async Task<Dictionary<Guid, List<string>>> GetAccessorRoleNamesAsync(List<Accesslog> Logs)
+        {
+            var accessorIds = Logs.Select(l => l.AccessorId).Distinct().ToList();
+            return (await _accountRoleRepository.SearchAsyncInclude(ar => accessorIds.Contains(ar.AccountId), ar => ar.Role))
+                .GroupBy(ar => ar.AccountId)
+                .ToDictionary(g => g.Key, g => g.Select(ar => ar.Role.RoleName).OrderBy(r => r).ToList());
         }
 
         // Helper: load Access logs with accessor, purpose and student, newest first

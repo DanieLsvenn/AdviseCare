@@ -10,7 +10,8 @@ using System.Linq.Expressions;
 namespace AdviseCare.Application.Services
 {
     // Cases: support requests by students (WF2), cases opened by advisors (EX3), matching by the Programme Head (WF2 step 3),
-    // the advisor's case workflow (stages, close, reopen, priority) and the case stage history (CASESTAGEHISTORIES, insert-only).
+    // the advisor's case workflow (stages, close, reopen, priority), the Programme Head's severity, the unassigned cases advisors may ask
+    // to take on ("Students in need") and the case stage history (CASESTAGEHISTORIES, insert-only).
     // CASES.advisorId is the only advisor-student link: an advisor advises a student while holding one of their cases that is not closed.
     // A case change and its stage history row are staged first and saved together with one SaveAsync.
     public class CaseService : ICaseService
@@ -29,6 +30,7 @@ namespace AdviseCare.Application.Services
         private readonly IGenericRepository<Faculty> _facultyRepository;
         private readonly IGenericRepository<Referral> _referralRepository;
         private readonly IGenericRepository<Notification> _notificationRepository;
+        private readonly IGenericRepository<Takeonrequest> _takeOnRequestRepository;
         private readonly IConsentService _consentService;
         private readonly INotificationService _notificationService;
         private readonly IActivityLogService _activityLogService;
@@ -47,6 +49,7 @@ namespace AdviseCare.Application.Services
             IGenericRepository<Faculty> facultyRepository,
             IGenericRepository<Referral> referralRepository,
             IGenericRepository<Notification> notificationRepository,
+            IGenericRepository<Takeonrequest> takeOnRequestRepository,
             IConsentService consentService,
             INotificationService notificationService,
             IActivityLogService activityLogService,
@@ -64,6 +67,7 @@ namespace AdviseCare.Application.Services
             _facultyRepository = facultyRepository;
             _referralRepository = referralRepository;
             _notificationRepository = notificationRepository;
+            _takeOnRequestRepository = takeOnRequestRepository;
             _consentService = consentService;
             _notificationService = notificationService;
             _activityLogService = activityLogService;
@@ -99,6 +103,7 @@ namespace AdviseCare.Application.Services
                 SupportType = c.SupportCategory.SupportType,
                 CurrentStage = c.CurrentStage,
                 Priority = c.Priority,
+                Severity = c.Severity,
                 Status = c.Status
             });
         }
@@ -138,6 +143,7 @@ namespace AdviseCare.Application.Services
                     SupportType = c.SupportCategory.SupportType,
                     CurrentStage = c.CurrentStage,
                     Priority = c.Priority,
+                    Severity = c.Severity,
                     Status = c.Status
                 });
         }
@@ -183,15 +189,17 @@ namespace AdviseCare.Application.Services
                 SupportType = caseRecord.SupportCategory.SupportType,
                 CurrentStage = caseRecord.CurrentStage,
                 Priority = caseRecord.Priority,
+                Severity = caseRecord.Severity,
                 Status = caseRecord.Status,
                 SharedAttributes = sharedAttributes
             };
         }
 
-        // Search Cases by student, advisor, category, subject, support type, stage, priority and status, newest first (Programme Head)
+        // Search Cases by student, advisor, category, subject, support type, stage, priority, severity and status (Programme Head);
+        // newest first, or by urgency (severity, then priority, then oldest) when sortBy = urgency
         public async Task<List<SearchCaseResponse>> SearchAsync(SearchCaseRequest request)
         {
-            var cases = await GetCasesAsync(c =>
+            var found = await GetCasesAsync(c =>
                 (request.AdvisorId == null || c.AdvisorId == request.AdvisorId) &&
                 (request.StudentId == null || c.StudentId == request.StudentId) &&
                 (request.SubjectId == null || c.SubjectId == request.SubjectId) &&
@@ -199,7 +207,9 @@ namespace AdviseCare.Application.Services
                 (string.IsNullOrWhiteSpace(request.SupportType) || c.SupportCategory.SupportType == request.SupportType) &&
                 (string.IsNullOrWhiteSpace(request.CurrentStage) || c.CurrentStage == request.CurrentStage) &&
                 (string.IsNullOrWhiteSpace(request.Priority) || c.Priority == request.Priority) &&
+                (string.IsNullOrWhiteSpace(request.Severity) || (request.Severity == "notRated" ? c.Severity == null : c.Severity == request.Severity)) &&
                 (string.IsNullOrWhiteSpace(request.Status) || c.Status == request.Status));
+            var cases = request.SortBy == "urgency" ? OrderByUrgency(found) : found;
 
             return cases.Select(c => new SearchCaseResponse
             {
@@ -225,6 +235,7 @@ namespace AdviseCare.Application.Services
                 SupportType = c.SupportCategory.SupportType,
                 CurrentStage = c.CurrentStage,
                 Priority = c.Priority,
+                Severity = c.Severity,
                 Status = c.Status
             }).ToList();
         }
@@ -396,6 +407,7 @@ namespace AdviseCare.Application.Services
                 SupportType = created.SupportCategory.SupportType,
                 CurrentStage = created.CurrentStage,
                 Priority = created.Priority,
+                Severity = created.Severity,
                 Status = created.Status,
                 SharedAttributes = await GetSharedAttributesAsync(created.CaseId)
             };
@@ -433,16 +445,20 @@ namespace AdviseCare.Application.Services
                 SupportType = c.SupportCategory.SupportType,
                 CurrentStage = c.CurrentStage,
                 Priority = c.Priority,
+                Severity = c.Severity,
                 Status = c.Status
             }).ToList();
         }
 
-        // Get the matching queue: Cases without an advisor that are not closed, most urgent first, then oldest first (Programme Head)
+        // Get the matching queue: Cases without an advisor that are not closed, by severity (not rated right after critical), then priority,
+        // then oldest first, each with its number of pending take-on requests (Programme Head)
         public async Task<List<GetMatchingQueueCaseResponse>> GetMatchingQueueAsync()
         {
-            var cases = (await GetCasesAsync(c => c.AdvisorId == null && c.Status != "closed"))
-                .OrderByDescending(c => PriorityRank(c.Priority))
-                .ThenBy(c => c.OpenedAt);
+            var cases = OrderByUrgency(await GetCasesAsync(c => c.AdvisorId == null && c.Status != "closed"));
+            var caseIds = cases.Select(c => c.CaseId).ToList();
+            var pendingCounts = (await _takeOnRequestRepository.SearchAsync(r => r.Status == "pending" && r.CaseId != null && caseIds.Contains(r.CaseId.Value)))
+                .GroupBy(r => r.CaseId!.Value)
+                .ToDictionary(g => g.Key, g => g.Count());
 
             return cases.Select(c => new GetMatchingQueueCaseResponse
             {
@@ -468,6 +484,8 @@ namespace AdviseCare.Application.Services
                 SupportType = c.SupportCategory.SupportType,
                 CurrentStage = c.CurrentStage,
                 Priority = c.Priority,
+                PendingTakeOnRequestCount = pendingCounts.GetValueOrDefault(c.CaseId),
+                Severity = c.Severity,
                 Status = c.Status
             }).ToList();
         }
@@ -549,15 +567,23 @@ namespace AdviseCare.Application.Services
             var advisor = await GetActiveAdvisorAsync(request.AdvisorId, AdvisorRoleFor(caseRecord.SupportCategory.SupportType));
             var reason = string.IsNullOrWhiteSpace(request.Reason) ? "Matched by the Programme Head" : request.Reason.Trim();
 
+            var now = DateTime.UtcNow;
             caseRecord.AdvisorId = advisor.AccountId;
             caseRecord.Advisor = advisor;
-            AddStageHistory(caseRecord, ProgrammeHeadId, "assigned", reason, DateTime.UtcNow);
+            AddStageHistory(caseRecord, ProgrammeHeadId, "assigned", reason, now);
             _caseRepository.PrepareUpdate(caseRecord);
+            var (approved, cancelled) = await SettleTakeOnRequestsAsync(CaseId, now);
             await _caseRepository.SaveAsync();
 
             await _activityLogService.LogAsync(ProgrammeHeadId, "caseAssigned",
                 $"Assigned the {caseRecord.SupportCategory.CategoryName} case of {caseRecord.Student.FullName} to {advisor.FullName}");
-            await NotifyMatchAsync(caseRecord, advisor, false);
+            await NotifyMatchAsync(caseRecord, advisor, false, approved != null && approved.AdvisorId == advisor.AccountId);
+            foreach (var takeOnRequest in cancelled)
+            {
+                await _notificationService.NotifyAsync(takeOnRequest.AdvisorId, "Take-on request cancelled",
+                    $"Your request to take on the {caseRecord.SupportCategory.CategoryName} case of {caseRecord.Student.FullName} was cancelled: the case was assigned to {advisor.FullName}.",
+                    "/advisor/students-in-need");
+            }
 
             return new AssignCaseResponse
             {
@@ -571,6 +597,7 @@ namespace AdviseCare.Application.Services
                 ClosedAt = caseRecord.ClosedAt,
                 CurrentStage = caseRecord.CurrentStage,
                 Priority = caseRecord.Priority,
+                Severity = caseRecord.Severity,
                 Status = caseRecord.Status
             };
         }
@@ -604,7 +631,7 @@ namespace AdviseCare.Application.Services
             await _meetupRequestService.CancelOpenMeetupsForCaseAsync(CaseId, ProgrammeHeadId, $"The case moved to another advisor ({advisor.FullName})");
             await _activityLogService.LogAsync(ProgrammeHeadId, "caseReassigned",
                 $"Moved the {caseRecord.SupportCategory.CategoryName} case of {caseRecord.Student.FullName} from {oldAdvisor?.FullName} to {advisor.FullName}: {reason}");
-            await NotifyMatchAsync(caseRecord, advisor, true);
+            await NotifyMatchAsync(caseRecord, advisor, true, false);
             if (oldAdvisor != null)
             {
                 await _notificationService.NotifyAsync(oldAdvisor.AccountId, "Case moved to another advisor",
@@ -624,6 +651,7 @@ namespace AdviseCare.Application.Services
                 ClosedAt = caseRecord.ClosedAt,
                 CurrentStage = caseRecord.CurrentStage,
                 Priority = caseRecord.Priority,
+                Severity = caseRecord.Severity,
                 Status = caseRecord.Status
             };
         }
@@ -658,6 +686,7 @@ namespace AdviseCare.Application.Services
                 SupportType = a.Case.SupportCategory.SupportType,
                 CurrentStage = a.Case.CurrentStage,
                 Priority = a.Case.Priority,
+                Severity = a.Case.Severity,
                 Status = a.Case.Status
             }).ToList();
         }
@@ -698,6 +727,7 @@ namespace AdviseCare.Application.Services
                     SupportType = a.Case.SupportCategory.SupportType,
                     CurrentStage = a.Case.CurrentStage,
                     Priority = a.Case.Priority,
+                    Severity = a.Case.Severity,
                     Status = a.Case.Status
                 });
         }
@@ -766,6 +796,7 @@ namespace AdviseCare.Application.Services
                 ClosedAt = caseRecord.ClosedAt,
                 CurrentStage = caseRecord.CurrentStage,
                 Priority = caseRecord.Priority,
+                Severity = caseRecord.Severity,
                 Status = caseRecord.Status
             };
         }
@@ -804,6 +835,7 @@ namespace AdviseCare.Application.Services
                 ClosedAt = caseRecord.ClosedAt,
                 CurrentStage = caseRecord.CurrentStage,
                 Priority = caseRecord.Priority,
+                Severity = caseRecord.Severity,
                 Status = caseRecord.Status
             };
         }
@@ -845,8 +877,90 @@ namespace AdviseCare.Application.Services
                 ClosedAt = caseRecord.ClosedAt,
                 CurrentStage = caseRecord.CurrentStage,
                 Priority = caseRecord.Priority,
+                Severity = caseRecord.Severity,
                 Status = caseRecord.Status
             };
+        }
+
+        // Change Case severity: the Programme Head rates a case that is not closed (low/moderate/high/critical; a case from a flag starts with the flag's)
+        public async Task<ChangeCaseSeverityResponse> ChangeSeverityAsync(Guid ProgrammeHeadId, Guid CaseId, ChangeCaseSeverityRequest request)
+        {
+            var caseRecord = await GetCaseAsync(CaseId);
+            if (caseRecord.Status == "closed")
+                throw new ConflictException("The case is closed.");
+
+            if (caseRecord.Severity != request.Severity)
+            {
+                var oldSeverity = caseRecord.Severity ?? "not rated";
+                caseRecord.Severity = request.Severity;
+                _caseRepository.PrepareUpdate(caseRecord);
+                await _caseRepository.SaveAsync();
+
+                await _activityLogService.LogAsync(ProgrammeHeadId, "caseSeverityChanged",
+                    $"Changed the severity of the {caseRecord.SupportCategory.CategoryName} case of {caseRecord.Student.FullName} from {oldSeverity} to {request.Severity}");
+            }
+
+            return new ChangeCaseSeverityResponse
+            {
+                CaseId = caseRecord.CaseId,
+                AdvisorId = caseRecord.AdvisorId,
+                StudentId = caseRecord.StudentId,
+                AdvisorEmail = caseRecord.Advisor?.Email ?? string.Empty,
+                AdvisorFullName = caseRecord.Advisor?.FullName ?? string.Empty,
+                CategoryName = caseRecord.SupportCategory.CategoryName,
+                StudentFullName = caseRecord.Student.FullName,
+                ClosedAt = caseRecord.ClosedAt,
+                CurrentStage = caseRecord.CurrentStage,
+                Priority = caseRecord.Priority,
+                Severity = caseRecord.Severity,
+                Status = caseRecord.Status
+            };
+        }
+
+        // Get the unassigned Cases an advisor may ask to take on ("Students in need"): student-created cases of the advisor's support type
+        // that have no advisor, are in stage pending and are not closed, by urgency; each with the advisor's own latest request for it.
+        // Only directory data, the request reason and the names of the shared data attributes are shown, never their values (no ACCESSLOGS row)
+        public async Task<List<GetTakeOnCaseResponse>> GetTakeOnCasesAsync(Guid AdvisorId)
+        {
+            var supportTypes = SupportTypesFor(await GetRoleNamesAsync(AdvisorId));
+            var cases = OrderByUrgency(await _caseRepository.SearchAsyncIncludeOrderBy(c =>
+                    c.AdvisorId == null && c.CurrentStage == "pending" && c.Status != "closed" && supportTypes.Contains(c.SupportCategory.SupportType),
+                c => c.OpenedAt, false,
+                c => c.Student.Studentprofile, c => c.Student.Faculty, c => c.Subject, c => c.SupportCategory));
+            var caseIds = cases.Select(c => c.CaseId).ToList();
+            var myRequests = (await _takeOnRequestRepository.SearchAsync(r => r.AdvisorId == AdvisorId && r.CaseId != null && caseIds.Contains(r.CaseId.Value)))
+                .GroupBy(r => r.CaseId!.Value)
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.CreatedAt).First());
+            var sharedNames = (await _caseAttributeRepository.SearchAsyncInclude(a => caseIds.Contains(a.CaseId), a => a.DataAttribute))
+                .GroupBy(a => a.CaseId)
+                .ToDictionary(g => g.Key, g => g.Select(a => a.DataAttribute?.AttributeName ?? string.Empty).OrderBy(n => n).ToList());
+
+            return cases.Select(c =>
+            {
+                myRequests.TryGetValue(c.CaseId, out var myRequest);
+                return new GetTakeOnCaseResponse
+                {
+                    CaseId = c.CaseId,
+                    FacultyId = c.Student.FacultyId,
+                    MyTakeOnRequestId = myRequest?.TakeOnRequestId,
+                    StudentId = c.StudentId,
+                    SubjectId = c.SubjectId,
+                    SupportCategoryId = c.SupportCategoryId,
+                    CategoryName = c.SupportCategory.CategoryName,
+                    FacultyName = c.Student.Faculty?.FacultyName ?? string.Empty,
+                    MyTakeOnRequestStatus = myRequest?.Status ?? string.Empty,
+                    RequestReason = c.RequestReason,
+                    StudentCode = c.Student.Studentprofile?.StudentCode ?? string.Empty,
+                    StudentFullName = c.Student.FullName,
+                    SubjectCode = c.Subject?.SubjectCode ?? string.Empty,
+                    SubjectName = c.Subject?.SubjectName ?? string.Empty,
+                    SharedAttributeNames = sharedNames.GetValueOrDefault(c.CaseId) ?? new List<string>(),
+                    OpenedAt = c.OpenedAt,
+                    SupportType = c.SupportCategory.SupportType,
+                    Priority = c.Priority,
+                    Severity = c.Severity
+                };
+            }).ToList();
         }
 
         // Search Case stage histories of one case, oldest first (same access as the case; the student can see their own)
@@ -925,6 +1039,7 @@ namespace AdviseCare.Application.Services
             IOrderedEnumerable<AssignedCase> sorted = request.SortBy switch
             {
                 "priority" => isDescending ? assigned.OrderByDescending(a => PriorityRank(a.Case.Priority)) : assigned.OrderBy(a => PriorityRank(a.Case.Priority)),
+                "severity" => isDescending ? assigned.OrderByDescending(a => SeverityRank(a.Case.Severity)) : assigned.OrderBy(a => SeverityRank(a.Case.Severity)),
                 "stage" => isDescending ? assigned.OrderByDescending(a => Array.IndexOf(Stages, a.Case.CurrentStage)) : assigned.OrderBy(a => Array.IndexOf(Stages, a.Case.CurrentStage)),
                 "studentName" => isDescending ? assigned.OrderByDescending(a => a.Case.Student.FullName) : assigned.OrderBy(a => a.Case.Student.FullName),
                 _ => isDescending ? assigned.OrderByDescending(a => a.Case.OpenedAt) : assigned.OrderBy(a => a.Case.OpenedAt)
@@ -979,16 +1094,36 @@ namespace AdviseCare.Application.Services
         }
 
         // Helper: tell the student who their advisor is (with the contact information), and tell the advisor about the case
-        private async Task NotifyMatchAsync(Case CaseRecord, Account Advisor, bool IsReassignment)
+        // (as the answer to their take-on request when the Programme Head approved one)
+        private async Task NotifyMatchAsync(Case CaseRecord, Account Advisor, bool IsReassignment, bool IsTakeOnApproval)
         {
             var categoryName = CaseRecord.SupportCategory.CategoryName;
             await _notificationService.NotifyAsync(CaseRecord.StudentId,
                 IsReassignment ? "Your case has a new advisor" : "Your support request has been matched",
                 $"{Advisor.FullName} ({Advisor.Email}) will handle your {categoryName} request. Please contact them to arrange a meeting.",
                 $"/cases/{CaseRecord.CaseId}");
-            await _notificationService.NotifyAsync(Advisor.AccountId, "New case assigned",
-                $"You have been assigned the {categoryName} case of {CaseRecord.Student.FullName} ({CaseRecord.Student.Email}).",
+            await _notificationService.NotifyAsync(Advisor.AccountId, IsTakeOnApproval ? "Take-on request approved" : "New case assigned",
+                IsTakeOnApproval
+                    ? $"Your request was approved: you have been assigned the {categoryName} case of {CaseRecord.Student.FullName} ({CaseRecord.Student.Email})."
+                    : $"You have been assigned the {categoryName} case of {CaseRecord.Student.FullName} ({CaseRecord.Student.Email}).",
                 $"/cases/{CaseRecord.CaseId}");
+        }
+
+        // Helper: close the pending take-on requests of a case that has just been given an advisor. The request the take-on request service
+        // approved is already staged as approved (the tracked row keeps that status, so it is not cancelled); every other pending one is cancelled.
+        // Staged only, the caller saves; returns the approved request (if any) and the cancelled ones, for the notifications
+        private async Task<(Takeonrequest? Approved, List<Takeonrequest> Cancelled)> SettleTakeOnRequestsAsync(Guid CaseId, DateTime DecidedAt)
+        {
+            var requests = await _takeOnRequestRepository.SearchAsync(r => r.CaseId == CaseId && (r.Status == "pending" || r.Status == "approved"));
+            var approved = requests.FirstOrDefault(r => r.Status == "approved");
+            var cancelled = requests.Where(r => r.Status == "pending").ToList();
+            foreach (var request in cancelled)
+            {
+                request.Status = "cancelled";
+                request.DecidedAt = DecidedAt;
+                _takeOnRequestRepository.PrepareUpdate(request);
+            }
+            return (approved, cancelled);
         }
 
         // Helper: the role names of an account
@@ -1024,6 +1159,41 @@ namespace AdviseCare.Application.Services
         private static string AdvisorRoleFor(string SupportType)
         {
             return SupportType == "wellbeing" ? "Wellbeing Advisor" : "Academic Advisor";
+        }
+
+        // Helper: the support types an advisor handles, from their advisor roles
+        private static HashSet<string> SupportTypesFor(HashSet<string> RoleNames)
+        {
+            var supportTypes = new HashSet<string>();
+            if (RoleNames.Contains("Academic Advisor"))
+                supportTypes.Add("academic");
+            if (RoleNames.Contains("Wellbeing Advisor"))
+                supportTypes.Add("wellbeing");
+            return supportTypes;
+        }
+
+        // Helper: the most urgent cases first: by severity (not rated right after critical, so it gets rated), then priority, then oldest
+        private static List<Case> OrderByUrgency(IEnumerable<Case> Cases)
+        {
+            return Cases
+                .OrderByDescending(c => SeverityRank(c.Severity))
+                .ThenByDescending(c => PriorityRank(c.Priority))
+                .ThenBy(c => c.OpenedAt)
+                .ToList();
+        }
+
+        // Helper: critical = 5, not rated = 4, high = 3, moderate = 2, low = 1, used to order by severity
+        private static int SeverityRank(string? Severity)
+        {
+            return Severity switch
+            {
+                "critical" => 5,
+                null => 4,
+                "high" => 3,
+                "moderate" => 2,
+                "low" => 1,
+                _ => 0
+            };
         }
 
         // Helper: urgent = 4 ... low = 1, used to order by priority

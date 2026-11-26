@@ -62,8 +62,9 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "Data Protection Steward")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Create data attribute",
             Description = "Creates an active data attribute (name, description shown to students and staff, isSubjectSpecific, data type). The name must be unique; it is also the value the student data import matches. " +
-                "isSubjectSpecific = true means every value belongs to one subject (e.g. Attendance rate per subject): the import then needs a subject for it and creates no missing rows for it.")]
-        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+                "isSubjectSpecific = true means every value belongs to one subject (e.g. Attendance rate per subject): the import then needs a subject for it and creates no missing rows for it. " +
+                "summaryMethod (sum/average, optional, only for a per-subject numeric attribute) says how its per-subject values of one term add up in the student's Private data summary row, e.g. Absent slots = sum, Subject mark = average.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- A summary method can only be set for a per-subject numeric data attribute.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status409Conflict, "- A data attribute named '{attributeName}' already exists.", typeof(ErrorResponse))]
@@ -77,8 +78,8 @@ namespace AdviseCare.API.Controllers
         [HttpPut("{id}")]
         [Authorize(Roles = "Data Protection Steward")]
         [SwaggerOperation(Summary = "[Data Protection Steward] Update data attribute",
-            Description = "Edits the description. The name, isSubjectSpecific and the data type cannot be changed, and an archived data attribute cannot be edited.")]
-        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+            Description = "Edits the description and the summaryMethod (leave it out or null to keep it, empty to remove it, sum or average to set it; only for a per-subject numeric attribute). The name, isSubjectSpecific and the data type cannot be changed, and an archived data attribute cannot be edited.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- A summary method can only be set for a per-subject numeric data attribute.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status404NotFound, "- Data attribute not found.", typeof(ErrorResponse))]

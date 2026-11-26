@@ -119,8 +119,6 @@ public partial class Account
 
     public virtual Faculty Faculty { get; set; }
 
-    public virtual ICollection<Indicatorflag> IndicatorflagRequestedByNavigations { get; set; } = new List<Indicatorflag>();
-
     public virtual ICollection<Indicatorflag> IndicatorflagResolvedByNavigations { get; set; } = new List<Indicatorflag>();
 
     public virtual ICollection<Indicatorflag> IndicatorflagStudents { get; set; } = new List<Indicatorflag>();
@@ -140,6 +138,10 @@ public partial class Account
     public virtual ICollection<Report> Reports { get; set; } = new List<Report>();
 
     public virtual ICollection<Restoreoperation> Restoreoperations { get; set; } = new List<Restoreoperation>();
+
+    public virtual ICollection<Takeonrequest> TakeonrequestAdvisors { get; set; } = new List<Takeonrequest>();
+
+    public virtual ICollection<Takeonrequest> TakeonrequestDecidedByNavigations { get; set; } = new List<Takeonrequest>();
 
     public virtual ICollection<Session> Sessions { get; set; } = new List<Session>();
 

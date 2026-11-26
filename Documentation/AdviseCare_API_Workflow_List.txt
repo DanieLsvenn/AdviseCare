@@ -89,8 +89,8 @@ Ready-made demo files in Documentation/AdviseCare_Mock_Data (the team's two real
 RECOMMENDED RUN ORDER
 ==========
 
-EX11 steps 1-3 (faculties, programmes, terms, subjects) -> WF1 -> EX1 -> EX2 -> EX12 -> WF3 -> EX11 step 4 (support categories) -> WF5 -> WF2 -> EX18 -> EX21 -> EX7 -> EX4 -> WF2b -> EX5 -> EX6 -> EX3 -> EX8 -> EX9 -> EX10 -> EX13 -> EX14 -> EX15 -> WF4 -> EX20 -> EX19 -> EX17 -> EX16
-Everything is [EXISTS] except EX17 (early-support indicators, Member A) and EX19 (case feedback, Member D), which are [PLANNED].
+EX11 steps 1-3 (faculties, programmes, terms, subjects) -> WF1 -> EX1 -> EX2 -> EX12 -> WF3 -> EX11 step 4 (support categories) -> WF5 -> EX17 -> EX22 -> WF2 -> EX18 -> EX21 -> EX7 -> EX4 -> WF2b -> EX5 -> EX6 -> EX3 -> EX8 -> EX9 -> EX10 -> EX13 -> EX14 -> EX15 -> WF4 -> EX20 -> EX19 -> EX16
+Everything is [EXISTS] except EX17 step 1 (indicator set-up, Member A; the seed has 6 indicators) and EX19 (case feedback, Member D), which are [PLANNED].
 
 ==========
 MAIN WORKFLOWS
@@ -316,7 +316,9 @@ WF2: Student requests support and gets advised
 3.1. Programme Head sees the case in the matching queue
    GET /api/Cases/matching-queue [EXISTS]
    Auth: {programmeHeadToken}
-   Expect: both cases with currentStage = pending, ordered by priority then openedAt
+   Expect: both cases with currentStage = pending and severity = null (not rated), ordered by severity (not rated right after critical), then priority, then openedAt; pendingTakeOnRequestCount = advisors' take-on requests waiting (EX22)
+   PUT /api/Cases/{caseAcademicId}/severity [EXISTS], body { "severity": "high" } -> severity = high, the case moves up the queue; activity log caseSeverityChanged
+   Negative: "severity": "urgent" -> 400; {academicAdvisorToken} -> 403; a closed case -> 409 "The case is closed."
    Unhappy:
    - no token or an ended session -> 401
    - {studentToken} -> 403 "Your role cannot use this route."
@@ -905,8 +907,8 @@ WF5: Admin imports student data
    - a required field empty or out of range -> 400 (errors per field)
    - no token or an ended session -> 401
    - {studentToken} -> 403 "Your role cannot use this route."
-6. Early-support flags are raised or cleared (see EX17) [PLANNED]
-   Expect: after the 4.2 import, student@gmail.com (Attendance rate 72 in PRN212, 86 in SWP391) gets one open flag of the "Low attendance" indicator (< 75) for Fall 2026 and PRN212
+6. Early-support flags are raised or cleared (see EX17) [EXISTS]
+   Expect: the import response has raisedFlagCount and clearedFlagCount; after the 4.2 import, student@gmail.com (Attendance rate 72 in PRN212, 86 in SWP391) gets one open flag of the "Low attendance" indicator (< 75) for Fall 2026 and PRN212 (GET /api/IndicatorFlags/search?studentId={studentId}); activity log indicatorFlagsChecked; the Programme Heads get "New students in need"
 7. Admin views the import result and the import history
    GET /api/ActivityLogs/search?activityType=studentDataImported [EXISTS]
    Auth: {adminToken}
@@ -1721,13 +1723,14 @@ EX15: Correction request (works like a one-attribute case, never opens a case; Q
 EX16: Notifications, language and settings
 1. User views notifications, marks them read, clicks through and clears old ones
    GET /api/Notifications/me [EXISTS]
+   GET /api/Notifications/me?unreadOnly=true&page=1&pageSize=5 [EXISTS] (the bell's drop-down: the latest unread ones)
    GET /api/Notifications/me/unread-count [EXISTS]
    PUT /api/Notifications/me/{notificationId}/read [EXISTS]
    PUT /api/Notifications/me/read-all [EXISTS]
    DELETE /api/Notifications/me/{notificationId} [EXISTS]
    DELETE /api/Notifications/me/clear [EXISTS] (removes read notifications only)
    Auth: {studentToken}
-   Test data (no other feature sends notifications yet): create some as admin
+   Test data: the other features send notifications (e.g. WF2 step 4, EX22); more can be created as admin
    POST /api/Notifications [EXISTS]
    Auth: {adminToken}
    Body:
@@ -1758,7 +1761,7 @@ EX16: Notifications, language and settings
    Expect: the new avatarUrl
    Negative: avatar_too_big.png -> 400; avatar.bmp -> 400
 
-EX17: Early-support indicators [PLANNED] (Member A; routes are a proposal)
+EX17: Early-support indicators (Member A; the indicator set-up of step 1 is [PLANNED], the seed has 6 indicators: 5 active, "Many late submissions" a draft)
 1. Steward defines an indicator
    POST /api/Indicators [PLANNED]
    Auth: {stewardToken}
@@ -1774,23 +1777,32 @@ EX17: Early-support indicators [PLANNED] (Member A; routes are a proposal)
      "severity": "high"
    }
    Expect: status = draft; activity log indicatorCreated
-   Save: -> {indicatorId}
-   PUT /api/Indicators/{indicatorId}/activate [PLANNED] -> status = active; every enrolled student's latest Attendance rate is checked
+   PUT /api/Indicators/{indicatorId}/activate [PLANNED] -> status = active; then the flag check runs (step 2)
    Negative: "thresholdValue": "abc" for a numeric attribute -> 400; "comparisonOperator": "lessThan" on a categorical attribute -> 400 (only equal/notEqual); a name that exists -> 409; an archived data attribute -> 409
-2. The system raises or clears flags after every import (WF5 step 6)
-   GET /api/Indicators/flags?status=open [PLANNED]
+2. The system raises or clears flags after every import (WF5 step 6), or when asked
+   POST /api/IndicatorFlags/check [EXISTS]
+   Auth: {programmeHeadToken} or {stewardToken}
+   Expect: checkedStudentCount, checkedValueCount, raisedCount, clearedCount; a second call right after raises nothing; activity log indicatorFlagsChecked
+   GET /api/IndicatorFlags/search?status=open [EXISTS]
    Auth: {programmeHeadToken}
-   Expect: one flag per student, rule, term and subject (subject empty for a per-term rule), sorted by severity, priority, oldest; each shows the student's directory data, the rule name and description, severity, priority, term, subject; never the value
+   Expect: one flag per student, rule, term and subject (subject empty for a per-term rule), sorted by severity, priority, oldest; each shows the student's directory data (name, studentCode, facultyName), the rule (indicatorName, indicatorDescription, attributeName, comparisonOperator, thresholdValue), severity, priority, termName, subjectCode; never the value; pendingTakeOnRequestCount for the Requests button
    Check: GET /api/AccessLogs/search?recordedUserId={studentId} shows no row for the flag check (it is a server check, not an access)
-   Negative: {studentToken} -> 403
+   GET /api/IndicatorFlags [EXISTS] with {academicAdvisorToken} -> only the open flags of academic rules (a wellbeing advisor sees only wellbeing rules); myTakeOnRequestId / myTakeOnRequestStatus = the advisor's own request
+   Unhappy:
+   - a filter out of range (e.g. status=requested) -> 400 (errors per field)
+   - no token or an ended session -> 401
+   - {studentToken} -> 403 "Your role cannot use this route."
+   - GET /api/IndicatorFlags/{id} of a flag of the other support type with an advisor token -> 404 "Indicator flag not found."
 3. Programme Head opens a case from a flag or dismisses it
-   PUT /api/Indicators/flags/{flagId}/open-case [PLANNED], body { "advisorId": "{academicAdvisorId}" } -> a case with openedBy = the Programme Head, the rule's priority and category; the flag gets caseId and status = caseOpened
-   PUT /api/Indicators/flags/{flagId}/dismiss [PLANNED], body { "dismissReason": "Absences were excused (medical certificate)." } -> status = dismissed
-   Negative: dismiss without a reason -> 400; an advisor of the wrong support type -> 400; a flag that is not open or requested -> 409
-4. An advisor asks to take a flagged student on
-   PUT /api/Indicators/flags/{flagId}/request [PLANNED] with {academicAdvisorToken} -> status = requested, requestedBy = the advisor
-   PUT /api/Indicators/flags/{flagId}/approve-request [PLANNED] / turn-down-request [PLANNED] with {programmeHeadToken} -> a case for that advisor, or the flag back to open
-   Negative: a second advisor requesting the same flag -> 409
+   PUT /api/IndicatorFlags/{flagId}/open-case [EXISTS], body { "advisorId": "{academicAdvisorId}", "reason": "Attendance follow-up" }
+   Expect: openedBy = the Programme Head, the rule's category, the flag's severity, priority and subject, currentStage = assigned with a stage history row pending -> assigned; the flag gets caseId and status = caseOpened; the student and the advisor are notified; pending take-on requests of the flag are cancelled; activity log caseOpenedFromFlag
+   PUT /api/IndicatorFlags/{flagId}/dismiss [EXISTS], body { "dismissReason": "Absences were excused (medical certificate)." } -> status = dismissed, resolvedBy = the Programme Head; the flag stays in the list and is not raised again for the same student, rule, term and subject; activity log indicatorFlagDismissed
+   Unhappy:
+   - dismiss without a reason -> 400 "Dismiss reason is required."
+   - an advisor of the wrong support type -> 400 "{FullName} does not have the role Academic Advisor."
+   - an unknown flag -> 404 "Indicator flag not found."; an unknown advisor -> 404 "Advisor account not found."
+   - a flag that is not open -> 409 "Only an open flag can be dismissed." / "Only an open flag can be turned into a case."
+4. Advisors ask to take a flagged student on -> see EX22
 
 EX18: Case thread
 1. The student and the current advisor write in the case's thread
@@ -1800,15 +1812,14 @@ EX18: Case thread
    Expect: the message with authorRole = advisor; the student gets a notification; activity log caseMessageSent
    Then with {studentToken}: { "caseId": "{caseId}", "messageText": "I will be there, thanks." }
    Negative: a closed case -> 409; the student of a pending case (no advisor yet) -> 409; an empty text or more than 1000 characters -> 400; an advisor who is not the case's advisor -> 403
-2. Read the thread
-   GET /api/CaseMessages/search?caseId={caseId} [EXISTS] with {studentToken}, {academicAdvisorToken} or {programmeHeadToken}
+2. Read the thread (only the student of the case and its current advisor, QC-238; not real time)
+   GET /api/CaseMessages/search?caseId={caseId} [EXISTS] with {studentToken} or {academicAdvisorToken}
    Expect: oldest first; no edit or delete endpoint exists
    Unhappy:
    - a required field empty or out of range -> 400 (errors per field)
    - no token or an ended session -> 401
-   - {adminToken} -> 403 "Your role cannot use this route."
-   - an unknown or someone else's id -> 404 "Case not found."
-3. Chat rules still to be decided with Member B (real-time or not, attachments, read receipts, limits): see the Q&A history
+   - {programmeHeadToken}, {welfareOfficerToken} or {adminToken} -> 403 "Your role cannot use this route."
+   - another advisor, a former advisor of the case, or an unknown id -> 404 "Case not found."
 
 EX19: Case feedback and ratings [PLANNED] (Member D; routes are a proposal)
 1. The student rates a closed case once
@@ -1817,7 +1828,7 @@ EX19: Case feedback and ratings [PLANNED] (Member D; routes are a proposal)
    Body: { "caseId": "{caseId}", "comment": "Clear advice and quick replies.", "rating": 5 }
    Expect: advisorId = the case's advisor; activity log caseFeedbackGiven
    Negative: a case that is not closed -> 409; a second rating for the same case -> 409; "rating": 6 -> 400; another student's case -> 404
-2. Reading the feedback: who may read it is still to be decided (Q&A); proposal GET /api/CaseFeedbacks/search?advisorId= [PLANNED] for the Programme Head
+2. Reading the feedback (QC-239): GET /api/CaseFeedbacks/search?advisorId= [PLANNED] for the Programme Head (every rating and comment, with names); GET /api/CaseFeedbacks/me [PLANNED] for an advisor (their average and the comments without the student's name)
 
 EX20: Anonymised welfare statistics and cohort data
 1. Welfare statistics
@@ -1869,17 +1880,56 @@ Times: meetupDate (yyyy-MM-dd) and startTime (HH:mm) are Vietnam time; Monday to
    Mock data: aa.khoavd has a scheduled meet-up on 02/12/2026 14:00-15:30 (online) and a pending request for 01/12/2026 09:30-10:00
 5. Clean-up: closing the case (PUT /api/Cases/{caseId}/stage with "closed"), reassigning it, approving a case change request or accepting a referral to another advisor cancels its pending requests and its meet-ups that have not started; both sides are notified
 
+EX22: Take-on requests, "Students in need" (Member C on paper; built 26/11/2026)
+1. The advisor opens "Students in need"
+   GET /api/Cases/take-on [EXISTS]
+   Auth: {academicAdvisorToken}
+   Expect: the unassigned academic cases students created (stage pending, no advisor), by severity (not rated right after critical), priority, oldest; each with studentFullName, studentCode, facultyName, categoryName, subjectCode, severity, priority, openedAt, requestReason and sharedAttributeNames (names only, never values; no ACCESSLOGS row); myTakeOnRequestId / myTakeOnRequestStatus
+   GET /api/IndicatorFlags [EXISTS] -> the open academic flags (EX17 step 2)
+   Mock data: 4 pending academic cases (e.g. 0FE0D460 Study plan) and 2 pending wellbeing cases (FEA50E77, 71B899E2); 5 seeded take-on requests (3 pending, 1 declined, 1 withdrawn)
+2. The advisor asks to take one on
+   POST /api/TakeOnRequests [EXISTS]
+   Auth: {academicAdvisorToken}
+   Body: { "caseId": "{caseAcademicId}", "note": "I teach PRN212 and know the student." } (or { "indicatorFlagId": "{flagId}" })
+   Expect: status = pending, targetType = case (or flag); every Programme Head gets "New take-on request"; activity log takeOnRequested
+   Save: takeOnRequestId -> {takeOnRequestId}
+   Unhappy:
+   - both or neither of caseId and indicatorFlagId -> 400 "Choose either a case or an indicator flag."
+   - a note over 1000 characters -> 400 (errors per field)
+   - {wellbeingAdvisorToken} for an academic case, or an unknown case -> 404 "Case not found."; the same for a flag -> 404 "Indicator flag not found."
+   - an assigned case -> 409 "The case already has an advisor."; a closed case -> 409 "The case is closed."; a flag that is not open -> 409 "This flag is no longer open."
+   - a second pending request for the same item -> 409 "You already have a pending request for this case." / "... for this flag."
+3. The advisor follows their requests ("My requests")
+   GET /api/TakeOnRequests/me?status=pending [EXISTS] -> own requests, pending first, then newest
+   PUT /api/TakeOnRequests/{takeOnRequestId} [EXISTS], body { "note": "Available Tuesday afternoons." } -> the note changes (empty removes it); not pending -> 409 "Only a pending take-on request can be changed."
+   PUT /api/TakeOnRequests/{takeOnRequestId}/withdraw [EXISTS] -> status = withdrawn; activity log takeOnWithdrawn; again -> 409 "Only a pending take-on request can be withdrawn."; another advisor's request -> 404 "Take-on request not found."
+4. The Programme Head decides in the Requests pop-up
+   GET /api/TakeOnRequests/search?caseId={caseAcademicId}&status=pending [EXISTS] (or ?indicatorFlagId={flagId}&status=pending)
+   Auth: {programmeHeadToken}
+   Expect: the pending requests with advisorFullName, advisorOpenCaseCount and note
+   PUT /api/TakeOnRequests/{takeOnRequestId}/approve [EXISTS]
+   Expect (case): the case is assigned to that advisor as in WF2 step 3.3 (stage pending -> assigned), the student gets the advisor's contact information, the advisor gets "Take-on request approved"
+   Expect (flag): a case is opened for that advisor as in EX17 step 3, with the flag's severity and priority
+   Expect (both): the other pending requests for the item become cancelled and their advisors get "Take-on request cancelled"; activity log takeOnApproved
+   PUT /api/TakeOnRequests/{takeOnRequestId}/decline [EXISTS], body { "declineReason": "Your caseload is full this week." } -> status = declined with the reason; the advisor is notified; the case or flag stays open; activity log takeOnDeclined
+   Unhappy:
+   - decline without a reason -> 400 "Decline reason is required."
+   - {academicAdvisorToken} on approve/decline -> 403 "Your role cannot use this route."
+   - an unknown id -> 404 "Take-on request not found."
+   - a request already decided, withdrawn or cancelled -> 409 "This take-on request has already been decided, withdrawn or cancelled."
+5. Other actions that cancel pending requests: PUT /api/Cases/{id}/assign (direct assign), PUT /api/IndicatorFlags/{id}/open-case or /dismiss, and a flag cleared by the check; the advisors are told why
+
 ==========
 NOTES
 ==========
 
 - All [PLANNED] routes are proposals: the member who builds the controller may rename them; update this file when they do
-- Members A, B, C and D's routes are built and tagged [EXISTS], except EX17 and EX19; any feature that shows or exports a data attribute value calls IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync with the purpose, e.g. the statistics purpose for cohort data), then IAttributeKeyService.DecryptValuesAsync and LogAccessAsync / LogAccessBatchAsync before showing or exporting any data attribute value; the StudentData import encrypts with IAttributeKeyService.EncryptValuesAsync
+- Members A, B, C and D's routes are built and tagged [EXISTS], except EX17 step 1 (indicator set-up) and EX19; any feature that shows or exports a data attribute value calls IAccessGuardService (CheckAccessAsync / CheckAccessForStudentsAsync with the purpose, e.g. the statistics purpose for cohort data), then IAttributeKeyService.DecryptValuesAsync and LogAccessAsync / LogAccessBatchAsync before showing or exporting any data attribute value; the StudentData import encrypts with IAttributeKeyService.EncryptValuesAsync
 - Student profile (directory) data is open to all staff and not logged; data attribute values need consent (or emergency access) and every value shown to staff is logged with its studentDataId; the student's own reads are not logged
 - The API needs Encryption:MasterKeys (numbered versions of 32 random bytes in base64, e.g. "1": "...") and Encryption:CurrentVersion in appsettings.json, or the environment variables Encryption__MasterKeys__1 and Encryption__CurrentVersion on MonsterASP; it refuses to start without them. Every environment that shares a database must use the same master keys
 - Master key rotation: add version 2 next to version 1, set CurrentVersion = 2, restart, then PUT /api/AttributeKeys/rewrap [EXISTS] (Steward) until no key uses version 1; only then remove version 1
 - EX1, EX2 step 4, WF1 step 4.2 and EX16 avatar need Google, Gmail and Supabase values in appsettings.json; until then they return errors from the outside service
-- Notifications sent by other features (WF2 step 4, EX4, EX5, EX6, EX7, EX8, EX15, EX18) are written through NotificationService.NotifyAsync
+- Notifications sent by other features (WF2 step 4, EX4, EX5, EX6, EX7, EX8, EX15, EX17, EX18, EX21, EX22) are written through NotificationService.NotifyAsync
 - Decided for the case workflow (were open questions, answered with Member D's implementation):
   - WF2 2.5: the student does not set the priority (a new request is always medium); an advisor may give one when opening a case (EX3); afterwards the case's advisor, the Programme Head or a Welfare Officer who received a referral of the case changes it with PUT /api/Cases/{id}/priority
   - WF2b 2.2: the priority is set on the case; a referral keeps its own priority given by the sender
@@ -1895,18 +1945,22 @@ GET /api/SupportCategories?page=1&pageSize=20 - all categories (any role)
 GET /api/SupportCategories/{id}/shareable-attributes - the active attributes of the category's consent purpose the student may share (WF2 2.4.1 in one call); alreadyShared = true for attributes the student already consented to
 GET /api/Cases?page=1&pageSize=20 - Programme Head: all cases, newest first
 GET /api/Cases/me?status=open&currentStage=assigned - Student: own cases (D2.3)
-GET /api/Cases/search?studentId=&advisorId=&supportCategoryId=&subjectId=&supportType=&currentStage=&status=&priority= - Programme Head: any cases, newest first
-GET /api/Cases/assigned?unreadOnly=true&sortBy=priority&sortDirection=desc&page=1&pageSize=20 - advisor list options; also student (name or code contains), supportType, priority, status; each case has unreadNotificationCount
+GET /api/Cases/search?studentId=&advisorId=&supportCategoryId=&subjectId=&supportType=&currentStage=&status=&priority=&severity=&sortBy= - Programme Head: any cases, newest first, or sortBy=urgency (severity, priority, oldest); severity=notRated finds cases not rated yet
+GET /api/Cases/assigned?unreadOnly=true&sortBy=priority&sortDirection=desc&page=1&pageSize=20 - advisor list options (sortBy also severity); also student (name or code contains), supportType, priority, status; each case has unreadNotificationCount
 GET /api/Cases/assigned/unread-count - advisor: how many of my cases have unread notifications (D4.1 badge)
 GET /api/CaseNotes?page=1&pageSize=20 - advisor: the notes I wrote (drafts and finalized)
 GET /api/CaseNotes/{id} - one note (drafts only for their author)
-GET /api/CaseMessages/search?caseId={caseId} - student of the case and its staff: the case's message thread, oldest first, each with authorRole (student/advisor)
+GET /api/CaseMessages/search?caseId={caseId} - the student of the case and its current advisor only: the case's message thread, oldest first, each with authorRole (student/advisor)
 POST /api/CaseMessages - the student of the case or its current advisor: { "caseId", "messageText" } (1-1000 characters); not on a closed case, a student only once an advisor is assigned; logs caseMessageSent and notifies the other side; no edit/delete endpoint
 GET /api/CaseMessages?page=1&pageSize=20 - student or advisor: the messages I wrote
 GET /api/MeetupRequests?page=1&pageSize=20 - student or advisor: my meet-up requests, newest first
 GET /api/MeetupRequests/{id} - one meet-up request (the student, its advisor, the staff of the case)
 GET /api/MeetupSchedules?page=1&pageSize=20 - student or advisor: my meet-ups, soonest first
 GET /api/MeetupSchedules/{id} - one meet-up
+GET /api/IndicatorFlags?page=1&pageSize=20 - Programme Head: every flag; advisor: the open flags of their support type
+GET /api/IndicatorFlags/{id} - one flag (Programme Head; an advisor for an open flag of their type or one they asked for)
+GET /api/TakeOnRequests?page=1&pageSize=20 - Programme Head: every take-on request, pending first
+GET /api/TakeOnRequests/{id} - one take-on request (Programme Head, or the advisor who sent it)
 GET /api/Accounts/staff/search?fullName=&email=&roleNames=Academic Advisor,Wellbeing Advisor - any staff role: the staff directory (active staff, name/email/roles only, at most 50) used by the web app's people pickers; students are never listed
 GET /api/Referrals?page=1&pageSize=20 - Programme Head: all referrals
 GET /api/Referrals/me/outgoing?status=pending - advisor: referrals I sent
@@ -1918,7 +1972,7 @@ Rules worth knowing when testing
 - CASES.advisorId is the only advisor-student link (no ADVISORASSIGNMENTS): an advisor advises a student while holding one of their cases that is not closed
 - Notifications about cases point to /cases/{caseId}, /referrals/{referralId} or /case-change-requests/{id}; opening GET /api/Cases/{id} marks the caller's notifications for that case as read, which drives unreadNotificationCount in /api/Cases/assigned
 - Case notes: only the case's current advisor writes; drafts are private; students never read notes
-- Case messages: a two-way thread separate from case notes; the student and the current advisor write (not on a closed case), and the student, current advisor, Programme Head and staff involved in a case referral read; messages are append-only and each one notifies the other side
+- Case messages: a two-way thread separate from case notes; only the student and the current advisor write (not on a closed case) and read it (QC-238); messages are append-only and each one notifies the other side
 - A case with a pending referral cannot change stage, be reassigned or have a change request approved until the receiver accepts or returns it
 - Welfare Officer accepting a referral does not take the case: the advisor keeps it (stage stays referred) and moves it to followUp after the welfare work
 - Advisor outreach (EX3) works for any active student, but only with a category of the advisor's own type

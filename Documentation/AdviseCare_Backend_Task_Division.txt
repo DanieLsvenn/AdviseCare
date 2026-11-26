@@ -33,16 +33,16 @@ A3. Master data (Admin)
 A3.1. Faculties, programmes and academic terms CRUD; only one term can be current, setting a new current term moves the old one to past
 A3.2. Subjects under a faculty CRUD; link academic advisors to subjects (ACCOUNT_SUBJECT)
 A4. Notifications (in-app; NotificationService)
-A4.1. Notification CRUD; own inbox: list, mark read, mark all read, delete, clear old (read) notifications
+A4.1. Notification CRUD; own inbox: list (optional page, pageSize and unreadOnly, newest first; added 26/11/2026, QC-288, for the bell's drop-down), unread count, mark read, mark all read, delete, clear old (read) notifications
 A4.2. NotifyAsync for other features: writes the in-app notification and, if the account's email preference is on, also sends it by email
 A4.3. Notification preferences (email / in-app); a missing row means the channel is on
 A5. Own account: profile (username, preferred language), avatar upload (Supabase Storage), activity history (ACTIVITYLOGS, types listed in AdviseCare_Activity_Types.txt)
 A6. Admin configuration panel (extra scope, ES15; not officially registered in docs; not started): the settings listed in AdviseCare_Functional_Requirements.txt, needs a SYSTEMSETTINGS table
-A7. Early-support indicators (new 09/11/2026; entities and seed done, service and controller to do)
+A7. Early-support indicators (new 09/11/2026; entities and seed done; A7.2, A7.3 and A7.5 built 26/11/2026 in IndicatorFlagService and IndicatorFlagsController, committed with Member B's batch; A7.1 still to do)
 A7.1. Indicators CRUD (Data Protection Steward): name, description, data attribute, comparison operator + threshold (checked against the attribute's data type), severity, priority, support category; draft -> active -> archived
 A7.2. Flag check (server-side, no ACCESSLOGS row): after every student data import and when a rule is activated or changed, compare each enrolled student's latest value per term (per term and subject for a per-subject attribute) with every active rule; raise one open flag per student, rule, term and subject (INDICATORFLAGS.subjectId, copied from the flagged STUDENTDATA row, empty for a per-term rule); clear an open flag whose student no longer hits the rule in that subject. Member C's import calls it after its save
-A7.3. Flag queue (Programme Head): list by severity, priority, oldest; open a case from a flag (calls Member D's case creation with openedBy = the Programme Head, the rule's priority and category, then sets the flag's caseId, status caseOpened); dismiss with a reason
-A7.4. Advisor request: an advisor asks to take a flagged student on (status requested, requestedBy); the Programme Head approves (case opened for that advisor) or turns it down (back to open)
+A7.3. Flag queue (Programme Head, "Students in need" tab): list by severity, priority, oldest; open a case from a flag for an advisor of the rule's type (openedBy = the Programme Head, the rule's category, the flag's severity, priority and subject, stage assigned; the flag gets caseId, status caseOpened); dismiss with a reason; a dismissed or case-opened flag is not raised again for the same student, rule, term and subject; POST /api/IndicatorFlags/check runs the check on request (Programme Head, Steward)
+A7.4. Advisor request: replaced on 26/11/2026 by Member C's take-on requests (C6, TAKEONREQUESTS); INDICATORFLAGS lost requestedBy, requestedAt and the status requested
 A7.5. Responses show directory data, rule, severity, priority and term, never the value
 A8. Advisor suggestion algorithm (extra scope, ES4; maybe Member A; not AI, a rule-based score): rank advisors for the Programme Head from support category, subjects, familiar pair, caseload and CASEFEEDBACKS ratings
 A9. External services set-up (new 12/11/2026; Member A sets them up once and shares the values with the team privately, never in git)
@@ -57,7 +57,7 @@ Tables owned: DATAATTRIBUTES, CONSENTPURPOSES, PURPOSE_ATTRIBUTE, ACCESSPOLICIES
 ==========
 
 B1. Steward configuration
-B1.1. Data attributes (the student data that is only shown with consent): name, description, per subject or per term (isSubjectSpecific, set at creation, done 18/11/2026), data type (numeric/categorical/boolean); archive (one-way)
+B1.1. Data attributes (the student data that is only shown with consent): name, description, per subject or per term (isSubjectSpecific, set at creation, done 18/11/2026), data type (numeric/categorical/boolean), summary method (sum/average, only for a per-subject numeric attribute: how its per-subject values of one term add up in the student's Private data summary row; built 26/11/2026, QC-281, owner Member C on paper); archive (one-way)
 B1.2. Consent purposes: create (starts inactive), attach/remove attributes, activate/deactivate, retire; isForStatistics marks the one statistics purpose (at most one active; it cannot govern a support category or be asked for in a consent request)
 B1.3. Access policies: role + purpose (draft -> active -> revoked, no edit once active); test a policy against a sample student
 B2. Access guard (IAccessGuardService, used by Member C for every student data, point-in-time and correction read)
@@ -76,12 +76,12 @@ B5.1. Search/filter access log; flag entries; Steward review (cleared / confirme
 B5.2. Student's own access log
 B5.3. Export processing record for one student or a date range
 B6. Emergency access: request, approve with time limit, reject with a reason, auto-expire; Stewards share one pool, the first to act is stored as stewardId; the access guard allows an approved, unexpired request (logged with consentPurposeId = null)
-B7. Case messages and messaging (CASEMESSAGES, moved from Member D on 09/11/2026; the current CaseMessageService is the starting point; AI-written and AI-assisted messages come from Member C's C5): a two-way append-only thread on a case between its student and its current advisor (not on a closed case); the case staff can read it; each message notifies the other side; kept separate from the private CASENOTES. Chat rules (real-time or not, attachments, read receipts, who else may write, limits) are to be decided (Q&A)
+B7. Case messages and messaging (CASEMESSAGES, moved from Member D on 09/11/2026; the current CaseMessageService is the starting point; AI-written and AI-assisted messages come from Member C's C5): a two-way append-only thread on a case between its student and its current advisor (not on a closed case); only the student and the current advisor read it (QC-238, 26/11/2026; the Programme Head and referral staff no longer read it); not real time (loaded on request); text 1-1000 characters with up to 5 files; each message notifies the other side; kept separate from the private CASENOTES
 B8. Meet-ups (MEETUPREQUESTS, MEETUPSCHEDULES; new 24/11/2026, Q-271, QC-272; built 24/11/2026: MeetupRequestService, MeetupRequestsController, MeetupSchedulesController, case-page panel and the advisor's schedule screen; to test against SQL Server): while a case is in stage contacted or followUp, its student or current advisor requests a meet-up (date, start time, duration, location, optional room, reason; Vietnam time, Monday to Friday, 08:30-11:30 and 13:30-18:00, 15-minute steps, inside one window; one pending request per case; no overlap with a scheduled meet-up of the advisor or the student); the other side accepts (meet-up scheduled, contacted -> followUp with a stage history row, one save), changes the date (same request goes back, rescheduleCount + 1, no limit) or declines with a reason; the proposer can cancel a pending request; either side cancels a scheduled meet-up with a reason before it starts, the advisor marks it completed or missed after it has started; Member D's CaseService (close, reassign), CaseChangeRequestService (approve) and ReferralService (accept to another advisor) call CancelOpenMeetupsForCaseAsync; the advisor's schedule screen (GET /api/MeetupSchedules/search with a week) draws the blocks
 
 ==========
 MEMBER C - STUDENT DATA, PROFILE, WELFARE AND AI
-Tables owned: STUDENTDATA, CORRECTIONREQUESTS, INTERVENTIONS, SUPPORTGRANTS, EXTERNALSERVICES, EXTERNALREFERRALS, ESCALATIONS
+Tables owned: STUDENTDATA, CORRECTIONREQUESTS, INTERVENTIONS, SUPPORTGRANTS, EXTERNALSERVICES, EXTERNALREFERRALS, ESCALATIONS, TAKEONREQUESTS
 (DATASOURCES, INGESTIONSCHEDULES, INGESTIONJOBS are extra scope, ES1: no work now)
 (AI, C5: works on CASEMESSAGES (Member B) and CASES (Member D); its ERD changes are agreed with them first)
 ==========
@@ -92,9 +92,9 @@ C1.2. Validate the whole file (also as a dry run), all-or-nothing; return the li
 C1.3. Insert new STUDENTDATA rows only (dataSourceId null, provenanceNote = file name + import date); never update; encrypt each value with Member B's IAttributeKeyService.EncryptValuesAsync before saving (new keys are saved by the same SaveAsync)
 C1.4. Flag missing values (isMissing) for every enrolled, active student without a value for an imported per-term attribute and term (per-subject attributes get none)
 C1.5. Import history through ACTIVITYLOGS
-C1.6. After the save, call Member A's indicator flag check (A7.2) for the imported attributes and terms
+C1.6. After the save, call Member A's indicator flag check (A7.2, IIndicatorFlagService.CheckAsync; done 26/11/2026 for the file and the transcript import, the responses show raisedFlagCount and clearedFlagCount)
 C1.7. Per-subject data attributes (done 18/11/2026, QC-251): optional subject column in the mapping (subject codes), required for per-subject attributes and refused for per-term ones; STUDENTDATA.subjectId; current/as-of/compare views, correction requests and cohort data keyed per subject; no missing rows for per-subject attributes; subjectCode/subjectName in the responses
-C1.8. Transcript PDF import (StudentDataController transcripts/preview and transcripts/import; PDF reading and screens built by Member D in cc320d7, reworked 18/11/2026 and 20/11/2026, Q-255, QC-256, Q-263): many grade transcripts and attendance files at once, no tables of its own (nothing kept between preview and import, like C1.1-C1.2); all-or-nothing; rows go to STUDENTDATA as Subject mark / Attendance rate per subject and term, like C1.3; unknown term or subject code = error; history in ACTIVITYLOGS (transcriptImported); owner still to be decided (QC-257)
+C1.8. Transcript PDF import (StudentDataController transcripts/preview and transcripts/import; PDF reading and screens built by Member D in cc320d7, reworked 18/11/2026 and 20/11/2026, Q-255, QC-256, Q-263): many grade transcripts and attendance files at once, no tables of its own (nothing kept between preview and import, like C1.1-C1.2); all-or-nothing; rows go to STUDENTDATA as Subject mark / Attendance rate per subject and term, like C1.3; unknown term or subject code = error; history in ACTIVITYLOGS (transcriptImported); owner Member C (QC-257)
 C2. Student data and history
 C2.1. Student data API: data attribute values with sources and missing-data notices, inside a case (the case category's purpose, only the case's advisor) or outside a case (any purpose the staff role has a policy for, or emergency access); every value passed through Member B's access guard (IAccessGuardService, then IAttributeKeyService.DecryptValuesAsync and LogAccessAsync for each value shown; an erased value is shown as erased)
 C2.2. Point-in-time view ("way back machine") on both time axes: system time (latest transactionFrom up to the chosen date) and valid time (latest validFrom up to the chosen date, a later recording winning on ties); compare two dates
@@ -106,7 +106,7 @@ C3.1. Interventions: log, update until closed (the outcome is part of the update
 C3.2. Support grants under an intervention; revoke
 C3.3. External services list; external referrals with follow-up due date, follow-up outcome, close, overdue flag (background check)
 C3.4. Escalations: officer raises, Programme Head responds, status tracking
-C4. Anonymised statistics (done 09/11/2026; StatisticService, StatisticsController, QC-024)
+C4. Anonymised statistics (done 09/11/2026; StatisticService, StatisticsController, QC-024; owner Member C, QC-240)
 C4.1. Welfare statistics (Student Welfare Officer, Programme Head): per support category (and faculty) in a date range, cases opened, referred cases, interventions, support grants, external referrals, escalations, distinct students; cells from fewer than 5 students hidden; export xlsx/csv/pdf
 C4.2. Cohort data (Programme Head): one attribute and term (and one subject for a per-subject attribute, and faculty), latest value per student, only consents under the statistics purpose (no emergency access), every value read logged, cells and values from fewer than 10 students hidden; export xlsx/csv/pdf
 C5. AI (new 23/11/2026: ES8 and ES13 moved from the Extra Scope List into the current version, owner Member C; not started, design to agree first)
@@ -116,6 +116,12 @@ C5.3. AI advisor as a backup (was ES13): an AI-suitability check per case (rules
 C5.4. ERD and DB script changes to agree with Member B (CASEMESSAGES) and Member D (CASES) before coding: e.g. a way to mark AI-written / AI-assisted messages in CASEMESSAGES, and an AI account or CASES.advisedBy (human/ai) plus the suitability score
 C5.5. Activity log types for AI use (e.g. aiReplySuggested, aiSummaryCreated, caseAssignedToAi, caseReturnedToHuman) in AdviseCare_Activity_Types.txt; FR, workflow lists and API workflow list updated
 C5.6. Frontend: suggest-reply and summary buttons in the advisor's case thread, "send to AI advisor" / "hand back" for the Programme Head, AI labels in the student's thread
+C6. Take-on requests and case severity (new 26/11/2026, Q-275, QC-276..288; owner Member C on paper (QC-280); backend built 26/11/2026 and committed under Member B's name, frontend under Member A's)
+C6.1. TAKEONREQUESTS (TakeOnRequestService, TakeOnRequestsController): an advisor asks to take on an unassigned student-created case (stage pending, no advisor, not closed) or an open flag of their support type, with an optional note; one pending request per advisor and item; every Programme Head is notified; "My requests" (GET me), change the note or withdraw while pending
+C6.2. The Programme Head approves one (case: CaseService.AssignAsync; flag: IndicatorFlagService.OpenCaseAsync; the approved status and the case change are saved together) or declines one with a required reason; the advisor is notified (in-app and email); approving, assigning or opening directly, dismissing or clearing the flag cancels the other pending requests and tells their advisors
+C6.3. "Students in need" lists for advisors: GET /api/Cases/take-on (unassigned cases of the advisor's type: directory data, category, subject, severity, priority, reason, names of the shared attributes, never values) and GET /api/IndicatorFlags (open flags of the advisor's type); the Programme Head's matching queue and flag list carry pendingTakeOnRequestCount for the red dot on the Requests button
+C6.4. CASES.severity (low/moderate/high/critical, null = not rated): set by the Programme Head (PUT /api/Cases/{id}/severity), copied from the flag for a case opened from a flag; the matching queue, the take-on list and Cases/search?sortBy=urgency order by severity (not rated right after critical), then priority, then oldest; priority stays changeable by the Programme Head and the case's advisor
+C6.5. Frontend (Member A's batch): Students in need tabs for the Programme Head (flags with Dismiss and Requests pop-up) and advisors (cases and flags, request buttons, My requests), severity and priority pickers
 Note: welfare works on existing CASES rows (from the seed data), so it does not wait for Member D's case APIs
 
 ==========
@@ -129,7 +135,7 @@ D2.1. Create a case: support type, category, subject (academic), reason
 D2.2. List the attributes the student may share (from the category's purpose) and record the chosen ones as consents (Member B's IConsentService.CreateAsync, saved together with the case)
 D2.3. Student's own cases, stages and history
 D3. Matching (Programme Head)
-D3.1. Queue of unassigned cases
+D3.1. Queue of unassigned cases (ordered by severity, priority, oldest since 26/11/2026, Member C's C6.4)
 D3.2. Suggested advisors: by type, subject specialisation, faculty, workload (an advisor already handling another open case of the student first is optional; a ranked suggestion algorithm is extra scope, ES4)
 D3.3. Assign a case: set advisorId (the case's advisor is the only advisor-student link), notify student with the advisor's contact information (NotificationService.NotifyAsync, Member A)
 D3.4. Reassign directly
@@ -141,5 +147,5 @@ D4.4. Stage changes with reason (CASESTAGEHISTORIES insert-only); close, reopen
 D4.5. Referrals: to another advisor (same/other type) or to the Welfare Officer; accept / return
 D4.6. Case messages: moved to Member B (B7) on 09/11/2026
 D5. Case change requests (CASECHANGEREQUESTS): the case's advisor or student requests another advisor for one case, Programme Head approves (CASES.advisorId = proposed advisor) or rejects with decision notes (required)
-D5b. Case feedback and ratings (CASEFEEDBACKS, new 09/11/2026; entity and seed done, service and controller to do): the student of a closed case rates it once (1-5, optional comment, max 1000 characters), tied to the case's advisor; who may read it (advisor, Programme Head, anonymous or not) is to be decided (Q&A); average rating per advisor for the reports and for ES4
+D5b. Case feedback and ratings (CASEFEEDBACKS, new 09/11/2026; entity and seed done, service and controller to do): the student of a closed case rates it once (1-5, optional comment, max 1000 characters), tied to the case's advisor; readers (QC-239): the Programme Head sees every rating and comment with names, the advisor only their average and the comments without the student's name; average rating per advisor for the reports and for ES4
 D6. Reports (Programme Head; ReportsController + ReportService): cases in a time range with filters, caseload volume and closure time per advisor, export Excel/CSV/PDF generated on the fly (the PDF uses the built-in SimplePdfWriter, which cannot draw Vietnamese diacritics)

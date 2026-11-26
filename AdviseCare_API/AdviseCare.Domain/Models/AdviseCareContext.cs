@@ -118,6 +118,8 @@ public partial class AdviseCareContext : DbContext
 
     public virtual DbSet<Supportgrant> Supportgrants { get; set; }
 
+    public virtual DbSet<Takeonrequest> Takeonrequests { get; set; }
+
     private string GetConnectionString()
     {
         IConfiguration configuration = new ConfigurationBuilder()
@@ -475,6 +477,9 @@ public partial class AdviseCareContext : DbContext
                 .HasMaxLength(30)
                 .HasDefaultValue("medium")
                 .HasColumnName("priority");
+            entity.Property(e => e.Severity)
+                .HasMaxLength(30)
+                .HasColumnName("severity");
             entity.Property(e => e.RequestReason)
                 .IsRequired()
                 .HasColumnName("requestReason");
@@ -1010,6 +1015,9 @@ public partial class AdviseCareContext : DbContext
                 .HasMaxLength(30)
                 .HasDefaultValue("numeric")
                 .HasColumnName("dataType");
+            entity.Property(e => e.SummaryMethod)
+                .HasMaxLength(30)
+                .HasColumnName("summaryMethod");
             entity.Property(e => e.Status)
                 .IsRequired()
                 .HasMaxLength(30)
@@ -1335,7 +1343,7 @@ public partial class AdviseCareContext : DbContext
 
             entity.HasIndex(e => new { e.StudentId, e.IndicatorId, e.TermId, e.SubjectId }, "UX_INDICATORFLAGS_student_indicator_term_subject_open")
                 .IsUnique()
-                .HasFilter("([status] IN (N'open', N'requested'))");
+                .HasFilter("([status]=N'open')");
 
             entity.Property(e => e.IndicatorFlagId)
                 .HasDefaultValueSql("(newsequentialid())")
@@ -1353,10 +1361,6 @@ public partial class AdviseCareContext : DbContext
                 .IsRequired()
                 .HasMaxLength(30)
                 .HasColumnName("priority");
-            entity.Property(e => e.RequestedAt)
-                .HasPrecision(3)
-                .HasColumnName("requestedAt");
-            entity.Property(e => e.RequestedBy).HasColumnName("requestedBy");
             entity.Property(e => e.ResolvedAt)
                 .HasPrecision(3)
                 .HasColumnName("resolvedAt");
@@ -1383,10 +1387,6 @@ public partial class AdviseCareContext : DbContext
                 .HasForeignKey(d => d.IndicatorId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_INDICATORFLAGS_indicatorId");
-
-            entity.HasOne(d => d.RequestedByNavigation).WithMany(p => p.IndicatorflagRequestedByNavigations)
-                .HasForeignKey(d => d.RequestedBy)
-                .HasConstraintName("FK_INDICATORFLAGS_requestedBy");
 
             entity.HasOne(d => d.ResolvedByNavigation).WithMany(p => p.IndicatorflagResolvedByNavigations)
                 .HasForeignKey(d => d.ResolvedBy)
@@ -2059,6 +2059,62 @@ public partial class AdviseCareContext : DbContext
                 .HasForeignKey(d => d.InterventionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SUPPORTGRANTS_interventionId");
+        });
+
+        modelBuilder.Entity<Takeonrequest>(entity =>
+        {
+            entity.ToTable("TAKEONREQUESTS");
+
+            entity.HasIndex(e => new { e.AdvisorId, e.CaseId }, "UX_TAKEONREQUESTS_advisor_case_pending")
+                .IsUnique()
+                .HasFilter("([status]=N'pending' AND [caseId] IS NOT NULL)");
+
+            entity.HasIndex(e => new { e.AdvisorId, e.IndicatorFlagId }, "UX_TAKEONREQUESTS_advisor_flag_pending")
+                .IsUnique()
+                .HasFilter("([status]=N'pending' AND [indicatorFlagId] IS NOT NULL)");
+
+            entity.Property(e => e.TakeOnRequestId)
+                .HasDefaultValueSql("(newsequentialid())")
+                .HasColumnName("takeOnRequestId");
+            entity.Property(e => e.AdvisorId).HasColumnName("advisorId");
+            entity.Property(e => e.CaseId).HasColumnName("caseId");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("createdAt");
+            entity.Property(e => e.DecidedAt)
+                .HasPrecision(3)
+                .HasColumnName("decidedAt");
+            entity.Property(e => e.DecidedBy).HasColumnName("decidedBy");
+            entity.Property(e => e.DeclineReason)
+                .HasMaxLength(1000)
+                .HasColumnName("declineReason");
+            entity.Property(e => e.IndicatorFlagId).HasColumnName("indicatorFlagId");
+            entity.Property(e => e.Note)
+                .HasMaxLength(1000)
+                .HasColumnName("note");
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(30)
+                .HasDefaultValue("pending")
+                .HasColumnName("status");
+
+            entity.HasOne(d => d.Advisor).WithMany(p => p.TakeonrequestAdvisors)
+                .HasForeignKey(d => d.AdvisorId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_TAKEONREQUESTS_advisorId");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.Takeonrequests)
+                .HasForeignKey(d => d.CaseId)
+                .HasConstraintName("FK_TAKEONREQUESTS_caseId");
+
+            entity.HasOne(d => d.DecidedByNavigation).WithMany(p => p.TakeonrequestDecidedByNavigations)
+                .HasForeignKey(d => d.DecidedBy)
+                .HasConstraintName("FK_TAKEONREQUESTS_decidedBy");
+
+            entity.HasOne(d => d.IndicatorFlag).WithMany(p => p.Takeonrequests)
+                .HasForeignKey(d => d.IndicatorFlagId)
+                .HasConstraintName("FK_TAKEONREQUESTS_indicatorFlagId");
         });
 
         OnModelCreatingPartial(modelBuilder);

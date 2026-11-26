@@ -29,6 +29,8 @@ public partial class Case
 
     public string Priority { get; set; }
 
+    public string Severity { get; set; }
+
     public string Status { get; set; }
 
     public virtual Account Advisor { get; set; }
@@ -60,6 +62,8 @@ public partial class Case
     public virtual ICollection<Referral> Referrals { get; set; } = new List<Referral>();
 
     public virtual Account Student { get; set; }
+
+    public virtual ICollection<Takeonrequest> Takeonrequests { get; set; } = new List<Takeonrequest>();
 
     public virtual Subject Subject { get; set; }
 

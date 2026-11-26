@@ -77,7 +77,7 @@ namespace AdviseCare.Application.Services
         // Get all Accounts
         public async Task<IEnumerable<GetAllAccountResponse>> GetAll()
         {
-            var accounts = await _accountRepository.GetAllAsyncIncludeOrderBy(a => a.CreatedAt, false, a => a.Studentprofile);
+            var accounts = await _accountRepository.GetAllAsyncIncludeOrderBy(a => a.CreatedAt, false, a => a.Studentprofile, a => a.Faculty);
             var roleLookup = await GetRoleNamesLookupAsync();
 
             return accounts.Select(a => new GetAllAccountResponse
@@ -86,6 +86,7 @@ namespace AdviseCare.Application.Services
                 FacultyId = a.FacultyId,
                 AvatarUrl = a.AvatarUrl ?? string.Empty,
                 Email = a.Email,
+                FacultyName = a.Faculty?.FacultyName ?? string.Empty,
                 FullName = a.FullName,
                 AuthProvider = a.AuthProvider ?? string.Empty,
                 StudentCode = a.Studentprofile?.StudentCode ?? string.Empty,
@@ -106,7 +107,7 @@ namespace AdviseCare.Application.Services
             if (page < 1 || pageSize < 1)
                 throw new ValidationException("Page and page size must be at least 1.");
 
-            var accounts = await _accountRepository.GetAllAsyncIncludeOrderBy(a => a.CreatedAt, false, a => a.Studentprofile);
+            var accounts = await _accountRepository.GetAllAsyncIncludeOrderBy(a => a.CreatedAt, false, a => a.Studentprofile, a => a.Faculty);
             var roleLookup = await GetRoleNamesLookupAsync();
 
             return accounts
@@ -118,6 +119,7 @@ namespace AdviseCare.Application.Services
                     FacultyId = a.FacultyId,
                     AvatarUrl = a.AvatarUrl ?? string.Empty,
                     Email = a.Email,
+                    FacultyName = a.Faculty?.FacultyName ?? string.Empty,
                     FullName = a.FullName,
                     AuthProvider = a.AuthProvider ?? string.Empty,
                     StudentCode = a.Studentprofile?.StudentCode ?? string.Empty,
@@ -135,7 +137,7 @@ namespace AdviseCare.Application.Services
         // Get Account by Id
         public async Task<GetAccountByIdResponse> GetByIdAsync(Guid AccountId)
         {
-            var account = await _accountRepository.GetByIdAsyncInclude(AccountId, a => a.Studentprofile)
+            var account = await _accountRepository.GetByIdAsyncInclude(AccountId, a => a.Studentprofile, a => a.Faculty)
                 ?? throw new NotFoundException("Account not found.");
 
             return new GetAccountByIdResponse
@@ -144,6 +146,7 @@ namespace AdviseCare.Application.Services
                 FacultyId = account.FacultyId,
                 AvatarUrl = account.AvatarUrl ?? string.Empty,
                 Email = account.Email,
+                FacultyName = account.Faculty?.FacultyName ?? string.Empty,
                 FullName = account.FullName,
                 AuthProvider = account.AuthProvider ?? string.Empty,
                 StudentCode = account.Studentprofile?.StudentCode ?? string.Empty,
@@ -171,7 +174,7 @@ namespace AdviseCare.Application.Services
                 (string.IsNullOrWhiteSpace(request.AcademicStatus) || (a.Studentprofile != null && a.Studentprofile.AcademicStatus == request.AcademicStatus)) &&
                 (string.IsNullOrWhiteSpace(request.LinkStatus) || a.LinkStatus == request.LinkStatus) &&
                 (string.IsNullOrWhiteSpace(request.Status) || a.Status == request.Status),
-                a => a.CreatedAt, false, a => a.Studentprofile);
+                a => a.CreatedAt, false, a => a.Studentprofile, a => a.Faculty);
             var roleLookup = await GetRoleNamesLookupAsync();
 
             return accounts.Select(a => new SearchAccountResponse
@@ -180,6 +183,7 @@ namespace AdviseCare.Application.Services
                 FacultyId = a.FacultyId,
                 AvatarUrl = a.AvatarUrl ?? string.Empty,
                 Email = a.Email,
+                FacultyName = a.Faculty?.FacultyName ?? string.Empty,
                 FullName = a.FullName,
                 AuthProvider = a.AuthProvider ?? string.Empty,
                 StudentCode = a.Studentprofile?.StudentCode ?? string.Empty,
@@ -247,6 +251,7 @@ namespace AdviseCare.Application.Services
                 FacultyId = account.FacultyId,
                 AvatarUrl = account.AvatarUrl ?? string.Empty,
                 Email = account.Email,
+                FacultyName = account.Faculty?.FacultyName ?? string.Empty,
                 FullName = account.FullName,
                 AuthProvider = account.AuthProvider ?? string.Empty,
                 StudentCode = account.Studentprofile?.StudentCode ?? string.Empty,
@@ -264,7 +269,7 @@ namespace AdviseCare.Application.Services
         // Update an Account's details; changing the email unlinks its Google account, so the linking email must be sent again
         public async Task<UpdateAccountResponse> UpdateAsync(Guid AccountId, UpdateAccountRequest request)
         {
-            var account = await _accountRepository.GetByIdAsyncInclude(AccountId, a => a.Studentprofile)
+            var account = await _accountRepository.GetByIdAsyncInclude(AccountId, a => a.Studentprofile, a => a.Faculty)
                 ?? throw new NotFoundException("Account not found.");
 
             var email = request.Email.Trim().ToLowerInvariant();
@@ -299,6 +304,7 @@ namespace AdviseCare.Application.Services
                 FacultyId = account.FacultyId,
                 AvatarUrl = account.AvatarUrl ?? string.Empty,
                 Email = account.Email,
+                FacultyName = account.Faculty?.FacultyName ?? string.Empty,
                 FullName = account.FullName,
                 AuthProvider = account.AuthProvider ?? string.Empty,
                 StudentCode = account.Studentprofile?.StudentCode ?? string.Empty,
@@ -755,7 +761,7 @@ namespace AdviseCare.Application.Services
         // Get the profile of the signed-in Account
         public async Task<GetMyProfileResponse> GetMyProfileAsync(Guid AccountId)
         {
-            var account = await _accountRepository.GetByIdAsyncInclude(AccountId, a => a.Studentprofile)
+            var account = await _accountRepository.GetByIdAsyncInclude(AccountId, a => a.Studentprofile, a => a.Faculty)
                 ?? throw new NotFoundException("Account not found.");
 
             return new GetMyProfileResponse
@@ -764,6 +770,7 @@ namespace AdviseCare.Application.Services
                 FacultyId = account.FacultyId,
                 AvatarUrl = account.AvatarUrl ?? string.Empty,
                 Email = account.Email,
+                FacultyName = account.Faculty?.FacultyName ?? string.Empty,
                 FullName = account.FullName,
                 AuthProvider = account.AuthProvider ?? string.Empty,
                 StudentCode = account.Studentprofile?.StudentCode ?? string.Empty,
@@ -781,7 +788,7 @@ namespace AdviseCare.Application.Services
         // Update the signed-in Account's own settings: username and preferred language (the full name is set by the admin)
         public async Task<UpdateMyProfileResponse> UpdateMyProfileAsync(Guid AccountId, UpdateMyProfileRequest request)
         {
-            var account = await _accountRepository.GetByIdAsyncInclude(AccountId, a => a.Studentprofile)
+            var account = await _accountRepository.GetByIdAsyncInclude(AccountId, a => a.Studentprofile, a => a.Faculty)
                 ?? throw new NotFoundException("Account not found.");
 
             var userName = request.UserName.Trim();
@@ -800,6 +807,7 @@ namespace AdviseCare.Application.Services
                 FacultyId = account.FacultyId,
                 AvatarUrl = account.AvatarUrl ?? string.Empty,
                 Email = account.Email,
+                FacultyName = account.Faculty?.FacultyName ?? string.Empty,
                 FullName = account.FullName,
                 AuthProvider = account.AuthProvider ?? string.Empty,
                 StudentCode = account.Studentprofile?.StudentCode ?? string.Empty,

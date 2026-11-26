@@ -7,6 +7,7 @@ namespace AdviseCare.Application.Contracts.Responses.DataAttribute
         public string AttributeName { get; set; } = string.Empty;
         public bool IsSubjectSpecific { get; set; } = false;
         public string DataType { get; set; } = "numeric";
+        public string? SummaryMethod { get; set; }
         public string Status { get; set; } = "active";
     }
 
@@ -17,6 +18,7 @@ namespace AdviseCare.Application.Contracts.Responses.DataAttribute
         public string AttributeName { get; set; } = string.Empty;
         public bool IsSubjectSpecific { get; set; } = false;
         public string DataType { get; set; } = "numeric";
+        public string? SummaryMethod { get; set; }
         public string Status { get; set; } = "active";
     }
 
@@ -27,6 +29,7 @@ namespace AdviseCare.Application.Contracts.Responses.DataAttribute
         public string AttributeName { get; set; } = string.Empty;
         public bool IsSubjectSpecific { get; set; } = false;
         public string DataType { get; set; } = "numeric";
+        public string? SummaryMethod { get; set; }
         public string Status { get; set; } = "active";
     }
 
@@ -37,6 +40,7 @@ namespace AdviseCare.Application.Contracts.Responses.DataAttribute
         public string AttributeName { get; set; } = string.Empty;
         public bool IsSubjectSpecific { get; set; } = false;
         public string DataType { get; set; } = "numeric";
+        public string? SummaryMethod { get; set; }
         public string Status { get; set; } = "active";
     }
 
@@ -47,6 +51,7 @@ namespace AdviseCare.Application.Contracts.Responses.DataAttribute
         public string AttributeName { get; set; } = string.Empty;
         public bool IsSubjectSpecific { get; set; } = false;
         public string DataType { get; set; } = "numeric";
+        public string? SummaryMethod { get; set; }
         public string Status { get; set; } = "active";
     }
 
@@ -57,6 +62,7 @@ namespace AdviseCare.Application.Contracts.Responses.DataAttribute
         public string AttributeName { get; set; } = string.Empty;
         public bool IsSubjectSpecific { get; set; } = false;
         public string DataType { get; set; } = "numeric";
+        public string? SummaryMethod { get; set; }
         public string Status { get; set; } = "active";
     }
 }

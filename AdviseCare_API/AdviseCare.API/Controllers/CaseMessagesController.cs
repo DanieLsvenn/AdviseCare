@@ -11,14 +11,13 @@ namespace AdviseCare.API.Controllers
     // Case messages are append-only: there is no update or delete
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Student,Academic Advisor,Wellbeing Advisor,Student Welfare Officer,Programme Head")]
+    [Authorize(Roles = "Student,Academic Advisor,Wellbeing Advisor")]
     public class CaseMessagesController(ICaseMessageService caseMessageService) : ControllerBase
     {
         private readonly ICaseMessageService _caseMessageService = caseMessageService;
 
         // Get all my Case messages, with optional pagination
         [HttpGet]
-        [Authorize(Roles = "Student,Academic Advisor,Wellbeing Advisor")]
         [SwaggerOperation(Summary = "[Student, Academic Advisor, Wellbeing Advisor] Get all my case messages with optional pagination",
             Description = "Lists the messages the signed-in account wrote on any case, newest first. Pass page and pageSize together to page the results.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- Page and page size must be at least 1.", typeof(ErrorResponse))]
@@ -40,8 +39,8 @@ namespace AdviseCare.API.Controllers
 
         // Get a Case message by Id
         [HttpGet("{id}")]
-        [SwaggerOperation(Summary = "[Student, advisors, Student Welfare Officer, Programme Head] Get case message by Id",
-            Description = "Visible to the student of the case, its current advisor, the Programme Head, and anyone who sent or received a referral of the case.")]
+        [SwaggerOperation(Summary = "[Student, Academic Advisor, Wellbeing Advisor] Get case message by Id",
+            Description = "Visible only to the student of the case and its current advisor (the readers of the thread); others get 404.")]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status404NotFound, "- Case message not found.", typeof(ErrorResponse))]
@@ -54,7 +53,7 @@ namespace AdviseCare.API.Controllers
 
         // Search Case messages of a case
         [HttpGet("search")]
-        [SwaggerOperation(Summary = "[Student, advisors, Student Welfare Officer, Programme Head] Get the message thread of a case",
+        [SwaggerOperation(Summary = "[Student, Academic Advisor, Wellbeing Advisor] Get the message thread of a case",
             Description = "caseId is required. Returns every message of the case, oldest first, with its author and authorRole (student/advisor). " +
                 "Same readers as GET /api/CaseMessages/{id}.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
@@ -70,7 +69,6 @@ namespace AdviseCare.API.Controllers
 
         // Create a Case message
         [HttpPost]
-        [Authorize(Roles = "Student,Academic Advisor,Wellbeing Advisor")]
         [SwaggerOperation(Summary = "[Student, Academic Advisor, Wellbeing Advisor] Write a message on a case",
             Description = "Only the student of the case and its current advisor can write (1-1000 characters), and not on a closed case; a student can write once an advisor is assigned. " +
                 "Messages cannot be edited or deleted. The other side is notified. Private advisor records stay in case notes.")]
@@ -88,7 +86,6 @@ namespace AdviseCare.API.Controllers
 
         // Create a Case message with files
         [HttpPost("with-files")]
-        [Authorize(Roles = "Student,Academic Advisor,Wellbeing Advisor")]
         [Consumes("multipart/form-data")]
         [RequestSizeLimit(60 * 1024 * 1024)]
         [RequestFormLimits(MultipartBodyLengthLimit = 60 * 1024 * 1024)]
@@ -109,8 +106,8 @@ namespace AdviseCare.API.Controllers
 
         // Download a file of a Case message
         [HttpGet("attachments/{id}")]
-        [SwaggerOperation(Summary = "[Student, advisors, Student Welfare Officer, Programme Head] Download a file sent with a case message",
-            Description = "Same readers as the thread (the student of the case, its current advisor, the Programme Head, and anyone who sent or received a referral of it); others get 404.")]
+        [SwaggerOperation(Summary = "[Student, Academic Advisor, Wellbeing Advisor] Download a file sent with a case message",
+            Description = "Same readers as the thread (only the student of the case and its current advisor); others get 404.")]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status404NotFound, "- File not found.", typeof(ErrorResponse))]

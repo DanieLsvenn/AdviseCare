@@ -1,0 +1,15 @@
+---
+title: AdviseCare - State Machine - Take-On Request
+---
+
+stateDiagram-v2
+    direction LR
+    [*] --> pending : advisor asks to take on an unassigned case or an open flag
+    pending --> approved : Programme Head approves (case assigned, or case opened from the flag)
+    pending --> declined : Programme Head declines with a reason
+    pending --> withdrawn : advisor withdraws it
+    pending --> cancelled : another request approved, direct assign or open-case, flag dismissed or cleared
+    approved --> [*]
+    declined --> [*]
+    withdrawn --> [*]
+    cancelled --> [*]

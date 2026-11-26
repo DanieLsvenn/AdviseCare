@@ -91,6 +91,9 @@ namespace AdviseCare.Application.Contracts.Responses.StudentData
     {
         public int InsertedCount { get; set; } = 0;
         public int MissingCount { get; set; } = 0;
+        // Indicator flags raised / cleared by the flag check that runs after the import
+        public int ClearedFlagCount { get; set; } = 0;
+        public int RaisedFlagCount { get; set; } = 0;
         // Rows of archived data attributes: not imported, listed so the admin knows which ones were left out
         public List<StudentDataRowErrorResponse> RejectedRows { get; set; } = new();
         public List<StudentDataRowErrorResponse> Errors { get; set; } = new();
@@ -140,6 +143,9 @@ namespace AdviseCare.Application.Contracts.Responses.StudentData
         public int ImportedFileCount { get; set; } = 0;
         public int InsertedCount { get; set; } = 0;
         public int ReplacedCount { get; set; } = 0;
+        // Indicator flags raised / cleared by the flag check that runs after the import
+        public int ClearedFlagCount { get; set; } = 0;
+        public int RaisedFlagCount { get; set; } = 0;
         public List<TranscriptFileResponse> Files { get; set; } = new();
         public bool IsSuccess { get; set; } = false;
     }
@@ -234,6 +240,9 @@ namespace AdviseCare.Application.Contracts.Responses.StudentData
         public bool IsErased { get; set; } = false;
         public bool IsMissing { get; set; } = false;
         public bool IsShared { get; set; } = false;
+        public string DataType { get; set; } = "numeric";
+        // sum/average for a per-subject numeric attribute: how its per-subject values of one term add up to a summary row; null = none
+        public string? SummaryMethod { get; set; }
         public string Status { get; set; } = string.Empty;
     }
 

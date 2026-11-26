@@ -53,7 +53,8 @@ namespace AdviseCare.API.Controllers
         [HttpGet("search")]
         [Authorize(Roles = "Programme Head")]
         [SwaggerOperation(Summary = "[Programme Head] Search/Filter cases",
-            Description = "Filters cases by student, advisor, support category, subject, support type, stage, priority and status, newest first. Empty fields are ignored. " +
+            Description = "Filters cases by student, advisor, support category, subject, support type, stage, priority, severity (low/moderate/high/critical, or notRated for cases not rated yet) and status. Empty fields are ignored. " +
+                "sortBy = openedAt (default, newest first) or urgency (severity with not rated right after critical, then priority, then oldest). " +
                 "E.g. ?studentId=...&status=open shows which advisors already handle the student (WF2 step 3.2.3).")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
@@ -103,7 +104,8 @@ namespace AdviseCare.API.Controllers
         [HttpGet("matching-queue")]
         [Authorize(Roles = "Programme Head")]
         [SwaggerOperation(Summary = "[Programme Head] Get the queue of unassigned cases",
-            Description = "Lists the cases without an advisor that are not closed, most urgent first, then oldest first (WF2 step 3.1).")]
+            Description = "Lists the cases without an advisor that are not closed, by severity (not rated right after critical), then priority, then oldest first (WF2 step 3.1). " +
+                "pendingTakeOnRequestCount is the number of advisors' take-on requests waiting for the case (the red dot on its Requests button; GET /api/TakeOnRequests/search?caseId=...).")]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
         public async Task<IActionResult> GetMatchingQueue()
@@ -168,7 +170,7 @@ namespace AdviseCare.API.Controllers
         [Authorize(Roles = "Academic Advisor,Wellbeing Advisor")]
         [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor] Get my assigned cases with optional pagination",
             Description = "Lists the signed-in advisor's cases. Filters: student (name or student code contains), supportType, currentStage, priority, status, unreadOnly. " +
-                "sortBy = openedAt (default), priority, stage or studentName; sortDirection = desc (default) or asc. Each case has the advisor's unread notifications that point to it. " +
+                "sortBy = openedAt (default), priority, severity (critical first when descending; not rated comes right after critical), stage or studentName; sortDirection = desc (default) or asc. Each case has the advisor's unread notifications that point to it. " +
                 "Pass page and pageSize together to page the results.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- Page and page size must be at least 1.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
@@ -251,6 +253,40 @@ namespace AdviseCare.API.Controllers
         {
             var callerId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
             var response = await _caseService.ChangePriorityAsync(callerId, id, request);
+            return Ok(response);
+        }
+
+        // Change the severity of a Case
+        [HttpPut("{id}/severity")]
+        [Authorize(Roles = "Programme Head")]
+        [SwaggerOperation(Summary = "[Programme Head] Change the severity of a case",
+            Description = "severity = low, moderate, high or critical. A student-created case starts not rated (severity null) until the Programme Head rates it; a case opened from an indicator flag starts with the flag's severity. " +
+                "The matching queue and the advisors' \"Students in need\" list are ordered by severity (not rated right after critical), then priority, then oldest.")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "- Case not found.", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status409Conflict, "- The case is closed.", typeof(ErrorResponse))]
+        public async Task<IActionResult> ChangeSeverity([FromRoute] Guid id, [FromBody] ChangeCaseSeverityRequest request)
+        {
+            var programmeHeadId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _caseService.ChangeSeverityAsync(programmeHeadId, id, request);
+            return Ok(response);
+        }
+
+        // Get the unassigned Cases I may ask to take on
+        [HttpGet("take-on")]
+        [Authorize(Roles = "Academic Advisor,Wellbeing Advisor")]
+        [SwaggerOperation(Summary = "[Academic Advisor, Wellbeing Advisor] Get the unassigned cases I may ask to take on (Students in need)",
+            Description = "Lists the student-created cases of the advisor's support type (academic or wellbeing, from the category) that have no advisor, are in stage pending and are not closed, by severity (not rated right after critical), then priority, then oldest. " +
+                "Each row shows the student's directory data (name, student code, faculty), category, subject, severity, priority, opened date, request reason and the names of the data attributes the student shared, never their values (so no ACCESSLOGS row is written). " +
+                "myTakeOnRequestId and myTakeOnRequestStatus are the advisor's own latest request for the case (empty when none); send a request with POST /api/TakeOnRequests.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
+        public async Task<IActionResult> GetTakeOnCases()
+        {
+            var advisorId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
+            var response = await _caseService.GetTakeOnCasesAsync(advisorId);
             return Ok(response);
         }
     }

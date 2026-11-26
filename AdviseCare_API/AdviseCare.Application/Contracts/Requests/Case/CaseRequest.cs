@@ -11,7 +11,13 @@ namespace AdviseCare.Application.Contracts.Requests.Case
         public string SupportType { get; set; } = string.Empty;
         public string CurrentStage { get; set; } = string.Empty;
         public string Priority { get; set; } = string.Empty;
+        [RegularExpression("^(low|moderate|high|critical|notRated)$",
+            ErrorMessage = "Severity must be low, moderate, high, critical or notRated.")]
+        public string Severity { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
+        [RegularExpression("^(openedAt|urgency)$",
+            ErrorMessage = "Sort by must be openedAt or urgency.")]
+        public string SortBy { get; set; } = "openedAt";
     }
 
     // Student (WF2): leave StudentId empty; SharedAttributes optional (one per data attribute, each with an optional reason); the priority is always medium.
@@ -54,8 +60,8 @@ namespace AdviseCare.Application.Contracts.Requests.Case
         public string Priority { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public bool UnreadOnly { get; set; } = false;
-        [RegularExpression("^(openedAt|priority|stage|studentName)$",
-            ErrorMessage = "Sort by must be openedAt, priority, stage or studentName.")]
+        [RegularExpression("^(openedAt|priority|severity|stage|studentName)$",
+            ErrorMessage = "Sort by must be openedAt, priority, severity, stage or studentName.")]
         public string SortBy { get; set; } = "openedAt";
         [RegularExpression("^(asc|desc)$",
             ErrorMessage = "Sort direction must be asc or desc.")]
@@ -97,6 +103,13 @@ namespace AdviseCare.Application.Contracts.Requests.Case
         [Required(ErrorMessage = "Priority is required."), RegularExpression("^(low|medium|high|urgent)$",
             ErrorMessage = "Priority must be low, medium, high or urgent.")]
         public string Priority { get; set; } = "medium";
+    }
+
+    public class ChangeCaseSeverityRequest
+    {
+        [Required(ErrorMessage = "Severity is required."), RegularExpression("^(low|moderate|high|critical)$",
+            ErrorMessage = "Severity must be low, moderate, high or critical.")]
+        public string Severity { get; set; } = "moderate";
     }
 
     public class SearchCaseStageHistoryRequest

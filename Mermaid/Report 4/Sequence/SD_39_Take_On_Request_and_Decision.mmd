@@ -1,0 +1,46 @@
+---
+title: AdviseCare - Sequence Diagram SD-39 - Take-On Request and Decision
+---
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff","textColor":"#000000","primaryColor":"#ffffff","primaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryColor":"#ffffff","secondaryTextColor":"#000000","secondaryBorderColor":"#000000","tertiaryColor":"#ffffff","tertiaryTextColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","mainBkg":"#ffffff","secondBkg":"#ffffff","nodeBorder":"#000000","clusterBkg":"#ffffff","clusterBorder":"#000000","defaultLinkColor":"#000000","actorBkg":"#ffffff","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#ffffff","labelBoxBorderColor":"#000000","labelTextColor":"#000000","noteBkgColor":"#ffffff","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#ffffff","activationBorderColor":"#000000","sequenceNumberColor":"#000000","attributeBackgroundColor":"#ffffff","classBackground":"#ffffff","classBorder":"#000000"}}}%%
+sequenceDiagram
+    autonumber
+    actor ADV as Advisor
+    actor PH as Programme Head
+    participant W as Web App
+    participant T as TakeOnRequestService
+    participant CS as CaseService
+    participant I as IndicatorFlagService
+    participant N as NotificationService
+    participant DB as SQL Server
+    ADV->>W: Open "Students in need"
+    W->>CS: GET /api/Cases/take-on
+    CS-->>W: Unassigned cases of the advisor's type (directory data, reason, shared attribute names, never values)
+    W->>I: GET /api/IndicatorFlags
+    I-->>W: Open flags of the advisor's type
+    ADV->>W: Ask to take one on (optional note)
+    W->>T: POST /api/TakeOnRequests {caseId or indicatorFlagId, note}
+    T->>DB: Check the item (open, own support type, no pending request of this advisor), INSERT TAKEONREQUESTS (pending)
+    T->>N: NotifyAsync(every Programme Head)
+    PH->>W: Open the Requests pop-up (red dot = pending requests)
+    W->>T: GET /api/TakeOnRequests/search?indicatorFlagId=...&status=pending
+    alt approve
+        PH->>W: Approve one request
+        W->>T: PUT /api/TakeOnRequests/{id}/approve
+        T->>T: Stage status = approved, decidedBy, decidedAt (not saved yet)
+        alt case request
+            T->>CS: AssignAsync(caseId, advisorId)
+            CS->>DB: UPDATE CASES (advisorId, stage assigned) + stage history + approved request + other pending requests cancelled (one save)
+            CS->>N: Student gets the advisor's contact information, the advisor "Take-on request approved", the others "cancelled"
+        else flag request
+            T->>I: OpenCaseAsync(indicatorFlagId, advisorId)
+            I->>DB: INSERT CASES + stage history, UPDATE INDICATORFLAGS (caseOpened) + approved request + other pending requests cancelled (one save)
+            I->>N: The student, the advisor "Take-on request approved", the others "cancelled"
+        end
+    else decline
+        PH->>W: Decline with a reason
+        W->>T: PUT /api/TakeOnRequests/{id}/decline {declineReason}
+        T->>DB: UPDATE TAKEONREQUESTS (declined, declineReason, decidedBy, decidedAt)
+        T->>N: NotifyAsync(advisor) with the reason
+    end
+    ADV->>W: "My requests"
+    W->>T: GET /api/TakeOnRequests/me

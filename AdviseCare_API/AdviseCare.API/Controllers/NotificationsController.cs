@@ -107,16 +107,26 @@ namespace AdviseCare.API.Controllers
             return Ok(response);
         }
 
-        // Get the notifications of the current Account
+        // Get the notifications of the current Account, with optional pagination
         [HttpGet("me")]
-        [SwaggerOperation(Summary = "[All roles] Get my notifications",
-            Description = "Retrieves the in-app notifications of the signed-in account, newest first. Each one has a title, a message, an optional redirectUrl to click through to the related item, and its read state.")]
+        [SwaggerOperation(Summary = "[All roles] Get my notifications with optional pagination",
+            Description = "Retrieves the in-app notifications of the signed-in account, newest first. Each one has a title, a message, an optional redirectUrl to click through to the related item, and its read state. " +
+                "unreadOnly = true keeps only the unread ones. Pass page and pageSize together to page the results (e.g. page=1&pageSize=5 for the bell's drop-down).")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "- Page and page size must be at least 1.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
-        public async Task<IActionResult> GetMine()
+        public async Task<IActionResult> GetMine([FromQuery] SearchMyNotificationRequest request, [FromQuery] int? page, [FromQuery] int? pageSize)
         {
             var accountId = Guid.Parse(User.FindFirstValue(ClaimTypes.Sid)!);
-            var response = await _notificationService.GetMyNotificationsAsync(accountId);
-            return Ok(response);
+            if (page.HasValue && pageSize.HasValue)
+            {
+                return Ok(await _notificationService.GetMyNotificationsWithPaginationAsync(
+                    accountId,
+                    request,
+                    page.Value,
+                    pageSize.Value));
+            }
+
+            return Ok(await _notificationService.GetMyNotificationsAsync(accountId, request));
         }
 
         // Count the unread notifications of the current Account

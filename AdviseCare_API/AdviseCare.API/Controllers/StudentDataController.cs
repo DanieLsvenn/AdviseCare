@@ -108,7 +108,8 @@ namespace AdviseCare.API.Controllers
             Description = "Validates the whole .xlsx/.csv file with its column mapping, then encrypts every value with the student's key for that data attribute and inserts it as a new row; " +
                 "columnMapping may also map \"subject\" to a column of subject codes (e.g. PRN212): a per-subject data attribute needs a subject on every row and a per-term one must leave it empty. " +
                 "Every enrolled student without a value for an imported per-term attribute/term gets a missing row (per-subject attributes get none, since the subjects a student takes are not known); everything is saved together. Any invalid row fails the whole import (isSuccess = false with the invalid rows). " +
-                "Rows of archived data attributes are not imported but listed in rejectedRows; the other rows still go in.")]
+                "Rows of archived data attributes are not imported but listed in rejectedRows; the other rows still go in. " +
+                "After the save the indicator flag check runs (see POST /api/IndicatorFlags/check); raisedFlagCount and clearedFlagCount say what it changed.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- One or more validation errors occurred (the errors field lists each invalid field).\n- Column mapping must be a JSON object.\n- Column mapping must be valid JSON.\n- A non-empty .xlsx or .csv file is required.\n- Only .xlsx and .csv files can be imported.\n- The file could not be read as {extension} data.\n- (details of the failing rows or file)", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]
@@ -178,7 +179,8 @@ namespace AdviseCare.API.Controllers
         [SwaggerOperation(Summary = "[System Administrator] Import transcript PDFs",
             Description = "Same checks as the preview, all-or-nothing: if any file is invalid nothing is written (isSuccess = false with each file's errors; activity log transcriptImportFailed). " +
                 "Otherwise every row is encrypted and inserted into the student data in one save as a per-subject value of Subject mark (grade files) or Attendance rate (attendance files) " +
-                "for the student, subject and term, valid from the import day kept inside the term, with the file name in provenanceNote; insert-only, no missing rows. Activity log transcriptImported.")]
+                "for the student, subject and term, valid from the import day kept inside the term, with the file name in provenanceNote; insert-only, no missing rows. Activity log transcriptImported. " +
+                "After the save the indicator flag check runs (see POST /api/IndicatorFlags/check); raisedFlagCount and clearedFlagCount say what it changed.")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "- At least one PDF file is required.\n- Send at most 200 transcript files at a time.\n- Data attribute '{name}' is not in AdviseCare / is archived / is not recorded per subject, so transcripts cannot be imported.", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status401Unauthorized, "- No valid sign-in token (missing, expired, or its session was ended).", typeof(ErrorResponse))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "- Your role cannot use this route.", typeof(ErrorResponse))]

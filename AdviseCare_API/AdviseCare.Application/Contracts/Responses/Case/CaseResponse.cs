@@ -24,6 +24,7 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public string SupportType { get; set; } = "academic";
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
         public string Status { get; set; } = "open";
     }
 
@@ -51,6 +52,7 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public string SupportType { get; set; } = "academic";
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
         public string Status { get; set; } = "open";
     }
 
@@ -78,6 +80,7 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public string SupportType { get; set; } = "academic";
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
         public string Status { get; set; } = "open";
         public List<CaseSharedAttributeResponse> SharedAttributes { get; set; } = new();
     }
@@ -115,6 +118,7 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public string SupportType { get; set; } = "academic";
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
         public string Status { get; set; } = "open";
     }
 
@@ -142,6 +146,7 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public string SupportType { get; set; } = "academic";
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
         public string Status { get; set; } = "open";
         public List<CaseSharedAttributeResponse> SharedAttributes { get; set; } = new();
     }
@@ -170,6 +175,7 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public string SupportType { get; set; } = "academic";
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
         public string Status { get; set; } = "open";
     }
 
@@ -192,11 +198,13 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public string StudentFullName { get; set; } = string.Empty;
         public string SubjectCode { get; set; } = string.Empty;
         public string SubjectName { get; set; } = string.Empty;
+        public int PendingTakeOnRequestCount { get; set; } = 0;
         public DateTime? ClosedAt { get; set; }
         public DateTime OpenedAt { get; set; }
         public string SupportType { get; set; } = "academic";
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
         public string Status { get; set; } = "open";
     }
 
@@ -225,6 +233,7 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public string SupportType { get; set; } = "academic";
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
         public string Status { get; set; } = "open";
     }
 
@@ -253,6 +262,7 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public string SupportType { get; set; } = "academic";
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
         public string Status { get; set; } = "open";
     }
 
@@ -284,6 +294,7 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public DateTime? ClosedAt { get; set; }
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
         public string Status { get; set; } = "open";
     }
 
@@ -299,6 +310,7 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public DateTime? ClosedAt { get; set; }
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
         public string Status { get; set; } = "open";
     }
 
@@ -314,6 +326,7 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public DateTime? ClosedAt { get; set; }
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
         public string Status { get; set; } = "open";
     }
 
@@ -329,6 +342,7 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public DateTime? ClosedAt { get; set; }
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
         public string Status { get; set; } = "open";
     }
 
@@ -344,7 +358,48 @@ namespace AdviseCare.Application.Contracts.Responses.Case
         public DateTime? ClosedAt { get; set; }
         public string CurrentStage { get; set; } = "pending";
         public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
         public string Status { get; set; } = "open";
+    }
+
+    public class ChangeCaseSeverityResponse
+    {
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? AdvisorId { get; set; }
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public string AdvisorEmail { get; set; } = string.Empty;
+        public string AdvisorFullName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public DateTime? ClosedAt { get; set; }
+        public string CurrentStage { get; set; } = "pending";
+        public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
+        public string Status { get; set; } = "open";
+    }
+
+    // An unassigned case an advisor may ask to take on: directory data, the request reason and the names of the shared data attributes (never their values)
+    public class GetTakeOnCaseResponse
+    {
+        public Guid CaseId { get; set; } = Guid.Empty;
+        public Guid? FacultyId { get; set; }
+        public Guid? MyTakeOnRequestId { get; set; }
+        public Guid StudentId { get; set; } = Guid.Empty;
+        public Guid? SubjectId { get; set; }
+        public Guid SupportCategoryId { get; set; } = Guid.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string FacultyName { get; set; } = string.Empty;
+        public string MyTakeOnRequestStatus { get; set; } = string.Empty;
+        public string RequestReason { get; set; } = string.Empty;
+        public string StudentCode { get; set; } = string.Empty;
+        public string StudentFullName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
+        public List<string> SharedAttributeNames { get; set; } = new();
+        public DateTime OpenedAt { get; set; }
+        public string SupportType { get; set; } = "academic";
+        public string Priority { get; set; } = "medium";
+        public string? Severity { get; set; }
     }
 
     public class SearchCaseStageHistoryResponse

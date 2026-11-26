@@ -1,9 +1,9 @@
 ﻿/* =====================================================================
    AdviseCare - Microsoft SQL Server database script
-   Source: AdviseCare_ERD_Tables.txt (51 tables)
+   Source: AdviseCare_ERD_Tables.txt (52 tables)
    1. Creates database AdviseCareDB if it does not exist
    2. Drops every AdviseCare table that exists, child tables first
-   3. Creates all 51 tables in dependency order (parents first)
+   3. Creates all 52 tables in dependency order (parents first)
    4. Seeds the 7 roles, one test account per role (password 123456) and mock data for every table
       (69 accounts incl. 50 students, 26 data attributes, 50 cases, early-support indicators, case feedback, ...);
       student data values are loaded through the API import (AdviseCare_Mock_Data folder)
@@ -22,7 +22,7 @@ USE [AdviseCareDB];
 GO
 
 /* ---------- 2. Drop tables (children first) ---------- */
--- Clean-up waypoint of 09/11/2026: only the current tables are dropped here (51). When a later change renames or replaces a table,
+-- Clean-up waypoint of 09/11/2026: only the current tables are dropped here (52). When a later change renames or replaces a table,
 -- add its old name's DROP line below this list (children first), so older databases are still cleaned up.
 -- Old tables, dropped first because they reference current ones (all removed; transcript values live in STUDENTDATA, and the
 -- transcript import keeps nothing between its preview and its import, like the Excel/CSV import):
@@ -47,6 +47,7 @@ DROP TABLE IF EXISTS [dbo].[EXTERNALSERVICES];
 DROP TABLE IF EXISTS [dbo].[SUPPORTGRANTS];
 DROP TABLE IF EXISTS [dbo].[INTERVENTIONS];
 DROP TABLE IF EXISTS [dbo].[CORRECTIONREQUESTS];
+DROP TABLE IF EXISTS [dbo].[TAKEONREQUESTS];
 DROP TABLE IF EXISTS [dbo].[INDICATORFLAGS];
 DROP TABLE IF EXISTS [dbo].[REFERRALS];
 DROP TABLE IF EXISTS [dbo].[CASESTAGEHISTORIES];
@@ -242,15 +243,18 @@ CREATE TABLE [dbo].[DATAATTRIBUTES] (
     -- 1 = every value belongs to one subject (STUDENTDATA.subjectId required); 0 = one value per term (subjectId empty)
     [isSubjectSpecific] BIT NOT NULL CONSTRAINT [DF_DATAATTRIBUTES_isSubjectSpecific] DEFAULT 0,
     [dataType] NVARCHAR(30) NOT NULL CONSTRAINT [DF_DATAATTRIBUTES_dataType] DEFAULT N'numeric',
+    -- how the per-subject values of one term are combined into one summary line (sum/average); only for a per-subject numeric attribute
+    [summaryMethod] NVARCHAR(30) NULL,
     [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_DATAATTRIBUTES_status] DEFAULT N'active',
     CONSTRAINT [PK_DATAATTRIBUTES] PRIMARY KEY ([dataAttributeId]),
     CONSTRAINT [UQ_DATAATTRIBUTES_attributeName] UNIQUE ([attributeName]),
     CONSTRAINT [CK_DATAATTRIBUTES_dataType] CHECK ([dataType] IN (N'numeric', N'categorical', N'boolean')),
+    CONSTRAINT [CK_DATAATTRIBUTES_summaryMethod] CHECK ([summaryMethod] IS NULL OR ([summaryMethod] IN (N'sum', N'average') AND [isSubjectSpecific] = 1 AND [dataType] = N'numeric')),
     CONSTRAINT [CK_DATAATTRIBUTES_status] CHECK ([status] IN (N'active', N'archived'))
 );
 GO
 
--- 48. ATTRIBUTEKEYS
+-- 49. ATTRIBUTEKEYS
 CREATE TABLE [dbo].[ATTRIBUTEKEYS] (
     [attributeKeyId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ATTRIBUTEKEYS_attributeKeyId] DEFAULT NEWSEQUENTIALID(),
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
@@ -376,7 +380,7 @@ CREATE TABLE [dbo].[ACCOUNT_SUBJECT] (
 );
 GO
 
--- 39. CONSENTPURPOSES
+-- 40. CONSENTPURPOSES
 CREATE TABLE [dbo].[CONSENTPURPOSES] (
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTPURPOSES_consentPurposeId] DEFAULT NEWSEQUENTIALID(),
     [createdBy] UNIQUEIDENTIFIER NOT NULL,
@@ -448,6 +452,8 @@ CREATE TABLE [dbo].[CASES] (
     [openedAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_CASES_openedAt] DEFAULT SYSUTCDATETIME(),
     [currentStage] NVARCHAR(30) NOT NULL CONSTRAINT [DF_CASES_currentStage] DEFAULT N'pending',
     [priority] NVARCHAR(30) NOT NULL CONSTRAINT [DF_CASES_priority] DEFAULT N'medium',
+    -- null = not rated yet (a student-created case until the Programme Head sets it); a case opened from a flag copies the flag's severity
+    [severity] NVARCHAR(30) NULL,
     [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_CASES_status] DEFAULT N'open',
     CONSTRAINT [PK_CASES] PRIMARY KEY ([caseId]),
     CONSTRAINT [FK_CASES_advisorId] FOREIGN KEY ([advisorId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
@@ -457,6 +463,7 @@ CREATE TABLE [dbo].[CASES] (
     CONSTRAINT [FK_CASES_supportCategoryId] FOREIGN KEY ([supportCategoryId]) REFERENCES [dbo].[SUPPORTCATEGORIES]([supportCategoryId]),
     CONSTRAINT [CK_CASES_currentStage] CHECK ([currentStage] IN (N'pending', N'assigned', N'contacted', N'referred', N'followUp', N'closed')),
     CONSTRAINT [CK_CASES_priority] CHECK ([priority] IN (N'low', N'medium', N'high', N'urgent')),
+    CONSTRAINT [CK_CASES_severity] CHECK ([severity] IS NULL OR [severity] IN (N'low', N'moderate', N'high', N'critical')),
     CONSTRAINT [CK_CASES_status] CHECK ([status] IN (N'open', N'closed', N'reopened'))
 );
 GO
@@ -657,7 +664,6 @@ CREATE TABLE [dbo].[INDICATORFLAGS] (
     [indicatorFlagId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_INDICATORFLAGS_indicatorFlagId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NULL,
     [indicatorId] UNIQUEIDENTIFIER NOT NULL,
-    [requestedBy] UNIQUEIDENTIFIER NULL,
     [resolvedBy] UNIQUEIDENTIFIER NULL,
     [studentDataId] UNIQUEIDENTIFIER NOT NULL,
     [studentId] UNIQUEIDENTIFIER NOT NULL,
@@ -666,7 +672,6 @@ CREATE TABLE [dbo].[INDICATORFLAGS] (
     [termId] UNIQUEIDENTIFIER NOT NULL,
     [dismissReason] NVARCHAR(1000) NULL,
     [flaggedAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_INDICATORFLAGS_flaggedAt] DEFAULT SYSUTCDATETIME(),
-    [requestedAt] DATETIME2(3) NULL,
     [resolvedAt] DATETIME2(3) NULL,
     [priority] NVARCHAR(30) NOT NULL,
     [severity] NVARCHAR(30) NOT NULL,
@@ -674,7 +679,6 @@ CREATE TABLE [dbo].[INDICATORFLAGS] (
     CONSTRAINT [PK_INDICATORFLAGS] PRIMARY KEY ([indicatorFlagId]),
     CONSTRAINT [FK_INDICATORFLAGS_caseId] FOREIGN KEY ([caseId]) REFERENCES [dbo].[CASES]([caseId]),
     CONSTRAINT [FK_INDICATORFLAGS_indicatorId] FOREIGN KEY ([indicatorId]) REFERENCES [dbo].[INDICATORS]([indicatorId]),
-    CONSTRAINT [FK_INDICATORFLAGS_requestedBy] FOREIGN KEY ([requestedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
     CONSTRAINT [FK_INDICATORFLAGS_resolvedBy] FOREIGN KEY ([resolvedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
     CONSTRAINT [FK_INDICATORFLAGS_studentDataId] FOREIGN KEY ([studentDataId]) REFERENCES [dbo].[STUDENTDATA]([studentDataId]),
     CONSTRAINT [FK_INDICATORFLAGS_studentId] FOREIGN KEY ([studentId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
@@ -682,12 +686,42 @@ CREATE TABLE [dbo].[INDICATORFLAGS] (
     CONSTRAINT [FK_INDICATORFLAGS_termId] FOREIGN KEY ([termId]) REFERENCES [dbo].[ACADEMICTERMS]([termId]),
     CONSTRAINT [CK_INDICATORFLAGS_priority] CHECK ([priority] IN (N'low', N'medium', N'high', N'urgent')),
     CONSTRAINT [CK_INDICATORFLAGS_severity] CHECK ([severity] IN (N'low', N'moderate', N'high', N'critical')),
-    CONSTRAINT [CK_INDICATORFLAGS_status] CHECK ([status] IN (N'open', N'requested', N'caseOpened', N'dismissed', N'cleared')),
+    CONSTRAINT [CK_INDICATORFLAGS_status] CHECK ([status] IN (N'open', N'caseOpened', N'dismissed', N'cleared')),
     CONSTRAINT [CK_INDICATORFLAGS_dismissReason] CHECK ([status] <> N'dismissed' OR [dismissReason] IS NOT NULL)
 );
 GO
 
--- 32. REFERRALS
+-- 32. TAKEONREQUESTS (an advisor asks to take on an unassigned student case or an open indicator flag; the Programme Head approves or declines)
+CREATE TABLE [dbo].[TAKEONREQUESTS] (
+    [takeOnRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_TAKEONREQUESTS_takeOnRequestId] DEFAULT NEWSEQUENTIALID(),
+    [advisorId] UNIQUEIDENTIFIER NOT NULL,
+    [caseId] UNIQUEIDENTIFIER NULL,
+    [decidedBy] UNIQUEIDENTIFIER NULL,
+    [indicatorFlagId] UNIQUEIDENTIFIER NULL,
+    [declineReason] NVARCHAR(1000) NULL,
+    [note] NVARCHAR(1000) NULL,
+    [createdAt] DATETIME2(3) NOT NULL CONSTRAINT [DF_TAKEONREQUESTS_createdAt] DEFAULT SYSUTCDATETIME(),
+    [decidedAt] DATETIME2(3) NULL,
+    [status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_TAKEONREQUESTS_status] DEFAULT N'pending',
+    CONSTRAINT [PK_TAKEONREQUESTS] PRIMARY KEY ([takeOnRequestId]),
+    CONSTRAINT [FK_TAKEONREQUESTS_advisorId] FOREIGN KEY ([advisorId]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_TAKEONREQUESTS_caseId] FOREIGN KEY ([caseId]) REFERENCES [dbo].[CASES]([caseId]),
+    CONSTRAINT [FK_TAKEONREQUESTS_decidedBy] FOREIGN KEY ([decidedBy]) REFERENCES [dbo].[ACCOUNTS]([accountId]),
+    CONSTRAINT [FK_TAKEONREQUESTS_indicatorFlagId] FOREIGN KEY ([indicatorFlagId]) REFERENCES [dbo].[INDICATORFLAGS]([indicatorFlagId]),
+    CONSTRAINT [CK_TAKEONREQUESTS_target] CHECK (([caseId] IS NULL AND [indicatorFlagId] IS NOT NULL) OR ([caseId] IS NOT NULL AND [indicatorFlagId] IS NULL)),
+    CONSTRAINT [CK_TAKEONREQUESTS_status] CHECK ([status] IN (N'pending', N'approved', N'declined', N'withdrawn', N'cancelled')),
+    CONSTRAINT [CK_TAKEONREQUESTS_declineReason] CHECK ([status] <> N'declined' OR [declineReason] IS NOT NULL)
+);
+GO
+-- One pending request per advisor and case, and per advisor and flag
+CREATE UNIQUE INDEX [UX_TAKEONREQUESTS_advisor_case_pending]
+    ON [dbo].[TAKEONREQUESTS] ([advisorId], [caseId]) WHERE [status] = N'pending' AND [caseId] IS NOT NULL;
+GO
+CREATE UNIQUE INDEX [UX_TAKEONREQUESTS_advisor_flag_pending]
+    ON [dbo].[TAKEONREQUESTS] ([advisorId], [indicatorFlagId]) WHERE [status] = N'pending' AND [indicatorFlagId] IS NOT NULL;
+GO
+
+-- 33. REFERRALS
 CREATE TABLE [dbo].[REFERRALS] (
     [referralId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_REFERRALS_referralId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -707,7 +741,7 @@ CREATE TABLE [dbo].[REFERRALS] (
 );
 GO
 
--- 33. CORRECTIONREQUESTS
+-- 34. CORRECTIONREQUESTS
 CREATE TABLE [dbo].[CORRECTIONREQUESTS] (
     [correctionRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CORRECTIONREQUESTS_correctionRequestId] DEFAULT NEWSEQUENTIALID(),
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
@@ -731,7 +765,7 @@ CREATE TABLE [dbo].[CORRECTIONREQUESTS] (
 );
 GO
 
--- 34. INTERVENTIONS
+-- 35. INTERVENTIONS
 CREATE TABLE [dbo].[INTERVENTIONS] (
     [interventionId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_INTERVENTIONS_interventionId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -750,7 +784,7 @@ CREATE TABLE [dbo].[INTERVENTIONS] (
 );
 GO
 
--- 35. SUPPORTGRANTS
+-- 36. SUPPORTGRANTS
 CREATE TABLE [dbo].[SUPPORTGRANTS] (
     [supportGrantId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_SUPPORTGRANTS_supportGrantId] DEFAULT NEWSEQUENTIALID(),
     [interventionId] UNIQUEIDENTIFIER NOT NULL,
@@ -764,7 +798,7 @@ CREATE TABLE [dbo].[SUPPORTGRANTS] (
 );
 GO
 
--- 36. EXTERNALSERVICES
+-- 37. EXTERNALSERVICES
 CREATE TABLE [dbo].[EXTERNALSERVICES] (
     [externalServiceId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_EXTERNALSERVICES_externalServiceId] DEFAULT NEWSEQUENTIALID(),
     [contactInfo] NVARCHAR(MAX) NULL,
@@ -775,7 +809,7 @@ CREATE TABLE [dbo].[EXTERNALSERVICES] (
 );
 GO
 
--- 37. EXTERNALREFERRALS
+-- 38. EXTERNALREFERRALS
 CREATE TABLE [dbo].[EXTERNALREFERRALS] (
     [externalReferralId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_EXTERNALREFERRALS_externalReferralId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -794,7 +828,7 @@ CREATE TABLE [dbo].[EXTERNALREFERRALS] (
 );
 GO
 
--- 38. ESCALATIONS
+-- 39. ESCALATIONS
 CREATE TABLE [dbo].[ESCALATIONS] (
     [escalationId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ESCALATIONS_escalationId] DEFAULT NEWSEQUENTIALID(),
     [caseId] UNIQUEIDENTIFIER NOT NULL,
@@ -812,7 +846,7 @@ CREATE TABLE [dbo].[ESCALATIONS] (
 );
 GO
 
--- 40. PURPOSE_ATTRIBUTE
+-- 41. PURPOSE_ATTRIBUTE
 CREATE TABLE [dbo].[PURPOSE_ATTRIBUTE] (
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
     [dataAttributeId] UNIQUEIDENTIFIER NOT NULL,
@@ -822,7 +856,7 @@ CREATE TABLE [dbo].[PURPOSE_ATTRIBUTE] (
 );
 GO
 
--- 41. CONSENTS
+-- 42. CONSENTS
 CREATE TABLE [dbo].[CONSENTS] (
     [consentId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTS_consentId] DEFAULT NEWSEQUENTIALID(),
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
@@ -840,7 +874,7 @@ CREATE TABLE [dbo].[CONSENTS] (
 );
 GO
 
--- 42. CONSENTHISTORIES
+-- 43. CONSENTHISTORIES
 CREATE TABLE [dbo].[CONSENTHISTORIES] (
     [consentHistoryId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTHISTORIES_consentHistoryId] DEFAULT NEWSEQUENTIALID(),
     [changedBy] UNIQUEIDENTIFIER NOT NULL,
@@ -856,7 +890,7 @@ CREATE TABLE [dbo].[CONSENTHISTORIES] (
 );
 GO
 
--- 43. CONSENTREQUESTS
+-- 44. CONSENTREQUESTS
 CREATE TABLE [dbo].[CONSENTREQUESTS] (
     [consentRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_CONSENTREQUESTS_consentRequestId] DEFAULT NEWSEQUENTIALID(),
     [advisorId] UNIQUEIDENTIFIER NOT NULL,
@@ -876,7 +910,7 @@ CREATE TABLE [dbo].[CONSENTREQUESTS] (
 );
 GO
 
--- 44. ACCESSPOLICIES
+-- 45. ACCESSPOLICIES
 CREATE TABLE [dbo].[ACCESSPOLICIES] (
     [accessPolicyId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ACCESSPOLICIES_accessPolicyId] DEFAULT NEWSEQUENTIALID(),
     [consentPurposeId] UNIQUEIDENTIFIER NOT NULL,
@@ -891,7 +925,7 @@ CREATE TABLE [dbo].[ACCESSPOLICIES] (
 );
 GO
 
--- 45. ACCESSLOGS
+-- 46. ACCESSLOGS
 CREATE TABLE [dbo].[ACCESSLOGS] (
     [accessLogId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ACCESSLOGS_accessLogId] DEFAULT NEWSEQUENTIALID(),
     [accessorId] UNIQUEIDENTIFIER NOT NULL,
@@ -911,7 +945,7 @@ CREATE TABLE [dbo].[ACCESSLOGS] (
 );
 GO
 
--- 46. EMERGENCYACCESSREQUESTS
+-- 47. EMERGENCYACCESSREQUESTS
 CREATE TABLE [dbo].[EMERGENCYACCESSREQUESTS] (
     [emergencyAccessRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_EMERGENCYACCESSREQUESTS_emergencyAccessRequestId] DEFAULT NEWSEQUENTIALID(),
     [requestedBy] UNIQUEIDENTIFIER NOT NULL,
@@ -931,7 +965,7 @@ CREATE TABLE [dbo].[EMERGENCYACCESSREQUESTS] (
 );
 GO
 
--- 47. ERASUREREQUESTS
+-- 48. ERASUREREQUESTS
 CREATE TABLE [dbo].[ERASUREREQUESTS] (
     [erasureRequestId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_ERASUREREQUESTS_erasureRequestId] DEFAULT NEWSEQUENTIALID(),
     [attributeKeyId] UNIQUEIDENTIFIER NOT NULL,
@@ -948,7 +982,7 @@ CREATE TABLE [dbo].[ERASUREREQUESTS] (
 );
 GO
 
--- 49. REPORTS
+-- 50. REPORTS
 CREATE TABLE [dbo].[REPORTS] (
     [reportId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_REPORTS_reportId] DEFAULT NEWSEQUENTIALID(),
     [generatedBy] UNIQUEIDENTIFIER NOT NULL,
@@ -965,7 +999,7 @@ CREATE TABLE [dbo].[REPORTS] (
 );
 GO
 
--- 50. BACKUPS
+-- 51. BACKUPS
 CREATE TABLE [dbo].[BACKUPS] (
     [backupId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_BACKUPS_backupId] DEFAULT NEWSEQUENTIALID(),
     [createdBy] UNIQUEIDENTIFIER NULL,
@@ -978,7 +1012,7 @@ CREATE TABLE [dbo].[BACKUPS] (
 );
 GO
 
--- 51. RESTOREOPERATIONS
+-- 52. RESTOREOPERATIONS
 CREATE TABLE [dbo].[RESTOREOPERATIONS] (
     [restoreOperationId] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_RESTOREOPERATIONS_restoreOperationId] DEFAULT NEWSEQUENTIALID(),
     [backupId] UNIQUEIDENTIFIER NOT NULL,
@@ -1007,7 +1041,7 @@ CREATE UNIQUE INDEX [UX_ACCESSPOLICIES_role_purpose_live] ON [dbo].[ACCESSPOLICI
 -- fast lookup of the next row for point-in-time reconstruction (system time and valid time)
 CREATE INDEX [IX_STUDENTDATA_student_attribute_time] ON [dbo].[STUDENTDATA]([studentId], [dataAttributeId], [termId], [subjectId], [transactionFrom], [validFrom]);
 -- one open (or requested) flag per student, rule and term; resolved flags stay as history
-CREATE UNIQUE INDEX [UX_INDICATORFLAGS_student_indicator_term_subject_open] ON [dbo].[INDICATORFLAGS]([studentId], [indicatorId], [termId], [subjectId]) WHERE [status] IN (N'open', N'requested');
+CREATE UNIQUE INDEX [UX_INDICATORFLAGS_student_indicator_term_subject_open] ON [dbo].[INDICATORFLAGS]([studentId], [indicatorId], [termId], [subjectId]) WHERE [status] = N'open';
 -- at most one active consent purpose is the statistics purpose used for cohort data
 CREATE UNIQUE INDEX [UX_CONSENTPURPOSES_statistics_active] ON [dbo].[CONSENTPURPOSES]([isForStatistics]) WHERE [isForStatistics] = 1 AND [status] = N'active';
 -- every value protected by one key, for erasure
@@ -2719,6 +2753,10 @@ INSERT INTO [dbo].[DATAATTRIBUTES] ([dataAttributeId], [attributeDescription], [
     (N'191D4DDB-8B96-5FF7-90D9-D1150EBF9165', N'Number of student clubs you joined (no longer collected)', N'Club membership count', 0, N'numeric', N'archived'),
     (N'8979B92E-3303-5EDF-A0C0-A925271D1BDD', N'Your dormitory block (no longer collected, replaced by Accommodation status)', N'Dormitory block', 0, N'categorical', N'archived');
 GO
+-- How the per-subject numeric attributes are summarised on one line (QC-281)
+UPDATE [dbo].[DATAATTRIBUTES] SET [summaryMethod] = N'sum' WHERE [attributeName] IN (N'Absent slots', N'Late submissions');
+UPDATE [dbo].[DATAATTRIBUTES] SET [summaryMethod] = N'average' WHERE [attributeName] IN (N'Attendance rate', N'Subject mark');
+GO
 
 -- ATTRIBUTEKEYS: 5 rows
 INSERT INTO [dbo].[ATTRIBUTEKEYS] ([attributeKeyId], [dataAttributeId], [studentId], [wrappedKey], [masterKeyVersion], [createdAt], [destroyedAt], [status]) VALUES
@@ -2888,6 +2926,11 @@ INSERT INTO [dbo].[CASES] ([caseId], [advisorId], [openedBy], [studentId], [subj
     (N'B26E9635-6DD3-51AA-BFCE-450F5E2B938D', N'A5B03782-6A13-5E03-87ED-615183409D49', N'A7DA87F6-F4A3-5FFA-B1E2-ECD98AF137FB', N'A7DA87F6-F4A3-5FFA-B1E2-ECD98AF137FB', NULL, N'9285B8AC-C465-5254-8A87-CDFF33BC5A07', N'I lost my part-time job and cannot cover rent and food.', NULL, '2026-10-20T16:28:00.000', N'referred', N'urgent', N'open'),
     (N'804A8B07-D0CC-5E40-B674-E48315CD3312', N'A5B03782-6A13-5E03-87ED-615183409D49', N'B1C138EC-B5C5-5B43-98C2-F6C22AB42BB9', N'B1C138EC-B5C5-5B43-98C2-F6C22AB42BB9', NULL, N'9285B8AC-C465-5254-8A87-CDFF33BC5A07', N'I want to apply for a student loan but do not understand the paperwork.', NULL, '2026-09-20T11:59:00.000', N'referred', N'urgent', N'open'),
     (N'8ACE5193-1955-5ED7-B581-D48BAE2CC7F3', N'A5B03782-6A13-5E03-87ED-615183409D49', N'333108A4-2CA8-5656-8B73-744E6579CD8C', N'333108A4-2CA8-5656-8B73-744E6579CD8C', NULL, N'49F96775-F067-58E3-A311-5E2FB1EA20F7', N'The dormitory room is too noisy to study and I want to change rooms.', NULL, '2026-09-21T21:18:00.000', N'contacted', N'high', N'open');
+GO
+-- Severity of some unassigned cases, set by the Programme Head (the others are not rated yet)
+UPDATE [dbo].[CASES] SET [severity] = N'critical' WHERE [caseId] = N'FEA50E77-3074-5125-A5B1-5446CB5D8F45';
+UPDATE [dbo].[CASES] SET [severity] = N'high' WHERE [caseId] = N'CC438A49-8C44-55DC-9709-EC47540C7987';
+UPDATE [dbo].[CASES] SET [severity] = N'moderate' WHERE [caseId] = N'0FE0D460-903F-55A7-BC48-84B640E3FFCC';
 GO
 
 -- CASECHANGEREQUESTS: 5 rows
@@ -4559,6 +4602,15 @@ INSERT INTO [dbo].[MEETUPSCHEDULES] ([meetupScheduleId], [cancelledBy], [meetupR
     (N'9885C8E2-C90F-5243-A5CA-22DCB64FCC0E', NULL, N'F79786E3-2E12-5D71-AA73-D3D7FE5CEE42', NULL, N'Online (Google Meet)', NULL, 90, NULL, '2026-11-21T02:00:00.000', '2026-12-02T07:00:00.000', N'scheduled'),
     (N'4AB6ACCA-70B7-5C84-ACF9-FD1EA0791A20', NULL, N'9C6E0FC4-2173-5F42-A6ED-6E0D3592C2DD', NULL, N'Campus Alpha building', N'Room 112', 45, NULL, '2026-10-10T08:00:00.000', '2026-10-13T03:00:00.000', N'completed'),
     (N'81E68FFE-0569-54B8-A344-46FC0497113C', NULL, N'9A6D57F6-8482-503C-8011-47CF5A4BBAB7', NULL, N'Online (Google Meet)', NULL, 60, NULL, '2026-10-19T09:00:00.000', '2026-10-21T08:00:00.000', N'missed');
+GO
+
+-- TAKEONREQUESTS: 5 rows (advisors asking to take on unassigned student cases; flags come from the flag check after an import)
+INSERT INTO [dbo].[TAKEONREQUESTS] ([takeOnRequestId], [advisorId], [caseId], [decidedBy], [indicatorFlagId], [declineReason], [note], [createdAt], [decidedAt], [status]) VALUES
+    (N'D264ABAB-06C2-5411-A345-E5F73C5F2FD9', N'5976E918-C022-5F18-81E7-911498BDD788', N'0FE0D460-903F-55A7-BC48-84B640E3FFCC', NULL, NULL, NULL, N'I advise this student''s class this term and know the study plan rules.', '2026-11-20T02:00:00.000', NULL, N'pending'),
+    (N'A84DF3A7-83E0-5859-8BC4-18C7C3C4DAE2', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'0FE0D460-903F-55A7-BC48-84B640E3FFCC', NULL, NULL, NULL, NULL, '2026-11-21T03:15:00.000', NULL, N'pending'),
+    (N'62AF1078-107B-5F1E-8B33-7C1676363E84', N'A5B03782-6A13-5E03-87ED-615183409D49', N'FEA50E77-3074-5125-A5B1-5446CB5D8F45', NULL, NULL, NULL, N'I handled the dormitory office cases last term.', '2026-11-22T01:30:00.000', NULL, N'pending'),
+    (N'5DA55EC0-8F8F-5505-BF2A-EB660702B5D0', N'F9552B17-90D1-5795-BB26-0875EE5BD496', N'56F90886-4FD5-5FDA-8AA6-2F21B6ACB4DE', N'7FD2CFD6-AE46-5A8D-9FEF-A4803C32687F', NULL, N'A subject specialist will take this one; please pick a case in your own subjects.', NULL, '2026-11-18T02:00:00.000', '2026-11-19T04:00:00.000', N'declined'),
+    (N'7F48047B-2449-55EA-8F73-966BA31E60BE', N'437A2A74-E052-50DE-9C3D-994B084CFF40', N'71B899E2-DE7B-5E14-8E1B-5FB0416ECFC5', NULL, NULL, NULL, NULL, '2026-11-17T08:00:00.000', '2026-11-17T09:30:00.000', N'withdrawn');
 GO
 
 -- CONSENTS: 60 rows

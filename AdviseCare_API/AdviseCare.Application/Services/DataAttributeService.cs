@@ -32,6 +32,7 @@ namespace AdviseCare.Application.Services
                 AttributeName = a.AttributeName,
                 IsSubjectSpecific = a.IsSubjectSpecific,
                 DataType = a.DataType,
+                SummaryMethod = a.SummaryMethod,
                 Status = a.Status
             });
         }
@@ -54,6 +55,7 @@ namespace AdviseCare.Application.Services
                     AttributeName = a.AttributeName,
                     IsSubjectSpecific = a.IsSubjectSpecific,
                     DataType = a.DataType,
+                    SummaryMethod = a.SummaryMethod,
                     Status = a.Status
                 });
         }
@@ -71,6 +73,7 @@ namespace AdviseCare.Application.Services
                 AttributeName = dataAttribute.AttributeName,
                 IsSubjectSpecific = dataAttribute.IsSubjectSpecific,
                 DataType = dataAttribute.DataType,
+                SummaryMethod = dataAttribute.SummaryMethod,
                 Status = dataAttribute.Status
             };
         }
@@ -92,6 +95,7 @@ namespace AdviseCare.Application.Services
                 AttributeName = a.AttributeName,
                 IsSubjectSpecific = a.IsSubjectSpecific,
                 DataType = a.DataType,
+                SummaryMethod = a.SummaryMethod,
                 Status = a.Status
             }).ToList();
         }
@@ -102,6 +106,7 @@ namespace AdviseCare.Application.Services
             var attributeName = request.AttributeName.Trim();
             if (await _dataAttributeRepository.ExistsAsync(a => a.AttributeName == attributeName))
                 throw new ConflictException($"A data attribute named '{attributeName}' already exists.");
+            var summaryMethod = CheckSummaryMethod(request.SummaryMethod, request.IsSubjectSpecific, request.DataType);
 
             var dataAttribute = new Dataattribute
             {
@@ -110,6 +115,7 @@ namespace AdviseCare.Application.Services
                 AttributeName = attributeName,
                 IsSubjectSpecific = request.IsSubjectSpecific,
                 DataType = request.DataType,
+                SummaryMethod = summaryMethod,
                 Status = "active"
             };
             await _dataAttributeRepository.CreateAsync(dataAttribute);
@@ -123,11 +129,12 @@ namespace AdviseCare.Application.Services
                 AttributeName = dataAttribute.AttributeName,
                 IsSubjectSpecific = dataAttribute.IsSubjectSpecific,
                 DataType = dataAttribute.DataType,
+                SummaryMethod = dataAttribute.SummaryMethod,
                 Status = dataAttribute.Status
             };
         }
 
-        // Update Data attribute (only the description; the name, data type and per-subject setting stay as created)
+        // Update Data attribute: the description and the summary method (null keeps it, empty clears it); the name, data type and per-subject setting stay as created
         public async Task<UpdateDataAttributeResponse> UpdateAsync(Guid DataAttributeId, UpdateDataAttributeRequest request)
         {
             var dataAttribute = await _dataAttributeRepository.GetByIdAsync(DataAttributeId)
@@ -137,9 +144,12 @@ namespace AdviseCare.Application.Services
                 throw new ConflictException("An archived data attribute cannot be edited.");
 
             dataAttribute.AttributeDescription = string.IsNullOrWhiteSpace(request.AttributeDescription) ? null : request.AttributeDescription.Trim();
+            if (request.SummaryMethod != null)
+                dataAttribute.SummaryMethod = CheckSummaryMethod(request.SummaryMethod, dataAttribute.IsSubjectSpecific, dataAttribute.DataType);
             await _dataAttributeRepository.UpdateAsync(dataAttribute);
 
-            await _activityLogService.LogCurrentAccountAsync("dataAttributeUpdated", $"Updated the description of data attribute {dataAttribute.AttributeName}");
+            await _activityLogService.LogCurrentAccountAsync("dataAttributeUpdated",
+                $"Updated data attribute {dataAttribute.AttributeName} (summary method: {dataAttribute.SummaryMethod ?? "none"})");
 
             return new UpdateDataAttributeResponse
             {
@@ -148,6 +158,7 @@ namespace AdviseCare.Application.Services
                 AttributeName = dataAttribute.AttributeName,
                 IsSubjectSpecific = dataAttribute.IsSubjectSpecific,
                 DataType = dataAttribute.DataType,
+                SummaryMethod = dataAttribute.SummaryMethod,
                 Status = dataAttribute.Status
             };
         }
@@ -166,6 +177,16 @@ namespace AdviseCare.Application.Services
 
             await _activityLogService.LogCurrentAccountAsync("dataAttributeArchived", $"Archived data attribute {dataAttribute.AttributeName}");
             return true;
+        }
+
+        // Helper: a summary method (sum/average) is only for a per-subject numeric data attribute; an empty one means none
+        private static string? CheckSummaryMethod(string? SummaryMethod, bool IsSubjectSpecific, string DataType)
+        {
+            if (string.IsNullOrWhiteSpace(SummaryMethod))
+                return null;
+            if (!IsSubjectSpecific || DataType != "numeric")
+                throw new ValidationException("A summary method can only be set for a per-subject numeric data attribute.");
+            return SummaryMethod;
         }
     }
 }

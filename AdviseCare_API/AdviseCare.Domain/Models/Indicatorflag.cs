@@ -13,8 +13,6 @@ public partial class Indicatorflag
 
     public Guid IndicatorId { get; set; }
 
-    public Guid? RequestedBy { get; set; }
-
     public Guid? ResolvedBy { get; set; }
 
     public Guid StudentDataId { get; set; }
@@ -29,8 +27,6 @@ public partial class Indicatorflag
 
     public DateTime FlaggedAt { get; set; }
 
-    public DateTime? RequestedAt { get; set; }
-
     public DateTime? ResolvedAt { get; set; }
 
     public string Priority { get; set; }
@@ -43,7 +39,7 @@ public partial class Indicatorflag
 
     public virtual Indicator Indicator { get; set; }
 
-    public virtual Account RequestedByNavigation { get; set; }
+    public virtual ICollection<Takeonrequest> Takeonrequests { get; set; } = new List<Takeonrequest>();
 
     public virtual Account ResolvedByNavigation { get; set; }
 
