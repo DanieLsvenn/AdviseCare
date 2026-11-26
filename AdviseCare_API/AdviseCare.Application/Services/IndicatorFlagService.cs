@@ -355,7 +355,7 @@ namespace AdviseCare.Application.Services
                 {
                     await _notificationService.NotifyAsync(programmeHeadId, "New students in need",
                         $"The indicator check raised {raised.Count} new flag(s). Review them in Students in need.",
-                        "/programme-head/students-in-need");
+                        "/head/students-in-need");
                 }
             }
             await NotifyCancelledAsync(cancelled, "the student no longer meets the indicator's rule");

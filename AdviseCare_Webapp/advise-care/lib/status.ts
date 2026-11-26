@@ -20,6 +20,10 @@ const tones: Record<string, StatusTone> = {
   medium: "sealed",
   high: "attention",
   urgent: "urgent",
+  // Severity (cases and indicator flags)
+  moderate: "info",
+  critical: "urgent",
+  notrated: "attention",
   // Decisions and lifecycle
   accepted: "ontrack",
   returned: "sealed",
@@ -44,6 +48,13 @@ const tones: Record<string, StatusTone> = {
   flagged: "urgent",
   reviewed: "ontrack",
   destroyed: "sealed",
+  declined: "urgent",
+  cancelled: "sealed",
+  caseopened: "ontrack",
+  dismissed: "sealed",
+  cleared: "sealed",
+  scheduled: "info",
+  missed: "attention",
   // Accounts and terms
   linked: "ontrack",
   notlinked: "attention",
@@ -67,6 +78,7 @@ export const statusFields = new Set([
   "status",
   "priority",
   "casePriority",
+  "severity",
   "linkStatus",
   "academicStatus",
   "purposeStatus",

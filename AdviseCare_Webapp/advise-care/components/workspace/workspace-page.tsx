@@ -6,6 +6,7 @@ import {
 } from "@/components/workspace/api-workspace";
 import { StudentDataImportWorkflow } from "@/components/admin/student-data-import-workflow";
 import { AccountImportWorkflow } from "@/components/admin/account-import-workflow";
+import { StudentDataLedger } from "@/components/admin/student-data-ledger";
 import { WorkspaceTabs } from "@/components/workspace/workspace-tabs";
 import { SupportRequestForm } from "@/components/student/support-request-form";
 import { PageHeader } from "@/components/ui/page-header";
@@ -38,6 +39,17 @@ export async function WorkspacePage({
     }
     return { ...definition, pathValues };
   });
+
+  // Student data: the import, then the ledger grouped by student (rows by term in a sheet)
+  if (screen === "admin.studentData") {
+    return (
+      <div className="flex flex-col gap-space-lg">
+        <PageHeader title={t("dataLedger")} description={t("dataLedgerDescription")} />
+        <StudentDataImportWorkflow />
+        <StudentDataLedger />
+      </div>
+    );
+  }
 
   // Consent history and the requests received sit behind tabs, so the second
   // list does not wait below the whole first one.
@@ -142,7 +154,6 @@ export async function WorkspacePage({
 /** The import of a list's records sits between the list's title and the list. */
 function beforeList(screen: WorkspaceScreen) {
   if (screen === "admin.accounts") return <AccountImportWorkflow />;
-  if (screen === "admin.studentData") return <StudentDataImportWorkflow />;
   return undefined;
 }
 

@@ -249,7 +249,7 @@
   },
   "export": {
     "title": "Export machine-readable student dossier",
-    "intro": "Generates an authenticated, verifiable JSON package containing your surviving academic ledger, indicator provenance, consent transactions and chronological access trails.",
+    "intro": "Generates a verifiable JSON package containing your current data values, where each value came from, your consent records and the history of who accessed your data.",
     "compliance": "Right to data portability & institutional transparency directive",
     "guaranteeTitle": "Bitemporal disclosure & cryptographic erasure guarantee",
     "guaranteeBody": "Attributes subject to verified erasure are irreversibly purged and transmit exactly 0 payload bytes (\"value\": null). Tombstone timestamps, ledger blocks and destruction proofs remain permanently bound for audit integrity. No private keys and no third-party student records are ever extracted.",
@@ -260,7 +260,7 @@
     "reconciled": "{done} of {total} reconciled",
     "schema1": "1. Surviving student attributes",
     "schema1Body": "Canonical enrolment identifiers, bitemporally verified credentials and real-time standing.",
-    "schema2": "2. Indicator provenance chains",
+    "schema2": "2. Data provenance",
     "schema2Body": "Deterministic calculation sources, turnstile ingestion and VLE interaction telemetry.",
     "schema3": "3. Sovereign consent ledger",
     "schema3Body": "Complete cryptographic audit trail of authorisations, revocations and certified nullifications.",

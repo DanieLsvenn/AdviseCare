@@ -25,8 +25,11 @@ import { controlClass } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
+import { RowsPerPage } from "@/components/ui/pager";
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/states";
+import { StatusChip } from "@/components/ui/status-chip";
 import { StatusValue } from "@/components/ui/status-value";
+import type { StatusTone } from "@/lib/types";
 import {
   bodyFromRecord,
   camelCase,
@@ -109,7 +112,7 @@ export interface WorkspaceColumn {
   key: string;
   label: string;
   /** Override the automatic cell format. */
-  format?: "text" | "status" | "date" | "datetime" | "id" | "number" | "identity" | "label" | "code";
+  format?: "text" | "status" | "date" | "datetime" | "id" | "number" | "identity" | "label" | "code" | "dataType";
 }
 
 export interface WorkspaceOperation {
@@ -228,6 +231,8 @@ export function ApiWorkspace({
   const [loadError, setLoadError] = useState("");
   const [filterValues, setFilterValues] = useState<Record<string, string | boolean>>({});
   const [clientPage, setClientPage] = useState(1);
+  // Rows per page, chosen under the list; server-paged lists send it as pageSize
+  const [rowsPerPage, setRowsPerPage] = useState(definition.pageSize ?? DEFAULT_PAGE_SIZE);
 
   const loadRecords = useCallback(
     async (nextQuery: ApiQuery = query) => {
@@ -308,14 +313,14 @@ export function ApiWorkspace({
     }
     if (definition.pageSize) {
       nextQuery.page = 1;
-      nextQuery.pageSize = definition.pageSize;
+      nextQuery.pageSize = rowsPerPage;
     }
     setQuery(nextQuery);
   }
 
   function clearFilters() {
     setFilterValues({});
-    setQuery(definition.pageSize ? { page: 1, pageSize: definition.pageSize } : {});
+    setQuery(definition.pageSize ? { page: 1, pageSize: rowsPerPage } : {});
   }
 
   function changePage(page: number) {
@@ -323,7 +328,13 @@ export function ApiWorkspace({
       setClientPage(page);
       return;
     }
-    setQuery({ ...query, page, pageSize: definition.pageSize ?? query.pageSize });
+    setQuery({ ...query, page, pageSize: rowsPerPage });
+  }
+
+  function changeRowsPerPage(size: number) {
+    setRowsPerPage(size);
+    setClientPage(1);
+    if (definition.pageSize) setQuery({ ...query, page: 1, pageSize: size });
   }
 
   function openRecord(record: Record<string, unknown>) {
@@ -340,8 +351,8 @@ export function ApiWorkspace({
 
   // Lists whose endpoint does not page (or ignores page/pageSize) are paged
   // here, so no screen shows hundreds of rows at once.
-  const pageSize = definition.pageSize ?? DEFAULT_PAGE_SIZE;
-  const clientPaged = records.length > pageSize;
+  const pageSize = rowsPerPage;
+  const clientPaged = !definition.pageSize || records.length > pageSize;
   const page = clientPaged ? Math.min(clientPage, Math.max(1, Math.ceil(records.length / pageSize))) : Number(query.page ?? 1);
   const shownRecords = clientPaged ? records.slice((page - 1) * pageSize, page * pageSize) : records;
   const pageTotal = clientPaged ? records.length : total;
@@ -567,13 +578,9 @@ export function ApiWorkspace({
           </>
         )}
 
-        {requiredQueryValuesPresent &&
-        !loadError &&
-        !loading &&
-        (clientPaged ||
-          (definition.pageSize &&
-            (page > 1 || (total !== undefined ? total > pageSize : records.length >= pageSize)))) ? (
-          <div className="flex items-center justify-between gap-space-sm border-t border-rule px-space-lg py-space-sm">
+        {/* Under every list that has rows: the range, the rows-per-page choice and previous / next */}
+        {requiredQueryValuesPresent && !loadError && !loading && (records.length > 0 || page > 1) ? (
+          <div className="flex flex-wrap items-center justify-between gap-space-sm border-t border-rule px-space-lg py-space-sm">
             <span className="font-mono text-[0.8125rem] text-text-faint">
               {pageTotal !== undefined && shownRecords.length > 0
                 ? tu("workspace.range", {
@@ -583,7 +590,8 @@ export function ApiWorkspace({
                   })
                 : `${t("page")} ${page}`}
             </span>
-            <div className="flex gap-space-sm">
+            <div className="flex flex-wrap items-center gap-space-sm">
+              <RowsPerPage value={rowsPerPage} onChange={changeRowsPerPage} />
               <Button
                 disabled={loading || page <= 1}
                 icon="chevron_left"
@@ -685,6 +693,12 @@ export function ApiWorkspace({
 
 const INLINE_FILTERS = 3;
 const DEFAULT_PAGE_SIZE = 20;
+const DATA_TYPE_TONES: Record<string, StatusTone> = { numeric: "info", categorical: "referral", boolean: "attention" };
+
+/** A data attribute's data type as a coloured chip (numeric blue, categorical purple, yes / no amber). */
+export function DataTypeChip({ value, label }: { value: string; label: string }) {
+  return <StatusChip size="sm" tone={DATA_TYPE_TONES[value.toLowerCase()] ?? "sealed"} label={label} />;
+}
 
 /** One row per item of each record's `key` list, with the parent's other fields. */
 function flattenRecords(records: Record<string, unknown>[], key: string): Record<string, unknown>[] {
@@ -822,6 +836,8 @@ function columnKind(column: WorkspaceColumn): NonNullable<WorkspaceColumn["forma
   }
   if (/^(studentName|fullName|accountName)$/.test(column.key)) return "identity";
   if (/Code$/.test(column.key)) return "code";
+  if (column.key === "dataType") return "dataType";
+  if (column.key === "summaryMethod") return "label";
   if (/(supportType|Type|format|channel)$/.test(column.key)) return "label";
   return "text";
 }
@@ -883,6 +899,9 @@ function FormattedValue({
         ))}
       </span>
     );
+  }
+  if (typeof value === "string" && kind === "dataType") {
+    return <DataTypeChip value={value} label={tu.has(`status.${statusKey(value)}`) ? tu(`status.${statusKey(value)}`) : value} />;
   }
   if (typeof value === "string" && kind === "status") {
     // The expected state (an active, linked account) is quiet text; only a
@@ -984,12 +1003,6 @@ function RecordDetail({
   onComplete: () => Promise<void>;
 }) {
   const tu = useTranslations("ui");
-  const shownKeys = new Set(columns.map((column) => column.key.toLowerCase()));
-  const extraFields = Object.entries(record).filter(
-    ([key, value]) =>
-      !shownKeys.has(key.toLowerCase()) &&
-      (typeof value !== "object" || value === null || Array.isArray(value)),
-  );
   // Offer only what makes sense for this record's state, and keep the
   // operations that remove or block access in their own group at the end.
   const available = operations.filter((operation) => {
@@ -1017,24 +1030,6 @@ function RecordDetail({
           .map((column) => [column.key, column.label, getPathValue(record, column.key) ?? readRecordValue(record, column.key), columnKind(column)])}
       />
 
-      {extraFields.length ? (
-        <details className="group rounded-lg border border-rule">
-          <summary className="flex cursor-pointer list-none items-center justify-between px-space-base py-space-sm text-sm font-semibold text-text-muted hover:text-text">
-            {tu("workspace.allFields")}
-            <Icon name="expand_more" className="text-[20px] transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="border-t border-rule px-space-base py-space-md">
-            <FieldList
-              entries={extraFields.map(([key, value]) => [
-                key,
-                humanizeKey(key),
-                value,
-                columnKind({ key, label: key }),
-              ])}
-            />
-          </div>
-        </details>
-      ) : null}
 
       {regular.length ? (
         <OperationGroup

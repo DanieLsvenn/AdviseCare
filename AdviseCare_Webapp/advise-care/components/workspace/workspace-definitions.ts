@@ -59,7 +59,6 @@ export type WorkspaceScreen =
   | "welfare.escalations"
   | "head.reports"
   | "head.workload"
-  | "notifications"
   | "settings";
 
 type WorkspaceMessages = Awaited<
@@ -148,6 +147,16 @@ export function getWorkspaceDefinitions(
   ] as WorkspaceKey[];
   const caseStatusOptions = ["open", "closed", "reopened"] as WorkspaceKey[];
   const priorityOptions = ["low", "medium", "high", "urgent"] as WorkspaceKey[];
+  const dataTypeOptions: Array<{ label: WorkspaceKey; value: string }> = [
+    { label: "numericType", value: "numeric" },
+    { label: "categoricalType", value: "categorical" },
+    { label: "booleanType", value: "boolean" },
+  ];
+  // How the per-subject values of one term add up in the student's summary row (per-subject numeric attributes only)
+  const summaryMethodOptions: Array<{ label: WorkspaceKey; value: string }> = [
+    { label: "summarySum", value: "sum" },
+    { label: "summaryAverage", value: "average" },
+  ];
   // Pickers backed by the API, so nobody has to type a GUID or a role name.
   const roleSource = (excludeStudent = false) => ({
     path: "Roles",
@@ -599,28 +608,11 @@ export function getWorkspaceDefinitions(
         workspace(
           "dataAttributes",
           "DataAttributes/search",
-          ["dataAttributeId", "attributeName", "isSubjectSpecific", "dataType", "status"],
+          ["attributeName", "isSubjectSpecific", "dataType", "summaryMethod", "status"],
           {
+            // Read-only here: only the Data Protection Steward creates, edits and archives data attributes
+            description: t("dataAttributesAdminHint"),
             queryFields: [field("attributeName"), field("isSubjectSpecific", "checkbox"), field("status")],
-            create: operation("create", "POST", "DataAttributes", [
-              field("attributeName", "text", true),
-              field("attributeDescription", "textarea"),
-              field("isSubjectSpecific", "checkbox"),
-              selectValues("dataType", [
-                { label: "numericType", value: "numeric" },
-                { label: "categoricalType", value: "categorical" },
-                { label: "booleanType", value: "boolean" },
-              ], true),
-            ]),
-            rowOperations: [
-              operation(
-                "archive",
-                "PUT",
-                "DataAttributes/:dataAttributeId/archive",
-                undefined,
-                { confirm: true },
-              ),
-            ],
           },
         ),
       ];
@@ -841,11 +833,13 @@ export function getWorkspaceDefinitions(
           "studentCorrections",
           "CorrectionRequests/me",
           [
-            "correctionRequestId",
-            "studentDataId",
+            ["attributeName", "dataAttributeName"],
+            ["termName", "term"],
+            "purposeName",
+            "currentValue",
             "proposedValue",
             "status",
-            "createdAt",
+            "submittedAt",
           ],
           {
             create: operation("create", "POST", "CorrectionRequests", [
@@ -872,6 +866,11 @@ export function getWorkspaceDefinitions(
                     empty: t("noCorrectableStudentData"),
                   },
                 },
+              },
+              // QC-241: the request is sent under a consent purpose that covers the attribute (the attribute is shared under it)
+              {
+                ...picker("consentPurposeId", activePurposeSource, true, "select", "consentPurpose"),
+                hint: t("correctionPurposeHint"),
               },
               field("explanation", "textarea", true),
               field("proposedValue", "textarea", true),
@@ -913,10 +912,10 @@ export function getWorkspaceDefinitions(
           "accessLogs",
           "AccessLogs/me",
           [
-            "accessLogId",
-            "accessorName",
-            "roleName",
+            ["accessorFullName", "accessorName"],
+            ["accessorRoleNames", "roleName"],
             "purposeName",
+            "accessedResource",
             "accessedAt",
             "isFlagged",
           ],
@@ -1553,9 +1552,41 @@ export function getWorkspaceDefinitions(
         workspace(
           "dataAttributes",
           "DataAttributes/search",
-          ["dataAttributeId", "attributeName", "dataType", "status"],
+          ["attributeName", "isSubjectSpecific", "dataType", "summaryMethod", "status", "attributeDescription"],
           {
-            queryFields: [field("attributeName"), field("status")],
+            description: t("dataAttributesStewardHint"),
+            queryFields: [
+              field("attributeName"),
+              selectValues("dataType", dataTypeOptions),
+              field("isSubjectSpecific", "checkbox"),
+              select("status", ["active", "archived"] as WorkspaceKey[]),
+            ],
+            create: operation("create", "POST", "DataAttributes", [
+              field("attributeName", "text", true),
+              field("attributeDescription", "textarea"),
+              { ...field("isSubjectSpecific", "checkbox"), hint: t("isSubjectSpecificHint") },
+              selectValues("dataType", dataTypeOptions, true),
+              { ...selectValues("summaryMethod", summaryMethodOptions), hint: t("summaryMethodHint") },
+            ]),
+            rowOperations: [
+              operation("update", "PUT", "DataAttributes/:dataAttributeId", [
+                field("attributeDescription", "textarea"),
+                { ...selectValues("summaryMethod", summaryMethodOptions), hint: t("summaryMethodHint") },
+              ], {
+                when: { key: "status", in: ["active"] },
+                bodyFromRecord: {
+                  attributeDescription: { key: "attributeDescription" },
+                  summaryMethod: { key: "summaryMethod" },
+                },
+              }),
+              operation("archive", "PUT", "DataAttributes/:dataAttributeId/archive", undefined, {
+                confirm: true,
+                destructive: true,
+                icon: "inventory_2",
+                description: t("archiveAttributeHint"),
+                when: { key: "status", in: ["active"] },
+              }),
+            ],
           },
         ),
       ];
@@ -1610,14 +1641,14 @@ export function getWorkspaceDefinitions(
           "accessLogs",
           "AccessLogs/search",
           [
-            "accessLogId",
-            "studentName",
-            "accessorName",
-            "roleName",
+            ["recordedUserFullName", "studentName"],
+            ["accessorFullName", "accessorName"],
+            ["accessorRoleNames", "roleName"],
             "purposeName",
+            "accessedResource",
             "accessedAt",
             "isFlagged",
-            "reviewStatus",
+            ["status", "reviewStatus"],
           ],
           {
             queryFields: [
@@ -1646,12 +1677,13 @@ export function getWorkspaceDefinitions(
           "erasure",
           "ErasureRequests/search",
           [
-            "erasureRequestId",
-            "studentName",
-            "reason",
+            ["studentFullName", "studentName"],
+            ["attributeName", "dataAttributeName"],
+            "purposeName",
             "status",
             "requestedAt",
-            "reviewedAt",
+            "executedAt",
+            ["executedByFullName", "executedBy"],
           ],
           {
             queryFields: [search("studentId", studentSearch, false, "student"), field("status")],
@@ -1674,9 +1706,8 @@ export function getWorkspaceDefinitions(
           "emergencyAccess",
           "EmergencyAccessRequests/search",
           [
-            "emergencyAccessRequestId",
-            "requestedBy",
-            "studentName",
+            ["requesterFullName", "requestedBy"],
+            ["studentFullName", "studentName"],
             "justification",
             "status",
             "scopeExpiresAt",
@@ -1702,12 +1733,12 @@ export function getWorkspaceDefinitions(
           "attributeKeys",
           "AttributeKeys/search",
           [
-            "attributeKeyId",
-            "dataAttributeId",
-            "attributeName",
-            "keyVersion",
+            ["studentFullName", "studentName"],
+            ["attributeName", "dataAttributeName"],
+            ["masterKeyVersion", "keyVersion"],
             "status",
             "createdAt",
+            "destroyedAt",
           ],
           {
             queryFields: [picker("dataAttributeId", attributeSource, false, "select", "dataAttributeName"), field("status")],
@@ -1891,29 +1922,6 @@ export function getWorkspaceDefinitions(
             "averageDaysToClose",
           ],
           { queryFields: [field("from", "date", true), field("to", "date", true)] },
-        ),
-      ];
-
-    case "notifications":
-      return [
-        workspace(
-          "notifications",
-          "Notifications/me",
-          ["notificationId", "title", "message", "createdAt", "isRead"],
-          {
-            rowOperations: [
-              operation("markRead", "PUT", "Notifications/me/:notificationId/read", undefined, { confirm: false }),
-              operation("remove", "DELETE", "Notifications/me/:notificationId", undefined, {
-                confirm: true,
-              }),
-            ],
-            globalOperations: [
-              operation("markAllRead", "PUT", "Notifications/me/read-all", undefined, { confirm: false }),
-              operation("clearRead", "DELETE", "Notifications/me/clear", undefined, {
-                confirm: true,
-              }),
-            ],
-          },
         ),
       ];
   }

@@ -69,7 +69,7 @@ const numberOf = (value: unknown): number | null => {
 const average = (values: number[]) => (values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null);
 
 /** "Fall 2026" → 2026.3, so terms sort newest first; unknown names go last. */
-function termOrder(termName: string) {
+export function termOrder(termName: string) {
   const match = /^(spring|summer|fall)\s*(\d{4})$/i.exec(termName.trim());
   return match ? Number(match[2]) + SEASONS[match[1].toLowerCase()] / 10 : 0;
 }
@@ -165,6 +165,14 @@ const numberFormat = new Intl.NumberFormat("en-US", { minimumFractionDigits: 1, 
 const formatNumber = (value: number) => numberFormat.format(value);
 const formatPercent = (value: number) => `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value)}%`;
 
+/** Data already read by the page (StudentDataView), so the values are read once per page (QC-259). */
+export interface StudentDataSource {
+  payload: unknown;
+  loading: boolean;
+  error: string;
+  reload: () => void;
+}
+
 /**
  * Per-subject mark and attendance, one block per term (newest first, the two
  * latest open), built from the per-subject data attributes Subject mark and
@@ -180,21 +188,28 @@ export function AcademicResultsView({
   studentId,
   caseId,
   className,
+  source,
 }: {
   audience: "student" | "staff";
   studentId?: string;
   caseId?: string;
   className?: string;
+  /** When given, the view shows these values instead of reading them itself. */
+  source?: StudentDataSource;
 }) {
   const t = useTranslations("ui.academicResults");
-  const [data, setData] = useState<AcademicResults | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [ownData, setOwnData] = useState<AcademicResults | null>(null);
+  const [ownLoading, setOwnLoading] = useState(!source);
+  const [ownError, setOwnError] = useState("");
   const [termFilter, setTermFilter] = useState("all");
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+    if (source) {
+      source.reload();
+      return;
+    }
+    setOwnLoading(true);
+    setOwnError("");
     try {
       const payload =
         audience === "student"
@@ -202,18 +217,29 @@ export function AcademicResultsView({
           : await clientApiGet<unknown>(`StudentData/students/${encodeURIComponent(studentId ?? "")}`, {
               query: caseId ? { caseId } : undefined,
             });
-      setData(toResults(payload, audience));
+      setOwnData(toResults(payload, audience));
     } catch (cause) {
-      setError(cause instanceof ApiError && cause.status < 500 && cause.message ? cause.message : t("loadError"));
+      setOwnError(cause instanceof ApiError && cause.status < 500 && cause.message ? cause.message : t("loadError"));
     } finally {
-      setLoading(false);
+      setOwnLoading(false);
     }
-  }, [audience, caseId, studentId, t]);
+  }, [audience, caseId, source, studentId, t]);
 
+  const hasSource = Boolean(source);
   useEffect(() => {
+    if (hasSource) return;
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
-  }, [load]);
+  }, [hasSource, load]);
+
+  const sourcePayload = source?.payload;
+  const sourceData = useMemo(
+    () => (hasSource && sourcePayload !== undefined && sourcePayload !== null ? toResults(sourcePayload, audience) : null),
+    [audience, hasSource, sourcePayload],
+  );
+  const data = source ? sourceData : ownData;
+  const loading = source ? source.loading : ownLoading;
+  const error = source ? source.error : ownError;
 
   const terms = useMemo(
     () => (data ? (termFilter === "all" ? data.terms : data.terms.filter((term) => term.termId === termFilter)) : []),

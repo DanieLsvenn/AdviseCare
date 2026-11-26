@@ -15,6 +15,7 @@ export default async function HeadLayout({
   const user = await requireRole(locale, ["Programme Head"]);
   const navItems: NavItem[] = [
     { href: "/head/matching", label: t("head.overview"), icon: "assignment_ind", match: ["/head"] },
+    { href: "/head/students-in-need", label: t("head.studentsInNeed"), icon: "crisis_alert" },
     { href: "/head/assignment-changes", label: t("head.assignments"), icon: "swap_horiz" },
     { href: "/head/escalations", label: t("head.escalations"), icon: "priority_high" },
     { href: "/head/cases", label: t("head.allCases"), icon: "folder_open" },

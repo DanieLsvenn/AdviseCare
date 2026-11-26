@@ -268,7 +268,7 @@ namespace AdviseCare.Application.Services
             {
                 await _notificationService.NotifyAsync(programmeHeadId, "New take-on request",
                     $"{r.Advisor?.FullName} asked to take on {itemText}." + (note.Length == 0 ? string.Empty : $" Note: {note}"),
-                    hasCase ? "/programme-head/matching-queue" : "/programme-head/students-in-need");
+                    hasCase ? "/head/matching" : "/head/students-in-need");
             }
 
             var openCaseCounts = await GetOpenCaseCountsAsync(new List<Takeonrequest> { r });

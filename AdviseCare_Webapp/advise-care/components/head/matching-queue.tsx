@@ -19,6 +19,10 @@ import { Pager, usePaged } from "@/components/ui/pager";
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/states";
 import { StatusValue } from "@/components/ui/status-value";
 import { getInitials } from "@/lib/initials";
+import { RequestsButton, TakeOnRequestsDrawer, type TakeOnTarget } from "@/components/head/take-on-requests-drawer";
+
+const SEVERITIES = ["low", "moderate", "high", "critical"];
+const PRIORITIES = ["low", "medium", "high", "urgent"];
 
 interface Suggestion {
   advisorId: string;
@@ -61,21 +65,17 @@ export function MatchingQueue() {
   const [assigning, setAssigning] = useState<string | null>(null);
   const [done, setDone] = useState<{ student: string; advisor: string } | null>(null);
   const [assignError, setAssignError] = useState("");
+  const [requestsTarget, setRequestsTarget] = useState<TakeOnTarget | null>(null);
+  const [ratingError, setRatingError] = useState("");
+  const [savingRating, setSavingRating] = useState<"severity" | "priority" | null>(null);
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const payload = await clientApiGet<unknown>("Cases/matching-queue");
-      const items = listOf(payload)
-        .map(toCase)
-        // Urgent requests jump the line; everything else in the order it arrived,
-        // so the student who has waited longest is seen first.
-        .sort(
-          (a, b) =>
-            Number(b.priority === "urgent") - Number(a.priority === "urgent") ||
-            a.openedAt.localeCompare(b.openedAt),
-        );
+      // The API orders the queue: severity (not rated right after critical), then priority, then oldest
+      const items = listOf(payload).map(toCase);
       setQueue(items);
       setSelectedId((current) =>
         current && items.some((item) => item.caseId === current) ? current : (items[0]?.caseId ?? null),
@@ -140,6 +140,26 @@ export function MatchingQueue() {
   );
   const overdueCount = queue.filter((item) => (daysSince(item.openedAt) ?? 0) >= OVERDUE_DAYS).length;
   const maxLoad = Math.max(1, ...suggestions.map((item) => item.openCaseCount));
+
+  /** The Programme Head rates the case's severity or changes its priority straight from the queue. */
+  async function saveRating(kind: "severity" | "priority", value: string) {
+    if (!selected || !value || value === selected[kind]) return;
+    setSavingRating(kind);
+    setRatingError("");
+    try {
+      await clientApiRequest(`Cases/${encodeURIComponent(selected.caseId)}/${kind}`, {
+        method: "PUT",
+        body: { [kind]: value },
+      });
+      await loadQueue();
+    } catch (cause) {
+      setRatingError(
+        cause instanceof ApiError && cause.status < 500 && cause.message ? cause.message : tw("apiErrorNetwork"),
+      );
+    } finally {
+      setSavingRating(null);
+    }
+  }
 
   /** On a phone the detail is below the queue: take the user there. */
   function selectRequest(caseId: string) {
@@ -282,8 +302,20 @@ export function MatchingQueue() {
                       )}
                     >
                       <span className="flex items-center justify-between gap-space-sm">
-                        <span className="truncate font-semibold text-text">{item.studentName}</span>
-                        <StatusValue field="priority" value={item.priority} size="sm" />
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate font-semibold text-text">{item.studentName}</span>
+                          {item.pendingTakeOnRequestCount ? (
+                            <span
+                              className="size-2 shrink-0 rounded-full bg-red-ink"
+                              title={t("pendingRequests", { count: item.pendingTakeOnRequestCount })}
+                              aria-label={t("pendingRequests", { count: item.pendingTakeOnRequestCount })}
+                            />
+                          ) : null}
+                        </span>
+                        <span className="flex shrink-0 items-center gap-1">
+                          <StatusValue field="severity" value={item.severity || "notRated"} size="sm" emphasize />
+                          <StatusValue field="priority" value={item.priority} size="sm" />
+                        </span>
                       </span>
                       <span className="truncate text-sm text-text-muted">
                         {item.categoryName}
@@ -324,7 +356,39 @@ export function MatchingQueue() {
                     {selected.studentEmail ? ` · ${selected.studentEmail}` : ""}
                   </p>
                 </div>
-                <StatusValue field="priority" value={selected.priority} />
+                <RequestsButton
+                  count={selected.pendingTakeOnRequestCount}
+                  label={t("requests")}
+                  onClick={() =>
+                    setRequestsTarget({
+                      kind: "case",
+                      id: selected.caseId,
+                      studentName: selected.studentName,
+                      title: selected.categoryName,
+                    })
+                  }
+                />
+              </div>
+              {/* Severity (Programme Head only) and priority, set straight from the queue */}
+              <div className="mt-space-base grid gap-space-md border-t border-rule pt-space-base sm:grid-cols-2">
+                <RatingSelect
+                  id="case-severity"
+                  label={t("severity")}
+                  value={selected.severity}
+                  options={SEVERITIES}
+                  placeholder={tu("status.notrated")}
+                  saving={savingRating === "severity"}
+                  onChange={(value) => void saveRating("severity", value)}
+                />
+                <RatingSelect
+                  id="case-priority"
+                  label={t("priority")}
+                  value={selected.priority}
+                  options={PRIORITIES}
+                  saving={savingRating === "priority"}
+                  onChange={(value) => void saveRating("priority", value)}
+                />
+                {ratingError ? <Notice className="sm:col-span-2" tone="urgent" icon="error" title={ratingError} /> : null}
               </div>
               <dl className="mt-space-base grid gap-space-md border-t border-rule pt-space-base sm:grid-cols-3">
                 <div>
@@ -442,7 +506,54 @@ export function MatchingQueue() {
           </div>
         )}
       </div>
+      <TakeOnRequestsDrawer
+        target={requestsTarget}
+        onClose={() => setRequestsTarget(null)}
+        onChanged={() => void loadQueue()}
+      />
       {confirmDialog}
+    </div>
+  );
+}
+
+/** A severity or priority picker that saves as soon as another value is chosen. */
+function RatingSelect({
+  id,
+  label,
+  value,
+  options,
+  placeholder,
+  saving,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  options: string[];
+  placeholder?: string;
+  saving: boolean;
+  onChange: (value: string) => void;
+}) {
+  const tu = useTranslations("ui");
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1 block text-[0.8125rem] text-text-faint">
+        {label}
+      </label>
+      <select
+        id={id}
+        className={cn(controlClass, "h-9 w-full")}
+        value={value}
+        disabled={saving}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {!value && placeholder ? <option value="">{placeholder}</option> : null}
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {tu(`status.${option}`)}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

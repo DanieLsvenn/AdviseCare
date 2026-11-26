@@ -249,7 +249,7 @@
   },
   "export": {
     "title": "Xuất hồ sơ sinh viên dạng máy đọc được",
-    "intro": "Tạo một gói JSON có xác thực, kiểm chứng được, gồm sổ học vụ còn lại, nguồn gốc chỉ số, các giao dịch đồng ý và vết truy cập theo thời gian của bạn.",
+    "intro": "Tạo một gói JSON có thể kiểm chứng gồm các giá trị dữ liệu hiện tại của bạn, nguồn của từng giá trị, hồ sơ đồng ý và lịch sử truy cập dữ liệu của bạn.",
     "compliance": "Quyền chuyển dữ liệu & yêu cầu minh bạch của nhà trường",
     "guaranteeTitle": "Bảo đảm công bố song thời gian & xóa bằng mật mã",
     "guaranteeBody": "Thuộc tính đã được xác minh xóa sẽ bị hủy không thể đảo ngược và truyền đúng 0 byte (\"value\": null). Dấu thời gian, khối sổ và bằng chứng hủy khóa vẫn được giữ vĩnh viễn để bảo toàn kiểm toán. Không khóa bí mật nào và không hồ sơ của sinh viên khác nào được trích xuất.",
@@ -260,7 +260,7 @@
     "reconciled": "Đã đối chiếu {done}/{total}",
     "schema1": "1. Thuộc tính sinh viên còn lại",
     "schema1Body": "Định danh nhập học chuẩn, thông tin đã xác minh song thời gian và tình trạng hiện thời.",
-    "schema2": "2. Chuỗi nguồn gốc chỉ số",
+    "schema2": "2. Nguồn gốc dữ liệu",
     "schema2Body": "Nguồn tính toán xác định, dữ liệu nạp từ cổng từ và telemetry tương tác VLE.",
     "schema3": "3. Sổ đồng ý của sinh viên",
     "schema3Body": "Toàn bộ vết kiểm toán mã hóa của việc cấp quyền, thu hồi và xác nhận vô hiệu hóa.",

@@ -59,6 +59,7 @@ export function ImportEditor({
   check,
   runImport,
   beforeTable,
+  groupBy,
   collapsible = false,
   canCheck = true,
 }: {
@@ -78,8 +79,10 @@ export function ImportEditor({
   check: (csv: File, headers: string[], rows: ImportRow[]) => Promise<CheckOutcome>;
   /** Import the edited rows (sent as CSV; the rows themselves for callers that reshape them). */
   runImport: (csv: File, headers: string[], rows: ImportRow[]) => Promise<ImportOutcome>;
-  /** Extra controls between the file and the table (e.g. column mapping). */
-  beforeTable?: (headers: string[], invalidate: () => void) => ReactNode;
+  /** Extra controls between the file and the table (e.g. column mapping); rows gives sample values. */
+  beforeTable?: (headers: string[], invalidate: () => void, rows: ImportRow[]) => ReactNode;
+  /** A file column to group the preview by (e.g. the student column): one expandable box per value. */
+  groupBy?: string;
   collapsible?: boolean;
   /** False while extra controls are incomplete (e.g. mapping not finished). */
   canCheck?: boolean;
@@ -134,9 +137,21 @@ export function ImportEditor({
   const visible = rows
     .map((row, index) => ({ row, index }))
     .filter(({ index }) => !filtering || problemsByRow.has(index));
-  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  // Grouped preview: one box per value of the group column (e.g. one per student), paged by box
+  const groupMap = new Map<string, typeof visible>();
+  if (groupBy) {
+    for (const item of visible) {
+      const key = (item.row.values[groupBy] ?? "").trim();
+      groupMap.set(key, [...(groupMap.get(key) ?? []), item]);
+    }
+  }
+  const groups = [...groupMap.entries()].map(([key, items]) => ({ key, items }));
+  const unitCount = groupBy ? groups.length : visible.length;
+  const unitSize = groupBy ? GROUP_PAGE_SIZE : PAGE_SIZE;
+  const pageCount = Math.max(1, Math.ceil(unitCount / unitSize));
   const currentPage = Math.min(page, pageCount - 1);
   const pageRows = visible.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+  const pageGroups = groups.slice(currentPage * GROUP_PAGE_SIZE, (currentPage + 1) * GROUP_PAGE_SIZE);
 
   function invalidate() {
     setVersion((value) => value + 1);
@@ -268,7 +283,7 @@ export function ImportEditor({
     ]);
     setNextId((value) => value + 1);
     setOnlyProblems(false);
-    setPage(Math.floor(rows.length / PAGE_SIZE));
+    setPage(groupBy ? 0 : Math.floor(rows.length / PAGE_SIZE));
     invalidate();
   }
 
@@ -281,6 +296,51 @@ export function ImportEditor({
     link.download = templateFileName ?? "template.csv";
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  function previewTable(items: Array<{ row: ImportRow; index: number }>) {
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-left text-sm">
+          <thead className="bg-paper-tint">
+            <tr className="border-b border-rule">
+              <th scope="col" className="h-9 w-12 px-space-sm text-[0.75rem] font-semibold text-text-faint">#</th>
+              {headers.map((header) => (
+                <th key={header} scope="col" className="h-9 whitespace-nowrap px-space-sm font-mono text-[0.75rem] font-semibold text-text-faint">
+                  {header}
+                </th>
+              ))}
+              <th scope="col" className="sticky right-0 w-10 bg-paper-tint">
+                <span className="sr-only">{t("actions")}</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-rule">
+            {items.map(({ row, index }) => (
+              <RowView
+                key={row.id}
+                index={index}
+                headers={headers}
+                row={row}
+                problems={problemsByRow.get(index)}
+                warnings={warningsByRow.get(index)}
+                stale={!upToDate}
+                onEdit={editCell}
+                onDelete={deleteRow}
+                deleteLabel={t("importDeleteRow")}
+              />
+            ))}
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={headers.length + 2} className="px-space-md py-space-lg text-center text-sm text-text-faint">
+                  {t("importNoRows")}
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    );
   }
 
   const body = (
@@ -311,7 +371,7 @@ export function ImportEditor({
         ) : null}
       </div>
 
-      {headers.length ? beforeTable?.(headers, invalidate) : null}
+      {headers.length ? beforeTable?.(headers, invalidate, rows) : null}
 
       {headers.length ? (
         <section aria-label={t("importPreview")} className="flex flex-col gap-space-sm">
@@ -338,50 +398,40 @@ export function ImportEditor({
             </Button>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-rule">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead className="bg-paper-tint">
-                <tr className="border-b border-rule">
-                  <th scope="col" className="h-9 w-12 px-space-sm text-[0.75rem] font-semibold text-text-faint">#</th>
-                  {headers.map((header) => (
-                    <th key={header} scope="col" className="h-9 whitespace-nowrap px-space-sm font-mono text-[0.75rem] font-semibold text-text-faint">
-                      {header}
-                    </th>
-                  ))}
-                  <th scope="col" className="sticky right-0 w-10 bg-paper-tint">
-                    <span className="sr-only">{t("actions")}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-rule">
-                {pageRows.map(({ row, index }) => {
-                  const problems = problemsByRow.get(index);
-                  const warnings = warningsByRow.get(index);
-                  return (
-                    <RowView
-                      key={row.id}
-                      index={index}
-                      headers={headers}
-                      row={row}
-                      problems={problems}
-                      warnings={warnings}
-                      stale={!upToDate}
-                      onEdit={editCell}
-                      onDelete={deleteRow}
-                      deleteLabel={t("importDeleteRow")}
-                    />
-                  );
-                })}
-                {pageRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={headers.length + 2} className="px-space-md py-space-lg text-center text-sm text-text-faint">
-                      {t("importNoRows")}
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+          {groupBy ? (
+            <div className="flex flex-col gap-space-sm">
+              {pageGroups.map((group) => {
+                const problemCount = group.items.filter(({ index }) => problemsByRow.has(index)).length;
+                return (
+                  <details
+                    key={group.key || "__none__"}
+                    open={problemCount > 0 || groups.length <= 3}
+                    className={cn("group rounded-lg border", problemCount ? "border-status-urgent-border" : "border-rule")}
+                  >
+                    <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-space-md gap-y-1 px-space-md py-space-sm hover:bg-paper-tint [&::-webkit-details-marker]:hidden">
+                      <Icon name="chevron_right" className="text-[18px] text-text-faint transition-transform group-open:rotate-90" />
+                      <span className={cn("font-mono text-sm font-semibold", group.key ? "text-text" : "text-text-faint")}>
+                        {group.key || t("importGroupEmpty", { column: groupBy })}
+                      </span>
+                      <span className="text-[0.8125rem] text-text-muted">{t("importGroupRows", { count: group.items.length })}</span>
+                      {problemCount ? (
+                        <span className="ml-auto inline-flex items-center gap-1 text-[0.8125rem] font-semibold text-red-ink">
+                          <Icon name="error" className="text-[16px]" />
+                          {t("importGroupProblems", { count: problemCount })}
+                        </span>
+                      ) : null}
+                    </summary>
+                    <div className="border-t border-rule">{previewTable(group.items)}</div>
+                  </details>
+                );
+              })}
+              {pageGroups.length === 0 ? (
+                <p className="rounded-lg border border-rule px-space-md py-space-lg text-center text-sm text-text-faint">{t("importNoRows")}</p>
+              ) : null}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-rule">{previewTable(pageRows)}</div>
+          )}
 
           {pageCount > 1 ? (
             <div className="flex items-center justify-end gap-space-sm">
@@ -473,6 +523,8 @@ export function ImportEditor({
 }
 
 const PAGE_SIZE = 50;
+/** Boxes per page when the preview is grouped (e.g. 20 students). */
+const GROUP_PAGE_SIZE = 20;
 
 function RowView({
   index,

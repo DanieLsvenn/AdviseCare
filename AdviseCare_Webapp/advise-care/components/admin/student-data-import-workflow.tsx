@@ -1,42 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { isRecord } from "@/lib/api-contract";
-import { clientApiGet } from "@/lib/client-api";
-import { controlClass } from "@/components/ui/field";
 import { cn } from "@/lib/cn";
+import { controlClass } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import {
-  FIRST_DATA_LINE,
   ImportEditor,
   postFile,
   previewShape,
   rowProblems,
-  toCsvFile,
   type ImportRow,
-  type RowProblem,
 } from "@/components/admin/import-editor";
 
-const mappingKeys = [
-  "studentIdentifier",
-  "dataAttribute",
-  "value",
-  "term",
-  "validFrom",
-  "subject",
-] as const;
+/** The fields the API reads from a one-row-per-value file (the columnMapping keys). */
+const mappingKeys = ["studentIdentifier", "dataAttribute", "value", "term", "validFrom", "subject"] as const;
 
 /** The subject column is optional: only rows of per-subject data attributes (e.g. Attendance rate) need a subject code. */
 const optionalKeys: ReadonlySet<MappingKey> = new Set(["subject"]);
 
 type MappingKey = (typeof mappingKeys)[number];
 type ColumnMapping = Record<MappingKey, string>;
-type Layout = "long" | "wide";
-
-/** In the one-row-per-student layout the term and date can come from a column or be one value for the whole file. */
-const FIXED = "__fixed__";
-const wideKeys = ["studentIdentifier", "term", "validFrom", "subject"] as const;
-type WideKey = (typeof wideKeys)[number];
 
 const emptyMapping: ColumnMapping = {
   studentIdentifier: "",
@@ -47,7 +32,7 @@ const emptyMapping: ColumnMapping = {
   subject: "",
 };
 
-/* Common header spellings, so a usual file maps itself. */
+/* Common header spellings, so a usual file maps itself ("indicator" is kept for old files). */
 const guesses: Record<MappingKey, string[]> = {
   studentIdentifier: ["studentidentifier", "studentcode", "student", "email", "username", "mssv", "masinhvien"],
   dataAttribute: ["dataattribute", "attribute", "attributename", "indicator"],
@@ -57,187 +42,80 @@ const guesses: Record<MappingKey, string[]> = {
   subject: ["subject", "subjectcode", "course", "coursecode", "monhoc", "mamon"],
 };
 
-/** The columns the API reads, in the one-row-per-value file sent after reshaping. */
-const LONG_HEADERS = ["studentIdentifier", "dataAttribute", "value", "term", "validFrom", "subject"];
-const LONG_MAPPING: ColumnMapping = {
-  studentIdentifier: "studentIdentifier",
-  dataAttribute: "dataAttribute",
-  value: "value",
-  term: "term",
-  validFrom: "validFrom",
-  subject: "subject",
-};
-
 const messagesOf = (item: Record<string, unknown>) =>
   Array.isArray(item.messages) ? item.messages.filter((m): m is string => typeof m === "string") : [];
 
 const squash = (text: string) => text.toLowerCase().replace(/[\s_-]/g, "");
 
-interface Reshaped {
-  csv: File;
-  /** For each sent row: the table row it came from and the data attribute column it holds. */
-  origin: Array<{ rowIndex: number; column: string }>;
-}
-
 /**
- * Student data import: upload, choose the file layout, map the fields to file
- * columns, fix rows in the editable preview, check, import.
+ * Student data import: upload a one-row-per-value file (student, data
+ * attribute, value, term, valid from, subject), say which file column feeds
+ * each field, fix rows in the preview (grouped by student), check, import.
  *
- * Two layouts: one row per value (student, attribute, value, term, date), or
- * the usual dataset of one row per student with a column per data attribute
- * (GPA, AbsentSlots, …). The second is reshaped here into the first before
- * it is sent, and the API's row problems are pointed back at the student's
- * row and the attribute column they belong to.
+ * The mapping is read from the file's side (QC-282): one row per file column
+ * with two sample values and a "maps to" choice. A field can take only one
+ * column; choosing it for another column moves it there. Columns mapped to
+ * nothing are ignored.
  */
 export function StudentDataImportWorkflow() {
   const t = useTranslations("workspace");
-  const [layout, setLayout] = useState<Layout>("wide");
   const [mapping, setMapping] = useState<ColumnMapping>(emptyMapping);
-  const [fixedTerm, setFixedTerm] = useState("");
-  const [fixedDate, setFixedDate] = useState("");
-  const [attributeColumns, setAttributeColumns] = useState<string[]>([]);
-  const [attributes, setAttributes] = useState<string[]>([]);
-  const [subjectAttributes, setSubjectAttributes] = useState<string[]>([]);
-  const [terms, setTerms] = useState<string[]>([]);
 
-  // Active data attributes name the columns of the wide template and are ticked automatically.
-  useEffect(() => {
-    let active = true;
-    void Promise.all([
-      clientApiGet<unknown>("DataAttributes").catch(() => []),
-      clientApiGet<unknown>("AcademicTerms").catch(() => []),
-    ]).then(([attributePayload, termPayload]) => {
-      if (!active) return;
-      const list = (payload: unknown) => (Array.isArray(payload) ? payload.filter(isRecord) : []);
-      const activeAttributes = list(attributePayload).filter((item) => item.status === undefined || item.status === "active");
-      setAttributes(activeAttributes.map((item) => String(item.attributeName ?? "")).filter(Boolean));
-      setSubjectAttributes(
-        activeAttributes
-          .filter((item) => item.isSubjectSpecific === true)
-          .map((item) => String(item.attributeName ?? ""))
-          .filter(Boolean),
-      );
-      setTerms(list(termPayload).map((item) => String(item.termName ?? "")).filter(Boolean));
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const attributeKeys = useMemo(() => new Set(attributes.map(squash)), [attributes]);
-  const subjectAttributeKeys = useMemo(() => new Set(subjectAttributes.map(squash)), [subjectAttributes]);
-
-  const wideReady =
-    mapping.studentIdentifier !== "" &&
-    (mapping.term === FIXED ? fixedTerm !== "" : mapping.term !== "") &&
-    (mapping.validFrom === FIXED ? fixedDate !== "" : mapping.validFrom !== "") &&
-    attributeColumns.length > 0;
-  const longReady = mappingKeys.every((key) => optionalKeys.has(key) || (mapping[key] !== "" && mapping[key] !== FIXED));
-  const mappingComplete = layout === "wide" ? wideReady : longReady;
+  const fieldLabel = (key: MappingKey) => t(`mapField.${key}`);
+  const missing = mappingKeys.filter((key) => !optionalKeys.has(key) && mapping[key] === "");
 
   function guessMapping(headers: string[]) {
-    const found = Object.fromEntries(
-      mappingKeys.map((key) => [key, headers.find((header) => guesses[key].includes(squash(header))) ?? ""]),
-    ) as ColumnMapping;
-    setMapping(found);
-    // A file with a data-attribute column and a value column is one row per value.
-    const nextLayout: Layout = found.dataAttribute && found.value ? "long" : "wide";
-    setLayout(nextLayout);
-    const used = new Set([found.studentIdentifier, found.term, found.validFrom, found.subject].filter(Boolean));
-    setAttributeColumns(headers.filter((header) => !used.has(header) && attributeKeys.has(squash(header))));
-  }
-
-  /** One row per student → one row per value, remembering where each came from. */
-  function reshape(rows: ImportRow[], source: File): Reshaped {
-    const origin: Reshaped["origin"] = [];
-    const longRows: ImportRow[] = [];
-    rows.forEach((row, rowIndex) => {
-      const term = mapping.term === FIXED ? fixedTerm : (row.values[mapping.term] ?? "");
-      const validFrom = mapping.validFrom === FIXED ? fixedDate : (row.values[mapping.validFrom] ?? "");
-      const subject = mapping.subject ? (row.values[mapping.subject] ?? "").trim() : "";
-      for (const column of attributeColumns) {
-        const value = (row.values[column] ?? "").trim();
-        if (!value) continue; // an empty cell means "no value for this student", not an error
-        origin.push({ rowIndex, column });
-        longRows.push({
-          id: longRows.length,
-          values: {
-            studentIdentifier: row.values[mapping.studentIdentifier] ?? "",
-            dataAttribute: column,
-            value,
-            term,
-            validFrom,
-            // Only a per-subject data attribute carries the row's subject; a per-term one must leave it empty
-            subject: subjectAttributeKeys.has(squash(column)) ? subject : "",
-          },
-        });
+    const used = new Set<string>();
+    const found = { ...emptyMapping };
+    for (const key of mappingKeys) {
+      const header = headers.find((item) => !used.has(item) && guesses[key].includes(squash(item)));
+      if (header) {
+        found[key] = header;
+        used.add(header);
       }
-    });
-    return { csv: toCsvFile(LONG_HEADERS, longRows, source), origin };
-  }
-
-  /** The API's problems name rows of the reshaped file: point them at the student's row and column. */
-  function pointBack(items: unknown, origin: Reshaped["origin"]): RowProblem[] {
-    if (!Array.isArray(items)) return [];
-    return items.filter(isRecord).map((item) => {
-      const rowNumber = typeof item.rowNumber === "number" ? item.rowNumber : 0;
-      const from = rowNumber >= FIRST_DATA_LINE ? origin[rowNumber - FIRST_DATA_LINE] : undefined;
-      const messages = messagesOf(item);
-      return from
-        ? { rowIndex: from.rowIndex, messages: messages.map((message) => `${from.column}: ${message}`) }
-        : { rowIndex: null, messages };
-    });
-  }
-
-  async function send(path: string, csv: File, rows: ImportRow[]) {
-    if (layout === "long") {
-      return { payload: await postFile(path, csv, { columnMapping: JSON.stringify(mapping) }), origin: null };
     }
-    const reshaped = reshape(rows, csv);
-    if (reshaped.origin.length === 0) return { payload: null, origin: reshaped.origin };
-    return {
-      payload: await postFile(path, reshaped.csv, { columnMapping: JSON.stringify(LONG_MAPPING) }),
-      origin: reshaped.origin,
-    };
+    setMapping(found);
   }
 
-  const problemsFrom = (items: unknown, origin: Reshaped["origin"] | null) =>
-    origin ? pointBack(items, origin) : rowProblems(items, messagesOf);
+  /** Give the column a field (or none): the field leaves the column that had it, the column leaves its old field. */
+  function mapColumn(header: string, key: MappingKey | "") {
+    setMapping((current) => {
+      const next = { ...current };
+      for (const field of mappingKeys) if (next[field] === header) next[field] = "";
+      if (key) next[key] = header;
+      return next;
+    });
+  }
 
-  const templateColumns =
-    layout === "wide"
-      ? ["studentCode", "term", "validFrom", "subject", ...(attributes.length ? attributes : ["GPA", "AbsentSlots"])]
-      : ["studentCode", "dataAttribute", "value", "term", "validFrom", "subject"];
+  const send = (path: string, csv: File) => postFile(path, csv, { columnMapping: JSON.stringify(mapping) });
 
   return (
     <ImportEditor
       title={t("studentDataImport")}
-      description={t("importWorkflowDescriptionLayouts")}
+      description={t("importWorkflowDescription")}
       accept=".xlsx,.csv"
-      templateColumns={templateColumns}
-      templateFileName={layout === "wide" ? "advisecare-student-dataset-template.csv" : "advisecare-student-data-template.csv"}
-      canCheck={mappingComplete}
+      templateColumns={["studentCode", "dataAttribute", "value", "term", "validFrom", "subject"]}
+      templateFileName="advisecare-student-data-template.csv"
+      canCheck={missing.length === 0}
+      groupBy={mapping.studentIdentifier || undefined}
       preview={async (file) => {
         const shape = previewShape(await postFile("StudentData/import/preview", file), t("unexpectedResponse"));
         guessMapping(shape.headers);
         return shape;
       }}
-      check={async (csv, _headers, rows) => {
-        const { payload, origin } = await send("StudentData/import/validate", csv, rows);
-        if (payload === null) {
-          return { ok: false, problems: [{ rowIndex: null, messages: [t("importNoValues")] }] };
-        }
-        const record = isRecord(payload) ? payload : {};
-        const valid = typeof record.validRowCount === "number" ? record.validRowCount : 0;
+      check={async (csv) => {
+        const record = (await send("StudentData/import/validate", csv)) as unknown;
+        const result = isRecord(record) ? record : {};
+        const valid = typeof result.validRowCount === "number" ? result.validRowCount : 0;
         return {
-          ok: record.isValid === true && valid > 0,
-          problems: problemsFrom(record.errors, origin),
-          warnings: problemsFrom(record.rejectedRows, origin),
+          ok: result.isValid === true && valid > 0,
+          problems: rowProblems(result.errors, messagesOf),
+          warnings: rowProblems(result.rejectedRows, messagesOf),
           summary: t("importStudentDataReady", { count: valid }),
         };
       }}
-      runImport={async (csv, _headers, rows) => {
-        const { payload, origin } = await send("StudentData/import", csv, rows);
+      runImport={async (csv) => {
+        const payload = await send("StudentData/import", csv);
         const record = isRecord(payload) ? payload : {};
         if (record.isSuccess === true) {
           return {
@@ -248,188 +126,110 @@ export function StudentDataImportWorkflow() {
             }),
           };
         }
-        return {
-          ok: false,
-          message: t("importRefused"),
-          problems: problemsFrom(record.errors, origin),
-        };
+        return { ok: false, message: t("importRefused"), problems: rowProblems(record.errors, messagesOf) };
       }}
-      beforeTable={(headers, invalidate) => {
-        const change = (update: () => void) => {
-          update();
-          invalidate();
-        };
-        const used = new Set([mapping.studentIdentifier, mapping.term, mapping.validFrom, mapping.subject]);
-        return (
-          <section aria-labelledby="student-import-mapping" className="flex flex-col gap-space-md rounded-lg border border-rule p-space-md">
-            <fieldset>
-              <legend className="text-sm font-semibold text-text">{t("importLayout")}</legend>
-              <div role="radiogroup" className="mt-space-sm grid gap-space-sm sm:grid-cols-2">
-                {(["wide", "long"] as const).map((value) => (
-                  <label
-                    key={value}
-                    className={cn(
-                      "flex cursor-pointer flex-col rounded-md border px-space-base py-space-sm text-sm transition-colors",
-                      layout === value ? "border-ink bg-ink-wash text-text" : "border-rule text-text-muted hover:border-rule-strong",
-                    )}
-                  >
-                    <span className="flex items-center gap-2 font-semibold">
-                      <input
-                        type="radio"
-                        name="student-import-layout"
-                        className="size-4 accent-[#2142b8]"
-                        checked={layout === value}
-                        onChange={() => change(() => setLayout(value))}
-                      />
-                      {value === "wide" ? t("importLayoutWide") : t("importLayoutLong")}
-                    </span>
-                    <span className="mt-0.5 pl-6 text-[0.8125rem] text-text-faint">
-                      {value === "wide" ? t("importLayoutWideHint") : t("importLayoutLongHint")}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
+      beforeTable={(headers, invalidate, rows) => (
+        <MappingTable
+          headers={headers}
+          rows={rows}
+          mapping={mapping}
+          missing={missing}
+          fieldLabel={fieldLabel}
+          onMap={(header, key) => {
+            mapColumn(header, key);
+            invalidate();
+          }}
+        />
+      )}
+    />
+  );
+}
 
-            <div>
-              <h3 id="student-import-mapping" className="text-sm font-semibold text-text">
-                {t("columnMappingTitle")}
-              </h3>
-              <p className="mt-1 text-[0.8125rem] text-text-faint">
-                {layout === "wide" ? t("mappingDescriptionWide") : t("mappingDescription")}
-              </p>
-            </div>
+/** One row per file column: its header, two sample values and the field it maps to. */
+function MappingTable({
+  headers,
+  rows,
+  mapping,
+  missing,
+  fieldLabel,
+  onMap,
+}: {
+  headers: string[];
+  rows: ImportRow[];
+  mapping: ColumnMapping;
+  missing: MappingKey[];
+  fieldLabel: (key: MappingKey) => string;
+  onMap: (header: string, key: MappingKey | "") => void;
+}) {
+  const t = useTranslations("workspace");
+  const fieldOf = (header: string) => mappingKeys.find((key) => mapping[key] === header) ?? "";
 
-            {layout === "long" ? (
-              <div className="grid gap-space-md sm:grid-cols-3 lg:grid-cols-6">
-                {mappingKeys.map((key) => (
-                  <label className="block" key={key}>
-                    <span className="mb-1 block text-[0.8125rem] font-semibold text-text">
-                      {key === "subject" ? t("importSubjectColumn") : t(key)}
-                    </span>
+  return (
+    <section aria-labelledby="student-import-mapping" className="flex flex-col gap-space-sm rounded-lg border border-rule p-space-md">
+      <div>
+        <h3 id="student-import-mapping" className="text-sm font-semibold text-text">
+          {t("columnMappingTitle")}
+        </h3>
+        <p className="mt-1 text-[0.8125rem] text-text-faint">{t("mappingDescription")}</p>
+      </div>
+
+      {missing.length ? (
+        <p className="flex items-start gap-1.5 text-[0.8125rem] font-semibold text-status-attention-text">
+          <Icon name="warning" className="mt-px text-[16px]" />
+          {t("mappingMissing", { fields: missing.map(fieldLabel).join(", ") })}
+        </p>
+      ) : (
+        <p className="flex items-center gap-1.5 text-[0.8125rem] text-status-ontrack-text">
+          <Icon name="check_circle" className="text-[16px]" />
+          {t("mappingComplete")}
+        </p>
+      )}
+
+      <div className="overflow-x-auto rounded-md border border-rule">
+        <table className="w-full min-w-[560px] border-collapse text-left text-sm">
+          <thead className="bg-paper-tint">
+            <tr className="border-b border-rule text-[0.75rem] font-semibold text-text-faint">
+              <th scope="col" className="h-9 px-space-md">{t("mappingFileColumn")}</th>
+              <th scope="col" className="h-9 px-space-sm">{t("mappingSample")}</th>
+              <th scope="col" className="h-9 w-72 px-space-md">{t("mappingMapsTo")}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-rule">
+            {headers.map((header) => {
+              const field = fieldOf(header);
+              const samples = rows
+                .map((row) => (row.values[header] ?? "").trim())
+                .filter(Boolean)
+                .slice(0, 2);
+              return (
+                <tr key={header} className={cn("align-middle", !field && "text-text-faint")}>
+                  <td className="px-space-md py-space-sm font-mono text-[0.8125rem] font-semibold">{header}</td>
+                  <td className="px-space-sm py-space-sm font-mono text-[0.8125rem] text-text-muted">
+                    {samples.length ? samples.join(" · ") : "—"}
+                  </td>
+                  <td className="px-space-md py-1.5">
                     <select
-                      className={cn(controlClass, "h-9 w-full pr-8")}
-                      onChange={(event) => change(() => setMapping((current) => ({ ...current, [key]: event.target.value })))}
-                      required={!optionalKeys.has(key)}
-                      value={mapping[key] === FIXED ? "" : mapping[key]}
+                      aria-label={t("mappingMapsToColumn", { column: header })}
+                      className={cn(controlClass, "h-9 w-full pr-8", !field && "text-text-faint")}
+                      value={field}
+                      onChange={(event) => onMap(header, event.target.value as MappingKey | "")}
                     >
-                      <option value="">—</option>
-                      {headers.map((header) => (
-                        <option key={header} value={header}>
-                          {header}
+                      <option value="">{t("mappingIgnored")}</option>
+                      {mappingKeys.map((key) => (
+                        <option key={key} value={key}>
+                          {mapping[key] && mapping[key] !== header
+                            ? t("mappingMovesFrom", { field: fieldLabel(key), column: mapping[key] })
+                            : fieldLabel(key)}
                         </option>
                       ))}
                     </select>
-                  </label>
-                ))}
-              </div>
-            ) : (
-              <>
-                <div className="grid gap-space-md sm:grid-cols-2 lg:grid-cols-4">
-                  {wideKeys.map((key: WideKey) => (
-                    <div key={key}>
-                      <label className="block">
-                        <span className="mb-1 block text-[0.8125rem] font-semibold text-text">
-                          {key === "subject" ? t("importSubjectColumn") : t(key)}
-                        </span>
-                        <select
-                          className={cn(controlClass, "h-9 w-full pr-8")}
-                          onChange={(event) => {
-                            const next = event.target.value;
-                            change(() => {
-                              setMapping((current) => ({ ...current, [key]: next }));
-                              // A column used for the student, term or date is not a data attribute.
-                              setAttributeColumns((current) => current.filter((column) => column !== next));
-                            });
-                          }}
-                          required={!optionalKeys.has(key)}
-                          value={mapping[key]}
-                        >
-                          <option value="">—</option>
-                          {key === "term" || key === "validFrom" ? (
-                            <option value={FIXED}>{key === "term" ? t("importSameTerm") : t("importSameDate")}</option>
-                          ) : null}
-                          {headers.map((header) => (
-                            <option key={header} value={header}>
-                              {header}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      {key === "term" && mapping.term === FIXED ? (
-                        <select
-                          aria-label={t("term")}
-                          className={cn(controlClass, "mt-1.5 h-9 w-full pr-8")}
-                          value={fixedTerm}
-                          onChange={(event) => change(() => setFixedTerm(event.target.value))}
-                          required
-                        >
-                          <option value="">{t("selectOption")}</option>
-                          {terms.map((term) => (
-                            <option key={term} value={term}>
-                              {term}
-                            </option>
-                          ))}
-                        </select>
-                      ) : null}
-                      {key === "validFrom" && mapping.validFrom === FIXED ? (
-                        <input
-                          aria-label={t("validFrom")}
-                          type="date"
-                          className={cn(controlClass, "mt-1.5 h-9 w-full")}
-                          value={fixedDate}
-                          onChange={(event) => change(() => setFixedDate(event.target.value))}
-                          required
-                        />
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-
-                <fieldset>
-                  <legend className="mb-1 text-[0.8125rem] font-semibold text-text">
-                    {t("importAttributeColumns", { count: attributeColumns.length })}
-                  </legend>
-                  <div className="flex flex-wrap gap-1.5">
-                    {headers
-                      .filter((header) => !used.has(header))
-                      .map((header) => {
-                        const checked = attributeColumns.includes(header);
-                        const known = attributeKeys.has(squash(header));
-                        return (
-                          <label
-                            key={header}
-                            title={known ? undefined : t("importUnknownAttribute")}
-                            className={cn(
-                              "flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md border px-2 font-mono text-[0.8125rem] transition-colors",
-                              checked ? "border-ink bg-ink-wash text-text" : "border-rule text-text-faint hover:border-rule-strong",
-                            )}
-                          >
-                            <input
-                              type="checkbox"
-                              className="size-3.5 accent-[#2142b8]"
-                              checked={checked}
-                              onChange={(event) =>
-                                change(() =>
-                                  setAttributeColumns((current) =>
-                                    event.target.checked ? [...current, header] : current.filter((column) => column !== header),
-                                  ),
-                                )
-                              }
-                            />
-                            {header}
-                            {!known ? <span aria-hidden className="text-status-attention-text">?</span> : null}
-                          </label>
-                        );
-                      })}
-                  </div>
-                  <p className="mt-1 text-[0.75rem] text-text-faint">{t("importAttributeColumnsHint")}</p>
-                </fieldset>
-              </>
-            )}
-          </section>
-        );
-      }}
-    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }

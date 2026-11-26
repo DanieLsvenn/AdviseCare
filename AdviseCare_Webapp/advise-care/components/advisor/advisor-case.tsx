@@ -234,14 +234,17 @@ export function AdvisorCase({ caseId, viewerId }: { caseId: string; viewerId: st
           ) : null}
         </div>
 
-        <CaseMessages
-          caseId={record.caseId}
-          viewerId={viewerId}
-          audience="staff"
-          canWrite={!closed && record.advisorId === viewerId}
-          closed={closed}
-          className="lg:[grid-area:messages]"
-        />
+        {/* QC-238: only the student and the current advisor read the thread */}
+        {record.advisorId === viewerId ? (
+          <CaseMessages
+            caseId={record.caseId}
+            viewerId={viewerId}
+            audience="staff"
+            canWrite={!closed}
+            closed={closed}
+            className="lg:[grid-area:messages]"
+          />
+        ) : null}
 
         <CaseMeetups
           caseId={record.caseId}

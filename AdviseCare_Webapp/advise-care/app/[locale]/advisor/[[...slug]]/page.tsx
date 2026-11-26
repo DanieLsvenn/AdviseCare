@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { OutreachForm } from "@/components/advisor/outreach-form";
-import { AcademicResultsView } from "@/components/academic/academic-results";
+import { AdvisorStudentsInNeed } from "@/components/advisor/students-in-need";
+import { StudentDataView } from "@/components/academic/student-data-view";
 import { getCurrentUser } from "@/lib/auth";
 import { WorkspacePage } from "@/components/workspace/workspace-page";
 import type { WorkspaceScreen } from "@/components/workspace/workspace-definitions";
@@ -19,6 +20,8 @@ export default async function AdvisorWorkspacePage({
   const route = slug.join("/");
   let screen: WorkspaceScreen;
   let pathValues: Record<string, unknown> | undefined;
+
+  if (route === "students-in-need") return <AdvisorStudentsInNeed />;
 
   if (route === "outreach") {
     const { roles } = await getCurrentUser();
@@ -47,13 +50,8 @@ export default async function AdvisorWorkspacePage({
     screen = "advisor.caseDetail";
     pathValues = { caseId: slug[1] };
   } else if (/^students\/[^/]+(\/current|\/attendance)?$/.test(route)) {
-    // The student's academic results (only the consented part) above the data attribute values
-    return (
-      <div className="flex flex-col gap-space-lg">
-        <AcademicResultsView audience="staff" studentId={slug[1]} caseId={typeof caseId === "string" && caseId ? caseId : undefined} />
-        <WorkspacePage pathValues={{ studentId: slug[1], ...fromCase }} screen="advisor.studentData" />
-      </div>
-    );
+    // The student's academic results (only the consented part) above the data attribute values, read once (QC-259)
+    return <StudentDataView audience="staff" studentId={slug[1]} caseId={typeof caseId === "string" && caseId ? caseId : undefined} />;
   } else if (/^students\/[^/]+\/historical(\/erased)?$/.test(route)) {
     screen = "advisor.historical";
     pathValues = { studentId: slug[1], ...fromCase };

@@ -12,8 +12,11 @@ export function StatusValue({
   field,
   size = "md",
   emphasize,
+  label: labelOverride,
 }: {
   value: string;
+  /** A screen-specific wording for the value (the tone still follows the value). */
+  label?: string;
   field?: string;
   size?: "sm" | "md";
   /** Show a chip even for an expected state (e.g. a record's header). */
@@ -21,7 +24,7 @@ export function StatusValue({
 }) {
   const t = useTranslations("ui.status");
   const key = statusKey(value);
-  const label = t.has(key) ? t(key) : humanize(value);
+  const label = labelOverride ?? (t.has(key) ? t(key) : humanize(value));
   if (!emphasize && QUIET_STATES.has(key)) {
     return <span className="whitespace-nowrap text-[0.8125rem] text-text-faint">{label}</span>;
   }

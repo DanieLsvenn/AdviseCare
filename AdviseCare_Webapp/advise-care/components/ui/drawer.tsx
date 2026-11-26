@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Icon } from "./icon";
 
@@ -17,6 +17,8 @@ export function Drawer({
   closeLabel,
   footer,
   width = "md",
+  resizable = false,
+  resizeLabel,
   children,
 }: {
   open: boolean;
@@ -26,9 +28,31 @@ export function Drawer({
   closeLabel: string;
   footer?: ReactNode;
   width?: "md" | "lg";
+  /** Lets the reader drag the sheet's left edge to make it wider or narrower. */
+  resizable?: boolean;
+  resizeLabel?: string;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const [customWidth, setCustomWidth] = useState<number | null>(null);
+
+  function startResize(event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const handle = event.currentTarget;
+    handle.setPointerCapture(event.pointerId);
+    const move = (moveEvent: PointerEvent) => {
+      const next = window.innerWidth - moveEvent.clientX;
+      setCustomWidth(Math.max(360, Math.min(next, window.innerWidth - 24)));
+    };
+    const stop = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", stop);
+      handle.removeEventListener("pointercancel", stop);
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", stop);
+    handle.addEventListener("pointercancel", stop);
+  }
 
   useEffect(() => {
     const dialog = ref.current;
@@ -49,11 +73,22 @@ export function Drawer({
       }}
       className={cn(
         "fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-dvh w-full max-w-full bg-transparent p-0 open:animate-sheet-in",
-        width === "md" ? "sm:max-w-[34rem]" : "sm:max-w-[46rem]",
+        customWidth ? "" : width === "md" ? "sm:max-w-[34rem]" : "sm:max-w-[46rem]",
       )}
+      style={customWidth ? { maxWidth: `min(${customWidth}px, 100vw)` } : undefined}
     >
       {open ? (
-        <div className="flex h-full flex-col border-l border-rule bg-paper shadow-sheet">
+        <div className="relative flex h-full flex-col border-l border-rule bg-paper shadow-sheet">
+          {resizable ? (
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={resizeLabel}
+              title={resizeLabel}
+              onPointerDown={startResize}
+              className="absolute inset-y-0 -left-1 z-10 hidden w-2 cursor-col-resize touch-none hover:bg-ink/20 sm:block"
+            />
+          ) : null}
           <header className="flex items-start gap-space-md border-b border-rule px-space-lg py-space-base">
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-semibold leading-6 text-text">{title}</h2>

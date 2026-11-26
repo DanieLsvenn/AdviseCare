@@ -22,6 +22,10 @@ export interface CaseRecord {
   closedAt: string | null;
   currentStage: string;
   priority: string;
+  /** low / moderate / high / critical; empty = not rated yet (set by the Programme Head) */
+  severity: string;
+  /** Advisors' take-on requests waiting for this case (matching queue only). */
+  pendingTakeOnRequestCount: number;
   status: string;
 }
 
@@ -99,13 +103,13 @@ export function toCase(record: Record<string, unknown>): CaseRecord {
   return {
     caseId: str(record.caseId),
     studentId: str(record.studentId),
-    studentName: str(record.studentName),
+    studentName: str(record.studentName ?? record.studentFullName),
     studentCode: str(record.studentCode),
     studentEmail: str(record.studentEmail),
     advisorId: str(record.advisorId) || null,
     advisorName: str(record.advisorName ?? record.advisorFullName),
     advisorEmail: str(record.advisorEmail),
-    openedByName: str(record.openedByName),
+    openedByName: str(record.openedByName ?? record.openedByFullName),
     subjectCode: str(record.subjectCode),
     subjectName: str(record.subjectName),
     supportCategoryId: str(record.supportCategoryId),
@@ -122,6 +126,8 @@ export function toCase(record: Record<string, unknown>): CaseRecord {
     closedAt: str(record.closedAt) || null,
     currentStage: str(record.currentStage),
     priority: str(record.priority),
+    severity: str(record.severity),
+    pendingTakeOnRequestCount: typeof record.pendingTakeOnRequestCount === "number" ? record.pendingTakeOnRequestCount : 0,
     status: str(record.status),
   };
 }

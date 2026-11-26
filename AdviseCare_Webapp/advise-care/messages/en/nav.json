@@ -22,7 +22,8 @@
     "referrals": "Referrals",
     "emergencyAccess": "Emergency access",
     "myCases": "My cases",
-    "schedule": "My schedule"
+    "schedule": "My schedule",
+    "studentsInNeed": "Students in need"
   },
   "steward": {
     "purposes": "Consent purposes",
@@ -51,7 +52,8 @@
     "assignments": "Case change requests",
     "reports": "Case reports",
     "allCases": "All cases",
-    "escalations": "Escalations"
+    "escalations": "Escalations",
+    "studentsInNeed": "Students in need"
   },
   "welfare": {
     "referrals": "Incoming referrals",
@@ -67,7 +69,6 @@
     "reference": "Support categories",
     "health": "Activity history",
     "restore": "Notifications",
-    "indicators": "Account settings",
     "sessions": "Active sessions",
     "specialisations": "Advisor specialisations",
     "academicResults": "Academic results import"

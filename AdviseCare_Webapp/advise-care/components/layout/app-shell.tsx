@@ -7,6 +7,7 @@ import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { localizeRole, roleHomePath } from "@/lib/roles";
 import { Brand } from "./brand";
+import { NotificationBell } from "./notification-bell";
 import { NavTrail, SidebarNav, TopNav, type NavItem } from "./sidebar-nav";
 
 const skipLink = (label: string) => (
@@ -35,7 +36,6 @@ export async function AppShell({
   accountRole,
   accountInitials,
   roles = [],
-  hasAlert,
   children,
   variant = "staff",
 }: {
@@ -56,7 +56,6 @@ export async function AppShell({
   roles?: string[];
   /** @deprecated replaced by the account row */
   footerNote?: { icon: string; title: string; caption: string };
-  hasAlert?: boolean;
   children: ReactNode;
   variant?: "staff" | "student";
 }) {
@@ -76,12 +75,7 @@ export async function AppShell({
       : "relative flex size-9 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-ink-wash hover:text-text";
   const utilities = (tone: "paper" | "cover") => (
     <div className="flex items-center gap-1">
-      <Link aria-label={tc("notifications")} className={iconLink(tone)} href="/notifications">
-        <Icon name="notifications" className="text-[21px]" />
-        {hasAlert ? (
-          <span className="absolute right-2 top-2 size-2 rounded-full bg-red-ink ring-2 ring-paper" />
-        ) : null}
-      </Link>
+      <NotificationBell tone={tone} roles={roles} />
       <Link aria-label={tc("settings")} className={iconLink(tone)} href="/settings">
         <Icon name="settings" className="text-[21px]" />
       </Link>
